@@ -1,3 +1,9 @@
+package com.bank.contentieux.entity;
+
+import jakarta.persistence.*;
+import java.util.*;
+import java.time.LocalDate;
+
 @Entity
 @Inheritance(strategy = InheritanceType.JOINED)
 public abstract class Utilisateur {
@@ -13,4 +19,6 @@ public abstract class Utilisateur {
 
     @ManyToOne
     private Agence agence;
+
+    // getters & setters
 }

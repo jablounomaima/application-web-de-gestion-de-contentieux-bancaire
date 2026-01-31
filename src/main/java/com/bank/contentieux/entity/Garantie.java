@@ -1,3 +1,7 @@
+package com.bank.contentieux.entity;
+
+import jakarta.persistence.*;
+
 @Entity
 public class Garantie {
 

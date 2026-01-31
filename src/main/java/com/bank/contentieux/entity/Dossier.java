@@ -1,3 +1,9 @@
+package com.bank.contentieux.entity;
+
+import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.util.List;
+
 @Entity
 public class Dossier {
 
@@ -9,24 +15,6 @@ public class Dossier {
     private Double montantCredit;
     private LocalDate dateCreation;
 
-    @ManyToOne
-    private Client client;
-
     @OneToMany(mappedBy = "dossier")
     private List<Risque> risques;
-
-    @OneToMany(mappedBy = "dossier")
-    private List<HistoriqueDossier> historiques;
-
-    @OneToMany(mappedBy = "dossier")
-    private List<Notification> notifications;
-
-    @OneToMany(mappedBy = "dossier")
-    private List<Facture> factures;
-
-    @ManyToOne
-    private ValidateurFinancier validateurFinancier;
-
-    @ManyToOne
-    private ValidateurJuridique validateurJuridique;
 }
