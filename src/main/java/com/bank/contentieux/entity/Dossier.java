@@ -17,4 +17,14 @@ public class Dossier {
 
     @OneToMany(mappedBy = "dossier")
     private List<Risque> risques;
+   
+    @ManyToOne
+    @JoinColumn(name = "client_id")  // le nom doit correspondre à la colonne FK en DB
+    private Client client;
+    public Client getClient() { return client; }
+
+
+
+
+
 }

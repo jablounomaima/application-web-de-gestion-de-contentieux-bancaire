@@ -1,11 +1,10 @@
 package com.bank.contentieux.entity;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
+import java.util.List;
 
 @Entity
+@Table(name = "client")  // Le nom doit correspondre à ta table en DB
 public class Client {
 
     @Id
@@ -17,44 +16,45 @@ public class Client {
     private String email;
     private String tel;
 
-    // Getters et Setters
-    public Long getIdClient() {
-        return idClient;
-    }
+    // Relation ManyToOne avec Agence
+    @ManyToOne
+    @JoinColumn(name = "agence_id") // clé étrangère dans la table client
+    private Agence agence;
 
-    public void setIdClient(Long idClient) {
-        this.idClient = idClient;
-    }
+    // Relation OneToMany avec Dossier
+    @OneToMany(mappedBy = "client", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<Dossier> dossiers;
 
-    public String getNom() {
-        return nom;
-    }
+    // Constructeurs
+    public Client() {}
 
-    public void setNom(String nom) {
+    public Client(String nom, String prenom, String email, String tel, Agence agence) {
         this.nom = nom;
-    }
-
-    public String getPrenom() {
-        return prenom;
-    }
-
-    public void setPrenom(String prenom) {
         this.prenom = prenom;
-    }
-
-    public String getEmail() {
-        return email;
-    }
-
-    public void setEmail(String email) {
         this.email = email;
-    }
-
-    public String getTel() {
-        return tel;
-    }
-
-    public void setTel(String tel) {
         this.tel = tel;
+        this.agence = agence;
     }
+
+    // Getters et Setters
+    public Long getIdClient() { return idClient; }
+    public void setIdClient(Long idClient) { this.idClient = idClient; }
+
+    public String getNom() { return nom; }
+    public void setNom(String nom) { this.nom = nom; }
+
+    public String getPrenom() { return prenom; }
+    public void setPrenom(String prenom) { this.prenom = prenom; }
+
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
+
+    public String getTel() { return tel; }
+    public void setTel(String tel) { this.tel = tel; }
+
+    public Agence getAgence() { return agence; }
+    public void setAgence(Agence agence) { this.agence = agence; }
+
+    public List<Dossier> getDossiers() { return dossiers; }
+    public void setDossiers(List<Dossier> dossiers) { this.dossiers = dossiers; }
 }

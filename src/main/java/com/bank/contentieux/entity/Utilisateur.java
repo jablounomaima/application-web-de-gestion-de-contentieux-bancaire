@@ -17,8 +17,7 @@ public abstract class Utilisateur {
     private String login;
     private String role;
 
-    @ManyToOne
-    private Agence agence;
+   
 
     // getters & setters
 }
