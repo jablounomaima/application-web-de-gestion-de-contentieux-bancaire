@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Accueil</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Bienvenue sur l'application de Contentieux</h1>
+
+    <div id="userInfo" class="hidden">
+        <p>Connecté en tant que: <span id="usernameDisplay"></span></p>
+        <button onclick="logout()">Se déconnecter</button>
+        <hr>
+        <h3>Actions disponibles</h3>
+        <ul>
+            <li><a href="#" onclick="testApi('/api/test/public')">Test Public API</a></li>
+            <li><a href="#" onclick="testApi('/admin/users')">Test Admin API (Requires ROLE_ADMIN)</a></li>
+            <li><a href="#" onclick="testApi('/agent/clients')">Test Agent API (Requires ROLE_AGENT_BANCAIRE)</a></li>
+        </ul>
+        <div id="apiResult"></div>
+    </div>
+
+    <div id="loginPrompt">
+        <p>Vous n'êtes pas connecté.</p>
+        <a href="login.html">Se connecter</a>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+
+        if (token) {
+            document.getElementById('userInfo').classList.remove('hidden');
+            document.getElementById('loginPrompt').classList.add('hidden');
+
+            // Decode token payload simply
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                document.getElementById('usernameDisplay').textContent = payload.sub;
+            } catch (e) {
+                console.error("Invalid token", e);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.reload();
+        }
+
+        async function testApi(url) {
+            const token = localStorage.getItem('token');
+            const headers = token ? { 'Authorization': 'Bearer ' + token } : {};
+
+            try {
+                const res = await fetch(url, { headers });
+                const text = await res.text();
+                document.getElementById('apiResult').textContent = `Status: ${res.status}\nResponse: ${text}`;
+            } catch (e) {
+                document.getElementById('apiResult').textContent = "Erreur: " + e;
+            }
+        }
+    </script>
+</body>
+
+</html>

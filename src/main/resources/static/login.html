@@ -1,11 +1,144 @@
 <!DOCTYPE html>
-<html>
+<html lang="fr">
+
 <head>
     <meta charset="UTF-8">
-    <title>Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f0f2f5;
+        }
+
+        .login-container {
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 300px;
+        }
+
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        input {
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            padding: 0.5rem;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-bottom: 0.5rem;
+        }
+
+        button.secondary {
+            background-color: #6c757d;
+        }
+
+        button:hover {
+            opacity: 0.9;
+        }
+
+        #message {
+            margin-top: 1rem;
+            text-align: center;
+            color: red;
+        }
+    </style>
 </head>
+
 <body>
-    <h1>Page de Login</h1>
-    <p>La page fonctionne !</p>
+    <div class="login-container">
+        <h2>Connexion</h2>
+        <form id="loginForm">
+            <input type="text" id="username" placeholder="Nom d'utilisateur" required>
+            <input type="password" id="password" placeholder="Mot de passe" required>
+            <button type="submit">Se connecter</button>
+            <button type="button" class="secondary" onclick="register()">S'inscrire (Nouveau)</button>
+        </form>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        async function register() {
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageElement = document.getElementById('message');
+
+            if (!username || !password) {
+                messageElement.textContent = "Entrez un nom et un mot de passe pour s'inscrire";
+                return;
+            }
+
+            try {
+                const response = await fetch('/auth/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('token', data.token);
+                    messageElement.style.color = 'green';
+                    messageElement.textContent = 'Inscription réussie! Redirection...';
+                    setTimeout(() => window.location.href = '/index.html', 1000);
+                } else {
+                    messageElement.style.color = 'red';
+                    messageElement.textContent = 'Erreur inscription (Existe déjà?)';
+                }
+            } catch (error) {
+                messageElement.textContent = 'Erreur réseau';
+            }
+        }
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const messageElement = document.getElementById('message');
+
+            try {
+                const response = await fetch('/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('token', data.token);
+                    messageElement.style.color = 'green';
+                    messageElement.textContent = 'Connexion réussie!';
+                    setTimeout(() => window.location.href = '/index.html', 1000);
+                } else {
+                    messageElement.style.color = 'red';
+                    messageElement.textContent = 'Identifiants incorrects';
+                }
+            } catch (error) {
+                messageElement.textContent = 'Erreur réseau';
+            }
+        });
+    </script>
 </body>
+
 </html>

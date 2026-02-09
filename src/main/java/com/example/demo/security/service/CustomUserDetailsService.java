@@ -20,8 +20,12 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
 
         Utilisateur user = repo.findByUsername(username)
-                .orElseThrow(() ->
-                        new UsernameNotFoundException("Utilisateur non trouvé: " + username));
+                .orElseThrow(() -> {
+                    System.out.println("❌ USER NOT FOUND: " + username);
+                    return new UsernameNotFoundException("Utilisateur non trouvé: " + username);
+                });
+        
+        System.out.println("✅ USER FOUND: " + username + " | Role: " + user.getRole() + " | PassHash: " + user.getPassword());
 
         String role = user.getRole().name(); // Déjà ROLE_XXX
 
