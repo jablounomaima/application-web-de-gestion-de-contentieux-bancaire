@@ -8,8 +8,10 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "client")
 @Inheritance(strategy = InheritanceType.JOINED)
+@DiscriminatorColumn(name = "type_client", discriminatorType = DiscriminatorType.STRING)
 @Getter
 @Setter
+@lombok.NoArgsConstructor
 public abstract class Client {
 
     @Id
@@ -35,4 +37,6 @@ public abstract class Client {
     protected void onCreate() {
         dateCreation = LocalDateTime.now();
     }
+
+    public abstract String getNom();
 }

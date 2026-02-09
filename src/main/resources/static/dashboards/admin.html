@@ -26,11 +26,11 @@
                         <span class="nav-item-icon">📊</span>
                         Tableau de bord
                     </a>
-                    <a href="#" class="nav-item" data-page="users">
+                    <a href="/manage-users.html" class="nav-item" data-page="users">
                         <span class="nav-item-icon">👥</span>
                         Gestion Utilisateurs
                     </a>
-                    <a href="#" class="nav-item" data-page="agences">
+                    <a href="/manage-agences.html" class="nav-item" data-page="agences">
                         <span class="nav-item-icon">🏢</span>
                         Gestion Agences
                     </a>
@@ -171,6 +171,11 @@
         // Navigation
         document.querySelectorAll('.nav-item[data-page]').forEach(item => {
             item.addEventListener('click', (e) => {
+                const href = item.getAttribute('href');
+                if (href && href !== '#' && href !== '') {
+                    return; // Laisser le lien naviguer normalement
+                }
+
                 e.preventDefault();
                 document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
                 item.classList.add('active');

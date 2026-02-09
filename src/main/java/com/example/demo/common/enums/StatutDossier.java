@@ -6,6 +6,8 @@ public enum StatutDossier {
     VALIDE_FINANCIEREMENT,
     VALIDE_JURIDIQUEMENT,
     EN_PROCEDURE,
+    AMIABLE,
+    JUDICIAIRE,
     CLASSE,
     REJETE
 }

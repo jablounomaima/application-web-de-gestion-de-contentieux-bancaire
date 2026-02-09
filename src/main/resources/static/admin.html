@@ -1,13 +1,266 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="fr">
+
 <head>
-    <title>Admin</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Administration Contentieux - Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #818cf8;
+            --bg: #f8fafc;
+            --sidebar: #1e293b;
+            --text-main: #334155;
+            --card-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            min-height: 100vh;
+            color: var(--text-main);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 260px;
+            background: var(--sidebar);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            padding: 30px 20px;
+            box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            font-size: 24px;
+            font-weight: 700;
+            margin-bottom: 50px;
+            text-align: center;
+            color: var(--primary-light);
+        }
+
+        .nav-link {
+            padding: 15px 20px;
+            color: #cbd5e1;
+            text-decoration: none;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .nav-link:hover {
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            transform: translateX(5px);
+        }
+
+        .nav-link.active {
+            background: var(--primary);
+            color: white;
+            box-shadow: 0 4px 12px rgba(79, 70, 229, 0.4);
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 40px;
+        }
+
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            background: white;
+            padding: 8px 20px;
+            border-radius: 50px;
+            box-shadow: var(--card-shadow);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            box-shadow: var(--card-shadow);
+            border: 1px solid rgba(0, 0, 0, 0.02);
+            transition: transform 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-5px);
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--sidebar);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: #64748b;
+            font-weight: 500;
+        }
+
+        /* Actions Grid */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 30px;
+        }
+
+        .action-card {
+            background: linear-gradient(135deg, #ffffff 0%, #f1f5f9 100%);
+            padding: 40px;
+            border-radius: 24px;
+            text-align: center;
+            text-decoration: none;
+            color: var(--text-main);
+            box-shadow: var(--card-shadow);
+            border: 1px solid white;
+            transition: all 0.4s;
+        }
+
+        .action-card:hover {
+            transform: scale(1.02);
+            border-color: var(--primary-light);
+            background: white;
+        }
+
+        .action-icon {
+            font-size: 48px;
+            margin-bottom: 20px;
+            display: block;
+        }
+
+        .action-title {
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .action-desc {
+            font-size: 14px;
+            color: #64748b;
+        }
+
+        .logout-btn {
+            margin-top: auto;
+            border: none;
+            background: #ef4444;
+            color: white;
+            padding: 15px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+    </style>
 </head>
+
 <body>
+    <aside class="sidebar">
+        <div class="logo">CONTENTIEUX ⚖️</div>
+        <nav style="flex: 1;">
+            <a href="/admin.html" class="nav-link active">🏠 Dashboard</a>
+            <a href="/manage-users.html" class="nav-link">👥 Utilisateurs</a>
+            <a href="/manage-agences.html" class="nav-link">🏛️ Agences</a>
+            <a href="#" class="nav-link">📊 Statistiques Globales</a>
+        </nav>
+        <button class="logout-btn" onclick="logout()">Déconnexion</button>
+    </aside>
 
-<h1>Dashboard Admin 👑</h1>
+    <main class="main-content">
+        <div class="top-bar">
+            <div>
+                <h1 style="font-size: 28px; font-weight: 700;">Bonjour, Administrateur 👋</h1>
+                <p style="color: #64748b;">Voici le résumé global de votre plateforme.</p>
+            </div>
+            <div class="user-profile">
+                <span style="font-weight: 600;" id="adminName">Admin</span>
+                <div
+                    style="width: 35px; height: 35px; background: var(--primary); border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center;">
+                    A</div>
+            </div>
+        </div>
 
-<p>Bienvenue Admin</p>
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-value">24</div>
+                <div class="stat-label">Agences Partenaires</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">158</div>
+                <div class="stat-label">Agents Actifs</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">1,240</div>
+                <div class="stat-label">Dossiers en cours</div>
+            </div>
+            <div class="stat-card" style="background: var(--primary); color: white;">
+                <div class="stat-value" style="color: white;">89%</div>
+                <div class="stat-label" style="color: rgba(255,255,255,0.8);">Taux de résolution</div>
+            </div>
+        </div>
 
+        <div class="actions-grid">
+            <a href="/manage-users.html" class="action-card">
+                <span class="action-icon">👥</span>
+                <div class="action-title">Gestion des Utilisateurs</div>
+                <p class="action-desc">Ajouter, modifier ou révoquer les accès des agents et des validatateurs.</p>
+            </a>
+            <a href="/manage-agences.html" class="action-card">
+                <span class="action-icon">🏛️</span>
+                <div class="action-title">Gestion des Agences</div>
+                <p class="action-desc">Paramétrer les agences bancaires et leurs contacts régionaux.</p>
+            </a>
+        </div>
+    </main>
+
+    <script>
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = '/login.html';
+        }
+
+        // Vérification authentification
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login.html';
+
+        // Charger infos
+        fetch('/api/auth/me', { headers: { 'Authorization': 'Bearer ' + token } })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('adminName').textContent = data.nom ? (data.nom + ' ' + (data.prenom || '')) : data.username;
+            })
+            .catch(() => window.location.href = '/login.html');
+    </script>
 </body>
+
 </html>

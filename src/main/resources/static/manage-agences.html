@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion des Agences - Administration</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #f0f2f5;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            margin-bottom: 25px;
+        }
+
+        .btn-back {
+            padding: 10px 20px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .card {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            margin-bottom: 25px;
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        button.submit-btn {
+            padding: 12px 25px;
+            background: #007bff;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            width: 100%;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+
+        th,
+        td {
+            padding: 15px;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 700;
+            color: #555;
+        }
+
+        .badge {
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            background: #e7f3ff;
+            color: #007bff;
+            font-weight: 600;
+        }
+
+        .actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .edit-btn {
+            background: #ffc107;
+            color: #212529;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .delete-btn {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🏛️ Gestion des Agences</h1>
+            <a href="/dashboards/admin.html" class="btn-back">Retour au Tableau de Bord</a>
+        </div>
+
+        <div class="card">
+            <h2 id="formTitle">Ajouter une Nouvelle Agence</h2>
+            <form id="agenceForm" style="margin-top: 20px;">
+                <input type="hidden" id="editId">
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label>Code Agence *</label>
+                        <input type="text" id="code" required placeholder="ex: AG001">
+                    </div>
+                    <div class="form-group">
+                        <label>Nom de l'agence *</label>
+                        <input type="text" id="nom" required placeholder="ex: Agence Centre-Ville">
+                    </div>
+                    <div class="form-group">
+                        <label>Ville *</label>
+                        <input type="text" id="ville" required placeholder="ex: Casablanca">
+                    </div>
+                    <div class="form-group">
+                        <label>Téléphone Contact</label>
+                        <input type="text" id="telephone" placeholder="ex: +212 522 00 00 00">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-top: 20px;">
+                    <label>Adresse Complète</label>
+                    <input type="text" id="adresse" placeholder="ex: Boulevard Zerktouni, Immeuble A, 4ème étage">
+                </div>
+                <div style="display: flex; gap: 15px; margin-top: 10px;">
+                    <button type="submit" class="submit-btn" id="saveBtn">Enregistrer l'agence</button>
+                    <button type="button" class="btn-back hidden" id="cancelBtn" onclick="resetForm()">Annuler
+                        Modification</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="card">
+            <h2>Liste des Agences Répertoriées</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Code</th>
+                        <th>Nom</th>
+                        <th>Ville</th>
+                        <th>Contact</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="agencesTable"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/login.html';
+
+        async function loadAgences() {
+            const res = await fetch('/api/agences', {
+                headers: { 'Authorization': 'Bearer ' + token }
+            });
+            if (res.ok) {
+                const agences = await res.json();
+                const tbody = document.getElementById('agencesTable');
+                tbody.innerHTML = agences.map(a => `
+                    <tr>
+                        <td><span class="badge">${a.code}</span></td>
+                        <td><strong>${a.nom}</strong></td>
+                        <td>${a.ville}</td>
+                        <td>${a.telephoneContact || '-'}</td>
+                        <td class="actions">
+                            <button class="edit-btn" onclick='editAgence(${JSON.stringify(a)})'>Modifier</button>
+                            <button class="delete-btn" onclick="deleteAgence(${a.id})">Supprimer</button>
+                        </td>
+                    </tr>
+                `).join('');
+            }
+        }
+
+        document.getElementById('agenceForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('editId').value;
+            const data = {
+                code: document.getElementById('code').value,
+                nom: document.getElementById('nom').value,
+                ville: document.getElementById('ville').value,
+                telephoneContact: document.getElementById('telephone').value,
+                adresse: document.getElementById('adresse').value
+            };
+
+            const url = id ? `/api/agences/${id}` : '/api/agences';
+            const method = id ? 'PUT' : 'POST';
+
+            const res = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                alert(id ? 'Agence mise à jour !' : 'Agence créée !');
+                resetForm();
+                loadAgences();
+            } else {
+                alert('Erreur lors de l\'enregistrement');
+            }
+        });
+
+        function editAgence(a) {
+            document.getElementById('formTitle').innerText = "Modifier l'Agence : " + a.nom;
+            document.getElementById('editId').value = a.id;
+            document.getElementById('code').value = a.code;
+            document.getElementById('nom').value = a.nom;
+            document.getElementById('ville').value = a.ville;
+            document.getElementById('telephone').value = a.telephoneContact || '';
+            document.getElementById('adresse').value = a.adresse || '';
+            document.getElementById('saveBtn').innerText = "Mettre à jour l'agence";
+            document.getElementById('cancelBtn').classList.remove('hidden');
+            window.scrollTo(0, 0);
+        }
+
+        function resetForm() {
+            document.getElementById('editId').value = '';
+            document.getElementById('agenceForm').reset();
+            document.getElementById('formTitle').innerText = "Ajouter une Nouvelle Agence";
+            document.getElementById('saveBtn').innerText = "Enregistrer l'agence";
+            document.getElementById('cancelBtn').classList.add('hidden');
+        }
+
+        async function deleteAgence(id) {
+            if (confirm('Voulez-vous vraiment supprimer cette agence ?')) {
+                const res = await fetch(`/api/agences/${id}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (res.ok) loadAgences();
+            }
+        }
+
+        loadAgences();
+    </script>
+</body>
+
+</html>

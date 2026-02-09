@@ -1,16 +1,17 @@
 package com.example.demo.client.entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
+import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 
 @Entity
 @Table(name = "client_physique")
+@DiscriminatorValue("PHYSIQUE")
 @Getter
 @Setter
+@NoArgsConstructor
 public class ClientPhysique extends Client {
 
     @Column(nullable = false)
@@ -24,4 +25,9 @@ public class ClientPhysique extends Client {
 
     @Column(name = "date_naissance")
     private LocalDate dateNaissance;
+
+    @Override
+    public String getNom() {
+        return nom + " " + prenom;
+    }
 }
