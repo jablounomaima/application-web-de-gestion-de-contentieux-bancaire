@@ -28,7 +28,13 @@ public class DataInitializer implements CommandLineRunner {
 
     private void createOrUpdateUser(String username, String rawPassword, Role role) {
         Utilisateur user = repository.findByUsername(username)
-                .orElse(new Utilisateur());
+                .orElseGet(() -> {
+                    if (role == Role.ROLE_ADMIN) return new com.example.demo.user.entity.impl.Admin();
+                    if (role == Role.ROLE_AGENT_BANCAIRE) return new com.example.demo.user.entity.impl.AgentBancaire();
+                    return null; // Devrait être géré pour les autres rôles si nécessaire
+                });
+
+        if (user == null) return;
 
         user.setUsername(username);
         user.setPassword(passwordEncoder.encode(rawPassword));

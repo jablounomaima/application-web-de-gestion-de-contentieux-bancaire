@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Agent Bancaire</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" style="border-left: 4px solid var(--agent-color);">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" style="color: var(--agent-color);">🏦 AGENT</div>
+                <div class="sidebar-role">Agent Bancaire</div>
+                <div class="sidebar-user" id="userName"
+                    style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 600;"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Dossiers</div>
+                    <a href="#" class="nav-item active">
+                        <span class="nav-item-icon">📊</span>
+                        Tableau de bord
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📁</span>
+                        Mes Dossiers
+                        <span class="nav-item-badge">12</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">➕</span>
+                        Nouveau Dossier
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Affaires & Missions</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">⚖️</span>
+                        Affaires Judiciaires
+                        <span class="nav-item-badge">8</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📋</span>
+                        Missions
+                        <span class="nav-item-badge">5</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Validation</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">✓</span>
+                        PV à Valider
+                        <span class="nav-item-badge">3</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💰</span>
+                        Factures
+                        <span class="nav-item-badge">2</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💵</span>
+                        Recouvrements
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Gestion</div>
+                    <a href="/manage-users.html" class="nav-item">
+                        <span class="nav-item-icon">👥</span>
+                        Gérer Intervenants
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📈</span>
+                        Mes Statistiques
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <a href="#" class="nav-item" onclick="logout()">
+                        <span class="nav-item-icon">🚪</span>
+                        Déconnexion
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">🏦 Tableau de Bord - Agent Bancaire</h1>
+                    <p class="page-subtitle">Gestion des contentieux</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-outline">🔄 Actualiser</button>
+                    <button class="btn btn-primary">+ Nouveau Dossier</button>
+                </div>
+            </header>
+
+            <!-- Dashboard Widgets -->
+            <div class="dashboard-widgets">
+                <div class="widget" style="border-left-color: var(--agent-color);">
+                    <div class="widget-header">
+                        <div class="widget-title">Dossiers Actifs</div>
+                        <div class="widget-icon" style="background: rgba(0, 123, 255, 0.1); color: var(--agent-color);">
+                            📁</div>
+                    </div>
+                    <div class="widget-value">12</div>
+                    <div class="widget-trend">+3 cette semaine</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--validateur-juridique-color);">
+                    <div class="widget-header">
+                        <div class="widget-title">Affaires Judiciaires</div>
+                        <div class="widget-icon" style="background: rgba(40, 167, 69, 0.1); color: var(--success);">⚖️
+                        </div>
+                    </div>
+                    <div class="widget-value">8</div>
+                    <div class="widget-trend">2 validées aujourd'hui</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--huissier-color);">
+                    <div class="widget-header">
+                        <div class="widget-title">Missions en Cours</div>
+                        <div class="widget-icon"
+                            style="background: rgba(253, 126, 20, 0.1); color: var(--huissier-color);">📋</div>
+                    </div>
+                    <div class="widget-value">5</div>
+                    <div class="widget-trend">3 PV à valider</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--warning);">
+                    <div class="widget-header">
+                        <div class="widget-title">Actions Urgentes</div>
+                        <div class="widget-icon" style="background: rgba(255, 193, 7, 0.1); color: var(--warning);">⚠️
+                        </div>
+                    </div>
+                    <div class="widget-value">3</div>
+                    <div class="widget-trend class">À traiter rapidement</div>
+                </div>
+            </div>
+
+            <!-- Mes Dossiers -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📁 Mes Dossiers Récents</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <input type="text" class="form-control" placeholder="Rechercher..." style="width: 250px;">
+                        <button class="btn btn-outline btn-sm">🔍</button>
+                        <button class="btn btn-primary btn-sm">+ Nouveau</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Réf.</th>
+                                <th>Client</th>
+                                <th>Montant</th>
+                                <th>Statut</th>
+                                <th>Créé le</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><strong>#DOS-2024-001</strong></td>
+                                <td>SARL TechCorp</td>
+                                <td>125 000 TND</td>
+                                <td><span class="badge badge-warning">En cours</span></td>
+                                <td>15/01/2024</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">Voir</button>
+                                    <button class="btn btn-sm btn-outline">Modifier</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>#DOS-2024-002</strong></td>
+                                <td>ETS Commerce Plus</td>
+                                <td>85 000 TND</td>
+                                <td><span class="badge badge-success">Affaire créée</span></td>
+                                <td>10/01/2024</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">Voir</button>
+                                    <button class="btn btn-sm btn-outline">Modifier</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>#DOS-2024-003</strong></td>
+                                <td>SARL BTP Solutions</td>
+                                <td>200 000 TND</td>
+                                <td><span class="badge badge-danger">Mission urgente</span></td>
+                                <td>08/01/2024</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">Voir</button>
+                                    <button class="btn btn-sm btn-outline">Modifier</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Actions Rapides -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem;">
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">🔔 Notifications</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div
+                            style="padding: 0.75rem; background: #fff3cd; border-radius: 0.5rem; border-left: 3px solid #ffc107;">
+                            <strong>PV Mission #M-001</strong>
+                            <p style="color: #856404; font-size: 0.875rem; margin-top: 0.25rem;">En attente de votre
+                                validation</p>
+                        </div>
+                        <div
+                            style="padding: 0.75rem; background: #d1ecf1; border-radius: 0.5rem; border-left: 3px solid #17a2b8;">
+                            <strong>Facture #F-045</strong>
+                            <p style="color: #0c5460; font-size: 0.875rem; margin-top: 0.25rem;">À pré-valider avant
+                                envoi</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">⏱️ Actions Rapides</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button class="btn btn-primary">+ Créer un Dossier</button>
+                        <button class="btn btn-success">+ Créer une Affaire</button>
+                        <button class="btn btn-outline">+ Créer une Mission</button>
+                        <button class="btn btn-outline">💰 Saisir Recouvrement</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        if (!requireAuth()) { }
+
+        async function loadUserInfo() {
+            try {
+                const response = await apiCall('/api/auth/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        loadUserInfo();
+    </script>
+</body>
+
+</html>

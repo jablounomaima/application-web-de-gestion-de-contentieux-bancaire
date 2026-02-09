@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Expert</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar" style="border-left: 4px solid var(--expert-color);">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" style="color: var(--expert-color);">🔬 EXPERT</div>
+                <div class="sidebar-role">Expert Technique</div>
+                <div class="sidebar-user" id="userName"
+                    style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 600;"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Expertises</div>
+                    <a href="#" class="nav-item active">
+                        <span class="nav-item-icon">📊</span>
+                        Tableau de bord
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">🔬</span>
+                        Mes Expertises
+                        <span class="nav-item-badge">4</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Rapports</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📝</span>
+                        Rapports d'Expertise
+                        <span class="nav-item-badge">2</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">✓</span>
+                        Rapports Validés
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Évaluations</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">🏠</span>
+                        Immobilier
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">🚗</span>
+                        Mobiliers
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">🏢</span>
+                        Entreprises
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💼</span>
+                        Actifs Financiers
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Ressources</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📚</span>
+                        Bibliothèque Technique
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📋</span>
+                        Grilles d'Évaluation
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <a href="#" class="nav-item" onclick="logout()">
+                        <span class="nav-item-icon">🚪</span>
+                        Déconnexion
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">🔬 Expertises Techniques</h1>
+                    <p class="page-subtitle">Évaluations et expertises</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-outline">🔄 Actualiser</button>
+                    <button class="btn btn-primary">📝 Nouveau Rapport</button>
+                </div>
+            </header>
+
+            <!-- Widgets -->
+            <div class="dashboard-widgets">
+                <div class="widget" style="border-left-color: var(--expert-color);">
+                    <div class="widget-header">
+                        <div class="widget-title">Expertises en Cours</div>
+                        <div class="widget-icon"
+                            style="background: rgba(23, 162, 184, 0.1); color: var(--expert-color);">🔬</div>
+                    </div>
+                    <div class="widget-value">4</div>
+                    <div class="widget-trend">2 à finaliser</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--warning);">
+                    <div class="widget-header">
+                        <div class="widget-title">Rapports Attendus</div>
+                        <div class="widget-icon" style="background: rgba(255, 193, 7, 0.1); color: var(--warning);">📝
+                        </div>
+                    </div>
+                    <div class="widget-value">2</div>
+                    <div class="widget-trend">Délai: 5 jours</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--success);">
+                    <div class="widget-header">
+                        <div class="widget-title">Expertises du Mois</div>
+                        <div class="widget-icon" style="background: rgba(40, 167, 69, 0.1); color: var(--success);">✓
+                        </div>
+                    </div>
+                    <div class="widget-value">12</div>
+                    <div class="widget-trend">100% validées</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--info);">
+                    <div class="widget-header">
+                        <div class="widget-title">Valeur Total Évaluée</div>
+                        <div class="widget-icon" style="background: rgba(23, 162, 184, 0.1); color: var(--info);">💰
+                        </div>
+                    </div>
+                    <div class="widget-value">2.4M TND</div>
+                    <div class="widget-trend">Ce mois</div>
+                </div>
+            </div>
+
+            <!-- Expertises en Cours -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔬 Mes Expertises en Cours</h2>
+                    <select class="form-control" style="width: 200px;">
+                        <option>Tous les types</option>
+                        <option>Immobilier</option>
+                        <option>Mobilier</option>
+                        <option>Entreprises</option>
+                        <option>Actifs Financiers</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Référence</th>
+                                <th>Type</th>
+                                <th>Objet</th>
+                                <th>Dossier</th>
+                                <th>Statut</th>
+                                <th>Délai</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #fff3cd;">
+                                <td><strong>#EXP-2024-018</strong></td>
+                                <td><span class="badge badge-primary">🏠 Immobilier</span></td>
+                                <td>Évaluation villa - Gammarth</td>
+                                <td>DOS-2024-001</td>
+                                <td><span class="badge badge-danger">Rapport attendu</span></td>
+                                <td style="color: orange; font-weight: 600;">J-3</td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning">📝 Rédiger</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>#EXP-2024-019</strong></td>
+                                <td><span class="badge badge-warning">🚗 Mobilier</span></td>
+                                <td>Véhicules professionnels (3)</td>
+                                <td>DOS-2024-005</td>
+                                <td><span class="badge badge-info">En cours</span></td>
+                                <td>J-7</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">✏️ Continuer</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>#EXP-2024-020</strong></td>
+                                <td><span class="badge badge-success">🏢 Entreprise</span></td>
+                                <td>Évaluation fonds de commerce</td>
+                                <td>DOS-2024-008</td>
+                                <td><span class="badge badge-success">Visite planifiée</span></td>
+                                <td>J-10</td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">📅 Détails</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Rapports & Outils -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">📝 Rapports Récents</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="padding: 1rem; border: 1px solid #e9ecef; border-radius: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <strong>#EXP-2024-015</strong>
+                                <span class="badge badge-success">✓ Validé</span>
+                            </div>
+                            <p style="font-size: 0.875rem; color: #6c757d; margin-bottom: 0.75rem;">
+                                Appartement 120m² - Lac 2<br>
+                                Valeur estimée: 450 000 TND
+                            </p>
+                            <button class="btn btn-sm btn-outline">📄 Télécharger PDF</button>
+                        </div>
+
+                        <div style="padding: 1rem; border: 1px solid #e9ecef; border-radius: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <strong>#EXP-2024-016</strong>
+                                <span class="badge badge-success">✓ Validé</span>
+                            </div>
+                            <p style="font-size: 0.875rem; color: #6c757d; margin-bottom: 0.75rem;">
+                                Stock marchandises - Sfax<br>
+                                Valeur estimée: 85 000 TND
+                            </p>
+                            <button class="btn btn-sm btn-outline">📄 Télécharger PDF</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">🛠️ Outils d'Expertise</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+                        <button class="btn btn-outline">
+                            <span style="margin-right: 0.5rem;">📋</span>
+                            Grille Évaluation Immobilier
+                        </button>
+                        <button class="btn btn-outline">
+                            <span style="margin-right: 0.5rem;">🚗</span>
+                            Argus Véhicules
+                        </button>
+                        <button class="btn btn-outline">
+                            <span style="margin-right: 0.5rem;">📊</span>
+                            Calculateur Valeur Entreprise
+                        </button>
+                        <button class="btn btn-outline">
+                            <span style="margin-right: 0.5rem;">📚</span>
+                            Référentiels Métier
+                        </button>
+                        <button class="btn btn-outline">
+                            <span style="margin-right: 0.5rem;">⚖️</span>
+                            Jurisprudence Technique
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        if (!requireAuth()) { }
+        async function loadUserInfo() {
+            try {
+                const response = await apiCall('/api/auth/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        loadUserInfo();
+    </script>
+</body>
+
+</html>

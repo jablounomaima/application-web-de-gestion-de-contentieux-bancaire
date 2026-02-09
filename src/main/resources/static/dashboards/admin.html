@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Administrateur</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" style="border-left: 4px solid var(--admin-color);">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" style="color: var(--admin-color);">⚙️ ADMIN</div>
+                <div class="sidebar-role">Administrateur</div>
+                <div class="sidebar-user" id="userName"
+                    style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 600;"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Administration</div>
+                    <a href="#" class="nav-item active" data-page="dashboard">
+                        <span class="nav-item-icon">📊</span>
+                        Tableau de bord
+                    </a>
+                    <a href="#" class="nav-item" data-page="users">
+                        <span class="nav-item-icon">👥</span>
+                        Gestion Utilisateurs
+                    </a>
+                    <a href="#" class="nav-item" data-page="agences">
+                        <span class="nav-item-icon">🏢</span>
+                        Gestion Agences
+                    </a>
+                    <a href="#" class="nav-item" data-page="stats">
+                        <span class="nav-item-icon">📈</span>
+                        Statistiques Globales
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Système</div>
+                    <a href="#" class="nav-item" data-page="logs">
+                        <span class="nav-item-icon">📋</span>
+                        Logs et Audit
+                    </a>
+                    <a href="#" class="nav-item" data-page="config">
+                        <span class="nav-item-icon">⚙️</span>
+                        Configuration
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <a href="#" class="nav-item" onclick="logout()">
+                        <span class="nav-item-icon">🚪</span>
+                        Déconnexion
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Header -->
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">📊 Tableau de Bord Administrateur</h1>
+                    <p class="page-subtitle">Vue d'ensemble du système</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-outline" onclick="refreshDashboard()">🔄 Actualiser</button>
+                    <button class="btn btn-primary" onclick="showAddUserModal()">+ Nouvel Utilisateur</button>
+                </div>
+            </header>
+
+            <!-- Dashboard Widgets -->
+            <div class="dashboard-widgets">
+                <div class="widget" style="border-left-color: var(--admin-color);">
+                    <div class="widget-header">
+                        <div class="widget-title">Utilisateurs Actifs</div>
+                        <div class="widget-icon"
+                            style="background: rgba(111, 66, 193, 0.1); color: var(--admin-color);">👥</div>
+                    </div>
+                    <div class="widget-value" id="totalUsers">-</div>
+                    <div class="widget-trend">+12% ce mois</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--agent-color);">
+                    <div class="widget-header">
+                        <div class="widget-title">Agences</div>
+                        <div class="widget-icon" style="background: rgba(0, 123, 255, 0.1); color: var(--agent-color);">
+                            🏢</div>
+                    </div>
+                    <div class="widget-value" id="totalAgences">-</div>
+                    <div class="widget-trend">5 actives</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--success);">
+                    <div class="widget-header">
+                        <div class="widget-title">Dossiers en Cours</div>
+                        <div class="widget-icon" style="background: rgba(40, 167, 69, 0.1); color: var(--success);">📁
+                        </div>
+                    </div>
+                    <div class="widget-value" id="totalDossiers">-</div>
+                    <div class="widget-trend">89% de progression</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--warning);">
+                    <div class="widget-header">
+                        <div class="widget-title">Actions Requises</div>
+                        <div class="widget-icon" style="background: rgba(255, 193, 7, 0.1); color: var(--warning);">⚠️
+                        </div>
+                    </div>
+                    <div class="widget-value" id="actionsRequises">-</div>
+                    <div class="widget-trend class">À traiter</div>
+                </div>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">👥 Gestion des Utilisateurs</h2>
+                    <button class="btn btn-primary btn-sm" onclick="window.location.href='/manage-users.html'">
+                        Voir tous les utilisateurs
+                    </button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Utilisateur</th>
+                                <th>Rôle</th>
+                                <th>Statut</th>
+                                <th>Dernière Connection</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersTable">
+                            <tr>
+                                <td colspan="5" class="text-center">Chargement...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- System Logs -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📋 Activité Récente du Système</h2>
+                    <button class="btn btn-outline btn-sm">Voir tous les logs</button>
+                </div>
+                <div id="logsContainer">
+                    <p class="text-center" style="color: #6c757d; padding: 2rem;">
+                        Les logs système seront affichés ici
+                    </p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        // Protection de la page
+        if (!requireAuth()) {
+            // Redirection gérée par requireAuth
+        }
+
+        // Navigation
+        document.querySelectorAll('.nav-item[data-page]').forEach(item => {
+            item.addEventListener('click', (e) => {
+                e.preventDefault();
+                document.querySelectorAll('.nav-item').forEach(nav => nav.classList.remove('active'));
+                item.classList.add('active');
+
+                const page = item.dataset.page;
+                loadPage(page);
+            });
+        });
+
+        function loadPage(page) {
+            console.log('Loading page:', page);
+            // À implémenter : charger le contenu dynamiquement
+        }
+
+        async function loadDashboardData() {
+            try {
+                const usersResponse = await apiCall('/api/users');
+                if (usersResponse.ok) {
+                    const users = await usersResponse.json();
+                    document.getElementById('totalUsers').textContent = users.length;
+
+                    // Afficher les utilisateurs
+                    const tbody = document.getElementById('usersTable');
+                    tbody.innerHTML = users.slice(0, 5).map(user => `
+                        <tr>
+                            <td><strong>${user.username}</strong></td>
+                            <td><span class="badge badge-primary">${getRoleLabel(user.role)}</span></td>
+                            <td><span class="badge badge-success">Actif</span></td>
+                            <td>Aujourd'hui</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline">Modifier</button>
+                                <button class="btn btn-sm btn-danger">Désactiver</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                }
+
+                // Charger les autres statistiques
+                document.getElementById('totalAgences').textContent = '5';
+                document.getElementById('totalDossiers').textContent = '156';
+                document.getElementById('actionsRequises').textContent = '8';
+
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showNotification('Erreur de chargement des données', 'error');
+            }
+        }
+
+        function getRoleLabel(role) {
+            const labels = {
+                'ROLE_ADMIN': 'Administrateur',
+                'ROLE_AGENT_BANCAIRE': 'Agent Bancaire',
+                'ROLE_VALIDATEUR_JURIDIQUE': 'Validateur Juridique',
+                'ROLE_AVOCAT': 'Avocat',
+                'ROLE_HUISSIER': 'Huissier',
+                'ROLE_EXPERT': 'Expert',
+                'ROLE_VALIDATEUR_FINANCIER': 'Validateur Financier'
+            };
+            return labels[role] || role;
+        }
+
+        async function loadUserInfo() {
+            try {
+                const response = await apiCall('/api/auth/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        function refreshDashboard() {
+            showNotification('Actualisation en cours...', 'info');
+            loadDashboardData();
+            loadUserInfo();
+        }
+
+        function showAddUserModal() {
+            window.location.href = '/manage-users.html';
+        }
+
+        // Charger les données au démarrage
+        loadDashboardData();
+        loadUserInfo();
+    </script>
+</body>
+
+</html>

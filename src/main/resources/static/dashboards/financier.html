@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Validateur Financier</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar" style="border-left: 4px solid var(--validateur-financier-color);">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" style="color: var(--validateur-financier-color);">💰 FINANCIER</div>
+                <div class="sidebar-role">Validateur Financier</div>
+                <div class="sidebar-user" id="userName"
+                    style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 600;"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Validation</div>
+                    <a href="#" class="nav-item active">
+                        <span class="nav-item-icon">📊</span>
+                        Tableau de bord
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">✓</span>
+                        Factures en Attente
+                        <span class="nav-item-badge">8</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">⚠️</span>
+                        Alertes Budgétaires
+                        <span class="nav-item-badge">2</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Paiements</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💳</span>
+                        Virements
+                        <span class="nav-item-badge">5</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📝</span>
+                        Chèques BCT
+                        <span class="nav-item-badge">3</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📋</span>
+                        Ordres de Paiement
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">🔄</span>
+                        Réconciliation
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Contrôle Financier</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💼</span>
+                        Budgets Dossiers
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📊</span>
+                        Engagements
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💵</span>
+                        Provisions
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📈</span>
+                        Analyse Coûts/Bénéfices
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Statistiques</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📊</span>
+                        Tableau de Bord Financier
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📈</span>
+                        Indicateurs KPI
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💰</span>
+                        Trésorerie
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <a href="#" class="nav-item" onclick="logout()">
+                        <span class="nav-item-icon">🚪</span>
+                        Déconnexion
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">💰 Validation Financière</h1>
+                    <p class="page-subtitle">Contrôle et paiements</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-outline">🔄 Actualiser</button>
+                    <button class="btn btn-success">✓ Valider Sélection</button>
+                </div>
+            </header>
+
+            <!-- Widgets -->
+            <div class="dashboard-widgets">
+                <div class="widget" style="border-left-color: var(--warning);">
+                    <div class="widget-header">
+                        <div class="widget-title">Factures en Attente</div>
+                        <div class="widget-icon" style="background: rgba(255, 193, 7, 0.1); color: var(--warning);">📄
+                        </div>
+                    </div>
+                    <div class="widget-value">156 750 TND</div>
+                    <div class="widget-trend">8 factures</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--info);">
+                    <div class="widget-header">
+                        <div class="widget-title">Paiements du Mois</div>
+                        <div class="widget-icon" style="background: rgba(23, 162, 184, 0.1); color: var(--info);">💳
+                        </div>
+                    </div>
+                    <div class="widget-value">428 500 TND</div>
+                    <div class="widget-trend">42 paiements</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--success);">
+                    <div class="widget-header">
+                        <div class="widget-title">Taux de Recouvrement</div>
+                        <div class="widget-icon" style="background: rgba(40, 167, 69, 0.1); color: var(--success);">📈
+                        </div>
+                    </div>
+                    <div class="widget-value">72%</div>
+                    <div class="widget-trend">+5% vs mois dernier</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--danger);">
+                    <div class="widget-header">
+                        <div class="widget-title">Alertes Budgétaires</div>
+                        <div class="widget-icon" style="background: rgba(220, 53, 69, 0.1); color: var(--danger);">⚠️
+                        </div>
+                    </div>
+                    <div class="widget-value">2</div>
+                    <div class="widget-trend">Dépassements</div>
+                </div>
+            </div>
+
+            <!-- Factures à Valider -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">💳 Factures à Valider</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select class="form-control" style="width: 200px;">
+                            <option>Toutes les factures</option>
+                            <option>Honoraires Avocat</option>
+                            <option>Frais Huissier</option>
+                            <option>Expertises</option>
+                            <option>Autres</option>
+                        </select>
+                        <button class="btn btn-outline btn-sm">🔍 Filtrer</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox"></th>
+                                <th>Référence</th>
+                                <th>Fournisseur</th>
+                                <th>Type</th>
+                                <th>Montant (TND)</th>
+                                <th>Dossier</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #fff3cd;">
+                                <td><input type="checkbox"></td>
+                                <td><strong>#FAV-2024-045</strong></td>
+                                <td>Me. Ben Ahmed (Avocat)</td>
+                                <td><span class="badge badge-primary">Honoraires</span></td>
+                                <td style="font-weight: 600;">12 500</td>
+                                <td>DOS-2024-001</td>
+                                <td><span class="badge badge-warning">Pré-validé</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success">✓ Valider</button>
+                                    <button class="btn btn-sm btn-danger">✗ Rejeter</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                            <tr style="background: #fff3cd;">
+                                <td><input type="checkbox"></td>
+                                <td><strong>#FH-2024-089</strong></td>
+                                <td>Huissier Karim Trabelsi</td>
+                                <td><span class="badge badge-warning">Frais Mission</span></td>
+                                <td style="font-weight: 600;">3 750</td>
+                                <td>DOS-2024-005</td>
+                                <td><span class="badge badge-warning">Pré-validé</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success">✓ Valider</button>
+                                    <button class="btn btn-sm btn-danger">✗ Rejeter</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><strong>#FE-2024-032</strong></td>
+                                <td>Expert Technique Samir</td>
+                                <td><span class="badge badge-info">Expertise</span></td>
+                                <td style="font-weight: 600;">8 500</td>
+                                <td>DOS-2024-003</td>
+                                <td><span class="badge badge-info">Nouveau</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success">✓ Valider</button>
+                                    <button class="btn btn-sm btn-danger">✗ Rejeter</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Paiements & Budgets -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">💳 Paiements à Exécuter</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div
+                            style="padding: 1rem; border: 1px solid #ffc107; border-radius: 0.5rem; background: #fff3cd;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <strong>Virement FAV-2024-045</strong>
+                                <span class="badge badge-warning">Urgent</span>
+                            </div>
+                            <p style="font-size: 0.875rem; color: #856404; margin-bottom: 0.75rem;">
+                                Me. Ben Ahmed<br>
+                                <strong style="font-size: 1.1rem;">12 500 TND</strong>
+                            </p>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-success">💳 Virement</button>
+                                <button class="btn btn-sm btn-outline">📝 Chèque BCT</button>
+                            </div>
+                        </div>
+
+                        <div
+                            style="padding: 1rem; border: 1px solid #17a2b8; border-radius: 0.5rem; background: #d1ecf1;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <strong>Lot 5 factures</strong>
+                                <span class="badge badge-info">Normal</span>
+                            </div>
+                            <p style="font-size: 0.875rem; color: #0c5460; margin-bottom: 0.75rem;">
+                                Paiements groupés<br>
+                                <strong style="font-size: 1.1rem;">28 750 TND</strong>
+                            </p>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-info">💳 Virements Groupés</button>
+                                <button class="btn btn-sm btn-outline">📄 Détails</button>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary">📊 Tous les Paiements</button>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">📊 Budgets & Alertes</h3>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Budget Contentieux</span>
+                                <strong style="color: var(--danger);">428K / 400K TND</strong>
+                            </div>
+                            <div style="background: #e9ecef; height: 10px; border-radius: 5px; overflow: hidden;">
+                                <div style="background: var(--danger); width: 107%; height: 100%;"></div>
+                            </div>
+                            <p style="font-size: 0.75rem; color: var(--danger); margin-top: 0.25rem;">
+                                ⚠️ Dépassement de 7%
+                            </p>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Honoraires Avocats</span>
+                                <strong>156K / 200K TND</strong>
+                            </div>
+                            <div style="background: #e9ecef; height: 10px; border-radius: 5px;">
+                                <div style="background: var(--success); width: 78%; height: 100%; border-radius: 5px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Frais Huissiers</span>
+                                <strong>45K / 80K TND</strong>
+                            </div>
+                            <div style="background: #e9ecef; height: 10px; border-radius: 5px;">
+                                <div style="background: var(--info); width: 56%; height: 100%; border-radius: 5px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Expertises</span>
+                                <strong>72K / 120K TND</strong>
+                            </div>
+                            <div style="background: #e9ecef; height: 10px; border-radius: 5px;">
+                                <div style="background: var(--warning); width: 60%; height: 100%; border-radius: 5px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Statistiques Financières -->
+            <div class="card">
+                <h3 style="margin-bottom: 1rem;">📈 Tableau de Bord Financier</h3>
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem;">
+                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 0.5rem;">
+                        <p style="color: #6c757d; font-size: 0.875rem;">Total Engagé</p>
+                        <strong style="font-size: 1.5rem; color: var(--info);">428 500 TND</strong>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 0.5rem;">
+                        <p style="color: #6c757d; font-size: 0.875rem;">Total Payé</p>
+                        <strong style="font-size: 1.5rem; color: var(--success);">271 750 TND</strong>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 0.5rem;">
+                        <p style="color: #6c757d; font-size: 0.875rem;">En Attente</p>
+                        <strong style="font-size: 1.5rem; color: var(--warning);">156 750 TND</strong>
+                    </div>
+                    <div style="text-align: center; padding: 1rem; background: #f8f9fa; border-radius: 0.5rem;">
+                        <p style="color: #6c757d; font-size: 0.875rem;">Délai Moyen</p>
+                        <strong style="font-size: 1.5rem; color: var(--primary);">4.2 jours</strong>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        if (!requireAuth()) { }
+        async function loadUserInfo() {
+            try {
+                const response = await apiCall('/api/auth/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        loadUserInfo();
+    </script>
+</body>
+
+</html>

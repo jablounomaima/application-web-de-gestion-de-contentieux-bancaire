@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Avocat</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar" style="border-left: 4px solid var(--avocat-color);">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" style="color: var(--avocat-color);">👨‍⚖️ AVOCAT</div>
+                <div class="sidebar-role">Avocat</div>
+                <div class="sidebar-user" id="userName"
+                    style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 600;"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Mes Affaires</div>
+                    <a href="#" class="nav-item active">
+                        <span class="nav-item-icon">📊</span>
+                        Tableau de bord
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">⚖️</span>
+                        Affaires Assignées
+                        <span class="nav-item-badge">8</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Audiences</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📅</span>
+                        Calendrier
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">🔜</span>
+                        À Venir
+                        <span class="nav-item-badge">3</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">✓</span>
+                        Passées
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📝</span>
+                        Préparation
+                        <span class="nav-item-badge">2</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Dossiers Judiciaires</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📂</span>
+                        Consultations
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📎</span>
+                        Pièces à Constituer
+                        <span class="nav-item-badge">5</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💬</span>
+                        Correspondance
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Facturation</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💰</span>
+                        Factures
+                        <span class="nav-item-badge">4</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📊</span>
+                        Historique
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Ressources</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📚</span>
+                        Bibliothèque Juridique
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📄</span>
+                        Modèles
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <a href="#" class="nav-item" onclick="logout()">
+                        <span class="nav-item-icon">🚪</span>
+                        Déconnexion
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">👨‍⚖️ Cabinet d'Avocat</h1>
+                    <p class="page-subtitle">Gestion des affaires judiciaires</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-outline">🔄 Actualiser</button>
+                    <button class="btn btn-primary">+ Nouvelle Consultation</button>
+                </div>
+            </header>
+
+            <!-- Widgets -->
+            <div class="dashboard-widgets">
+                <div class="widget" style="border-left-color: var(--avocat-color);">
+                    <div class="widget-header">
+                        <div class="widget-title">Affaires Actives</div>
+                        <div class="widget-icon"
+                            style="background: rgba(220, 53, 69, 0.1); color: var(--avocat-color);">⚖️</div>
+                    </div>
+                    <div class="widget-value">8</div>
+                    <div class="widget-trend">2 nouvelles ce mois</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--warning);">
+                    <div class="widget-header">
+                        <div class="widget-title">Audiences (7 jours)</div>
+                        <div class="widget-icon" style="background: rgba(255, 193, 7, 0.1); color: var(--warning);">📅
+                        </div>
+                    </div>
+                    <div class="widget-value">3</div>
+                    <div class="widget-trend">Prochaine: Lundi 10h</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--info);">
+                    <div class="widget-header">
+                        <div class="widget-title">Dossiers à Préparer</div>
+                        <div class="widget-icon" style="background: rgba(23, 162, 184, 0.1); color: var(--info);">📝
+                        </div>
+                    </div>
+                    <div class="widget-value">2</div>
+                    <div class="widget-trend">Urgent</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--success);">
+                    <div class="widget-header">
+                        <div class="widget-title">Taux de Réussite</div>
+                        <div class="widget-icon" style="background: rgba(40, 167, 69, 0.1); color: var(--success);">📈
+                        </div>
+                    </div>
+                    <div class="widget-value">87%</div>
+                    <div class="widget-trend">Excellent</div>
+                </div>
+            </div>
+
+            <!-- Calendrier des Audiences -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📅 Calendrier des Audiences - 7 Prochains Jours</h2>
+                    <button class="btn btn-outline btn-sm">📆 Calendrier Complet</button>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Date & Heure</th>
+                                <th>Affaire</th>
+                                <th>Tribunal</th>
+                                <th>Type</th>
+                                <th>Statut Préparation</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #fff3cd;">
+                                <td>
+                                    <strong>Lundi 12/02/2024</strong><br>
+                                    <span style="color: #856404;">10:00</span>
+                                </td>
+                                <td>
+                                    <strong>#AFF-2024-015</strong><br>
+                                    SARL Tech Corp vs Banque
+                                </td>
+                                <td>Tribunal de 1ère Instance - Tunis</td>
+                                <td><span class="badge badge-warning">Référé</span></td>
+                                <td><span class="badge badge-danger">À préparer</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">📝 Préparer</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Mercredi 14/02/2024</strong><br>
+                                    <span style="color: #495057;">14:30</span>
+                                </td>
+                                <td>
+                                    <strong>#AFF-2024-008</strong><br>
+                                    ETS Commerce vs Débiteur
+                                </td>
+                                <td>Cour d'Appel - Tunis</td>
+                                <td><span class="badge badge-info">Fond</span></td>
+                                <td><span class="badge badge-success">Prêt</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-success">✓ Confirmé</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <strong>Vendredi 16/02/2024</strong><br>
+                                    <span style="color: #495057;">09:00</span>
+                                </td>
+                                <td>
+                                    <strong>#AFF-2024-012</strong><br>
+                                    SARL BTP vs Promoteur
+                                </td>
+                                <td>Tribunal Commercial - Ariana</td>
+                                <td><span class="badge badge-primary">Commercial</span></td>
+                                <td><span class="badge badge-warning">En cours</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">📝 Préparer</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Mes Affaires & Facturation -->
+            <div style="display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem;">
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">⚖️ Mes Affaires en Cours</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="padding: 1rem; border: 1px solid #e9ecef; border-radius: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <strong>#AFF-2024-015</strong>
+                                <span class="badge badge-warning">En cours</span>
+                            </div>
+                            <p style="color: #6c757d; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                SARL TechCorp - Créance 125 000 TND
+                            </p>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-outline">📄 Documents</button>
+                                <button class="btn btn-sm btn-outline">📅 Audiences (3)</button>
+                                <button class="btn btn-sm btn-primary">Voir Détails</button>
+                            </div>
+                        </div>
+
+                        <div style="padding: 1rem; border: 1px solid #e9ecef; border-radius: 0.5rem;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <strong>#AFF-2024-008</strong>
+                                <span class="badge badge-info">Appel</span>
+                            </div>
+                            <p style="color: #6c757d; font-size: 0.875rem; margin-bottom: 0.5rem;">
+                                ETS Commerce Plus - Créance 85 000 TND
+                            </p>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-outline">📄 Documents</button>
+                                <button class="btn btn-sm btn-outline">📅 Audiences (2)</button>
+                                <button class="btn btn-sm btn-primary">Voir Détails</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">💰 Facturation</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div
+                            style="padding: 0.75rem; background: #fff3cd; border-radius: 0.5rem; border-left: 3px solid #ffc107;">
+                            <strong>Facture #FAV-2024-012</strong>
+                            <p style="color: #856404; font-size: 0.875rem; margin-top: 0.25rem;">
+                                À pré-valider<br>
+                                Montant: 5 500 TND
+                            </p>
+                            <button class="btn btn-sm btn-warning" style="margin-top: 0.5rem;">✓ Pré-Valider</button>
+                        </div>
+
+                        <div
+                            style="padding: 0.75rem; background: #d1ecf1; border-radius: 0.5rem; border-left: 3px solid #17a2b8;">
+                            <strong>Honoraires Mensuels</strong>
+                            <p style="color: #0c5460; font-size: 0.875rem; margin-top: 0.25rem;">
+                                Total: 18 750 TND<br>
+                                8 affaires facturées
+                            </p>
+                            <button class="btn btn-sm btn-info" style="margin-top: 0.5rem;">📊 Détails</button>
+                        </div>
+
+                        <button class="btn btn-primary">+ Nouvelle Facture</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        if (!requireAuth()) { }
+
+        async function loadUserInfo() {
+            try {
+                const response = await apiCall('/api/auth/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        loadUserInfo();
+    </script>
+</body>
+
+</html>

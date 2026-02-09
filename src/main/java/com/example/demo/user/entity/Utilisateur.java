@@ -2,10 +2,16 @@ package com.example.demo.user.entity;
 
 import com.example.demo.user.role.Role;
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
 
 @Entity
 @Table(name = "utilisateur")
-public class Utilisateur {
+@Inheritance(strategy = InheritanceType.SINGLE_TABLE)
+@DiscriminatorColumn(name = "type_utilisateur", discriminatorType = DiscriminatorType.STRING)
+@Getter
+@Setter
+public abstract class Utilisateur {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -17,20 +23,14 @@ public class Utilisateur {
     @Column(nullable = false)
     private String password;
 
+    private String nom;
+    private String prenom;
+    private String email;
+    private String telephone;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(name = "role_enum")
     private Role role;
 
     public Utilisateur() {}
-
-    public Long getId() { return id; }
-
-    public String getUsername() { return username; }
-    public void setUsername(String username) { this.username = username; }
-
-    public String getPassword() { return password; }
-    public void setPassword(String password) { this.password = password; }
-
-    public Role getRole() { return role; }
-    public void setRole(Role role) { this.role = role; }
 }

@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Connexion</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+
+        .test-box {
+            border: 2px solid #ddd;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+
+        button {
+            padding: 10px 20px;
+            margin: 5px;
+            cursor: pointer;
+            border: none;
+            border-radius: 5px;
+            background: #007bff;
+            color: white;
+            font-size: 14px;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .success {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .error {
+            background: #f8d7da;
+            border-color: #f5c6cb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .info {
+            background: #d1ecf1;
+            border-color: #bee5eb;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>🔍 Diagnostic de Connexion</h1>
+
+    <div class="test-box">
+        <h2>Test 1 : Connexion Admin</h2>
+        <button onclick="testLogin('admin', 'admin123')">Tester Admin</button>
+        <div id="result-admin"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Test 2 : Connexion Agent</h2>
+        <button onclick="testLogin('agent', 'agent123')">Tester Agent</button>
+        <div id="result-agent"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Test 3 : Vérifier Endpoint /api/auth/me</h2>
+        <button onclick="testMe()">Tester</button>
+        <div id="result-me"></div>
+    </div>
+
+    <div class="test-box">
+        <h2>Test 4 : État du Token</h2>
+        <button onclick="checkToken()">Vérifier Token</button>
+        <button onclick="clearToken()">Supprimer Token</button>
+        <div id="result-token"></div>
+    </div>
+
+    <script>
+        async function testLogin(username, password) {
+            const resultDiv = document.getElementById('result-' + username);
+            resultDiv.innerHTML = '<div class="info">⏳ Test en cours...</div>';
+
+            try {
+                console.log('Tentative de connexion avec:', username);
+
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+
+                console.log('Status:', response.status);
+                console.log('Headers:', [...response.headers]);
+
+                const text = await response.text();
+                console.log('Response text:', text);
+
+                if (response.ok) {
+                    const data = JSON.parse(text);
+                    localStorage.setItem('token', data.token);
+
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <strong>✅ SUCCÈS !</strong><br>
+                            Username: ${data.username}<br>
+                            Token reçu: ${data.token.substring(0, 50)}...<br>
+                            <button onclick="testMe()">Tester /api/auth/me</button>
+                        </div>
+                    `;
+                } else {
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <strong>❌ ÉCHEC</strong><br>
+                            Status: ${response.status}<br>
+                            Réponse: <pre>${text}</pre>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Erreur:', error);
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ ERREUR</strong><br>
+                        ${error.message}<br>
+                        <pre>${error.stack}</pre>
+                    </div>
+                `;
+            }
+        }
+
+        async function testMe() {
+            const resultDiv = document.getElementById('result-me');
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                resultDiv.innerHTML = '<div class="error">❌ Aucun token trouvé. Connectez-vous d\'abord.</div>';
+                return;
+            }
+
+            resultDiv.innerHTML = '<div class="info">⏳ Test en cours...</div>';
+
+            try {
+                const response = await fetch('/api/auth/me', {
+                    headers: {
+                        'Authorization': 'Bearer ' + token
+                    }
+                });
+
+                if (response.ok) {
+                    const user = await response.json();
+                    resultDiv.innerHTML = `
+                        <div class="success">
+                            <strong>✅ SUCCÈS !</strong><br>
+                            <pre>${JSON.stringify(user, null, 2)}</pre>
+                            <br>
+                            <strong>Dashboard à afficher:</strong><br>
+                            ${getDashboard(user.role)}<br>
+                            <button onclick="goToDashboard('${user.role}')">Aller au Dashboard</button>
+                        </div>
+                    `;
+                } else {
+                    const text = await response.text();
+                    resultDiv.innerHTML = `
+                        <div class="error">
+                            <strong>❌ ÉCHEC</strong><br>
+                            Status: ${response.status}<br>
+                            ${text}
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ ERREUR</strong><br>
+                        ${error.message}
+                    </div>
+                `;
+            }
+        }
+
+        function checkToken() {
+            const resultDiv = document.getElementById('result-token');
+            const token = localStorage.getItem('token');
+
+            if (!token) {
+                resultDiv.innerHTML = '<div class="info">ℹ️ Aucun token stocké</div>';
+                return;
+            }
+
+            try {
+                const parts = token.split('.');
+                const payload = JSON.parse(atob(parts[1]));
+                resultDiv.innerHTML = `
+                    <div class="success">
+                        <strong>✅ Token trouvé</strong><br>
+                        <strong>Payload:</strong>
+                        <pre>${JSON.stringify(payload, null, 2)}</pre>
+                    </div>
+                `;
+            } catch (e) {
+                resultDiv.innerHTML = `
+                    <div class="error">
+                        <strong>❌ Token invalide</strong><br>
+                        ${e.message}
+                    </div>
+                `;
+            }
+        }
+
+        function clearToken() {
+            localStorage.removeItem('token');
+            document.getElementById('result-token').innerHTML = '<div class="success">✅ Token supprimé</div>';
+        }
+
+        function getDashboard(role) {
+            const dashboards = {
+                'ROLE_ADMIN': '/dashboards/admin.html',
+                'ROLE_AGENT_BANCAIRE': '/dashboards/agent.html',
+                'ROLE_VALIDATEUR_JURIDIQUE': '/dashboards/juridique.html',
+                'ROLE_AVOCAT': '/dashboards/avocat.html',
+                'ROLE_HUISSIER': '/dashboards/huissier.html',
+                'ROLE_EXPERT': '/dashboards/expert.html',
+                'ROLE_VALIDATEUR_FINANCIER': '/dashboards/financier.html'
+            };
+            return dashboards[role] || '/index.html';
+        }
+
+        function goToDashboard(role) {
+            window.location.href = getDashboard(role);
+        }
+    </script>
+</body>
+
+</html>

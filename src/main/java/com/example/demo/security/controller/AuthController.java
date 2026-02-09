@@ -11,7 +11,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/api/auth")
 public class AuthController {
 
     private final AuthenticationManager authenticationManager;
@@ -36,7 +36,7 @@ public class AuthController {
             throw new RuntimeException("Utilisateur existe déjà");
         }
 
-        com.example.demo.user.entity.Utilisateur user = new com.example.demo.user.entity.Utilisateur();
+        com.example.demo.user.entity.impl.AgentBancaire user = new com.example.demo.user.entity.impl.AgentBancaire();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         // Par défaut, on attribue un rôle (ici AGENT_BANCAIRE pour l'exemple, ou via la requête)
@@ -83,6 +83,22 @@ public class AuthController {
             e.printStackTrace();
             throw new RuntimeException("Erreur technique: " + e.getMessage());
         }
+    }
+
+    // ================= API ME =================
+    @GetMapping("/me")
+    public com.example.demo.user.dto.UserResponse getCurrentUser(
+            org.springframework.security.core.Authentication authentication) {
+        String username = authentication.getName();
+        com.example.demo.user.entity.Utilisateur user = utilisateurRepository
+                .findByUsername(username)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+        
+        com.example.demo.user.dto.UserResponse response = new com.example.demo.user.dto.UserResponse();
+        response.setId(user.getId());
+        response.setUsername(user.getUsername());
+        response.setRole(user.getRole());
+        return response;
     }
 
     // ❌ SUPPRIMER CETTE MÉTHODE pour éviter le conflit

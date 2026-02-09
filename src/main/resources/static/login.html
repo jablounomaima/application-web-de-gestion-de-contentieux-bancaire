@@ -90,7 +90,7 @@
             }
 
             try {
-                const response = await fetch('/auth/register', {
+                const response = await fetch('/api/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -118,7 +118,7 @@
             const messageElement = document.getElementById('message');
 
             try {
-                const response = await fetch('/auth/login', {
+                const response = await fetch('/api/auth/login', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
@@ -128,8 +128,30 @@
                     const data = await response.json();
                     localStorage.setItem('token', data.token);
                     messageElement.style.color = 'green';
-                    messageElement.textContent = 'Connexion réussie!';
-                    setTimeout(() => window.location.href = '/index.html', 1000);
+                    messageElement.textContent = 'Connexion réussie! Redirection...';
+
+                    // Récupérer le rôle de l'utilisateur
+                    const meResponse = await fetch('/api/auth/me', {
+                        headers: { 'Authorization': 'Bearer ' + data.token }
+                    });
+
+                    if (meResponse.ok) {
+                        const userData = await meResponse.json();
+                        const roleDashboards = {
+                            'ROLE_ADMIN': '/dashboards/admin.html',
+                            'ROLE_AGENT_BANCAIRE': '/dashboards/agent.html',
+                            'ROLE_VALIDATEUR_JURIDIQUE': '/dashboards/juridique.html',
+                            'ROLE_AVOCAT': '/dashboards/avocat.html',
+                            'ROLE_HUISSIER': '/dashboards/huissier.html',
+                            'ROLE_EXPERT': '/dashboards/expert.html',
+                            'ROLE_VALIDATEUR_FINANCIER': '/dashboards/financier.html'
+                        };
+
+                        const dashboard = roleDashboards[userData.role] || '/index.html';
+                        window.location.href = dashboard;
+                    } else {
+                        window.location.href = '/index.html';
+                    }
                 } else {
                     messageElement.style.color = 'red';
                     messageElement.textContent = 'Identifiants incorrects';

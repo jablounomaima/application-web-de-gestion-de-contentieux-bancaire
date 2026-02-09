@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Huissier</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar" style="border-left: 4px solid var(--huissier-color);">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" style="color: var(--huissier-color);">👮 HUISSIER</div>
+                <div class="sidebar-role">Huissier de Justice</div>
+                <div class="sidebar-user" id="userName"
+                    style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 600;"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Missions</div>
+                    <a href="#" class="nav-item active">
+                        <span class="nav-item-icon">📊</span>
+                        Tableau de bord
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📋</span>
+                        Mes Missions
+                        <span class="nav-item-badge">5</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">🗺️</span>
+                        Planning Géolocalisé
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">PV de Mission</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📝</span>
+                        Saisir PV
+                        <span class="nav-item-badge">3</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">✓</span>
+                        PV Validés
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📷</span>
+                        Preuves & Photos
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Facturation</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💰</span>
+                        Factures
+                        <span class="nav-item-badge">2</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💵</span>
+                        Frais & Justificatifs
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Outils Terrain</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">🧭</span>
+                        Itinéraires
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📚</span>
+                        Documentation Légale
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <a href="#" class="nav-item" onclick="logout()">
+                        <span class="nav-item-icon">🚪</span>
+                        Déconnexion
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">👮 Missions Terrain</h1>
+                    <p class="page-subtitle">Huissier de Justice</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-outline">🔄 Actualiser</button>
+                    <button class="btn btn-primary">📝 Nouveau PV</button>
+                </div>
+            </header>
+
+            <!-- Widgets -->
+            <div class="dashboard-widgets">
+                <div class="widget" style="border-left-color: var(--warning);">
+                    <div class="widget-header">
+                        <div class="widget-title">Missions Aujourd'hui</div>
+                        <div class="widget-icon"
+                            style="background: rgba(253, 126, 20, 0.1); color: var(--huissier-color);">📋</div>
+                    </div>
+                    <div class="widget-value">3</div>
+                    <div class="widget-trend">2 terminées</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--danger);">
+                    <div class="widget-header">
+                        <div class="widget-title">PV en Attente</div>
+                        <div class="widget-icon" style="background: rgba(220, 53, 69, 0.1); color: var(--danger);">⏳
+                        </div>
+                    </div>
+                    <div class="widget-value">3</div>
+                    <div class="widget-trend">À rédiger</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--success);">
+                    <div class="widget-header">
+                        <div class="widget-title">Missions du Mois</div>
+                        <div class="widget-icon" style="background: rgba(40, 167, 69, 0.1); color: var(--success);">✓
+                        </div>
+                    </div>
+                    <div class="widget-value">24</div>
+                    <div class="widget-trend">+8% vs mois dernier</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--info);">
+                    <div class="widget-header">
+                        <div class="widget-title">Facturation en Cours</div>
+                        <div class="widget-icon" style="background: rgba(23, 162, 184, 0.1); color: var(--info);">💰
+                        </div>
+                    </div>
+                    <div class="widget-value">6 750 TND</div>
+                    <div class="widget-trend">2 factures</div>
+                </div>
+            </div>
+
+            <!-- Planning du Jour -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">📅 Planning du Jour</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-success btn-sm">🗺️ Optimiser Itinéraire</button>
+                        <button class="btn btn-outline btn-sm">📲 Mode Hors-Ligne</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Heure</th>
+                                <th>Mission</th>
+                                <th>Type</th>
+                                <th>Adresse</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #d4edda;">
+                                <td><strong>09:00</strong></td>
+                                <td>
+                                    <strong>#MIS-2024-045</strong><br>
+                                    Signification assignation
+                                </td>
+                                <td><span class="badge badge-primary">Signification</span></td>
+                                <td>15 Rue de la République, Tunis</td>
+                                <td><span class="badge badge-success">✓ Terminé</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">📝 PV Rédigé</button>
+                                </td>
+                            </tr>
+                            <tr style="background: #fff3cd;">
+                                <td><strong>11:00</strong></td>
+                                <td>
+                                    <strong>#MIS-2024-046</strong><br>
+                                    Constat état des lieux
+                                </td>
+                                <td><span class="badge badge-warning">Constat</span></td>
+                                <td>38 Avenue Habib Bourguiba, Ariana</td>
+                                <td><span class="badge badge-danger">⏳ En Cours</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-warning">📝 Saisir PV</button>
+                                    <button class="btn btn-sm btn-outline">🗺️ Itinéraire</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>14:30</strong></td>
+                                <td>
+                                    <strong>#MIS-2024-047</strong><br>
+                                    Saisie conservatoire
+                                </td>
+                                <td><span class="badge badge-danger">Saisie</span></td>
+                                <td>Zone Industrielle, Ben Arous</td>
+                                <td><span class="badge badge-info">📌 Planifié</span></td>
+                                <td>
+                                    <button class="btn btn-sm btn-primary">▶️ Démarrer</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PV à Rédiger & Facturation -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem;">
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">📝 PV à Rédiger</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div
+                            style="padding: 1rem; border: 1px solid #ffc107; border-radius: 0.5rem; background: #fff3cd;">
+                            <div style="display: flex; justify-content: between; margin-bottom: 0.5rem;">
+                                <strong>#MIS-2024-045</strong>
+                                <span class="badge badge-warning">Urgent</span>
+                            </div>
+                            <p style="font-size: 0.875rem; color: #856404; margin-bottom: 0.75rem;">
+                                Signification - Terminé à 09:45<br>
+                                15 Rue de la République
+                            </p>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-warning">📝 Rédiger PV</button>
+                                <button class="btn btn-sm btn-outline">📷 Photos (3)</button>
+                            </div>
+                        </div>
+
+                        <div
+                            style="padding: 1rem; border: 1px solid #17a2b8; border-radius: 0.5rem; background: #d1ecf1;">
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <strong>#MIS-2024-043</strong>
+                                <span class="badge badge-info">Normal</span>
+                            </div>
+                            <p style="font-size: 0.875rem; color: #0c5460; margin-bottom: 0.75rem;">
+                                Constat - Terminé hier<br>
+                                Cité El Khadra
+                            </p>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <button class="btn btn-sm btn-info">📝 Rédiger PV</button>
+                                <button class="btn btn-sm btn-outline">📷 Photos (8)</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">💰 Facturation</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 0.5rem;">
+                            <strong>Facture #FH-2024-018</strong>
+                            <p style="font-size: 0.875rem; color: #6c757d; margin: 0.5rem 0;">
+                                5 missions - Janvier 2024<br>
+                                Montant: 3 750 TND
+                            </p>
+                            <div style="display: flex; gap: 0.5rem; margin-top: 0.75rem;">
+                                <button class="btn btn-sm btn-success">✓ Soumettre</button>
+                                <button class="btn btn-sm btn-outline">📄 Aperçu</button>
+                            </div>
+                        </div>
+
+                        <div style="padding: 1rem; background: #f8f9fa; border-radius: 0.5rem;">
+                            <strong>Frais de Déplacement</strong>
+                            <p style="font-size: 0.875rem; color: #6c757d; margin: 0.5rem 0;">
+                                145 km ce mois<br>
+                                Frais: 450 TND
+                            </p>
+                            <button class="btn btn-sm btn-outline" style="margin-top: 0.75rem;">📎 Ajouter
+                                Justificatif</button>
+                        </div>
+
+                        <button class="btn btn-primary">+ Nouvelle Facture</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        if (!requireAuth()) { }
+        async function loadUserInfo() {
+            try {
+                const response = await apiCall('/api/auth/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+        loadUserInfo();
+    </script>
+</body>
+
+</html>

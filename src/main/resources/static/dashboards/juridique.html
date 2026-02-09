@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Validateur Juridique</title>
+    <link rel="stylesheet" href="/css/app.css">
+</head>
+
+<body>
+    <div class="app-container">
+        <aside class="sidebar" style="border-left: 4px solid var(--validateur-juridique-color);">
+            <div class="sidebar-header">
+                <div class="sidebar-logo" style="color: var(--validateur-juridique-color);">⚖️ JURIDIQUE</div>
+                <div class="sidebar-role">Validateur Juridique</div>
+                <div class="sidebar-user" id="userName"
+                    style="font-size: 0.9rem; margin-top: 0.5rem; font-weight: 600;"></div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Validation</div>
+                    <a href="#" class="nav-item active">
+                        <span class="nav-item-icon">📊</span>
+                        Tableau de bord
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">✓</span>
+                        Validations en Attente
+                        <span class="nav-item-badge">12</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Affaires Juridiques</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📄</span>
+                        Assignations
+                        <span class="nav-item-badge">5</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">👨‍⚖️</span>
+                        Audiences
+                        <span class="nav-item-badge">3</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">⚖️</span>
+                        Jugements
+                        <span class="nav-item-badge">2</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Missions</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📋</span>
+                        Missions à Valider
+                        <span class="nav-item-badge">4</span>
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📝</span>
+                        PV de Mission
+                        <span class="nav-item-badge">6</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Recouvrements</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💵</span>
+                        À Vérifier
+                        <span class="nav-item-badge">3</span>
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Statistiques</div>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📈</span>
+                        Dossiers
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">📊</span>
+                        Affaires
+                    </a>
+                    <a href="#" class="nav-item">
+                        <span class="nav-item-icon">💰</span>
+                        Recouvrements
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <a href="#" class="nav-item" onclick="logout()">
+                        <span class="nav-item-icon">🚪</span>
+                        Déconnexion
+                    </a>
+                </div>
+            </nav>
+        </aside>
+
+        <main class="main-content">
+            <header class="page-header">
+                <div>
+                    <h1 class="page-title">⚖️ Validation Juridique</h1>
+                    <p class="page-subtitle">Contrôle de conformité juridique</p>
+                </div>
+                <div class="page-actions">
+                    <button class="btn btn-outline">🔄 Actualiser</button>
+                    <button class="btn btn-success">✓ Valider Sélection</button>
+                </div>
+            </header>
+
+            <!-- Widgets -->
+            <div class="dashboard-widgets">
+                <div class="widget" style="border-left-color: var(--warning);">
+                    <div class="widget-header">
+                        <div class="widget-title">Validations en Attente</div>
+                        <div class="widget-icon" style="background: rgba(255, 193, 7, 0.1); color: var(--warning);">⏳
+                        </div>
+                    </div>
+                    <div class="widget-value">12</div>
+                    <div class="widget-trend">5 urgentes</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--success);">
+                    <div class="widget-header">
+                        <div class="widget-title">Affaires Validées (Mois)</div>
+                        <div class="widget-icon" style="background: rgba(40, 167, 69, 0.1); color: var(--success);">✓
+                        </div>
+                    </div>
+                    <div class="widget-value">48</div>
+                    <div class="widget-trend">+15% vs mois dernier</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--info);">
+                    <div class="widget-header">
+                        <div class="widget-title">Taux de Conformité</div>
+                        <div class="widget-icon" style="background: rgba(23, 162, 184, 0.1); color: var(--info);">📊
+                        </div>
+                    </div>
+                    <div class="widget-value">94%</div>
+                    <div class="widget-trend">Très bon niveau</div>
+                </div>
+
+                <div class="widget" style="border-left-color: var(--danger);">
+                    <div class="widget-header">
+                        <div class="widget-title">Délais Dépassés</div>
+                        <div class="widget-icon" style="background: rgba(220, 53, 69, 0.1); color: var(--danger);">⚠️
+                        </div>
+                    </div>
+                    <div class="widget-value">2</div>
+                    <div class="widget-trend">Action immédiate requise</div>
+                </div>
+            </div>
+
+            <!-- Validations Prioritaires -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">🔥 Validations Prioritaires</h2>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <select class="form-control" style="width: 200px;">
+                            <option>Tous les types</option>
+                            <option>Assignations</option>
+                            <option>Audiences</option>
+                            <option>Jugements</option>
+                            <option>Missions</option>
+                            <option>PV</option>
+                            <option>Recouvrements</option>
+                        </select>
+                        <button class="btn btn-outline btn-sm">🔍 Filtrer</button>
+                    </div>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th><input type="checkbox"></th>
+                                <th>Type</th>
+                                <th>Référence</th>
+                                <th>Dossier</th>
+                                <th>Priorité</th>
+                                <th>Délai</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #fff3cd;">
+                                <td><input type="checkbox"></td>
+                                <td><span class="badge badge-danger">Assignation</span></td>
+                                <td><strong>#ASS-2024-015</strong></td>
+                                <td>DOS-2024-001 - SARL TechCorp</td>
+                                <td><span class="badge badge-danger">URGENT</span></td>
+                                <td style="color: red; font-weight: 600;">J-1</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success">✓ Valider</button>
+                                    <button class="btn btn-sm btn-danger">✗ Rejeter</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><span class="badge badge-warning">Audience</span></td>
+                                <td><strong>#AUD-2024-032</strong></td>
+                                <td>DOS-2024-005 - ETS Commerce</td>
+                                <td><span class="badge badge-warning">Normal</span></td>
+                                <td>J-3</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success">✓ Valider</button>
+                                    <button class="btn btn-sm btn-danger">✗ Rejeter</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><input type="checkbox"></td>
+                                <td><span class="badge badge-info">PV Mission</span></td>
+                                <td><strong>#PV-2024-089</strong></td>
+                                <td>DOS-2024-003 - SARL BTP</td>
+                                <td><span class="badge badge-success">Bas</span></td>
+                                <td>J-7</td>
+                                <td>
+                                    <button class="btn btn-sm btn-success">✓ Valider</button>
+                                    <button class="btn btn-sm btn-danger">✗ Rejeter</button>
+                                    <button class="btn btn-sm btn-outline">👁️ Voir</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Statistiques -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 1.5rem;">
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">📊 Statistiques par Type</h3>
+                    <div style="display: flex; flex-direction: column; gap: 1rem;">
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Assignations validées</span>
+                                <strong>25/30</strong>
+                            </div>
+                            <div style="background: #e9ecef; height: 8px; border-radius: 4px;">
+                                <div style="background: var(--success); width: 83%; height: 100%; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>Audiences validées</span>
+                                <strong>18/20</strong>
+                            </div>
+                            <div style="background: #e9ecef; height: 8px; border-radius: 4px;">
+                                <div style="background: var(--info); width: 90%; height: 100%; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display: flex; justify-content: space-between; margin-bottom: 0.5rem;">
+                                <span>PV validés</span>
+                                <strong>42/45</strong>
+                            </div>
+                            <div style="background: #e9ecef; height: 8px; border-radius: 4px;">
+                                <div style="background: var(--warning); width: 93%; height: 100%; border-radius: 4px;">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card">
+                    <h3 style="margin-bottom: 1rem;">⏱️ Délais Moyens de Validation</h3>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div
+                            style="display: flex; justify-content: space-between; padding: 0.75rem; background: #f8f9fa; border-radius: 0.5rem;">
+                            <span>Assignations</span>
+                            <strong style="color: var(--success);">1.2 jours</strong>
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; padding: 0.75rem; background: #f8f9fa; border-radius: 0.5rem;">
+                            <span>Audiences</span>
+                            <strong style="color: var(--success);">0.8 jours</strong>
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; padding: 0.75rem; background: #f8f9fa; border-radius: 0.5rem;">
+                            <span>Jugements</span>
+                            <strong style="color: var(--warning);">2.5 jours</strong>
+                        </div>
+                        <div
+                            style="display: flex; justify-content: space-between; padding: 0.75rem; background: #f8f9fa; border-radius: 0.5rem;">
+                            <span>PV Missions</span>
+                            <strong style="color: var(--success);">1.0 jour</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/js/app.js"></script>
+    <script>
+        if (!requireAuth()) { }
+
+        async function loadUserInfo() {
+            try {
+                const response = await apiCall('/api/auth/me');
+                if (response.ok) {
+                    const user = await response.json();
+                    document.getElementById('userName').textContent = user.username;
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        }
+
+        loadUserInfo();
+    </script>
+</body>
+
+</html>
