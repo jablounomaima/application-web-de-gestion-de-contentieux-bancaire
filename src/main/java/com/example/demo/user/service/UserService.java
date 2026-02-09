@@ -56,6 +56,9 @@ public class UserService {
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
+        user.setNom(request.getNom());
+        user.setPrenom(request.getPrenom());
+        user.setEmail(request.getEmail());
         
         Utilisateur saved = repository.save(user);
         
@@ -87,11 +90,36 @@ public class UserService {
         System.out.println("🗑️ Utilisateur supprimé : " + id);
     }
 
+    @Transactional
+    public UserResponse updateUser(Long id, CreateUserRequest request) {
+        Utilisateur user = repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Utilisateur non trouvé"));
+
+        user.setUsername(request.getUsername());
+        if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+            user.setPassword(passwordEncoder.encode(request.getPassword()));
+        }
+        
+        user.setNom(request.getNom());
+        user.setPrenom(request.getPrenom());
+        user.setEmail(request.getEmail());
+        
+        // Note: Changer le rôle peut être complexe si on change de classe d'implémentation (Admin vers Agent etc.)
+        user.setRole(request.getRole());
+
+        Utilisateur saved = repository.save(user);
+        return mapToResponse(saved);
+    }
+
     private UserResponse mapToResponse(Utilisateur user) {
         UserResponse response = new UserResponse();
         response.setId(user.getId());
         response.setUsername(user.getUsername());
         response.setRole(user.getRole());
+        response.setNom(user.getNom());
+        response.setPrenom(user.getPrenom());
+        response.setEmail(user.getEmail());
+        response.setDateCreation(user.getDateCreation());
         return response;
     }
 }

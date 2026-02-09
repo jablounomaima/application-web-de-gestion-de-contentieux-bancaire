@@ -39,6 +39,9 @@ public class AuthController {
         com.example.demo.user.entity.impl.AgentBancaire user = new com.example.demo.user.entity.impl.AgentBancaire();
         user.setUsername(request.getUsername());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setNom(request.getNom());
+        user.setPrenom(request.getPrenom());
+        user.setEmail(request.getEmail());
         // Par défaut, on attribue un rôle (ici AGENT_BANCAIRE pour l'exemple, ou via la requête)
         user.setRole(com.example.demo.user.role.Role.ROLE_AGENT_BANCAIRE); 
 
@@ -98,6 +101,10 @@ public class AuthController {
         response.setId(user.getId());
         response.setUsername(user.getUsername());
         response.setRole(user.getRole());
+        response.setNom(user.getNom());
+        response.setPrenom(user.getPrenom());
+        response.setEmail(user.getEmail());
+        response.setDateCreation(user.getDateCreation());
         return response;
     }
 

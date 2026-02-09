@@ -68,96 +68,117 @@
 
 <body>
     <div class="login-container">
-        <h2>Connexion</h2>
-        <form id="loginForm">
-            <input type="text" id="username" placeholder="Nom d'utilisateur" required>
+        <h2 id="authTitle">Connexion</h2>
+        <form id="authForm">
+            <div id="registerFields" class="hidden">
+                <input type="text" id="nom" placeholder="Nom">
+                <input type="text" id="prenom" placeholder="Prénom">
+                <input type="email" id="email" placeholder="Email">
+            </div>
+            <input type="text" id="username" placeholder="Login (Nom d'utilisateur)" required>
             <input type="password" id="password" placeholder="Mot de passe" required>
-            <button type="submit">Se connecter</button>
-            <button type="button" class="secondary" onclick="register()">S'inscrire (Nouveau)</button>
+
+            <button type="submit" id="submitBtn">Se connecter</button>
+            <button type="button" id="toggleBtn" class="secondary" onclick="toggleAuthMode()">S'inscrire
+                (Nouveau)</button>
         </form>
         <div id="message"></div>
     </div>
 
+    <style>
+        .hidden {
+            display: none;
+        }
+    </style>
+
     <script>
-        async function register() {
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
-            const messageElement = document.getElementById('message');
+        let isLoginMode = true;
 
-            if (!username || !password) {
-                messageElement.textContent = "Entrez un nom et un mot de passe pour s'inscrire";
-                return;
-            }
-
-            try {
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    localStorage.setItem('token', data.token);
-                    messageElement.style.color = 'green';
-                    messageElement.textContent = 'Inscription réussie! Redirection...';
-                    setTimeout(() => window.location.href = '/index.html', 1000);
-                } else {
-                    messageElement.style.color = 'red';
-                    messageElement.textContent = 'Erreur inscription (Existe déjà?)';
-                }
-            } catch (error) {
-                messageElement.textContent = 'Erreur réseau';
-            }
+        function toggleAuthMode() {
+            isLoginMode = !isLoginMode;
+            document.getElementById('authTitle').textContent = isLoginMode ? 'Connexion' : 'Inscription';
+            document.getElementById('registerFields').classList.toggle('hidden');
+            document.getElementById('submitBtn').textContent = isLoginMode ? 'Se connecter' : 'S\'inscrire';
+            document.getElementById('toggleBtn').textContent = isLoginMode ? 'S\'inscrire (Nouveau)' : 'Déjà un compte ? Connexion';
+            document.getElementById('message').textContent = '';
         }
 
-        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+        document.getElementById('authForm').addEventListener('submit', async (e) => {
             e.preventDefault();
             const username = document.getElementById('username').value;
             const password = document.getElementById('password').value;
             const messageElement = document.getElementById('message');
 
-            try {
-                const response = await fetch('/api/auth/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
-                });
-
-                if (response.ok) {
-                    const data = await response.json();
-                    localStorage.setItem('token', data.token);
-                    messageElement.style.color = 'green';
-                    messageElement.textContent = 'Connexion réussie! Redirection...';
-
-                    // Récupérer le rôle de l'utilisateur
-                    const meResponse = await fetch('/api/auth/me', {
-                        headers: { 'Authorization': 'Bearer ' + data.token }
+            if (isLoginMode) {
+                // LOGIN
+                try {
+                    const response = await fetch('/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
                     });
 
-                    if (meResponse.ok) {
-                        const userData = await meResponse.json();
-                        const roleDashboards = {
-                            'ROLE_ADMIN': '/dashboards/admin.html',
-                            'ROLE_AGENT_BANCAIRE': '/dashboards/agent.html',
-                            'ROLE_VALIDATEUR_JURIDIQUE': '/dashboards/juridique.html',
-                            'ROLE_AVOCAT': '/dashboards/avocat.html',
-                            'ROLE_HUISSIER': '/dashboards/huissier.html',
-                            'ROLE_EXPERT': '/dashboards/expert.html',
-                            'ROLE_VALIDATEUR_FINANCIER': '/dashboards/financier.html'
-                        };
+                    if (response.ok) {
+                        const data = await response.json();
+                        localStorage.setItem('token', data.token);
+                        messageElement.style.color = 'green';
+                        messageElement.textContent = 'Connexion réussie! Redirection...';
 
-                        const dashboard = roleDashboards[userData.role] || '/index.html';
-                        window.location.href = dashboard;
+                        // Récupérer le rôle de l'utilisateur
+                        const meResponse = await fetch('/api/auth/me', {
+                            headers: { 'Authorization': 'Bearer ' + data.token }
+                        });
+
+                        if (meResponse.ok) {
+                            const userData = await meResponse.json();
+                            const roleDashboards = {
+                                'ROLE_ADMIN': '/dashboards/admin.html',
+                                'ROLE_AGENT_BANCAIRE': '/dashboards/agent.html',
+                                'ROLE_VALIDATEUR_JURIDIQUE': '/dashboards/juridique.html',
+                                'ROLE_AVOCAT': '/dashboards/avocat.html',
+                                'ROLE_HUISSIER': '/dashboards/huissier.html',
+                                'ROLE_EXPERT': '/dashboards/expert.html',
+                                'ROLE_VALIDATEUR_FINANCIER': '/dashboards/financier.html'
+                            };
+
+                            const dashboard = roleDashboards[userData.role] || '/index.html';
+                            setTimeout(() => { window.location.href = dashboard; }, 500);
+                        } else {
+                            window.location.href = '/index.html';
+                        }
                     } else {
-                        window.location.href = '/index.html';
+                        messageElement.style.color = 'red';
+                        messageElement.textContent = 'Identifiants incorrects';
                     }
-                } else {
-                    messageElement.style.color = 'red';
-                    messageElement.textContent = 'Identifiants incorrects';
+                } catch (error) {
+                    messageElement.textContent = 'Erreur réseau';
                 }
-            } catch (error) {
-                messageElement.textContent = 'Erreur réseau';
+            } else {
+                // REGISTER
+                const nom = document.getElementById('nom').value;
+                const prenom = document.getElementById('prenom').value;
+                const email = document.getElementById('email').value;
+
+                try {
+                    const response = await fetch('/api/auth/register', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password, nom, prenom, email })
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        localStorage.setItem('token', data.token);
+                        messageElement.style.color = 'green';
+                        messageElement.textContent = 'Inscription réussie! Redirection...';
+                        setTimeout(() => window.location.href = '/index.html', 1000);
+                    } else {
+                        messageElement.style.color = 'red';
+                        messageElement.textContent = 'Erreur inscription (Existe déjà?)';
+                    }
+                } catch (error) {
+                    messageElement.textContent = 'Erreur réseau';
+                }
             }
         });
     </script>

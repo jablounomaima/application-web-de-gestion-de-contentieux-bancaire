@@ -16,4 +16,5 @@ public class UserResponse {
     private String telephone;
     private String nom;
     private String prenom;
+    private java.time.LocalDateTime dateCreation;
 }

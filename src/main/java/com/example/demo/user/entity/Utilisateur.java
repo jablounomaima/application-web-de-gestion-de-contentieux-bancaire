@@ -32,5 +32,13 @@ public abstract class Utilisateur {
     @Column(name = "role_enum")
     private Role role;
 
+    @Column(name = "date_creation", updatable = false)
+    private java.time.LocalDateTime dateCreation;
+
+    @PrePersist
+    protected void onCreate() {
+        dateCreation = java.time.LocalDateTime.now();
+    }
+
     public Utilisateur() {}
 }

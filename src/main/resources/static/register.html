@@ -10,7 +10,16 @@
     <h2>Inscription</h2>
 
     <form method="post" action="/api/auth/register">
-        <label>Username</label>
+        <label>Nom</label>
+        <input type="text" name="nom" required><br><br>
+
+        <label>Prénom</label>
+        <input type="text" name="prenom" required><br><br>
+
+        <label>Email</label>
+        <input type="email" name="email" required><br><br>
+
+        <label>Username (Login)</label>
         <input type="text" name="username" required><br><br>
 
         <label>Password</label>
