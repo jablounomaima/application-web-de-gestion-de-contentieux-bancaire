@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contentieux Security - Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/keycloak-js@22.0.1/dist/keycloak.min.js"></script>
+</head>
+<body>
+    <div id="loader" class="loader-container">
+        <div class="spinner"></div>
+    </div>
+
+    <div id="app" style="display: none;">
+        <nav class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon">⚖️</div>
+                    <span>JurisLink</span>
+                </div>
+            </div>
+            
+            <div class="nav-links">
+                <button class="nav-item active" data-role="public">
+                    <span class="icon">🏠</span> 
+                    <span>Accueil</span>
+                </button>
+                <button class="nav-item" data-role="private">
+                    <span class="icon">🔒</span> 
+                    <span>Espace Sécurisé</span>
+                </button>
+                <button class="nav-item role-agent" data-role="agent" style="display: none;">
+                    <span class="icon">💼</span> 
+                    <span>Espace Agent</span>
+                </button>
+                <button class="nav-item role-admin" data-role="admin" style="display: none;">
+                    <span class="icon">🛡️</span> 
+                    <span>Administration</span>
+                </button>
+                <button class="nav-item role-juridique" data-role="juridique" style="display: none;">
+                    <span class="icon">⚖️</span> 
+                    <span>Juridique</span>
+                </button>
+                <button class="nav-item role-financier" data-role="financier" style="display: none;">
+                    <span class="icon">💰</span> 
+                    <span>Financier</span>
+                </button>
+            </div>
+
+            <div class="user-profile">
+                <div class="user-info">
+                    <span id="username" class="user-name">Chargement...</span>
+                    <span id="user-role" class="user-badge">Role</span>
+                </div>
+                <button id="logout-btn" class="logout-btn">
+                    <span class="icon">🚪</span>
+                </button>
+            </div>
+        </nav>
+
+        <main class="content">
+            <header class="top-bar">
+                <h1 id="page-title">Tableau de Bord</h1>
+                <div class="actions">
+                    <div id="status-badge" class="badge">Vérification...</div>
+                </div>
+            </header>
+
+            <section class="dashboard-grid">
+                <div class="card main-card">
+                    <div class="card-header">
+                        <h2>Réponse de l'API</h2>
+                        <span id="api-endpoint" class="endpoint-label">GET /public/hello</span>
+                    </div>
+                    <div class="card-body">
+                        <div id="api-response" class="response-box">
+                            Cliquez sur un onglet pour tester l'API...
+                        </div>
+                    </div>
+                </div>
+
+                <div class="card stats-card">
+                    <h2>Informations Token</h2>
+                    <div class="token-info">
+                        <div class="info-row">
+                            <span class="label">Rôles :</span>
+                            <span id="token-roles" class="value">-</span>
+                        </div>
+                        <div class="info-row">
+                            <span class="label">Expire dans :</span>
+                            <span id="token-expiry" class="value">-</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Error Overlay -->
+    <div id="error-overlay" class="overlay" style="display: none;">
+        <div class="error-card">
+            <div class="error-icon">⚠️</div>
+            <h2>Erreur de Connexion</h2>
+            <p id="error-message">Impossible de contacter Keycloak ou le serveur.</p>
+            <button onclick="window.location.reload()" class="refresh-btn">Réessayer</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
