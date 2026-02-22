@@ -1,13 +1,16 @@
 <!DOCTYPE html>
 <html lang="fr">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Contentieux Security - Dashboard</title>
+    <title>JurisLink - Système de Contentieux</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/keycloak-js@22.0.1/dist/keycloak.min.js"></script>
 </head>
+
 <body>
     <div id="loader" class="loader-container">
         <div class="spinner"></div>
@@ -21,31 +24,43 @@
                     <span>JurisLink</span>
                 </div>
             </div>
-            
+
             <div class="nav-links">
                 <button class="nav-item active" data-role="public">
-                    <span class="icon">🏠</span> 
-                    <span>Accueil</span>
+                    <span class="icon">🏠</span> <span>Accueil</span>
                 </button>
                 <button class="nav-item" data-role="private">
-                    <span class="icon">🔒</span> 
-                    <span>Espace Sécurisé</span>
+                    <span class="icon">🔒</span> <span>Connecté</span>
                 </button>
+
+                <!-- Rôles Internes -->
+                <div class="nav-section">BANQUE</div>
                 <button class="nav-item role-agent" data-role="agent" style="display: none;">
-                    <span class="icon">💼</span> 
-                    <span>Espace Agent</span>
-                </button>
-                <button class="nav-item role-admin" data-role="admin" style="display: none;">
-                    <span class="icon">🛡️</span> 
-                    <span>Administration</span>
+                    <span class="icon">💼</span> <span>Agent Bancaire</span>
                 </button>
                 <button class="nav-item role-juridique" data-role="juridique" style="display: none;">
-                    <span class="icon">⚖️</span> 
-                    <span>Juridique</span>
+                    <span class="icon">✒️</span> <span>Valid. Juridique</span>
                 </button>
                 <button class="nav-item role-financier" data-role="financier" style="display: none;">
-                    <span class="icon">💰</span> 
-                    <span>Financier</span>
+                    <span class="icon">💰</span> <span>Valid. Financier</span>
+                </button>
+
+                <!-- Rôles Externes -->
+                <div class="nav-section">EXTERNE</div>
+                <button class="nav-item role-avocat" data-role="avocat" style="display: none;">
+                    <span class="icon">🎓</span> <span>Avocat</span>
+                </button>
+                <button class="nav-item role-huissier" data-role="huissier" style="display: none;">
+                    <span class="icon">📜</span> <span>Huissier</span>
+                </button>
+                <button class="nav-item role-expert" data-role="expert" style="display: none;">
+                    <span class="icon">🔍</span> <span>Expert</span>
+                </button>
+
+                <!-- Admin -->
+                <div class="nav-section">SYSTEME</div>
+                <button class="nav-item role-admin" data-role="admin" style="display: none;">
+                    <span class="icon">🛡️</span> <span>Administration</span>
                 </button>
             </div>
 
@@ -71,25 +86,25 @@
             <section class="dashboard-grid">
                 <div class="card main-card">
                     <div class="card-header">
-                        <h2>Réponse de l'API</h2>
+                        <h2>Contenu de l'espace</h2>
                         <span id="api-endpoint" class="endpoint-label">GET /public/hello</span>
                     </div>
                     <div class="card-body">
                         <div id="api-response" class="response-box">
-                            Cliquez sur un onglet pour tester l'API...
+                            Sélectionnez un espace dans le menu pour commencer...
                         </div>
                     </div>
                 </div>
 
                 <div class="card stats-card">
-                    <h2>Informations Token</h2>
+                    <h2>Session Authentifiée</h2>
                     <div class="token-info">
                         <div class="info-row">
-                            <span class="label">Rôles :</span>
+                            <span class="label">Vos Rôles :</span>
                             <span id="token-roles" class="value">-</span>
                         </div>
                         <div class="info-row">
-                            <span class="label">Expire dans :</span>
+                            <span class="label">Expiration :</span>
                             <span id="token-expiry" class="value">-</span>
                         </div>
                     </div>
@@ -103,11 +118,12 @@
         <div class="error-card">
             <div class="error-icon">⚠️</div>
             <h2>Erreur de Connexion</h2>
-            <p id="error-message">Impossible de contacter Keycloak ou le serveur.</p>
+            <p id="error-message">Impossible de contacter Keycloak.</p>
             <button onclick="window.location.reload()" class="refresh-btn">Réessayer</button>
         </div>
     </div>
 
     <script src="app.js"></script>
 </body>
+
 </html>

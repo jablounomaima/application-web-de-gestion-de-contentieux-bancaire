@@ -2,7 +2,7 @@
 const keycloak = new Keycloak({
     url: 'http://localhost:8080',
     realm: 'contentieux-realm',
-    clientId: 'contentieux-client' // Assurez-vous que ce client est AU MOINS de type "Public" ou "OIDC"
+    clientId: 'contentieux-client'
 });
 
 const API_BASE = 'http://localhost:8097';
@@ -15,39 +15,64 @@ async function init() {
         });
 
         if (authenticated) {
-            console.log("Connecté !");
             document.getElementById('loader').style.display = 'none';
             document.getElementById('app').style.display = 'flex';
-            
+
             updateUI();
             setupInteractions();
-            // Test initial avec l'admin ou public
-            fetchFromAPI('public', '/public/hello');
+
+            // Redirection automatique vers le premier rôle disponible
+            autoRedirect();
         }
     } catch (error) {
-        console.error("Erreur d'initialisation Keycloak:", error);
+        console.error("Erreur Keycloak:", error);
         document.getElementById('loader').style.display = 'none';
         document.getElementById('error-overlay').style.display = 'flex';
-        document.getElementById('error-message').innerText = 
-            "Impossible de contacter Keycloak. Vérifiez que Keycloak est lancé sur le port 8080 et que le realm 'contentieux-realm' existe.";
     }
 }
 
 function updateUI() {
     const profile = keycloak.tokenParsed;
     document.getElementById('username').innerText = profile.preferred_username || profile.name;
-    document.getElementById('status-badge').innerText = 'Online';
+    document.getElementById('status-badge').innerText = 'Connecté';
     document.getElementById('status-badge').classList.add('online');
 
     const roles = keycloak.realmAccess ? keycloak.realmAccess.roles : [];
-    document.getElementById('user-role').innerText = roles.includes('ADMIN') ? 'Administrateur' : 'Utilisateur';
     document.getElementById('token-roles').innerText = roles.join(', ');
+    document.getElementById('user-role').innerText = roles.includes('ADMIN') ? 'Administrateur' : 'Utilisateur';
 
-    // Afficher les menus selon les rôles
-    if (roles.includes('AGENT')) document.querySelectorAll('.role-agent').forEach(el => el.style.display = 'flex');
-    if (roles.includes('ADMIN')) document.querySelectorAll('.role-admin').forEach(el => el.style.display = 'flex');
-    if (roles.includes('VALID_JURIDIQUE')) document.querySelectorAll('.role-juridique').forEach(el => el.style.display = 'flex');
-    if (roles.includes('VALID_FINANCIER')) document.querySelectorAll('.role-financier').forEach(el => el.style.display = 'flex');
+    // Affichage intelligent des menus selon les rôles
+    const roleSelectors = {
+        'AGENT': '.role-agent',
+        'ADMIN': '.role-admin',
+        'VALID_JURIDIQUE': '.role-juridique',
+        'VALID_FINANCIER': '.role-financier',
+        'AVOCAT': '.role-avocat',
+        'HUISSIER': '.role-huissier',
+        'EXPERT': '.role-expert'
+    };
+
+    Object.keys(roleSelectors).forEach(role => {
+        if (roles.includes(role)) {
+            document.querySelectorAll(roleSelectors[role]).forEach(el => el.style.display = 'flex');
+        }
+    });
+}
+
+function autoRedirect() {
+    const roles = keycloak.realmAccess ? keycloak.realmAccess.roles : [];
+    let targetRole = 'public';
+
+    if (roles.includes('ADMIN')) targetRole = 'admin';
+    else if (roles.includes('AGENT')) targetRole = 'agent';
+    else if (roles.includes('VALID_JURIDIQUE')) targetRole = 'juridique';
+    else if (roles.includes('VALID_FINANCIER')) targetRole = 'financier';
+    else if (roles.includes('AVOCAT')) targetRole = 'avocat';
+    else if (roles.includes('HUISSIER')) targetRole = 'huissier';
+    else if (roles.includes('EXPERT')) targetRole = 'expert';
+
+    const btn = document.querySelector(`.nav-item[data-role="${targetRole}"]`);
+    if (btn) btn.click();
 }
 
 function setupInteractions() {
@@ -57,45 +82,40 @@ function setupInteractions() {
         btn.onclick = () => {
             const role = btn.dataset.role;
             const endpoint = getEndpoint(role);
-            
-            // UI Update
+
             document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            document.getElementById('page-title').innerText = btn.innerText;
+            document.getElementById('page-title').innerText = btn.querySelector('span:last-child').innerText;
             document.getElementById('api-endpoint').innerText = `GET ${endpoint}`;
 
             fetchFromAPI(role, endpoint);
         };
     });
 
-    // Token Expiry Timer
     setInterval(() => {
         const timeLeft = Math.round(keycloak.tokenParsed.exp + keycloak.timeSkew - Date.now() / 1000);
         document.getElementById('token-expiry').innerText = timeLeft > 0 ? `${timeLeft}s` : 'Expiré';
-        
-        if (timeLeft < 30) {
-            keycloak.updateToken(70).then(refreshed => {
-                if (refreshed) console.log('Token rafraîchi');
-            });
-        }
     }, 1000);
 }
 
 function getEndpoint(role) {
-    switch(role) {
-        case 'public': return '/public/hello';
-        case 'private': return '/private/hello';
-        case 'agent': return '/agent/dashboard';
-        case 'admin': return '/admin/dashboard';
-        case 'juridique': return '/validation/juridique';
-        case 'financier': return '/validation/financier';
-        default: return '/public/hello';
-    }
+    const endpoints = {
+        'public': '/public/hello',
+        'private': '/private/hello',
+        'agent': '/agent/dashboard',
+        'admin': '/admin/dashboard',
+        'juridique': '/validation/juridique',
+        'financier': '/validation/financier',
+        'avocat': '/avocat/dashboard',
+        'huissier': '/huissier/dashboard',
+        'expert': '/expert/dashboard'
+    };
+    return endpoints[role] || '/public/hello';
 }
 
 async function fetchFromAPI(type, endpoint) {
     const responseBox = document.getElementById('api-response');
-    responseBox.innerText = 'Appel de l\'API en cours...';
+    responseBox.innerText = 'Chargement...';
     responseBox.style.color = '#38bdf8';
 
     try {
@@ -105,18 +125,17 @@ async function fetchFromAPI(type, endpoint) {
         }
 
         const response = await fetch(`${API_BASE}${endpoint}`, { headers });
-        
+        const data = await response.text();
+
         if (response.ok) {
-            const data = await response.text();
-            responseBox.innerText = `Success (200 OK)\n\n${data}`;
+            responseBox.innerText = data;
             responseBox.style.color = '#10b981';
         } else {
-            const errorText = await response.text();
-            responseBox.innerText = `Erreur ${response.status}\n\n${response.statusText}\n${errorText}`;
+            responseBox.innerText = `Accès Refusé (${response.status})\n\n${data}`;
             responseBox.style.color = '#ef4444';
         }
     } catch (error) {
-        responseBox.innerText = `Erreur Réseau\n\n${error.message}\n\nVérifiez que le serveur Spring Boot est lancé sur le port 8097.`;
+        responseBox.innerText = `Erreur Serveur\n\n${error.message}`;
         responseBox.style.color = '#ef4444';
     }
 }
