@@ -86,12 +86,15 @@
             <section class="dashboard-grid">
                 <div class="card main-card">
                     <div class="card-header">
-                        <h2>Contenu de l'espace</h2>
+                        <h2 id="card-title">Contenu de l'espace</h2>
                         <span id="api-endpoint" class="endpoint-label">GET /public/hello</span>
                     </div>
                     <div class="card-body">
-                        <div id="api-response" class="response-box">
-                            Sélectionnez un espace dans le menu pour commencer...
+                        <!-- Dynamic View Container -->
+                        <div id="dynamic-view" class="view-container">
+                            <div id="api-response" class="response-box">
+                                Sélectionnez un espace dans le menu pour commencer...
+                            </div>
                         </div>
                     </div>
                 </div>

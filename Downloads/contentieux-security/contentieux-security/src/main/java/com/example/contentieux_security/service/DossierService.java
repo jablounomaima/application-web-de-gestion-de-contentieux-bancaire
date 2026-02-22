@@ -18,13 +18,23 @@ public class DossierService {
     private final ClientRepository clientRepository;
     private final AgenceRepository agenceRepository;
     private final RisqueRepository risqueRepository;
+    private final AgentBancaireRepository agentBancaireRepository;
 
     @Transactional
     public Dossier createDossier(Long clientId, Long agenceId, String agentUsername) {
         Client client = clientRepository.findById(clientId)
                 .orElseThrow(() -> new RuntimeException("Client non trouvé"));
-        Agence agence = agenceRepository.findById(agenceId)
-                .orElseThrow(() -> new RuntimeException("Agence non trouvée"));
+
+        Agence agence;
+        if (agenceId != null) {
+            agence = agenceRepository.findById(agenceId)
+                    .orElseThrow(() -> new RuntimeException("Agence non trouvée"));
+        } else {
+            // Fallback to the agent's assigned agency
+            AgentBancaire agent = agentBancaireRepository.findByUsername(agentUsername)
+                    .orElseThrow(() -> new RuntimeException("Agent non enregistré dans une agence"));
+            agence = agent.getAgence();
+        }
 
         Dossier dossier = Dossier.builder()
                 .numeroDossier("DOS-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase())
