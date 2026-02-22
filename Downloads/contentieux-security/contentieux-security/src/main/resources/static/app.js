@@ -7,36 +7,106 @@ const keycloak = new Keycloak({
 
 const API_BASE = 'http://localhost:8097';
 let currentAgent = null;
+let appToken = null;
+let appProfile = null;
 
 async function init() {
+    // 1. Check local session
+    const localToken = localStorage.getItem('local_token');
+    const localProfile = JSON.parse(localStorage.getItem('local_profile'));
+
+    if (localToken && localProfile) {
+        appToken = localToken;
+        appProfile = localProfile;
+        await startApp();
+        return;
+    }
+
+    // 2. Try Keycloak SSO
     try {
         const authenticated = await keycloak.init({
-            onLoad: 'login-required',
+            onLoad: 'check-sso',
             checkLoginIframe: false
         });
 
         if (authenticated) {
-            document.getElementById('loader').style.display = 'none';
-            document.getElementById('app').style.display = 'flex';
-
-            await fetchAgentProfile();
-            updateUI();
-            setupInteractions();
-
-            // Redirection automatique vers le premier rôle disponible
-            autoRedirect();
+            appToken = keycloak.token;
+            appProfile = {
+                preferred_username: keycloak.tokenParsed.preferred_username,
+                roles: keycloak.realmAccess ? keycloak.realmAccess.roles : []
+            };
+            await startApp();
+        } else {
+            showLogin(false);
         }
     } catch (error) {
-        console.error("Erreur Keycloak:", error);
-        document.getElementById('loader').style.display = 'none';
-        document.getElementById('error-overlay').style.display = 'flex';
+        console.error("Keycloak Error:", error);
+        showLogin(true);
     }
+}
+
+function showLogin(isError) {
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('login-overlay').style.display = 'flex';
+    if (isError) {
+        console.log("Keycloak inaccessible, switching to local mode.");
+    }
+}
+
+async function startApp() {
+    document.getElementById('loader').style.display = 'none';
+    document.getElementById('login-overlay').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+
+    await fetchAgentProfile();
+    updateUI();
+    setupInteractions();
+    autoRedirect();
+}
+
+async function performLocalLogin() {
+    const username = document.getElementById('login-user').value;
+    const password = document.getElementById('login-pass').value;
+    const errorEl = document.getElementById('login-error');
+
+    errorEl.style.display = 'none';
+
+    try {
+        const res = await fetch(`${API_BASE}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            appToken = data.access_token;
+            appProfile = {
+                preferred_username: data.username,
+                roles: [data.role]
+            };
+
+            localStorage.setItem('local_token', appToken);
+            localStorage.setItem('local_profile', JSON.stringify(appProfile));
+
+            await startApp();
+        } else {
+            errorEl.style.display = 'block';
+        }
+    } catch (e) {
+        errorEl.innerText = "Erreur de connexion au serveur.";
+        errorEl.style.display = 'block';
+    }
+}
+
+function useKeycloakLogin() {
+    keycloak.login();
 }
 
 async function fetchAgentProfile() {
     try {
         const res = await fetch(`${API_BASE}/api/admin/me`, {
-            headers: { 'Authorization': `Bearer ${keycloak.token}` }
+            headers: { 'Authorization': `Bearer ${appToken}` }
         });
         if (res.ok) {
             currentAgent = await res.json();
@@ -47,18 +117,19 @@ async function fetchAgentProfile() {
 }
 
 function updateUI() {
-    const profile = keycloak.tokenParsed;
-    document.getElementById('username').innerText = profile.preferred_username || profile.name;
+    if (!appProfile) return;
+
+    document.getElementById('username').innerText = appProfile.preferred_username;
     document.getElementById('status-badge').innerText = 'Connecté';
     document.getElementById('status-badge').classList.add('online');
 
-    const roles = keycloak.realmAccess ? keycloak.realmAccess.roles : [];
+    const roles = appProfile.roles || [];
     document.getElementById('token-roles').innerText = roles.join(', ');
 
     let roleName = 'Utilisateur';
     if (roles.includes('ADMIN')) roleName = 'Administrateur';
     else if (roles.includes('AGENT')) {
-        roleName = currentAgent ? `Agent (${currentAgent.agence.nom})` : 'Agent (Non Assigné)';
+        roleName = currentAgent ? `Agent (${currentAgent.agence.nom})` : 'Agent Bancaire';
     }
     document.getElementById('user-role').innerText = roleName;
 
@@ -124,7 +195,7 @@ async function showAdminTab(tab) {
     pane.innerHTML = 'Chargement...';
 
     if (tab === 'stats') {
-        const res = await fetch(`${API_BASE}/api/admin/stats`, { headers: { 'Authorization': `Bearer ${keycloak.token}` } });
+        const res = await fetch(`${API_BASE}/api/admin/stats`, { headers: { 'Authorization': `Bearer ${appToken}` } });
         const stats = await res.json();
         pane.innerHTML = `
             <div class="stats-grid">
@@ -140,7 +211,7 @@ async function showAdminTab(tab) {
             </div>
         `;
     } else if (tab === 'agences') {
-        const res = await fetch(`${API_BASE}/api/admin/agences`, { headers: { 'Authorization': `Bearer ${keycloak.token}` } });
+        const res = await fetch(`${API_BASE}/api/admin/agences`, { headers: { 'Authorization': `Bearer ${appToken}` } });
         const agences = await res.json();
         pane.innerHTML = `
             <div class="form-card" style="margin-bottom: 24px;">
@@ -156,8 +227,8 @@ async function showAdminTab(tab) {
         `;
     } else if (tab === 'agents') {
         const [agRes, agtRes] = await Promise.all([
-            fetch(`${API_BASE}/api/admin/agences`, { headers: { 'Authorization': `Bearer ${keycloak.token}` } }),
-            fetch(`${API_BASE}/api/admin/agents`, { headers: { 'Authorization': `Bearer ${keycloak.token}` } })
+            fetch(`${API_BASE}/api/admin/agences`, { headers: { 'Authorization': `Bearer ${appToken}` } }),
+            fetch(`${API_BASE}/api/admin/agents`, { headers: { 'Authorization': `Bearer ${appToken}` } })
         ]);
         const agences = await agRes.json();
         const agents = await agtRes.json();
@@ -328,7 +399,7 @@ async function validateDossier(id, type) {
 }
 
 function autoRedirect() {
-    const roles = keycloak.realmAccess ? keycloak.realmAccess.roles : [];
+    const roles = appProfile ? appProfile.roles : [];
     let targetRole = 'public';
 
     if (roles.includes('ADMIN')) targetRole = 'admin';
@@ -344,7 +415,11 @@ function autoRedirect() {
 }
 
 function setupInteractions() {
-    document.getElementById('logout-btn').onclick = () => keycloak.logout();
+    document.getElementById('logout-btn').onclick = () => {
+        localStorage.removeItem('local_token');
+        localStorage.removeItem('local_profile');
+        keycloak.logout();
+    };
 
     document.querySelectorAll('.nav-item').forEach(btn => {
         btn.onclick = () => {
@@ -362,7 +437,7 @@ function setupInteractions() {
     });
 
     setInterval(() => {
-        const profile = keycloak.tokenParsed;
+        const profile = appProfile;
         if (!profile) return;
         const timeLeft = Math.round(profile.exp + keycloak.timeSkew - Date.now() / 1000);
         document.getElementById('token-expiry').innerText = timeLeft > 0 ? `${timeLeft}s` : 'Expiré';
@@ -392,7 +467,7 @@ async function fetchFromAPI(type, endpoint) {
     try {
         const headers = {};
         if (type !== 'public') {
-            headers['Authorization'] = `Bearer ${keycloak.token}`;
+            headers['Authorization'] = `Bearer ${appToken}`;
         }
 
         const response = await fetch(`${API_BASE}${endpoint}`, { headers });
