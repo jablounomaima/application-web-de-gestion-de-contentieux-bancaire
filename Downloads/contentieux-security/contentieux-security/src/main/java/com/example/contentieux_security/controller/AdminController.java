@@ -40,6 +40,20 @@ public class AdminController {
         return adminService.saveAgence(agence);
     }
 
+    @PutMapping("/agences/{id}")
+    public Agence updateAgence(@PathVariable Long id, @RequestBody Agence agenceData) {
+        return adminService.getAllAgences().stream()
+                .filter(a -> a.getId().equals(id))
+                .findFirst()
+                .map(agence -> {
+                    agence.setNom(agenceData.getNom());
+                    agence.setCode(agenceData.getCode());
+                    agence.setVille(agenceData.getVille());
+                    return adminService.saveAgence(agence);
+                })
+                .orElseThrow(() -> new RuntimeException("Agence not found"));
+    }
+
     @DeleteMapping("/agences/{id}")
     public ResponseEntity<?> deleteAgence(@PathVariable Long id) {
         adminService.deleteAgence(id);
@@ -55,6 +69,27 @@ public class AdminController {
     @PostMapping("/agents")
     public AgentBancaire createAgent(@RequestBody AgentBancaire agent) {
         return adminService.saveAgent(agent);
+    }
+
+    @PutMapping("/agents/{id}")
+    public AgentBancaire updateAgent(@PathVariable Long id, @RequestBody AgentBancaire agentData) {
+        return adminService.getAllAgents().stream()
+                .filter(a -> a.getId().equals(id))
+                .findFirst()
+                .map(agent -> {
+                    agent.setNom(agentData.getNom());
+                    agent.setPrenom(agentData.getPrenom());
+                    agent.setEmail(agentData.getEmail());
+                    agent.setTelephone(agentData.getTelephone());
+                    if (agentData.getPassword() != null && !agentData.getPassword().isEmpty()) {
+                        agent.setPassword(agentData.getPassword());
+                    }
+                    if (agentData.getAgence() != null) {
+                        agent.setAgence(agentData.getAgence());
+                    }
+                    return adminService.saveAgent(agent);
+                })
+                .orElseThrow(() -> new RuntimeException("Agent not found"));
     }
 
     @DeleteMapping("/agents/{id}")

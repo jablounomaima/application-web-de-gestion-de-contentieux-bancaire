@@ -9,6 +9,7 @@ const API_BASE = 'http://localhost:8097';
 let currentAgent = null;
 let appToken = null;
 let appProfile = null;
+let allAgences = []; // Cache for modals
 
 async function init() {
     // 1. Check local session
@@ -214,15 +215,22 @@ async function showAdminTab(tab) {
         const res = await fetch(`${API_BASE}/api/admin/agences`, { headers: { 'Authorization': `Bearer ${appToken}` } });
         const agences = await res.json();
         pane.innerHTML = `
-            <div class="form-card" style="margin-bottom: 24px;">
-                <h4>Ajouter une Agence</h4>
-                <div class="form-group"><input id="agNom" placeholder="Nom de l'agence"></div>
-                <div class="form-group"><input id="agCode" placeholder="Code"></div>
-                <div class="form-group"><input id="agVille" placeholder="Ville"></div>
-                <button class="primary-btn" onclick="addAgence()">Ajouter</button>
+            <div class="action-bar" style="margin-bottom: 24px;">
+                <button class="primary-btn" onclick="openAddAgencyModal()">+ Ajouter une Agence</button>
             </div>
             <div class="list-container">
-                ${agences.map(a => `<div class="list-item"><span>${a.nom} (${a.ville})</span> <button onclick="deleteAgence(${a.id})">Supprimer</button></div>`).join('')}
+                ${agences.map(a => `
+                    <div class="list-item">
+                        <div style="flex: 1;">
+                            <strong>${a.nom}</strong><br>
+                            <small>${a.ville} (Code: ${a.code})</small>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick='openEditAgencyModal(${JSON.stringify(a)})' class="secondary-btn" style="padding: 4px 12px; font-size: 0.8rem;">Modifier</button>
+                            <button onclick="deleteAgence(${a.id})" class="secondary-btn" style="padding: 4px 12px; font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #ef4444;">&times;</button>
+                        </div>
+                    </div>
+                `).join('')}
             </div>
         `;
     } else if (tab === 'agents') {
@@ -231,6 +239,7 @@ async function showAdminTab(tab) {
             fetch(`${API_BASE}/api/admin/agents`, { headers: { 'Authorization': `Bearer ${appToken}` } })
         ]);
         const agences = await agRes.json();
+        allAgences = agences; // Cache agences
         const agents = await agtRes.json();
 
         pane.innerHTML = `
@@ -251,20 +260,48 @@ async function showAdminTab(tab) {
                 <button class="primary-btn" onclick="addAgent()">Enregistrer l'Agent</button>
             </div>
             <div class="list-container">
-                ${agents.map(a => `<div class="list-item"><span>${a.username} (${a.email}) - ${a.agence ? a.agence.nom : 'N/A'}</span> <button onclick="deleteAgent(${a.id})">Supprimer</button></div>`).join('')}
+                ${agents.map(a => `
+                    <div class="list-item">
+                        <div style="flex: 1;">
+                            <strong>${a.username}</strong><br>
+                            <small>${a.nom} ${a.prenom} - ${a.email}</small><br>
+                            <small style="color: var(--primary)">${a.agence ? a.agence.nom : 'N/A'}</small>
+                        </div>
+                        <div style="display: flex; gap: 8px;">
+                            <button onclick='openEditAgentModal(${JSON.stringify(a)})' class="secondary-btn" style="padding: 4px 12px; font-size: 0.8rem;">Modifier</button>
+                            <button onclick="deleteAgent(${a.id})" class="secondary-btn" style="padding: 4px 12px; font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #ef4444;">&times;</button>
+                        </div>
+                    </div>
+                `).join('')}
             </div>
         `;
     }
 }
 
 // Admin Actions
-async function addAgence() {
-    const data = { nom: document.getElementById('agNom').value, code: document.getElementById('agCode').value, ville: document.getElementById('agVille').value };
-    await fetch(`${API_BASE}/api/admin/agences`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${keycloak.token}`, 'Content-Type': 'application/json' },
+async function submitAgency() {
+    const id = document.getElementById('edit-ag-id').value;
+    const data = {
+        nom: document.getElementById('edit-ag-nom').value,
+        code: document.getElementById('edit-ag-code').value,
+        ville: document.getElementById('edit-ag-ville').value
+    };
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `${API_BASE}/api/admin/agences/${id}` : `${API_BASE}/api/admin/agences`;
+
+    const res = await fetch(url, {
+        method: method,
+        headers: { 'Authorization': `Bearer ${appToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
-    showAdminTab('agences');
+
+    if (res.ok) {
+        closeEditAgencyModal();
+        showAdminTab('agences');
+    } else {
+        alert("Erreur lors de l'enregistrement de l'agence");
+    }
 }
 
 async function addAgent() {
@@ -278,7 +315,7 @@ async function addAgent() {
         agence: { id: document.getElementById('agtAgId').value }
     };
     await fetch(`${API_BASE}/api/admin/agents`, {
-        method: 'POST', headers: { 'Authorization': `Bearer ${keycloak.token}`, 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Authorization': `Bearer ${appToken}`, 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
     });
     showAdminTab('agents');
@@ -286,15 +323,105 @@ async function addAgent() {
 
 async function deleteAgence(id) {
     if (confirm("Supprimer cette agence ?")) {
-        await fetch(`${API_BASE}/api/admin/agences/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${keycloak.token}` } });
+        await fetch(`${API_BASE}/api/admin/agences/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${appToken}` } });
         showAdminTab('agences');
     }
 }
 
 async function deleteAgent(id) {
     if (confirm("Supprimer cet agent ?")) {
-        await fetch(`${API_BASE}/api/admin/agents/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${keycloak.token}` } });
+        await fetch(`${API_BASE}/api/admin/agents/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${appToken}` } });
         showAdminTab('agents');
+    }
+}
+
+// Agent Edit Modal Logic
+function openEditAgentModal(agent) {
+    document.getElementById('edit-agt-id').value = agent.id;
+    document.getElementById('edit-agt-user').value = agent.username;
+    document.getElementById('edit-agt-nom').value = agent.nom;
+    document.getElementById('edit-agt-prenom').value = agent.prenom;
+    document.getElementById('edit-agt-email').value = agent.email;
+    document.getElementById('edit-agt-tel').value = agent.telephone;
+    document.getElementById('edit-agt-pass').value = ""; // Clear password field
+
+    const agSelect = document.getElementById('edit-agt-agId');
+    agSelect.innerHTML = allAgences.map(a => `<option value="${a.id}" ${agent.agence && agent.agence.id === a.id ? 'selected' : ''}>${a.nom}</option>`).join('');
+
+    document.getElementById('edit-agent-overlay').style.display = 'flex';
+}
+
+function closeEditAgentModal() {
+    document.getElementById('edit-agent-overlay').style.display = 'none';
+}
+
+async function submitUpdateAgent() {
+    const id = document.getElementById('edit-agt-id').value;
+    const data = {
+        nom: document.getElementById('edit-agt-nom').value,
+        prenom: document.getElementById('edit-agt-prenom').value,
+        email: document.getElementById('edit-agt-email').value,
+        telephone: document.getElementById('edit-agt-tel').value,
+        password: document.getElementById('edit-agt-pass').value,
+        agence: { id: document.getElementById('edit-agt-agId').value }
+    };
+
+    const res = await fetch(`${API_BASE}/api/admin/agents/${id}`, {
+        method: 'PUT',
+        headers: {
+            'Authorization': `Bearer ${appToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+        closeEditAgentModal();
+        showAdminTab('agents');
+    } else {
+        alert("Erreur lors de la modification");
+    }
+}
+
+async function handleDeleteAgentInModal() {
+    const id = document.getElementById('edit-agt-id').value;
+    if (confirm("Êtes-vous sûr de vouloir supprimer cet agent ?")) {
+        await deleteAgent(id);
+        closeEditAgentModal();
+    }
+}
+
+// Agency Modal Logic
+function openAddAgencyModal() {
+    document.getElementById('edit-ag-id').value = "";
+    document.getElementById('edit-ag-nom').value = "";
+    document.getElementById('edit-ag-code').value = "";
+    document.getElementById('edit-ag-ville').value = "";
+    document.getElementById('agency-modal-title').innerText = "Ajouter une Agence";
+    document.getElementById('delete-ag-btn').style.display = "none";
+    document.getElementById('edit-agency-overlay').style.display = "flex";
+}
+
+function openEditAgencyModal(agence) {
+    document.getElementById('edit-ag-id').value = agence.id;
+    document.getElementById('edit-ag-nom').value = agence.nom;
+    document.getElementById('edit-ag-code').value = agence.code;
+    document.getElementById('edit-ag-ville').value = agence.ville;
+    document.getElementById('agency-modal-title').innerText = "Modifier l'Agence";
+    document.getElementById('delete-ag-btn').style.display = "block";
+    document.getElementById('edit-agency-overlay').style.display = "flex";
+}
+
+function closeEditAgencyModal() {
+    document.getElementById('edit-agency-overlay').style.display = 'none';
+}
+
+async function handleDeleteAgencyInModal() {
+    const id = document.getElementById('edit-ag-id').value;
+    if (confirm("Supprimer cette agence ?")) {
+        await fetch(`${API_BASE}/api/admin/agences/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${appToken}` } });
+        closeEditAgencyModal();
+        showAdminTab('agences');
     }
 }
 
@@ -335,6 +462,30 @@ async function renderAgentView(container) {
     loadDossiers();
 }
 
+async function loadDossiers() {
+    const list = document.getElementById('dossiers-list');
+    if (!list) return;
+
+    try {
+        const res = await fetch(`${API_BASE}/api/dossiers`, {
+            headers: { 'Authorization': `Bearer ${appToken}` }
+        });
+        const dossiers = await res.json();
+
+        list.innerHTML = dossiers.map(d => `
+            <div class="list-item">
+                <div style="flex: 1;">
+                    <strong>${d.numeroDossier}</strong> <span class="badge ${d.statut.toLowerCase()}">${d.statut}</span><br>
+                    <small>Client: ${d.client.nom} - Agence: ${d.agence.nom}</small>
+                </div>
+                ${d.statut === 'OUVERT' ? `<button onclick="submitDossier(${d.id})" class="secondary-btn" style="font-size: 0.8rem;">Soumettre</button>` : ''}
+            </div>
+        `).join('') || "Aucun dossier trouvé.";
+    } catch (e) {
+        list.innerHTML = "Erreur lors du chargement des dossiers.";
+    }
+}
+
 function toggleCreateForm() {
     const form = document.getElementById('create-dossier-form');
     form.style.display = form.style.display === 'none' ? 'block' : 'none';
@@ -349,7 +500,7 @@ async function submitCreateDossier() {
     const res = await fetch(`${API_BASE}/api/dossiers`, {
         method: 'POST',
         headers: {
-            'Authorization': `Bearer ${keycloak.token}`,
+            'Authorization': `Bearer ${appToken}`,
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
@@ -366,7 +517,7 @@ async function submitCreateDossier() {
 async function submitDossier(id) {
     const res = await fetch(`${API_BASE}/api/dossiers/${id}/submit`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${keycloak.token}` }
+        headers: { 'Authorization': `Bearer ${appToken}` }
     });
     if (res.ok) loadDossiers();
 }
@@ -376,7 +527,7 @@ async function renderValidationView(container, type) {
     <div id="validation-list" class="list-container">Chargement...</div>`;
 
     const response = await fetch(`${API_BASE}/api/dossiers`, {
-        headers: { 'Authorization': `Bearer ${keycloak.token}` }
+        headers: { 'Authorization': `Bearer ${appToken}` }
     });
     const dossiers = await response.json();
     const filtered = dossiers.filter(d => d.statut === 'ATTENTE_VALIDATION');
@@ -393,7 +544,7 @@ async function validateDossier(id, type) {
     const endpoint = type === 'jur' ? 'validate-jur' : 'validate-fin';
     const res = await fetch(`${API_BASE}/api/dossiers/${id}/${endpoint}`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${keycloak.token}` }
+        headers: { 'Authorization': `Bearer ${appToken}` }
     });
     if (res.ok) renderRoleView(type === 'jur' ? 'juridique' : 'financier');
 }

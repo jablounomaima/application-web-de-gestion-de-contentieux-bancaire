@@ -50,12 +50,6 @@
         <artifactId>spring-security-oauth2-jose</artifactId>
     </dependency>
 
-    <!-- H2 -->
-    <dependency>
-        <groupId>com.h2database</groupId>
-        <artifactId>h2</artifactId>
-        <scope>runtime</scope>
-    </dependency>
 
     <!-- MySQL Driver -->
     <dependency>

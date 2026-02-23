@@ -21,7 +21,7 @@
             <div class="sidebar-header">
                 <div class="logo">
                     <div class="logo-icon">⚖️</div>
-                    <span>JurisLink</span>
+                    <span>BNA</span>
                 </div>
             </div>
 
@@ -143,6 +143,80 @@
                 <button onclick="useKeycloakLogin()"
                     style="background: transparent; border: none; color: var(--primary); font-size: 0.85rem; cursor: pointer; text-decoration: underline;">Utiliser
                     Keycloak (Admin/Autres)</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Agent Modal -->
+    <div id="edit-agent-overlay" class="overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Modifier l'Agent</h2>
+                <button onclick="closeEditAgentModal()" class="close-btn">&times;</button>
+            </div>
+
+            <input type="hidden" id="edit-agt-id">
+
+            <div class="form-group">
+                <label>Nom d'utilisateur</label>
+                <input id="edit-agt-user" disabled style="background: #f8fafc; color: #94a3b8;">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group"><label>Nom</label><input id="edit-agt-nom"></div>
+                <div class="form-group"><label>Prénom</label><input id="edit-agt-prenom"></div>
+            </div>
+
+            <div class="form-group"><label>Email</label><input id="edit-agt-email" type="email"></div>
+            <div class="form-group"><label>Téléphone</label><input id="edit-agt-tel"></div>
+
+            <div class="form-group">
+                <label>Changer Mot de Passe (laisser vide si inchangé)</label>
+                <input id="edit-agt-pass" type="password" placeholder="••••••••">
+            </div>
+
+            <div class="form-group">
+                <label>Agence d'affectation</label>
+                <select id="edit-agt-agId"></select>
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button onclick="submitUpdateAgent()" class="primary-btn" style="flex: 2;">Enregistrer les
+                    modifications</button>
+                <button onclick="handleDeleteAgentInModal()" class="delete-btn" style="flex: 1;">Supprimer</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Agency Modal -->
+    <div id="edit-agency-overlay" class="overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="agency-modal-title">Ajouter une Agence</h2>
+                <button onclick="closeEditAgencyModal()" class="close-btn">&times;</button>
+            </div>
+
+            <input type="hidden" id="edit-ag-id">
+
+            <div class="form-group">
+                <label>Nom de l'agence</label>
+                <input id="edit-ag-nom" placeholder="ex: Agence Centrale">
+            </div>
+
+            <div class="form-group">
+                <label>Code Agence</label>
+                <input id="edit-ag-code" placeholder="ex: AGC001">
+            </div>
+
+            <div class="form-group">
+                <label>Ville</label>
+                <input id="edit-ag-ville" placeholder="ex: Tunis">
+            </div>
+
+            <div style="display: flex; gap: 1rem; margin-top: 2rem;">
+                <button onclick="submitAgency()" class="primary-btn" style="flex: 2;">Enregistrer</button>
+                <button id="delete-ag-btn" onclick="handleDeleteAgencyInModal()" class="delete-btn"
+                    style="flex: 1; display: none;">Supprimer</button>
             </div>
         </div>
     </div>
