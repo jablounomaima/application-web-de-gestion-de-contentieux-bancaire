@@ -14,7 +14,7 @@ import java.util.Map;
 @Service
 public class AuthService {
 
-    private final String SECRET = "a-very-long-and-secure-secret-key-for-contentieux-security-123456";
+    private final String SECRET = "contentieux-secret-key-32-chars!";
     private final Key key = Keys.hmacShaKeyFor(SECRET.getBytes());
     private final long EXPIRATION_TIME = 86400000; // 1 day
 
@@ -32,7 +32,7 @@ public class AuthService {
                 .setSubject(username)
                 .setIssuedAt(new Date())
                 .setExpiration(new Date(System.currentTimeMillis() + EXPIRATION_TIME))
-                .signWith(key)
+                .signWith(key, SignatureAlgorithm.HS256)
                 .compact();
     }
 

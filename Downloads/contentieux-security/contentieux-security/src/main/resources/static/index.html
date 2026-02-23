@@ -221,6 +221,165 @@
         </div>
     </div>
 
+    <!-- User (Utilisateur) Modal -->
+    <div id="user-overlay" class="overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h2 id="user-modal-title">Nouvel Utilisateur</h2>
+                <button onclick="closeUserModal()" class="close-btn">&times;</button>
+            </div>
+
+            <input type="hidden" id="user-id">
+
+            <div class="form-group">
+                <label>Nom d'utilisateur</label>
+                <input id="user-username" placeholder="Identifiant de connexion">
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                <div class="form-group"><label>Nom</label><input id="user-nom" placeholder="Nom"></div>
+                <div class="form-group"><label>Prénom</label><input id="user-prenom" placeholder="Prénom"></div>
+            </div>
+
+            <div class="form-group"><label>Email</label><input id="user-email" type="email" placeholder="Email"></div>
+            <div class="form-group"><label>Téléphone</label><input id="user-telephone" placeholder="Téléphone"></div>
+
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input id="user-pass" type="password" placeholder="Mot de passe">
+            </div>
+
+            <div class="form-group">
+                <label>Rôle</label>
+                <select id="user-role-select">
+                    <option value="AVOCAT">Avocat</option>
+                    <option value="HUISSIER">Huissier</option>
+                    <option value="EXPERT">Expert</option>
+                    <option value="VALIDATEUR_FINANCIER">Validateur Financier</option>
+                    <option value="VALIDATEUR_JURIDIQUE">Validateur Juridique</option>
+                </select>
+            </div>
+
+            <div class="form-group"><label>Spécialité (Optionnel)</label><input id="user-specialite"
+                    placeholder="Ex: Droit immobilier"></div>
+
+            <button onclick="submitUser()" class="primary-btn"
+                style="width: 100%; margin-top: 1rem; padding: 1rem;">Enregistrer</button>
+        </div>
+    </div>
+
+    <!-- Client Modal -->
+    <div id="client-overlay" class="overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 600px;">
+            <div class="modal-header">
+                <h2>Nouveau Client</h2>
+                <button onclick="closeClientModal()" class="close-btn">&times;</button>
+            </div>
+
+            <div class="form-group">
+                <label>Type de Client</label>
+                <select id="client-type" onchange="toggleClientTypeFields()">
+                    <option value="PHYSIQUE">Personne Physique 👤</option>
+                    <option value="MORALE">Personne Morale 🏢</option>
+                </select>
+            </div>
+
+            <!-- Fields for PHYSIQUE -->
+            <div id="physique-fields" class="type-specific-fields">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group"><label>Nom</label><input id="client-nom" placeholder="Nom"></div>
+                    <div class="form-group"><label>Prénom</label><input id="client-prenom" placeholder="Prénom"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group"><label>Date de Naissance</label><input type="date" id="client-dob"></div>
+                    <div class="form-group"><label>CIN</label><input id="client-cin" placeholder="Numéro CIN"></div>
+                </div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group"><label>Passeport</label><input id="client-passeport"
+                            placeholder="N° Passeport"></div>
+                    <div class="form-group"><label>Carte Séjour</label><input id="client-sejour"
+                            placeholder="N° Carte Séjour"></div>
+                </div>
+                <div class="form-group"><label>Adresse</label><input id="client-adresse" placeholder="Adresse complète">
+                </div>
+            </div>
+
+            <!-- Fields for MORALE -->
+            <div id="morale-fields" class="type-specific-fields" style="display: none;">
+                <div class="form-group"><label>Raison Sociale</label><input id="client-raison"
+                        placeholder="Nom de l'entreprise"></div>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+                    <div class="form-group"><label>RNE / Registre Commerce</label><input id="client-rne"
+                            placeholder="Numéro RNE"></div>
+                    <div class="form-group"><label>Matricule Fiscal</label><input id="client-fiscal"
+                            placeholder="Matricule Fiscal"></div>
+                </div>
+                <div class="form-group"><label>Représentant Légal</label><input id="client-represt"
+                        placeholder="Nom du représentant"></div>
+                <div class="form-group"><label>Adresse Siège</label><input id="client-adresse-siege"
+                        placeholder="Adresse du siège"></div>
+            </div>
+
+            <button onclick="submitClient()" class="primary-btn"
+                style="width: 100%; margin-top: 1rem; padding: 1rem;">Créer Client</button>
+        </div>
+    </div>
+
+    <!-- Assurance/Garantie/Risque Modal -->
+    <div id="risk-overlay" class="overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Ajouter une Garantie / Risque</h2>
+                <button onclick="closeRiskModal()" class="close-btn">&times;</button>
+            </div>
+            <input type="hidden" id="risk-dossier-id">
+            <div class="form-group">
+                <label>Type de Garantie</label>
+                <input id="risk-type" placeholder="ex: Hypothèque, Gage, Caution">
+            </div>
+            <div class="form-group">
+                <label>Valeur Estimée (TND)</label>
+                <input type="number" id="risk-valeur" placeholder="ex: 50000">
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea id="risk-desc"
+                    style="width: 100%; border-radius: 8px; border: 1px solid #e2e8f0; padding: 0.8rem;"></textarea>
+            </div>
+            <button onclick="submitRisk()" class="primary-btn" style="width: 100%; margin-top: 1rem;">Ajouter au
+                Dossier</button>
+        </div>
+    </div>
+
+    <!-- Provider Assignment Modal -->
+    <div id="provider-overlay" class="overlay" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Désigner un Prestataire</h2>
+                <button onclick="closeProviderModal()" class="close-btn">&times;</button>
+            </div>
+            <input type="hidden" id="provider-dossier-id">
+            <div class="form-group">
+                <label>Type de Prestataire</label>
+                <select id="provider-role">
+                    <option value="AVOCAT">Avocat</option>
+                    <option value="HUISSIER">Huissier</option>
+                    <option value="EXPERT">Expert</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nom du Prestataire</label>
+                <input id="provider-nom" placeholder="ex: Me. Mohamed Aloui">
+            </div>
+            <div class="form-group">
+                <label>Titre de la Mission</label>
+                <input id="provider-titre" placeholder="ex: Signification de commande de payer">
+            </div>
+            <button onclick="submitProviderAssignment()" class="primary-btn"
+                style="width: 100%; margin-top: 1rem;">Assigner Mission</button>
+        </div>
+    </div>
+
     <script src="app.js"></script>
 </body>
 

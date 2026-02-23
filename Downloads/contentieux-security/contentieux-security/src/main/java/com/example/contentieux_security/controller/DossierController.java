@@ -2,8 +2,7 @@ package com.example.contentieux_security.controller;
 
 import com.example.contentieux_security.dto.DossierRequest;
 import com.example.contentieux_security.dto.RisqueRequest;
-import com.example.contentieux_security.entity.Dossier;
-import com.example.contentieux_security.entity.Risque;
+import com.example.contentieux_security.entity.*; // Added this import
 import com.example.contentieux_security.service.DossierService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -60,6 +59,13 @@ public class DossierController {
     @PreAuthorize("hasRole('VALID_JURIDIQUE')")
     public ResponseEntity<Void> validateJur(@PathVariable Long id) {
         dossierService.validateJuridique(id);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/{id}/garanties")
+    @PreAuthorize("hasRole('AGENT')")
+    public ResponseEntity<Void> addGarantie(@PathVariable Long id, @RequestBody Garantie garantie) {
+        dossierService.addGarantie(id, garantie);
         return ResponseEntity.ok().build();
     }
 

@@ -16,17 +16,24 @@ public class Client {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String nom;
+    // Common fields
+    private String type; // PHYSIQUE or MORALE
 
-    @Column(nullable = false)
-    private String prenom;
-
-    @Column(unique = true)
+    // PHYSIQUE fields
     private String cin;
-
-    private String telephone;
+    private String passeport;
+    private String carteSejour;
+    private String nom;
+    private String prenom;
+    private String dateNaissance;
     private String adresse;
+
+    // MORALE fields
+    private String raisonSociale;
+    private String rne; // or Registre de commerce
+    private String matriculeFiscal;
+    private String adresseSiege;
+    private String representantLegal;
 
     @OneToMany(mappedBy = "client")
     private List<Dossier> dossiers;

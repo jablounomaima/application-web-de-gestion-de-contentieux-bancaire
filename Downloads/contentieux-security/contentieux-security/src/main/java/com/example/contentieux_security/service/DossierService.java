@@ -18,6 +18,7 @@ public class DossierService {
     private final ClientRepository clientRepository;
     private final AgenceRepository agenceRepository;
     private final RisqueRepository risqueRepository;
+    private final GarantieRepository garantieRepository;
     private final AgentBancaireRepository agentBancaireRepository;
 
     @Transactional
@@ -56,6 +57,14 @@ public class DossierService {
                 .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
         risque.setDossier(dossier);
         risqueRepository.save(risque);
+    }
+
+    @Transactional
+    public void addGarantie(Long dossierId, Garantie garantie) {
+        Dossier dossier = dossierRepository.findById(dossierId)
+                .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
+        garantie.setDossier(dossier);
+        garantieRepository.save(garantie);
     }
 
     @Transactional
