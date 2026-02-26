@@ -473,7 +473,7 @@ async function renderAgentView(container) {
     container.innerHTML = `
             <div class="admin-tabs" style="margin-bottom: 1rem; border-bottom: 1px solid #e2e8f0; display: flex; gap: 1rem;">
                 <button id="tab-btn-dossiers" class="tab-btn active" onclick="showAgentTab('dossiers')" style="background: none; border: none; padding: 0.5rem 1rem; cursor: pointer; border-bottom: 2px solid var(--primary); font-weight: bold; color: var(--primary);">📁 Dossiers & Clients</button>
-                <button id="tab-btn-utilisateurs" class="tab-btn" onclick="showAgentTab('utilisateurs')" style="background: none; border: none; padding: 0.5rem 1rem; cursor: pointer; color: #64748b; font-weight: 500;">👥 Gérer Utilisateurs</button>
+                <button id="tab-btn-utilisateurs" class="tab-btn" onclick="showAgentTab('utilisateurs')" style="background: none; border: none; padding: 0.5rem 1rem; cursor: pointer; color: #64748b; font-weight: 500;">👥 Gérer l'Équipe</button>
             </div>
 
             <div id="agent-tab-dossiers">
@@ -500,7 +500,7 @@ async function renderAgentView(container) {
 
             <div id="agent-tab-utilisateurs" style="display: none;">
                 <div class="action-bar" style="margin-bottom: 24px; display: flex; gap: 1rem;">
-                    <button class="primary-btn" onclick="openUserModal()">+ Nouvel Utilisateur</button>
+                    <button class="primary-btn" onclick="openUserModal()">+ Ajouter un Collaborateur</button>
                 </div>
                 <div id="users-list" class="list-container">Chargement des utilisateurs...</div>
             </div>
@@ -509,6 +509,161 @@ async function renderAgentView(container) {
     loadDossiers();
     loadClientsForSelect();
     loadAgencesForSelect();
+    loadUsers(); // Précharger les utilisateurs
+}
+
+function showAgentTab(tab) {
+    const dosTab = document.getElementById('agent-tab-dossiers');
+    const userTab = document.getElementById('agent-tab-utilisateurs');
+    const dosBtn = document.getElementById('tab-btn-dossiers');
+    const userBtn = document.getElementById('tab-btn-utilisateurs');
+
+    if (tab === 'dossiers') {
+        dosTab.style.display = 'block';
+        userTab.style.display = 'none';
+        dosBtn.classList.add('active');
+        userBtn.classList.remove('active');
+        dosBtn.style.borderBottom = '2px solid var(--primary)';
+        dosBtn.style.color = 'var(--primary)';
+        userBtn.style.borderBottom = 'none';
+        userBtn.style.color = '#64748b';
+    } else {
+        dosTab.style.display = 'none';
+        userTab.style.display = 'block';
+        dosBtn.classList.remove('active');
+        userBtn.classList.add('active');
+        userBtn.style.borderBottom = '2px solid var(--primary)';
+        userBtn.style.color = 'var(--primary)';
+        dosBtn.style.borderBottom = 'none';
+        dosBtn.style.color = '#64748b';
+        loadUsers();
+    }
+}
+
+async function loadUsers() {
+    const list = document.getElementById('users-list');
+    if (!list) return;
+
+    const res = await fetch(`${API_BASE}/api/utilisateurs`, {
+        headers: { 'Authorization': `Bearer ${appToken}` }
+    });
+
+    if (res.ok) {
+        const users = await res.json();
+        list.innerHTML = users.map(u => `
+            <div class="list-item">
+                <div style="flex: 1;">
+                    <strong>${u.prenom} ${u.nom}</strong> (${u.username})<br>
+                    <small>${u.role} | ${u.email || 'Pas d\'email'}</small>
+                </div>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick='openUserModal(${JSON.stringify(u)})' class="secondary-btn" style="padding: 4px 12px; font-size: 0.8rem;">Modifier</button>
+                    <button onclick="deleteUser(${u.id})" class="secondary-btn" style="padding: 4px 12px; font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #ef4444;">&times;</button>
+                </div>
+            </div>
+        `).join('') || '<p style="padding: 20px; text-align: center; opacity: 0.5;">Aucun collaborateur trouvé pour votre agence.</p>';
+    }
+}
+
+function openUserModal(user = null) {
+    const title = document.getElementById('user-modal-title');
+    const passField = document.getElementById('user-pass');
+
+    if (user) {
+        title.innerText = "Modifier le Collaborateur";
+        document.getElementById('user-id').value = user.id;
+        document.getElementById('user-username').value = user.username;
+        document.getElementById('user-username').disabled = true;
+        document.getElementById('user-nom').value = user.nom;
+        document.getElementById('user-prenom').value = user.prenom;
+        document.getElementById('user-email').value = user.email || '';
+        document.getElementById('user-telephone').value = user.telephone || '';
+        document.getElementById('user-role-select').value = user.role;
+        document.getElementById('user-specialite').value = user.specialite || '';
+        passField.placeholder = "•••••••• (laisser vide pour ne pas changer)";
+    } else {
+        title.innerText = "Nouvel Utilisateur";
+        document.getElementById('user-id').value = "";
+        document.getElementById('user-username').value = "";
+        document.getElementById('user-username').disabled = false;
+        document.getElementById('user-nom').value = "";
+        document.getElementById('user-prenom').value = "";
+        document.getElementById('user-email').value = "";
+        document.getElementById('user-telephone').value = "";
+        document.getElementById('user-role-select').selectedIndex = 0;
+        document.getElementById('user-specialite').value = "";
+        passField.placeholder = "Mot de passe";
+    }
+    document.getElementById('user-overlay').style.display = 'flex';
+}
+
+function closeUserModal() {
+    document.getElementById('user-overlay').style.display = 'none';
+}
+
+async function submitUser() {
+    const id = document.getElementById('user-id').value;
+    const data = {
+        username: document.getElementById('user-username').value,
+        nom: document.getElementById('user-nom').value,
+        prenom: document.getElementById('user-prenom').value,
+        email: document.getElementById('user-email').value,
+        telephone: document.getElementById('user-telephone').value,
+        role: document.getElementById('user-role-select').value,
+        specialite: document.getElementById('user-specialite').value,
+        password: document.getElementById('user-pass').value
+    };
+
+    const method = id ? 'PUT' : 'POST';
+    const url = id ? `${API_BASE}/api/utilisateurs/${id}` : `${API_BASE}/api/utilisateurs`;
+
+    const res = await fetch(url, {
+        method: method,
+        headers: {
+            'Authorization': `Bearer ${appToken}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(data)
+    });
+
+    if (res.ok) {
+        closeUserModal();
+        loadUsers();
+        showToast(id ? "Utilisateur mis à jour" : "Utilisateur créé et synchronisé avec Keycloak");
+    } else {
+        const err = await res.text();
+        showToast("Erreur: " + err, true);
+    }
+}
+
+async function deleteUser(id) {
+    if (confirm("Supprimer ce collaborateur de votre agence et de Keycloak ?")) {
+        const res = await fetchWithAuth(`${API_BASE}/api/utilisateurs/${id}`, {
+            method: 'DELETE'
+        });
+        if (res && res.ok) {
+            loadUsers();
+            showToast("Utilisateur supprimé");
+        }
+    }
+}
+
+function showToast(message, isError = false) {
+    const toast = document.createElement('div');
+    toast.className = 'toast';
+    if (isError) toast.style.backgroundColor = '#ef4444';
+    toast.style.position = 'fixed';
+    toast.style.bottom = '20px';
+    toast.style.right = '20px';
+    toast.style.padding = '12px 24px';
+    toast.style.borderRadius = '8px';
+    toast.style.color = 'white';
+    toast.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+    toast.style.zIndex = '10000';
+    toast.style.transition = 'all 0.3s ease';
+    toast.innerText = message;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
 
 async function loadAgencesForSelect() {
@@ -843,140 +998,6 @@ async function fetchFromAPI(type, endpoint) {
     }
 }
 
-// === GESTION UTILISATEURS PAR L'AGENT ===
-
-function showAgentTab(tab) {
-    document.getElementById('tab-btn-dossiers').classList.toggle('active', tab === 'dossiers');
-    document.getElementById('tab-btn-utilisateurs').classList.toggle('active', tab === 'utilisateurs');
-
-    document.getElementById('agent-tab-dossiers').style.display = tab === 'dossiers' ? 'block' : 'none';
-    document.getElementById('agent-tab-utilisateurs').style.display = tab === 'utilisateurs' ? 'block' : 'none';
-
-    if (tab === 'dossiers') {
-        document.getElementById('tab-btn-dossiers').style.borderBottom = '2px solid var(--primary)';
-        document.getElementById('tab-btn-dossiers').style.color = 'var(--primary)';
-        document.getElementById('tab-btn-utilisateurs').style.borderBottom = 'none';
-        document.getElementById('tab-btn-utilisateurs').style.color = '#64748b';
-    } else {
-        document.getElementById('tab-btn-utilisateurs').style.borderBottom = '2px solid var(--primary)';
-        document.getElementById('tab-btn-utilisateurs').style.color = 'var(--primary)';
-        document.getElementById('tab-btn-dossiers').style.borderBottom = 'none';
-        document.getElementById('tab-btn-dossiers').style.color = '#64748b';
-        loadUtilisateurs();
-    }
-}
-
-function openUserModal() {
-    document.getElementById('user-id').value = '';
-    document.getElementById('user-username').value = '';
-    document.getElementById('user-nom').value = '';
-    document.getElementById('user-prenom').value = '';
-    document.getElementById('user-email').value = '';
-    document.getElementById('user-telephone').value = '';
-    document.getElementById('user-pass').value = '';
-    document.getElementById('user-role-select').value = 'AVOCAT';
-    document.getElementById('user-specialite').value = '';
-    document.getElementById('user-modal-title').innerText = 'Nouvel Utilisateur';
-    document.getElementById('user-overlay').style.display = 'flex';
-}
-
-function closeUserModal() {
-    document.getElementById('user-overlay').style.display = 'none';
-}
-
-function editUtilisateur(u) {
-    document.getElementById('user-id').value = u.id;
-    document.getElementById('user-username').value = u.username;
-    document.getElementById('user-nom').value = u.nom;
-    document.getElementById('user-prenom').value = u.prenom;
-    document.getElementById('user-email').value = u.email;
-    document.getElementById('user-telephone').value = u.telephone;
-    document.getElementById('user-pass').value = ''; // Don't show password
-    document.getElementById('user-role-select').value = u.role;
-    document.getElementById('user-specialite').value = u.specialite || '';
-    document.getElementById('user-modal-title').innerText = 'Modifier Utilisateur';
-    document.getElementById('user-overlay').style.display = 'flex';
-}
-
-async function submitUser() {
-    const id = document.getElementById('user-id').value;
-    const data = {
-        username: document.getElementById('user-username').value,
-        nom: document.getElementById('user-nom').value,
-        prenom: document.getElementById('user-prenom').value,
-        email: document.getElementById('user-email').value,
-        telephone: document.getElementById('user-telephone').value,
-        password: document.getElementById('user-pass').value,
-        role: document.getElementById('user-role-select').value,
-        specialite: document.getElementById('user-specialite').value
-    };
-
-    const method = id ? 'PUT' : 'POST';
-    const url = id ? `${API_BASE}/api/utilisateurs/${id}` : `${API_BASE}/api/utilisateurs`;
-
-    const res = await fetchWithAuth(url, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    });
-
-    if (!res) return; // 401 handled by fetchWithAuth
-
-    if (res.ok) {
-        closeUserModal();
-        loadUtilisateurs();
-        alert("Utilisateur enregistré avec succès !");
-    } else {
-        const errorText = await res.text();
-        alert(`Erreur HTTP ${res.status} lors de l'enregistrement de l'utilisateur. Message du serveur : ${errorText}`);
-    }
-}
-
-async function loadUtilisateurs() {
-    const list = document.getElementById('users-list');
-    list.innerHTML = 'Chargement...';
-
-    try {
-        const res = await fetchWithAuth(`${API_BASE}/api/utilisateurs`);
-        if (!res) return; // 401 handled
-
-        if (res.ok) {
-            const users = await res.json();
-            list.innerHTML = users.map(u => `
-                <div class="list-item" style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <strong>${u.nom} ${u.prenom}</strong> <span class="badge" style="background:var(--primary); color:white">${u.role}</span>
-                        <div style="font-size: 0.85rem; color: var(--text-muted); margin-top: 4px;">
-                            ${u.username} | ${u.email} | ${u.telephone || ''}
-                            ${u.specialite ? `<br>Spécialité: ${u.specialite}` : ''}
-                        </div>
-                    </div>
-                    <div style="display: flex; gap: 8px;">
-                        <button onclick='editUtilisateur(${JSON.stringify(u).replace(/'/g, "&#39;")})' class="secondary-btn" style="padding: 4px 12px; font-size: 0.8rem;">Modifier</button>
-                        <button onclick="deleteUtilisateur(${u.id})" class="secondary-btn" style="padding: 4px 12px; font-size: 0.8rem; background: rgba(239, 68, 68, 0.1); border-color: #ef4444; color: #ef4444;">Supprimer</button>
-                    </div>
-                </div>
-            `).join('') || 'Aucun utilisateur trouvé.';
-        } else {
-            list.innerHTML = 'Erreur lors du chargement des utilisateurs.';
-        }
-    } catch (e) {
-        list.innerHTML = 'Erreur réseau.';
-    }
-}
-
-async function deleteUtilisateur(id) {
-    if (confirm("Voulez-vous vraiment supprimer cet utilisateur ?")) {
-        const res = await fetch(`${API_BASE}/api/utilisateurs/${id}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${appToken}` }
-        });
-        if (res.ok) {
-            loadUtilisateurs();
-        } else {
-            alert("Erreur lors de la suppression.");
-        }
-    }
-}
+// Application initialized via init() at the end
 
 init();

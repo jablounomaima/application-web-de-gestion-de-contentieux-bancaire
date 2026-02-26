@@ -29,6 +29,10 @@ public class Utilisateur {
     @Column(name = "role_utilisateur", nullable = false)
     private RoleUtilisateur role;
 
+    @ManyToOne
+    @JoinColumn(name = "agence_id")
+    private Agence agence;
+
     // Additional fields can be added if specific to some roles
     private String specialite; // useful for experts or avocats
 }
