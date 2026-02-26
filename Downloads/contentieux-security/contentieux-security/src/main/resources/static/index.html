@@ -116,33 +116,25 @@
         </main>
     </div>
 
-    <!-- Login Overlay -->
+    <!-- Login Overlay (Keycloak Only) -->
     <div id="login-overlay" class="overlay" style="display: none; background: rgba(15, 23, 42, 0.95);">
         <div class="form-card"
-            style="width: 100%; max-width: 400px; padding: 2.5rem; border: 1px solid rgba(255,255,255,0.1);">
-            <div style="text-align: center; margin-bottom: 2rem;">
-                <div style="font-size: 3rem; margin-bottom: 1rem;">⚖️</div>
-                <h2 style="margin: 0; color: #fff;">Connexion Agent</h2>
-                <p style="color: var(--text-muted); font-size: 0.9rem;">Utilisez vos identifiants d'agence</p>
+            style="width: 100%; max-width: 400px; padding: 3rem; border: 1px solid rgba(255,255,255,0.1); text-align: center;">
+            <div style="margin-bottom: 2rem;">
+                <div style="font-size: 4rem; margin-bottom: 1.5rem;">⚖️</div>
+                <h2 style="margin: 0; color: #fff; font-size: 1.8rem;">Portail Contentieux</h2>
+                <p style="color: var(--text-muted); margin-top: 0.5rem; font-size: 0.9rem;">Authentification Centralisée BNA</p>
             </div>
-            <div class="form-group">
-                <label>Nom d'utilisateur</label>
-                <input type="text" id="login-user" placeholder="ex: agent1">
-            </div>
-            <div class="form-group">
-                <label>Mot de passe</label>
-                <input type="password" id="login-pass" placeholder="••••••••">
-            </div>
-            <div id="login-error"
-                style="color: #ef4444; font-size: 0.85rem; margin-bottom: 1rem; display: none; text-align: center;">
-                Identifiants incorrects. Veuillez réessayer.
-            </div>
-            <button onclick="performLocalLogin()" class="primary-btn"
-                style="width: 100%; padding: 0.8rem; margin-top: 1rem;">Se connecter</button>
-            <div style="margin-top: 1.5rem; text-align: center;">
-                <button onclick="useKeycloakLogin()"
-                    style="background: transparent; border: none; color: var(--primary); font-size: 0.85rem; cursor: pointer; text-decoration: underline;">Utiliser
-                    Keycloak (Admin/Autres)</button>
+            
+            <button onclick="useKeycloakLogin()" class="primary-btn"
+                style="width: 100%; padding: 1.2rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 12px; font-size: 1rem;">
+                <span>🔑</span> Accéder avec Keycloak
+            </button>
+            
+            <div style="margin-top: 2.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                <p style="color: var(--text-muted); font-size: 0.8rem; line-height: 1.4;">
+                    L'agent <strong>sami</strong> doit être présent dans Keycloak pour accéder au système.
+                </p>
             </div>
         </div>
     </div>

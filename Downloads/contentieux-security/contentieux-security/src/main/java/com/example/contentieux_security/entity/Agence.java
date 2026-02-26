@@ -1,6 +1,7 @@
 package com.example.contentieux_security.entity;
 
 import jakarta.persistence.*;
+import java.util.List;
 import lombok.*;
 import java.util.List;
 
@@ -20,8 +21,15 @@ public class Agence {
     private String nom;
 
     private String code;
+    private String adresse;
     private String ville;
+    private String telephone;
+    private String email;
+    private String directeur;
 
     @OneToMany(mappedBy = "agence")
     private List<Dossier> dossiers;
+
+    @OneToMany(mappedBy = "agence")
+    private List<Client> clients;
 }

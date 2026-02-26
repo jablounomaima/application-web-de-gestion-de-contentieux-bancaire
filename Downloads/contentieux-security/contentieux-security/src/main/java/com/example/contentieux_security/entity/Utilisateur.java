@@ -1,5 +1,6 @@
 package com.example.contentieux_security.entity;
 
+import java.util.Map;
 import jakarta.persistence.*;
 import lombok.*;
 

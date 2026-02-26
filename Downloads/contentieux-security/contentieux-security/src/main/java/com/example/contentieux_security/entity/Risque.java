@@ -3,6 +3,7 @@ package com.example.contentieux_security.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.math.BigDecimal;
+import java.util.List;
 
 @Entity
 @Table(name = "risques")
@@ -19,8 +20,8 @@ public class Risque {
     private BigDecimal montantInitial;
     private BigDecimal montantRestant;
 
-    private String typeGarantie; // Véhicule, Maison, etc.
-    private String descriptionGarantie;
+    @OneToMany(mappedBy = "risque", cascade = CascadeType.ALL)
+    private List<Garantie> garanties;
 
     @ManyToOne
     @JoinColumn(name = "dossier_id")

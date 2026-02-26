@@ -1,8 +1,8 @@
 package com.example.contentieux_security.entity;
 
 import jakarta.persistence.*;
-import lombok.*;
 import java.util.List;
+import lombok.*;
 
 @Entity
 @Table(name = "clients")
@@ -35,6 +35,10 @@ public class Client {
     private String adresseSiege;
     private String representantLegal;
 
-    @OneToMany(mappedBy = "client")
-    private List<Dossier> dossiers;
+    @OneToOne(mappedBy = "client", cascade = CascadeType.ALL)
+    private Dossier dossier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "agence_id")
+    private Agence agence;
 }

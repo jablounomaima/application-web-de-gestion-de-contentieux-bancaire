@@ -34,8 +34,6 @@ public class DossierController {
         Risque risque = Risque.builder()
                 .montantInitial(request.getMontantInitial())
                 .montantRestant(request.getMontantInitial())
-                .typeGarantie(request.getTypeGarantie())
-                .descriptionGarantie(request.getDescriptionGarantie())
                 .build();
         dossierService.addRisque(id, risque);
         return ResponseEntity.ok().build();
@@ -62,10 +60,10 @@ public class DossierController {
         return ResponseEntity.ok().build();
     }
 
-    @PostMapping("/{id}/garanties")
+    @PostMapping("/risques/{risqueId}/garanties")
     @PreAuthorize("hasRole('AGENT')")
-    public ResponseEntity<Void> addGarantie(@PathVariable Long id, @RequestBody Garantie garantie) {
-        dossierService.addGarantie(id, garantie);
+    public ResponseEntity<Void> addGarantie(@PathVariable Long risqueId, @RequestBody Garantie garantie) {
+        dossierService.addGarantie(risqueId, garantie);
         return ResponseEntity.ok().build();
     }
 
@@ -78,7 +76,7 @@ public class DossierController {
     @PreAuthorize("hasRole('AGENT')")
     public ResponseEntity<Void> createPrestation(@PathVariable Long id,
             @RequestBody com.example.contentieux_security.dto.PrestationRequest request) {
-        dossierService.createPrestation(id, request.getType());
+        dossierService.createPrestation(id, request.getType(), request.getDescription());
         return ResponseEntity.ok().build();
     }
 
@@ -86,8 +84,7 @@ public class DossierController {
     @PreAuthorize("hasRole('AGENT')")
     public ResponseEntity<Void> createMission(@PathVariable Long prestationId,
             @RequestBody com.example.contentieux_security.dto.MissionRequest request) {
-        dossierService.createMission(prestationId, request.getTitre(), request.getPrestataireNom(),
-                request.getPrestataireRole());
+        dossierService.createMission(prestationId, request.getDescription());
         return ResponseEntity.ok().build();
     }
 }

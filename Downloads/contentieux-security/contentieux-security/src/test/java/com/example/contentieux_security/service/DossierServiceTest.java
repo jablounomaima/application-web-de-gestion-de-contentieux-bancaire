@@ -40,27 +40,27 @@ class DossierServiceTest {
         Dossier dossier = Dossier.builder()
                 .id(dossierId)
                 .statut(DossierStatus.ATTENTE_VALIDATION)
-                .validationFinanciere(false)
-                .validationJuridique(false)
                 .build();
 
         when(dossierRepository.findById(dossierId)).thenReturn(Optional.of(dossier));
 
         // Act & Assert 1: Only Financial Validation
         dossierService.validateFinanciere(dossierId);
-        assertTrue(dossier.isValidationFinanciere());
-        assertFalse(dossier.isValidationJuridique());
+        assertNotNull(dossier.getValidationFinanciere());
+        assertTrue(dossier.getValidationFinanciere().getEstValide());
+        assertNull(dossier.getValidationJuridique());
         assertEquals(DossierStatus.ATTENTE_VALIDATION, dossier.getStatut());
 
         // Act & Assert 2: Only Legal Validation (reset first)
-        dossier.setValidationFinanciere(false);
+        dossier.setValidationFinanciere(null);
         dossierService.validateJuridique(dossierId);
-        assertFalse(dossier.isValidationFinanciere());
-        assertTrue(dossier.isValidationJuridique());
+        assertNull(dossier.getValidationFinanciere());
+        assertNotNull(dossier.getValidationJuridique());
+        assertTrue(dossier.getValidationJuridique().getEstValide());
         assertEquals(DossierStatus.ATTENTE_VALIDATION, dossier.getStatut());
 
         // Act & Assert 3: Both Valdiations
-        dossier.setValidationFinanciere(true);
+        dossier.setValidationFinanciere(ValidationFinanciere.builder().estValide(true).build());
         dossierService.validateJuridique(dossierId); // juridiques will trigger checkFinalValidation
         assertEquals(DossierStatus.VALIDE, dossier.getStatut());
         verify(dossierRepository, atLeastOnce()).save(dossier);

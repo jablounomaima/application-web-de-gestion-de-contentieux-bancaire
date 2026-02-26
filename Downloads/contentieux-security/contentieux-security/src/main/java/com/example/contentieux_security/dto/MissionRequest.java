@@ -4,7 +4,5 @@ import lombok.Data;
 
 @Data
 public class MissionRequest {
-    private String titre;
-    private String prestataireNom;
-    private String prestataireRole;
+    private String description;
 }

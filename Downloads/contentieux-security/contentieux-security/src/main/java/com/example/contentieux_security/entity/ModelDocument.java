@@ -1,27 +1,27 @@
 package com.example.contentieux_security.entity;
 
 import jakarta.persistence.*;
-import java.time.LocalDate;
 import lombok.*;
 
 @Entity
-@Table(name = "garanties")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class Garantie {
+public class ModelDocument {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String type; // Maison, Voiture, Terrain, etc.
-    private Double montant;
-    private String description;
-    private LocalDate dateEvaluation;
+    @Column(nullable = false)
+    private String nom;
 
-    @ManyToOne
-    @JoinColumn(name = "risque_id")
-    private Risque risque;
+    private String description;
+
+    private String typeDocument; // Maps to DocumentType code
+
+    private String cheminModele;
+
+    private Boolean estActif;
 }

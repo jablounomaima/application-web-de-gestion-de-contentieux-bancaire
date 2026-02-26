@@ -27,18 +27,7 @@ async function fetchWithAuth(url, options = {}) {
 }
 
 async function init() {
-    // 1. Check local session
-    const localToken = localStorage.getItem('local_token');
-    const localProfile = JSON.parse(localStorage.getItem('local_profile'));
-
-    if (localToken && localProfile) {
-        appToken = localToken;
-        appProfile = localProfile;
-        await startApp();
-        return;
-    }
-
-    // 2. Try Keycloak SSO
+    // 1. Try Keycloak SSO
     try {
         const authenticated = await keycloak.init({
             onLoad: 'check-sso',
@@ -64,9 +53,6 @@ async function init() {
 function showLogin(isError) {
     document.getElementById('loader').style.display = 'none';
     document.getElementById('login-overlay').style.display = 'flex';
-    if (isError) {
-        console.log("Keycloak inaccessible, switching to local mode.");
-    }
 }
 
 async function startApp() {
@@ -78,43 +64,6 @@ async function startApp() {
     updateUI();
     setupInteractions();
     autoRedirect();
-}
-
-async function performLocalLogin() {
-    const username = document.getElementById('login-user').value;
-    const password = document.getElementById('login-pass').value;
-    const errorEl = document.getElementById('login-error');
-
-    errorEl.style.display = 'none';
-
-    try {
-        const res = await fetch(`${API_BASE}/api/auth/login`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ username, password })
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            appToken = data.access_token;
-            appProfile = {
-                preferred_username: data.username,
-                roles: [data.role],
-                nom: data.nom || null,
-                prenom: data.prenom || null
-            };
-
-            localStorage.setItem('local_token', appToken);
-            localStorage.setItem('local_profile', JSON.stringify(appProfile));
-
-            await startApp();
-        } else {
-            errorEl.style.display = 'block';
-        }
-    } catch (e) {
-        errorEl.innerText = "Erreur de connexion au serveur.";
-        errorEl.style.display = 'block';
-    }
 }
 
 function useKeycloakLogin() {

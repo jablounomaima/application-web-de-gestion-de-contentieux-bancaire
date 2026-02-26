@@ -1,6 +1,8 @@
 package com.example.contentieux_security.entity;
 
 import jakarta.persistence.*;
+import java.time.LocalDate;
+import java.util.List;
 import lombok.*;
 import java.time.LocalDateTime;
 
@@ -16,17 +18,26 @@ public class Mission {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private String titre;
     private String description;
 
-    private String prestataireNom;
-    private String prestataireRole; // AVOCAT, EXPERT, HUISSIER
+    private LocalDate dateAssignation;
+    private LocalDate dateLimite;
 
-    private LocalDateTime dateAssignation;
+    @Enumerated(EnumType.STRING)
+    private StatutMission statut;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "dossier_id")
+    private Dossier dossier;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigne_a_id")
+    private Utilisateur assigneA;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "prestation_id")
     private Prestation prestation;
 
-    private String statut; // EN_COURS, TERMINEE
+    @OneToMany(mappedBy = "mission", cascade = CascadeType.ALL)
+    private List<ResultatMission> resultats;
 }
