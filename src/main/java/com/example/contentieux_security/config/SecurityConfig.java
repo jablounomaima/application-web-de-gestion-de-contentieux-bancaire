@@ -10,12 +10,9 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
-import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
@@ -23,8 +20,8 @@ import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
-import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
-
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import java.util.*;
 
 @Configuration
@@ -37,10 +34,9 @@ public class SecurityConfig {
     public SecurityConfig(ClientRegistrationRepository clientRegistrationRepository) {
         this.clientRegistrationRepository = clientRegistrationRepository;
     }
-
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+       return new BCryptPasswordEncoder();
     }
 
     @Bean
@@ -48,10 +44,13 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> auth
+
                 .requestMatchers("/", "/login", "/error",
                         "/css/**", "/js/**", "/images/**").permitAll()
 
-                .requestMatchers("/admin/**").permitAll()
+                // ADMIN seulement
+                .requestMatchers("/admin/**")
+                .hasRole("ADMIN")
 
                 .requestMatchers("/agent/**")
                 .hasAnyRole("AGENT", "ADMIN")
@@ -66,27 +65,23 @@ public class SecurityConfig {
                 .hasRole("HUISSIER")
 
                 .requestMatchers("/validateur/**")
-                .hasAnyRole("VALIDATEUR", "VALID_FINANCIER",
-                            "VALID_JURIDIQUE", "ADMIN")
+                .hasAnyRole("VALIDATEUR",
+                            "VALID_FINANCIER",
+                            "VALID_JURIDIQUE",
+                            "ADMIN")
 
                 .anyRequest().authenticated()
             )
 
             .oauth2Login(oauth2 -> oauth2
                 .defaultSuccessUrl("/admin/dashboard", true)
-                .failureUrl("/login?error=true")
                 .userInfoEndpoint(userInfo ->
                         userInfo.oidcUserService(oidcUserService())
                 )
             )
 
             .logout(logout -> logout
-                .logoutRequestMatcher(new AntPathRequestMatcher("/logout"))
                 .logoutSuccessHandler(keycloakLogoutSuccessHandler())
-                .invalidateHttpSession(true)
-                .deleteCookies("JSESSIONID")
-                .clearAuthentication(true)
-                .permitAll()
             );
 
         return http.build();
@@ -110,22 +105,9 @@ public class SecurityConfig {
                 idToken = oidcUser.getIdToken().getTokenValue();
             }
 
-            ClientRegistration registration =
-                    clientRegistrationRepository
-                            .findByRegistrationId("keycloak");
-
-            String endSessionEndpoint =
-                    registration.getProviderDetails()
-                            .getConfigurationMetadata()
-                            .get("end_session_endpoint")
-                            .toString();
-
-            String redirectUri =
-                    "http://localhost:8097/login";
-
             String logoutUrl =
-                    endSessionEndpoint
-                            + "?post_logout_redirect_uri=" + redirectUri;
+                    "http://127.0.0.1:8080/realms/contentieux-realm/protocol/openid-connect/logout"
+                    + "?post_logout_redirect_uri=http://localhost:8097";
 
             if (idToken != null) {
                 logoutUrl += "&id_token_hint=" + idToken;
@@ -139,7 +121,7 @@ public class SecurityConfig {
     }
 
     /**
-     * Mapping des Realm Roles Keycloak vers Spring
+     * Mapping des rôles Keycloak vers Spring
      */
     @Bean
     public OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
@@ -158,14 +140,12 @@ public class SecurityConfig {
                     new HashSet<>();
 
             Map<String, Object> realmAccess =
-                    (Map<String, Object>)
-                            claims.get("realm_access");
+                    (Map<String, Object>) claims.get("realm_access");
 
             if (realmAccess != null) {
 
                 List<String> roles =
-                        (List<String>)
-                                realmAccess.get("roles");
+                        (List<String>) realmAccess.get("roles");
 
                 if (roles != null) {
                     roles.forEach(role ->

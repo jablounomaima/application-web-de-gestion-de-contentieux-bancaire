@@ -18,25 +18,10 @@ public class LoginController {
         return "home";
     }
 
-
-
-
     @GetMapping("/login")
-    public String loginPage(
-            @RequestParam(required = false) String logout,
-            @RequestParam(required = false) String error,
-            Model model) {
-        
-        if (logout != null) {
-            model.addAttribute("message", "Vous avez été déconnecté avec succès.");
-            model.addAttribute("messageType", "success");
-        }
-        
-        if (error != null) {
-            model.addAttribute("message", "Échec de l'authentification. Veuillez réessayer.");
-            model.addAttribute("messageType", "error");
-        }
-        
-        return "login";
+    public String login() {
+        return "login"; // login.html
     }
+
+    
 }
