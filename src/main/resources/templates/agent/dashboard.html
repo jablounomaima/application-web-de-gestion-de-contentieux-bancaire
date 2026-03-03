@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tableau de Bord - Contentieux</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f6fa;
+            min-height: 100vh;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header h1 {
+            font-size: 1.5em;
+        }
+        
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+        
+        .logout-btn {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 1px solid white;
+            padding: 10px 20px;
+            border-radius: 25px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .logout-btn:hover {
+            background: white;
+            color: #667eea;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        
+        .welcome-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            margin-bottom: 30px;
+        }
+        
+        .welcome-card h2 {
+            color: #333;
+            margin-bottom: 10px;
+        }
+        
+        .role-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        
+        .menu-card {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+            text-decoration: none;
+            color: #333;
+            transition: all 0.3s;
+            border-left: 5px solid #667eea;
+        }
+        
+        .menu-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+        }
+        
+        .menu-card h3 {
+            color: #667eea;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .menu-card p {
+            color: #666;
+            font-size: 14px;
+        }
+        
+        .icon {
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🏦 Gestion des Contentieux Bancaires</h1>
+        <div class="user-info">
+            <span>Bienvenue, <strong sec:authentication="name">Utilisateur</strong></span>
+            <form th:action="@{/logout}" method="post">
+                <button type="submit" class="logout-btn">Déconnexion</button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="container">
+        <!-- ADMIN -->
+        <div sec:authorize="hasRole('ADMIN')" class="welcome-card">
+            <h2>👑 Espace Administrateur</h2>
+            <span class="role-badge">ADMIN</span>
+            <p>Gestion complète du système et des utilisateurs.</p>
+            
+            <div class="menu-grid">
+                <a th:href="@{/admin/agents}" class="menu-card">
+                    <h3><span class="icon">👤</span> Gérer les Agents</h3>
+                    <p>Créer, modifier et supprimer les comptes agents bancaires.</p>
+                </a>
+                <a th:href="@{/admin/agences}" class="menu-card">
+                    <h3><span class="icon">🏢</span> Gérer les Agences</h3>
+                    <p>Gérer les agences et leurs affectations.</p>
+                </a>
+                <a th:href="@{/admin/statistiques}" class="menu-card">
+                    <h3><span class="icon">📊</span> Statistiques Globales</h3>
+                    <p>Consulter les statistiques de tous les contentieux.</p>
+                </a>
+            </div>
+        </div>
+        
+        <!-- AGENT BANCAIRE -->
+        <div sec:authorize="hasRole('AGENT')" class="welcome-card">
+            <h2>🏦 Espace Agent Bancaire</h2>
+            <span class="role-badge">AGENT</span>
+            <p>Gestion des dossiers de contentieux et des missions.</p>
+            
+            <div class="menu-grid">
+                <a th:href="@{/agent/dossiers}" class="menu-card">
+                    <h3><span class="icon">📁</span> Gérer les Dossiers</h3>
+                    <p>Créer et suivre les dossiers de contentieux.</p>
+                </a>
+                <a th:href="@{/agent/clients}" class="menu-card">
+                    <h3><span class="icon">👥</span> Gérer les Clients</h3>
+                    <p>Ajouter et modifier les informations clients.</p>
+                </a>
+                <a th:href="@{/agent/prestataires}" class="menu-card">
+                    <h3><span class="icon">⚖️</span> Gérer les Prestataires</h3>
+                    <p>Créer les comptes avocats, experts et huissiers.</p>
+                </a>
+                <a th:href="@{/agent/missions}" class="menu-card">
+                    <h3><span class="icon">📝</span> Suivre les Missions</h3>
+                    <p>Consulter l'état des missions en cours.</p>
+                </a>
+            </div>
+        </div>
+        
+        <!-- VALIDATEUR FINANCIER -->
+        <div sec:authorize="hasRole('VALIDATEUR_FINANCIER')" class="welcome-card">
+            <h2>💰 Espace Validateur Financier</h2>
+            <span class="role-badge">VALIDATEUR FINANCIER</span>
+            <p>Validation des aspects financiers des dossiers.</p>
+            
+            <div class="menu-grid">
+                <a th:href="@{/validateur/dossiers}" class="menu-card">
+                    <h3><span class="icon">✅</span> Valider les Dossiers</h3>
+                    <p>Contrôler et valider les dossiers financièrement.</p>
+                </a>
+                <a th:href="@{/validateur/factures}" class="menu-card">
+                    <h3><span class="icon">💵</span> Valider les Factures</h3>
+                    <p>Approuver les factures des prestataires.</p>
+                </a>
+                <a th:href="@{/validateur/financier/dashboard}" class="menu-card">
+                    <h3><span class="icon">📈</span> Statistiques Financières</h3>
+                    <p>Consulter les statistiques de validation.</p>
+                </a>
+            </div>
+        </div>
+        
+        <!-- VALIDATEUR JURIDIQUE -->
+        <div sec:authorize="hasRole('VALIDATEUR_JURIDIQUE')" class="welcome-card">
+            <h2>⚖️ Espace Validateur Juridique</h2>
+            <span class="role-badge">VALIDATEUR JURIDIQUE</span>
+            <p>Validation des aspects juridiques des dossiers.</p>
+            
+            <div class="menu-grid">
+                <a th:href="@{/validateur/dossiers}" class="menu-card">
+                    <h3><span class="icon">✅</span> Valider les Dossiers</h3>
+                    <p>Contrôler la conformité juridique des dossiers.</p>
+                </a>
+                <a th:href="@{/validateur/juridique/dashboard}" class="menu-card">
+                    <h3><span class="icon">📚</span> Affaires Judiciaires</h3>
+                    <p>Suivre les affaires en cours.</p>
+                </a>
+            </div>
+        </div>
+        
+        <!-- AVOCAT -->
+        <div sec:authorize="hasRole('AVOCAT')" class="welcome-card">
+            <h2>💼 Espace Avocat</h2>
+            <span class="role-badge">AVOCAT</span>
+            <p>Représentation et suivi des affaires judiciaires.</p>
+            
+            <div class="menu-grid">
+                <a th:href="@{/prestataire/missions}" class="menu-card">
+                    <h3><span class="icon">📋</span> Mes Missions</h3>
+                    <p>Consulter les missions assignées.</p>
+                </a>
+                <a th:href="@{/prestataire/mission/remplir}" class="menu-card">
+                    <h3><span class="icon">✏️</span> Remplir Résultat</h3>
+                    <p>Saisir les informations de mission (audience, jugement...).</p>
+                </a>
+            </div>
+        </div>
+        
+        <!-- EXPERT -->
+        <div sec:authorize="hasRole('EXPERT')" class="welcome-card">
+            <h2>🔍 Espace Expert</h2>
+            <span class="role-badge">EXPERT</span>
+            <p>Expertises techniques et évaluations.</p>
+            
+            <div class="menu-grid">
+                <a th:href="@{/prestataire/missions}" class="menu-card">
+                    <h3><span class="icon">📋</span> Mes Missions</h3>
+                    <p>Consulter les missions d'expertise.</p>
+                </a>
+                <a th:href="@{/prestataire/mission/remplir}" class="menu-card">
+                    <h3><span class="icon">✏️</span> Remplir PV d'Expertise</h3>
+                    <p>Saisir le rapport d'expertise et la facture.</p>
+                </a>
+            </div>
+        </div>
+        
+        <!-- HUISSIER -->
+        <div sec:authorize="hasRole('HUISSIER')" class="welcome-card">
+            <h2>📜 Espace Huissier</h2>
+            <span class="role-badge">HUISSIER</span>
+            <p>Significations et saisies.</p>
+            
+            <div class="menu-grid">
+                <a th:href="@{/prestataire/missions}" class="menu-card">
+                    <h3><span class="icon">📋</span> Mes Missions</h3>
+                    <p>Consulter les missions de signification.</p>
+                </a>
+                <a th:href="@{/prestataire/mission/remplir}" class="menu-card">
+                    <h3><span class="icon">✏️</span> Remplir PV de Signification</h3>
+                    <p>Saisir le PV et la facture.</p>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

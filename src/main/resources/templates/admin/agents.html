@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestion des Agents</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #4CAF50; color: white; }
+        .success { color: green; }
+        .error { color: red; }
+        form { margin: 10px 0; }
+        input, select { margin: 5px; padding: 5px; }
+        button { padding: 5px 10px; }
+    </style>
+</head>
+<body>
+    <h1>Gestion des Agents</h1>
+    
+    <!-- Messages -->
+    <div th:if="${success}" class="success" th:text="${success}"></div>
+    <div th:if="${error}" class="error" th:text="${error}"></div>
+    
+    <!-- Formulaire création -->
+    <h2>Créer un Agent</h2>
+    <form th:action="@{/admin/agents}" th:object="${agent}" method="post">
+        <input type="text" th:field="*{nom}" placeholder="Nom" required/>
+        <input type="text" th:field="*{prenom}" placeholder="Prénom" required/>
+        <input type="text" th:field="*{username}" placeholder="Username (>=3 caractères)" minlength="3" required/>
+        <input type="password" th:field="*{password}" placeholder="Mot de passe (>=6 caractères)" minlength="6" required/>
+        <input type="email" th:field="*{email}" placeholder="Email valide" required/>
+        <input type="text" th:field="*{telephone}" placeholder="Téléphone"/>
+        <input type="text" th:field="*{matricule}" placeholder="Matricule"/>
+        <input type="date" th:field="*{dateEmbauche}"/>
+        
+        <select th:field="*{role}" required>
+            <option value="">-- Choisir rôle --</option>
+            <option value="AGENT">AGENT</option>
+            <option value="ADMIN">ADMIN</option>
+        </select>
+        
+        <select th:field="*{agenceId}" required>
+            <option value="">-- Choisir Agence --</option>
+            <option th:each="a : ${agences}" th:value="${a.id}" th:text="${a.nom}"></option>
+        </select>
+        <button type="submit">Créer</button>
+    </form>
+    
+    <!-- Liste des agents -->
+    <h2>Liste des Agents</h2>
+    <table>
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Nom</th>
+                <th>Prénom</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Téléphone</th>
+                <th>Matricule</th>
+                <th>Agence</th>
+                <th>Rôle</th>
+                <th>Actif</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr th:each="a : ${agents}">
+                <td th:text="${a.id}">1</td>
+                <td th:text="${a.nom}">Nom</td>
+                <td th:text="${a.prenom}">Prénom</td>
+                <td th:text="${a.username}">username</td>
+                <td th:text="${a.email}">email</td>
+                <td th:text="${a.telephone}">00000000</td>
+                <td th:text="${a.matricule}">matricule</td>
+                <td th:text="${a.nomAgence}">Agence</td>
+                <td th:text="${a.role}">Rôle</td>
+                <td th:text="${a.actif} ? 'Oui' : 'Non'">Oui/Non</td>
+                <td>
+                    <form th:action="@{/admin/agents/{id}/toggle(id=${a.id})}" method="post" style="display:inline;">
+                        <button type="submit">Toggle</button>
+                    </form>
+                    <form th:action="@{/admin/agents/{id}/delete(id=${a.id})}" method="post" style="display:inline;" 
+                          onsubmit="return confirm('Supprimer cet agent ?');">
+                        <button type="submit">Supprimer</button>
+                    </form>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+    
+    <br>
+    <a th:href="@{/admin/dashboard}">Retour Dashboard</a>
+</body>
+</html>

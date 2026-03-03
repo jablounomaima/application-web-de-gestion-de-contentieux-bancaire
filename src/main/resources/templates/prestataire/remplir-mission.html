@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title>Remplir Mission - Contentieux</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+</head>
+<body>
+    <header>
+        <h1>📝 Remplir Résultat de Mission</h1>
+        <p>Prestataire : <span sec:authentication="name"></span></p>
+    </header>
+    
+    <main>
+        <form th:action="@{/prestataire/mission/sauvegarder}" method="post">
+            <h2>Informations de la Mission</h2>
+            
+            <div class="form-group">
+                <label>Référence Mission :</label>
+                <input type="text" name="referenceMission" readonly value="M-001">
+            </div>
+            
+            <div class="form-group">
+                <label>Type de Mission :</label>
+                <input type="text" name="typeMission" readonly value="EXPERTISE_TECHNIQUE">
+            </div>
+            
+            <!-- Champs dynamiques selon le type de prestataire -->
+            <div sec:authorize="hasRole('EXPERT')">
+                <h3>📋 Informations d'Expertise</h3>
+                <div class="form-group">
+                    <label>Adresse du bien :</label>
+                    <input type="text" name="adresseBien" placeholder="15 Rue de la Plage, La Marsa">
+                </div>
+                <div class="form-group">
+                    <label>Superficie :</label>
+                    <input type="number" name="superficie" placeholder="120"> m²
+                </div>
+                <div class="form-group">
+                    <label>Date de visite :</label>
+                    <input type="date" name="dateVisite">
+                </div>
+                <div class="form-group">
+                    <label>État du bien :</label>
+                    <textarea name="etatBien" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Valeur estimée :</label>
+                    <input type="number" name="valeurEstimee" placeholder="110000"> DT
+                </div>
+                <div class="form-group">
+                    <label>Méthodologie :</label>
+                    <textarea name="methodologie" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Photos :</label>
+                    <input type="file" name="photos" multiple accept="image/*">
+                </div>
+            </div>
+            
+            <div sec:authorize="hasRole('HUISSIER')">
+                <h3>📋 Informations de Signification</h3>
+                <div class="form-group">
+                    <label>Date de signification :</label>
+                    <input type="date" name="dateSignification">
+                </div>
+                <div class="form-group">
+                    <label>Heure :</label>
+                    <input type="time" name="heureSignification">
+                </div>
+                <div class="form-group">
+                    <label>Adresse :</label>
+                    <input type="text" name="adresseSignification">
+                </div>
+                <div class="form-group">
+                    <label>Réaction du débiteur :</label>
+                    <select name="reactionDebiteur">
+                        <option value="cooperatif">Coopératif</option>
+                        <option value="refus_signer">Refus de signer</option>
+                        <option value="absent">Absent</option>
+                        <option value="hostile">Hostile</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Témoins (noms et CIN) :</label>
+                    <textarea name="temoins" rows="3"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>PV détaillé :</label>
+                    <textarea name="pvDetaille" rows="6"></textarea>
+                </div>
+            </div>
+            
+            <div sec:authorize="hasRole('AVOCAT')">
+                <h3>📋 Informations Juridiques</h3>
+                <div class="form-group">
+                    <label>Nom du juge :</label>
+                    <input type="text" name="nomJuge">
+                </div>
+                <div class="form-group">
+                    <label>Date de l'audience :</label>
+                    <input type="date" name="dateAudience">
+                </div>
+                <div class="form-group">
+                    <label>Décision rendue :</label>
+                    <textarea name="decision" rows="4"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Type de jugement :</label>
+                    <select name="typeJugement">
+                        <option value="CONDAMNATION">Condamnation</option>
+                        <option value="REJET">Rejet</option>
+                        <option value="RENVoi">Renvoi</option>
+                        <option value="PARTIEL">Partiel</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Commun à tous les prestataires -->
+            <h3>📊 Résultat de Mission</h3>
+            <div class="form-group">
+                <label>Mission accomplie :</label>
+                <input type="checkbox" name="missionAccomplie" checked>
+            </div>
+            <div class="form-group">
+                <label>Date d'accomplissement :</label>
+                <input type="date" name="dateAccomplissement">
+            </div>
+            <div class="form-group">
+                <label>Observations générales :</label>
+                <textarea name="observations" rows="4"></textarea>
+            </div>
+            <div class="form-group">
+                <label>Documents produits :</label>
+                <input type="file" name="documents" multiple>
+            </div>
+            <div class="form-group">
+                <label>Éfficacité :</label>
+                <select name="efficacite">
+                    <option value="EXCELLENTE">Excellente</option>
+                    <option value="BONNE">Bonne</option>
+                    <option value="MOYENNE">Moyenne</option>
+                    <option value="FAIBLE">Faible</option>
+                </select>
+            </div>
+            
+            <h3>💰 Facture</h3>
+            <div class="form-group">
+                <label>Montant HT :</label>
+                <input type="number" name="montantHT" placeholder="800"> DT
+            </div>
+            <div class="form-group">
+                <label>TVA 19% :</label>
+                <input type="number" name="tva" readonly> DT (auto-calculé)
+            </div>
+            <div class="form-group">
+                <label>Montant TTC :</label>
+                <input type="number" name="montantTTC" readonly> DT (auto-calculé)
+            </div>
+            <div class="form-group">
+                <label>Description détaillée :</label>
+                <textarea name="descriptionFacture" rows="3"></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-success">💾 Sauvegarder et Soumettre</button>
+        </form>
+    </main>
+</body>
+</html>
