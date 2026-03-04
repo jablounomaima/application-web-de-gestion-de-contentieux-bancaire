@@ -53,7 +53,7 @@ public class SecurityConfig {
                 .hasRole("ADMIN")
 
                 .requestMatchers("/agent/**")
-                .hasAnyRole("AGENT", "ADMIN")
+                .hasAnyRole("AGENT")
 
                 .requestMatchers("/avocat/**")
                 .hasRole("AVOCAT")
@@ -73,12 +73,23 @@ public class SecurityConfig {
                 .anyRequest().authenticated()
             )
 
-            .oauth2Login(oauth2 -> oauth2
-                .defaultSuccessUrl("/admin/dashboard", true)
-                .userInfoEndpoint(userInfo ->
-                        userInfo.oidcUserService(oidcUserService())
-                )
-            )
+                .oauth2Login(oauth2 -> oauth2
+                .successHandler((request, response, authentication) -> {
+                // Vérifier le rôle et rediriger
+                boolean isAdmin = authentication.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"));
+                boolean isAgent = authentication.getAuthorities().stream()
+                        .anyMatch(a -> a.getAuthority().equals("ROLE_AGENT"));
+
+                if (isAdmin) {
+                    response.sendRedirect("/admin/dashboard");
+                } else if (isAgent) {
+                    response.sendRedirect("/agent/dashboard");
+                } else {
+                    response.sendRedirect("/login"); // pas de rôle connu
+                }
+            })
+        )
 
             .logout(logout -> logout
                 .logoutSuccessHandler(keycloakLogoutSuccessHandler())
@@ -123,46 +134,44 @@ public class SecurityConfig {
     /**
      * Mapping des rôles Keycloak vers Spring
      */
-    @Bean
-    public OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
+  
+   @Bean
+public OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
+    OidcUserService delegate = new OidcUserService();
 
-        OidcUserService delegate = new OidcUserService();
+    return (userRequest) -> {
+        OidcUser oidcUser = delegate.loadUser(userRequest);
+        Map<String, Object> claims = oidcUser.getClaims();
+        Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
 
-        return userRequest -> {
+        // DEBUG
+        System.out.println("Claims Keycloak: " + claims);
+        System.out.println("Preferred username: " + claims.get("preferred_username"));
+        System.out.println("Email: " + claims.get("email"));
+        System.out.println("Sub (ID): " + claims.get("sub"));
 
-            OidcUser oidcUser =
-                    delegate.loadUser(userRequest);
-
-            Map<String, Object> claims =
-                    oidcUser.getClaims();
-
-            Set<GrantedAuthority> authorities =
-                    new HashSet<>();
-
-            Map<String, Object> realmAccess =
-                    (Map<String, Object>) claims.get("realm_access");
-
-            if (realmAccess != null) {
-
-                List<String> roles =
-                        (List<String>) realmAccess.get("roles");
-
-                if (roles != null) {
-                    roles.forEach(role ->
-                            authorities.add(
-                                    new SimpleGrantedAuthority(
-                                            "ROLE_" + role
-                                    )
-                            )
-                    );
-                }
+        // Mapper les rôles
+        if (claims.containsKey("realm_access")) {
+            Map<String, Object> realmAccess = (Map<String, Object>) claims.get("realm_access");
+            if (realmAccess.containsKey("roles")) {
+                List<String> roles = (List<String>) realmAccess.get("roles");
+                roles.forEach(role -> mappedAuthorities.add(
+                    new SimpleGrantedAuthority("ROLE_" + role.toUpperCase())
+                ));
             }
+        }
 
-            return new DefaultOidcUser(
-                    authorities,
-                    oidcUser.getIdToken(),
-                    oidcUser.getUserInfo()
-            );
+        // IMPORTANT: Créer un OidcUser personnalisé avec le bon username
+        String preferredUsername = (String) claims.get("preferred_username");
+        String email = (String) claims.get("email");
+        
+        // Utiliser preferred_username comme principal name
+        return new DefaultOidcUser(mappedAuthorities, oidcUser.getIdToken(), oidcUser.getUserInfo()) {
+            @Override
+            public String getName() {
+                return preferredUsername != null ? preferredUsername : email;
+            }
         };
-    }
+    };
+}
 }

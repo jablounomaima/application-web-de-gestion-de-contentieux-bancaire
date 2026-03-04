@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Erreur</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 100px; background: #f5f5f5; }
+        .error-box { background: #f8d7da; color: #721c24; padding: 40px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1 { margin-top: 0; }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+        .links { margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <div class="error-box">
+        <h1>⚠️ Erreur</h1>
+        <p th:text="${error} ?: 'Une erreur est survenue'">Message d'erreur</p>
+        <div class="links">
+            <a href="/">🏠 Accueil</a> | 
+            <a href="/logout">🚪 Déconnexion</a>
+        </div>
+    </div>
+</body>
+</html>

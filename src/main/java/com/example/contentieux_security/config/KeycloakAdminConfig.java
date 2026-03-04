@@ -1,5 +1,5 @@
 package com.example.contentieux_security.config;
-
+import org.keycloak.OAuth2Constants;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.springframework.beans.factory.annotation.Value;
@@ -32,6 +32,7 @@ public class KeycloakAdminConfig {
                 .username(adminUsername)
                 .password(adminPassword)
                 .clientId(adminClientId)
+                .grantType(OAuth2Constants.PASSWORD) // 🔥 IMPORTANT
                 .build();
     }
 }
