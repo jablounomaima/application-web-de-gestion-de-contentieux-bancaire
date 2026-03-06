@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Mes Prestataires</title>
+    <style>
+        /* Styles précédents + nouveaux */
+        .actions { display: flex; gap: 5px; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+        .btn-edit { background: #f39c12; color: white; }
+        .btn-delete { background: #e74c3c; color: white; }
+        .btn-toggle { background: #95a5a6; color: white; }
+        .btn-toggle.active { background: #2ecc71; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>👥 Gestion des Prestataires</h1>
+    </div>
+
+    <div class="container">
+        <div class="nav">
+            <a href="/agent/dashboard">← Dashboard</a>
+            <a href="/agent/prestataires" class="active">Tous</a>
+            <a href="/agent/prestataires/type/AVOCAT">Avocats</a>
+            <a href="/agent/prestataires/type/HUISSIER">Huissiers</a>
+            <a href="/agent/prestataires/type/EXPERT">Experts</a>
+            <a href="/agent/prestataires/type/VALIDATEUR_FINANCIER">Val. Financier</a>
+            <a href="/agent/prestataires/type/VALIDATEUR_JURIDIQUE">Val. Juridique</a>
+            <a href="/agent/prestataires/create" class="btn-create">+ Nouveau</a>
+        </div>
+
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Nom</th>
+                        <th>Email</th>
+                        <th>Téléphone</th>
+                        <th>Spécialité</th>
+                        <th>Statut</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:each="p : ${prestataires}">
+                        <td>
+                            <span class="badge" th:classappend="'badge-' + ${p.type.toLowerCase().replace('_', '')}" 
+                                  th:text="${p.type}">TYPE</span>
+                        </td>
+                        <td th:text="${p.nom} + ' ' + ${p.prenom}">Nom</td>
+                        <td th:text="${p.email}">email</td>
+                        <td th:text="${p.telephone}">tel</td>
+                        <td th:text="${p.specialite} ?: '-'">spec</td>
+                        <td th:text="${p.actif} ? '✅' : '❌'">statut</td>
+                        <td>
+                            <div class="actions">
+                                <a th:href="@{/agent/prestataires/{id}/edit(id=${p.id})}" 
+                                   class="btn btn-sm btn-edit">✏️</a>
+                                <a th:href="@{/agent/prestataires/{id}/delete(id=${p.id})}" 
+                                   class="btn btn-sm btn-delete"
+                                   onclick="return confirm('Supprimer ce prestataire ?')">🗑️</a>
+                                <form th:action="@{/agent/prestataires/{id}/toggle(id=${p.id})}" 
+                                      method="post" style="display:inline;">
+                                    <button type="submit" class="btn btn-sm btn-toggle" 
+                                            th:classappend="${p.actif} ? '' : 'active'"
+                                            th:text="${p.actif} ? 'Désactiver' : 'Activer'">Toggle</button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>

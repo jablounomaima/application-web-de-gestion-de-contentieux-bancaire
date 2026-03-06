@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Dashboard Avocat')}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: sidebar('AVOCAT', ${#authentication.name})}"></nav>
+
+<main class="main">
+    <div class="page-header">
+        <h1>Dashboard Avocat</h1>
+        <p>Bienvenue, Maître <strong th:text="${#authentication.name}">Avocat</strong> — vos affaires en cours</p>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="cards cards-4">
+        <div class="card stat-card blue">
+            <div class="label">Affaires actives</div>
+            <div class="value" th:text="${affairesActives ?: 22}">22</div>
+            <div class="delta">En cours de procédure</div>
+        </div>
+        <div class="card stat-card warn">
+            <div class="label">Audiences cette semaine</div>
+            <div class="value" th:text="${audiencesSemaine ?: 3}">3</div>
+            <div class="delta">Prochaine : Lundi</div>
+        </div>
+        <div class="card stat-card green">
+            <div class="label">Jugements favorables</div>
+            <div class="value" th:text="${jugementsFavorables ?: 14}">14</div>
+            <div class="delta">Ce trimestre</div>
+        </div>
+        <div class="card stat-card red">
+            <div class="label">Conclusions en attente</div>
+            <div class="value" th:text="${conclusionsAttente ?: 4}">4</div>
+            <div class="delta">À déposer</div>
+        </div>
+    </div>
+
+    <!-- Prochaines audiences -->
+    <div class="table-wrap" style="margin-top:24px;">
+        <div class="table-head">
+            <h2>📅 Prochaines audiences</h2>
+            <a th:href="@{/avocat/audiences}" class="btn btn-outline" style="font-size:12px;">Calendrier complet</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Heure</th>
+                    <th>Tribunal</th>
+                    <th>Dossier</th>
+                    <th>Débiteur</th>
+                    <th>Type</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="audience : ${prochainesAudiences}">
+                    <td style="font-family:'DM Mono',monospace;" th:text="${#temporals.format(audience.date,'dd/MM/yyyy')}">-</td>
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);" th:text="${audience.heure}">-</td>
+                    <td th:text="${audience.tribunal}">-</td>
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);" th:text="${audience.dossierRef}">-</span></td>
+                    <td th:text="${audience.debiteur}">-</td>
+                    <td><span th:class="'badge ' + ${audience.typeBadge}" th:text="${audience.type}">-</span></td>
+                    <td><span th:class="'badge ' + ${audience.statutBadge}" th:text="${audience.statut}">-</span></td>
+                </tr>
+                <!-- Démo -->
+                <tr th:if="${prochainesAudiences == null or #lists.isEmpty(prochainesAudiences)}">
+                    <td style="font-family:'DM Mono',monospace;">27/01/2025</td>
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);">09:00</td>
+                    <td>Tribunal de Blida</td>
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-007</span></td>
+                    <td>Hamza Bouzid</td>
+                    <td><span class="badge badge-blue">Référé</span></td>
+                    <td><span class="badge badge-warn">Confirmée</span></td>
+                </tr>
+                <tr th:if="${prochainesAudiences == null or #lists.isEmpty(prochainesAudiences)}">
+                    <td style="font-family:'DM Mono',monospace;">30/01/2025</td>
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);">14:30</td>
+                    <td>Tribunal d'Alger</td>
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-003</span></td>
+                    <td>Touri Karim</td>
+                    <td><span class="badge badge-warn">Fond</span></td>
+                    <td><span class="badge badge-muted">À confirmer</span></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Affaires en cours -->
+    <div class="table-wrap" style="margin-top:16px;">
+        <div class="table-head">
+            <h2>⚖ Mes affaires en cours</h2>
+            <a th:href="@{/avocat/dossiers}" class="btn btn-outline" style="font-size:12px;">Voir tout</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Référence</th>
+                    <th>Débiteur</th>
+                    <th>Montant (DZD)</th>
+                    <th>Étape procédurale</th>
+                    <th>Dernière action</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="affaire : ${mesAffaires}">
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);" th:text="${affaire.reference}">-</span></td>
+                    <td th:text="${affaire.debiteurNom}">-</td>
+                    <td style="font-family:'DM Mono',monospace;" th:text="${#numbers.formatDecimal(affaire.montant,1,'COMMA',2,'POINT')}">-</td>
+                    <td><span th:class="'badge ' + ${affaire.etapeBadge}" th:text="${affaire.etape}">-</span></td>
+                    <td style="color:var(--muted); font-size:13px;" th:text="${affaire.derniereAction}">-</td>
+                    <td>
+                        <a th:href="@{/avocat/affaire/{id}(id=${affaire.id})}" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Détail</a>
+                    </td>
+                </tr>
+                <!-- Démo -->
+                <tr th:if="${mesAffaires == null or #lists.isEmpty(mesAffaires)}">
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-007</span></td>
+                    <td>Hamza Bouzid</td>
+                    <td style="font-family:'DM Mono',monospace;">2 100 000,00</td>
+                    <td><span class="badge badge-warn">Mise en état</span></td>
+                    <td style="color:var(--muted); font-size:13px;">Conclusions déposées le 10/01</td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Détail</a></td>
+                </tr>
+                <tr th:if="${mesAffaires == null or #lists.isEmpty(mesAffaires)}">
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-003</span></td>
+                    <td>Touri Karim</td>
+                    <td style="font-family:'DM Mono',monospace;">3 400 000,00</td>
+                    <td><span class="badge badge-red">Jugement rendu</span></td>
+                    <td style="color:var(--muted); font-size:13px;">Appel en cours</td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Détail</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Conclusions à déposer -->
+    <div class="card" style="margin-top:16px;">
+        <h2 style="font-size:14px; font-weight:600; margin-bottom:14px;">📝 Conclusions à déposer</h2>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:rgba(248,81,73,.06); border-radius:8px; border:1px solid rgba(248,81,73,.15);">
+                <div>
+                    <div style="font-size:13.5px; font-weight:500;">DOS-2025-015 — Mounir Tabet</div>
+                    <div style="font-size:12px; color:var(--muted); margin-top:2px;">Délai : <span style="color:var(--danger);">19/01/2025 — Expiré</span></div>
+                </div>
+                <a href="#" class="btn btn-primary" style="font-size:12px; padding:6px 14px;">Déposer</a>
+            </div>
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:12px 16px; background:rgba(210,153,34,.06); border-radius:8px; border:1px solid rgba(210,153,34,.15);">
+                <div>
+                    <div style="font-size:13.5px; font-weight:500;">DOS-2025-011 — Zineb Rahmani</div>
+                    <div style="font-size:12px; color:var(--muted); margin-top:2px;">Délai : <span style="color:var(--warn);">28/01/2025 — Dans 7 jours</span></div>
+                </div>
+                <a href="#" class="btn btn-outline" style="font-size:12px; padding:6px 14px;">Préparer</a>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

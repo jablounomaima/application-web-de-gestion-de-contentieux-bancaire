@@ -1,5 +1,4 @@
-package com.example.contentieux_security.service;
-
+package com.example.contentieux_security.config;
 import jakarta.annotation.PostConstruct;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.Keycloak;
@@ -161,4 +160,92 @@ public class KeycloakUserService {
             throw new RuntimeException("Erreur changement mot de passe", e);
         }
     }
+
+
+    // ========== MISE À JOUR UTILISATEUR ==========
+
+public void updateUser(String username, String email, String firstName, String lastName) {
+    try {
+        List<UserRepresentation> users = keycloak.realm(realm)
+                .users()
+                .search(username, true);
+        
+        if (users.isEmpty()) {
+            throw new RuntimeException("Utilisateur non trouvé: " + username);
+        }
+        
+        String userId = users.get(0).getId();
+        
+        UserRepresentation user = new UserRepresentation();
+        user.setEmail(email);
+        user.setFirstName(firstName);
+        user.setLastName(lastName);
+        
+        keycloak.realm(realm)
+                .users()
+                .get(userId)
+                .update(user);
+        
+        System.out.println("✅ Utilisateur mis à jour dans Keycloak: " + username);
+        
+    } catch (Exception e) {
+        System.out.println("❌ Erreur mise à jour Keycloak: " + e.getMessage());
+        throw new RuntimeException("Erreur mise à jour utilisateur", e);
+    }
+}
+
+// ========== ACTIVER/DÉSACTIVER UTILISATEUR ==========
+
+public void toggleUserStatus(String username, boolean enabled) {
+    try {
+        List<UserRepresentation> users = keycloak.realm(realm)
+                .users()
+                .search(username, true);
+        
+        if (users.isEmpty()) {
+            throw new RuntimeException("Utilisateur non trouvé: " + username);
+        }
+        
+        String userId = users.get(0).getId();
+        
+        UserRepresentation user = new UserRepresentation();
+        user.setEnabled(enabled);
+        
+        keycloak.realm(realm)
+                .users()
+                .get(userId)
+                .update(user);
+        
+        System.out.println("✅ Statut utilisateur mis à jour: " + username + " (enabled=" + enabled + ")");
+        
+    } catch (Exception e) {
+        System.out.println("❌ Erreur toggle status Keycloak: " + e.getMessage());
+        throw new RuntimeException("Erreur changement statut", e);
+    }
+}
+
+public void updatePassword(String username, String newPassword) {
+
+    var users = keycloak.realm(realm).users().search(username);
+
+    if (users.isEmpty()) {
+        throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+    }
+
+    String userId = users.get(0).getId();
+
+    CredentialRepresentation credential = new CredentialRepresentation();
+    credential.setType(CredentialRepresentation.PASSWORD);
+    credential.setTemporary(false);
+    credential.setValue(newPassword);
+
+    keycloak.realm(realm)
+            .users()
+            .get(userId)
+            .resetPassword(credential);
+}
+
+
+
+
 }

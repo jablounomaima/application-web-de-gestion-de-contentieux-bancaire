@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:fragment="head(title)">
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title th:text="${title} + ' | Contentieux'">Contentieux</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com"/>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <style>
+        :root {
+            --bg:        #0d1117;
+            --surface:   #161b22;
+            --border:    #21262d;
+            --text:      #e6edf3;
+            --muted:     #7d8590;
+            --accent:    #58a6ff;
+            --accent2:   #3fb950;
+            --danger:    #f85149;
+            --warn:      #d29922;
+        }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: 240px;
+            min-height: 100vh;
+            background: var(--surface);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            top: 0; left: 0;
+            padding: 0 0 24px;
+        }
+        .sidebar-brand {
+            padding: 24px 20px 20px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 12px;
+        }
+        .sidebar-brand .logo-mark {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .sidebar-brand .icon {
+            width: 32px; height: 32px;
+            background: var(--accent);
+            border-radius: 8px;
+            display: grid; place-items: center;
+            font-size: 16px; font-weight: 700; color: #000;
+            font-family: 'DM Mono', monospace;
+        }
+        .sidebar-brand .name {
+            font-size: 13px; font-weight: 600;
+            letter-spacing: .05em; text-transform: uppercase;
+            color: var(--text);
+        }
+        .sidebar-brand .sub {
+            font-size: 11px; color: var(--muted); margin-top: 2px;
+        }
+        .sidebar nav { flex: 1; padding: 0 10px; }
+        .nav-section { margin-bottom: 20px; }
+        .nav-label {
+            font-size: 10px; font-weight: 600; letter-spacing: .12em;
+            text-transform: uppercase; color: var(--muted);
+            padding: 0 10px 8px;
+        }
+        .nav-item {
+            display: flex; align-items: center; gap: 10px;
+            padding: 9px 10px; border-radius: 6px;
+            font-size: 13.5px; font-weight: 400;
+            color: var(--muted);
+            text-decoration: none;
+            transition: background .15s, color .15s;
+            margin-bottom: 2px;
+        }
+        .nav-item:hover { background: var(--border); color: var(--text); }
+        .nav-item.active { background: rgba(88,166,255,.12); color: var(--accent); }
+        .nav-item .ico { width: 18px; text-align: center; font-size: 15px; }
+
+        .sidebar-footer {
+            padding: 16px 20px 0;
+            border-top: 1px solid var(--border);
+        }
+        .user-chip {
+            display: flex; align-items: center; gap: 10px;
+        }
+        .avatar {
+            width: 32px; height: 32px; border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent), #1f6feb);
+            display: grid; place-items: center;
+            font-size: 13px; font-weight: 600; color: #fff;
+        }
+        .user-info .uname { font-size: 13px; font-weight: 500; }
+        .user-info .urole { font-size: 11px; color: var(--muted); }
+        .logout-btn {
+            display: block; margin-top: 12px;
+            text-align: center;
+            padding: 8px; border-radius: 6px;
+            background: rgba(248,81,73,.1); color: var(--danger);
+            font-size: 12.5px; font-weight: 500;
+            text-decoration: none;
+            border: 1px solid rgba(248,81,73,.2);
+            transition: background .15s;
+        }
+        .logout-btn:hover { background: rgba(248,81,73,.2); }
+
+        /* ── Main ── */
+        .main {
+            margin-left: 240px;
+            flex: 1;
+            padding: 32px 36px;
+            max-width: calc(100vw - 240px);
+        }
+        .page-header { margin-bottom: 32px; }
+        .page-header h1 {
+            font-size: 22px; font-weight: 600; color: var(--text);
+        }
+        .page-header p { font-size: 14px; color: var(--muted); margin-top: 4px; }
+
+        /* ── Cards ── */
+        .cards { display: grid; gap: 16px; }
+        .cards-4 { grid-template-columns: repeat(4, 1fr); }
+        .cards-3 { grid-template-columns: repeat(3, 1fr); }
+        .cards-2 { grid-template-columns: repeat(2, 1fr); }
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 20px 22px;
+        }
+        .stat-card .label { font-size: 12px; color: var(--muted); margin-bottom: 8px; }
+        .stat-card .value { font-size: 28px; font-weight: 600; font-family: 'DM Mono', monospace; }
+        .stat-card .delta { font-size: 12px; color: var(--muted); margin-top: 4px; }
+        .stat-card.green .value { color: var(--accent2); }
+        .stat-card.blue  .value { color: var(--accent);  }
+        .stat-card.red   .value { color: var(--danger);  }
+        .stat-card.warn  .value { color: var(--warn);    }
+
+        /* ── Table ── */
+        .table-wrap {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 24px;
+        }
+        .table-head {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        .table-head h2 { font-size: 14px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; }
+        thead th {
+            text-align: left; padding: 12px 20px;
+            font-size: 11px; font-weight: 600;
+            text-transform: uppercase; letter-spacing: .08em;
+            color: var(--muted);
+            border-bottom: 1px solid var(--border);
+        }
+        tbody tr { transition: background .1s; }
+        tbody tr:hover { background: rgba(255,255,255,.02); }
+        tbody td {
+            padding: 13px 20px; font-size: 13.5px;
+            border-bottom: 1px solid var(--border);
+        }
+        tbody tr:last-child td { border-bottom: none; }
+
+        /* ── Badges ── */
+        .badge {
+            display: inline-block; padding: 3px 9px;
+            border-radius: 20px; font-size: 11.5px; font-weight: 500;
+        }
+        .badge-green  { background: rgba(63,185,80,.15);  color: var(--accent2); }
+        .badge-blue   { background: rgba(88,166,255,.15); color: var(--accent);  }
+        .badge-red    { background: rgba(248,81,73,.15);  color: var(--danger);  }
+        .badge-warn   { background: rgba(210,153,34,.15); color: var(--warn);    }
+        .badge-muted  { background: var(--border); color: var(--muted); }
+
+        /* ── Btn ── */
+        .btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 16px; border-radius: 6px;
+            font-size: 13px; font-weight: 500;
+            cursor: pointer; text-decoration: none;
+            border: 1px solid transparent;
+            transition: opacity .15s;
+        }
+        .btn:hover { opacity: .85; }
+        .btn-primary { background: var(--accent); color: #000; }
+        .btn-outline { border-color: var(--border); color: var(--text); background: transparent; }
+
+        @media (max-width: 1100px) {
+            .cards-4 { grid-template-columns: repeat(2,1fr); }
+        }
+    </style>
+</head>
+
+<nav th:fragment="sidebar(role, username)" class="sidebar">
+    <div class="sidebar-brand">
+        <div class="logo-mark">
+            <div class="icon">C</div>
+            <div>
+                <div class="name">Contentieux</div>
+                <div class="sub">Gestion Bancaire</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN -->
+    <nav th:if="${role == 'ADMIN'}">
+        <div class="nav-section">
+            <div class="nav-label">Principal</div>
+            <a th:href="@{/admin/dashboard}" class="nav-item active"><span class="ico">⊞</span> Dashboard</a>
+            <a th:href="@{/admin/utilisateurs}" class="nav-item"><span class="ico">👥</span> Utilisateurs</a>
+            <a th:href="@{/admin/dossiers}" class="nav-item"><span class="ico">📁</span> Dossiers</a>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Paramétrage</div>
+            <a th:href="@{/admin/roles}" class="nav-item"><span class="ico">🔑</span> Rôles</a>
+            <a th:href="@{/admin/audit}" class="nav-item"><span class="ico">📋</span> Audit</a>
+            <a th:href="@{/admin/config}" class="nav-item"><span class="ico">⚙</span> Configuration</a>
+        </div>
+    </nav>
+
+    <!-- AGENT -->
+    <nav th:if="${role == 'AGENT'}">
+        <div class="nav-section">
+            <div class="nav-label">Mon espace</div>
+            <a th:href="@{/agent/dashboard}" class="nav-item active"><span class="ico">⊞</span> Dashboard</a>
+            <a th:href="@{/agent/dossiers}" class="nav-item"><span class="ico">📁</span> Mes dossiers</a>
+            <a th:href="@{/agent/nouveau}" class="nav-item"><span class="ico">➕</span> Nouveau dossier</a>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Suivi</div>
+            <a th:href="@{/agent/relances}" class="nav-item"><span class="ico">🔔</span> Relances</a>
+            <a th:href="@{/agent/rapports}" class="nav-item"><span class="ico">📊</span> Rapports</a>
+        </div>
+    </nav>
+
+    <!-- AVOCAT -->
+    <nav th:if="${role == 'AVOCAT'}">
+        <div class="nav-section">
+            <div class="nav-label">Mon espace</div>
+            <a th:href="@{/avocat/dashboard}" class="nav-item active"><span class="ico">⊞</span> Dashboard</a>
+            <a th:href="@{/avocat/dossiers}" class="nav-item"><span class="ico">⚖</span> Affaires</a>
+            <a th:href="@{/avocat/audiences}" class="nav-item"><span class="ico">🏛</span> Audiences</a>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Documents</div>
+            <a th:href="@{/avocat/conclusions}" class="nav-item"><span class="ico">📝</span> Conclusions</a>
+            <a th:href="@{/avocat/jugements}" class="nav-item"><span class="ico">📜</span> Jugements</a>
+        </div>
+    </nav>
+
+    <!-- HUISSIER -->
+    <nav th:if="${role == 'HUISSIER'}">
+        <div class="nav-section">
+            <div class="nav-label">Mon espace</div>
+            <a th:href="@{/huissier/dashboard}" class="nav-item active"><span class="ico">⊞</span> Dashboard</a>
+            <a th:href="@{/huissier/mandats}" class="nav-item"><span class="ico">📋</span> Mandats</a>
+            <a th:href="@{/huissier/significations}" class="nav-item"><span class="ico">📮</span> Significations</a>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Recouvrement</div>
+            <a th:href="@{/huissier/saisies}" class="nav-item"><span class="ico">🔒</span> Saisies</a>
+            <a th:href="@{/huissier/pv}" class="nav-item"><span class="ico">📄</span> PV d'exécution</a>
+        </div>
+    </nav>
+
+    <!-- EXPERT -->
+    <nav th:if="${role == 'EXPERT'}">
+        <div class="nav-section">
+            <div class="nav-label">Mon espace</div>
+            <a th:href="@{/expert/dashboard}" class="nav-item active"><span class="ico">⊞</span> Dashboard</a>
+            <a th:href="@{/expert/missions}" class="nav-item"><span class="ico">🔍</span> Missions</a>
+            <a th:href="@{/expert/evaluations}" class="nav-item"><span class="ico">📊</span> Évaluations</a>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Rapports</div>
+            <a th:href="@{/expert/rapports}" class="nav-item"><span class="ico">📝</span> Mes rapports</a>
+            <a th:href="@{/expert/expertise}" class="nav-item"><span class="ico">🏗</span> Expertises</a>
+        </div>
+    </nav>
+
+    <div class="sidebar-footer">
+        <div class="user-chip">
+            <div class="avatar" th:text="${#strings.substring(username, 0, 1).toUpperCase()}">U</div>
+            <div class="user-info">
+                <div class="uname" th:text="${username}">Utilisateur</div>
+                <div class="urole" th:text="${role}">Rôle</div>
+            </div>
+        </div>
+        <a th:href="@{/logout}" class="logout-btn">⏻ Déconnexion</a>
+    </div>
+</nav>
+</html>

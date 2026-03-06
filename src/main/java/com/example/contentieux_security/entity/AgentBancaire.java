@@ -36,7 +36,7 @@ public class AgentBancaire {
     private String telephone;
 
     @Column(nullable = false)
-    private Boolean actif = true;
+    private boolean actif = true;  // boolean (pas Boolean)
 
     // ✅ CHAMPS MANQUANTS AJOUTÉS
     private String matricule;

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Dashboard Huissier')}"></head>
+<body>
+
+    <nav th:replace="~{fragments/layout :: sidebar('HUISSIER', ${#authentication != null ? #authentication.name : 'Utilisateur'})}"></nav>
+
+<main class="main">
+    <div class="page-header">
+        <h1>Dashboard Huissier</h1>
+        <p>Bienvenue, <strong th:text="${#authentication.name}">Huissier</strong> — vos mandats et exécutions</p>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="cards cards-4">
+        <div class="card stat-card blue">
+            <div class="label">Mandats actifs</div>
+            <div class="value" th:text="${mandatsActifs ?: 16}">16</div>
+            <div class="delta">En cours d'exécution</div>
+        </div>
+        <div class="card stat-card warn">
+            <div class="label">Significations</div>
+            <div class="value" th:text="${significations ?: 8}">8</div>
+            <div class="delta">À effectuer cette semaine</div>
+        </div>
+        <div class="card stat-card red">
+            <div class="label">Saisies en cours</div>
+            <div class="value" th:text="${saisiesEnCours ?: 5}">5</div>
+            <div class="delta">Mobilières & Immobilières</div>
+        </div>
+        <div class="card stat-card green">
+            <div class="label">Recouvrés (mois)</div>
+            <div class="value" th:text="${montantRecouvre ?: '4,2M'}">4,2M</div>
+            <div class="delta">DZD ce mois-ci</div>
+        </div>
+    </div>
+
+    <!-- Mandats prioritaires -->
+    <div class="table-wrap" style="margin-top:24px;">
+        <div class="table-head">
+            <h2>📋 Mandats prioritaires</h2>
+            <a th:href="@{/huissier/mandats}" class="btn btn-outline" style="font-size:12px;">Tous les mandats</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>N° Mandat</th>
+                    <th>Dossier</th>
+                    <th>Débiteur</th>
+                    <th>Type d'acte</th>
+                    <th>Montant (DZD)</th>
+                    <th>Délai légal</th>
+                    <th>Statut</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="mandat : ${mandatsPrioritaires}">
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);" th:text="${mandat.numero}">-</td>
+                    <td style="font-family:'DM Mono',monospace;" th:text="${mandat.dossierRef}">-</td>
+                    <td th:text="${mandat.debiteurNom}">-</td>
+                    <td><span th:class="'badge ' + ${mandat.typeBadge}" th:text="${mandat.type}">-</span></td>
+                    <td style="font-family:'DM Mono',monospace;" th:text="${#numbers.formatDecimal(mandat.montant,1,'COMMA',2,'POINT')}">-</td>
+                    <td th:style="${mandat.delaiDepasse} ? 'color:var(--danger)' : 'color:var(--warn)'"
+                        th:text="${#temporals.format(mandat.delaiLegal,'dd/MM/yyyy')}">-</td>
+                    <td><span th:class="'badge ' + ${mandat.statutBadge}" th:text="${mandat.statut}">-</span></td>
+                    <td><a th:href="@{/huissier/mandat/{id}(id=${mandat.id})}" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+                <!-- Démo -->
+                <tr th:if="${mandatsPrioritaires == null or #lists.isEmpty(mandatsPrioritaires)}">
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);">MAN-2025-042</td>
+                    <td style="font-family:'DM Mono',monospace;">DOS-2025-007</td>
+                    <td>Hamza Bouzid</td>
+                    <td><span class="badge badge-red">Saisie-arrêt</span></td>
+                    <td style="font-family:'DM Mono',monospace;">2 100 000,00</td>
+                    <td style="color:var(--danger);">20/01/2025</td>
+                    <td><span class="badge badge-warn">En cours</span></td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+                <tr th:if="${mandatsPrioritaires == null or #lists.isEmpty(mandatsPrioritaires)}">
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);">MAN-2025-038</td>
+                    <td style="font-family:'DM Mono',monospace;">DOS-2025-011</td>
+                    <td>Zineb Rahmani</td>
+                    <td><span class="badge badge-blue">Signification</span></td>
+                    <td style="font-family:'DM Mono',monospace;">540 000,00</td>
+                    <td style="color:var(--warn);">28/01/2025</td>
+                    <td><span class="badge badge-muted">À exécuter</span></td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+                <tr th:if="${mandatsPrioritaires == null or #lists.isEmpty(mandatsPrioritaires)}">
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);">MAN-2025-031</td>
+                    <td style="font-family:'DM Mono',monospace;">DOS-2025-003</td>
+                    <td>Touri Karim</td>
+                    <td><span class="badge badge-warn">Saisie immob.</span></td>
+                    <td style="font-family:'DM Mono',monospace;">3 400 000,00</td>
+                    <td style="color:var(--accent2);">15/02/2025</td>
+                    <td><span class="badge badge-green">PV rédigé</span></td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Saisies en cours + PV -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+        <div class="card">
+            <h2 style="font-size:14px; font-weight:600; margin-bottom:14px;">🔒 Saisies actives</h2>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="padding:12px; background:rgba(248,81,73,.06); border-radius:8px; border:1px solid rgba(248,81,73,.15);">
+                    <div style="font-size:13px; font-weight:500;">Saisie bancaire — DOS-2025-007</div>
+                    <div style="font-size:12px; color:var(--muted); margin-top:4px;">Banque BNA • <span style="color:var(--danger);">En attente réponse</span></div>
+                </div>
+                <div style="padding:12px; background:rgba(210,153,34,.06); border-radius:8px; border:1px solid rgba(210,153,34,.15);">
+                    <div style="font-size:13px; font-weight:500;">Saisie mobilière — DOS-2025-015</div>
+                    <div style="font-size:12px; color:var(--muted); margin-top:4px;">Domicile débiteur • <span style="color:var(--warn);">Programmée 22/01</span></div>
+                </div>
+                <a th:href="@{/huissier/saisies}" class="btn btn-outline" style="font-size:12px; justify-content:center;">Voir toutes les saisies</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size:14px; font-weight:600; margin-bottom:14px;">📄 PV à valider</h2>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:rgba(88,166,255,.06); border-radius:8px; border:1px solid rgba(88,166,255,.15);">
+                    <div>
+                        <div style="font-size:13px; font-weight:500;">PV-2025-018</div>
+                        <div style="font-size:12px; color:var(--muted);">DOS-2025-003 • Rédigé le 12/01</div>
+                    </div>
+                    <a href="#" class="btn btn-primary" style="font-size:12px; padding:6px 14px;">Valider</a>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:rgba(88,166,255,.06); border-radius:8px; border:1px solid rgba(88,166,255,.15);">
+                    <div>
+                        <div style="font-size:13px; font-weight:500;">PV-2025-021</div>
+                        <div style="font-size:12px; color:var(--muted);">DOS-2025-011 • Rédigé le 14/01</div>
+                    </div>
+                    <a href="#" class="btn btn-primary" style="font-size:12px; padding:6px 14px;">Valider</a>
+                </div>
+                <a th:href="@{/huissier/pv}" class="btn btn-outline" style="font-size:12px; justify-content:center;">Tous les PV</a>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

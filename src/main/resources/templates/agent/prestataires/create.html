@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Nouveau Prestataire</title>
+    <style>
+        body { font-family: 'Segoe UI', Arial, sans-serif; margin: 0; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .container { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); width: 100%; max-width: 500px; }
+        h1 { color: #333; text-align: center; margin-bottom: 30px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; margin-bottom: 5px; color: #555; font-weight: 500; }
+        input, select { width: 100%; padding: 12px; border: 2px solid #ddd; border-radius: 5px; font-size: 16px; box-sizing: border-box; }
+        input:focus, select:focus { border-color: #667eea; outline: none; }
+        .btn-group { display: flex; gap: 10px; margin-top: 30px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; }
+        .btn-primary { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; }
+        .btn-secondary { background: #6c757d; color: white; text-decoration: none; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>➕ Nouveau Prestataire</h1>
+        
+        <div th:if="${error}" class="alert alert-error" th:text="${error}" style="background: #f8d7da; color: #721c24; padding: 12px; border-radius: 5px; margin-bottom: 20px;"></div>
+
+        <form th:action="@{/agent/prestataires/create}" method="post" th:object="${prestataire}">
+            
+            <div class="form-group">
+                <label for="type">Type de prestataire *</label>
+                <select id="type" th:field="*{type}" required>
+                    <option value="">-- Choisir --</option>
+                    <option th:each="t : ${types}" th:value="${t}" th:text="${t}">TYPE</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="username">Nom d'utilisateur *</label>
+                <input type="text" id="username" th:field="*{username}" required placeholder="ex: dupont.avocat">
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mot de passe temporaire *</label>
+                <input type="password" id="password" th:field="*{password}" required minlength="6">
+            </div>
+
+            <div class="form-group">
+                <label for="nom">Nom *</label>
+                <input type="text" id="nom" th:field="*{nom}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="prenom">Prénom *</label>
+                <input type="text" id="prenom" th:field="*{prenom}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" th:field="*{email}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="telephone">Téléphone</label>
+                <input type="tel" id="telephone" th:field="*{telephone}" placeholder="06 12 34 56 78">
+            </div>
+
+            <div class="form-group">
+                <label for="specialite">Spécialité</label>
+                <input type="text" id="specialite" th:field="*{specialite}" placeholder="Ex: Droit bancaire, Immobilier...">
+            </div>
+
+            <div class="form-group">
+                <label for="numeroCartePro">Numéro carte professionnelle</label>
+                <input type="text" id="numeroCartePro" th:field="*{numeroCartePro}">
+            </div>
+
+            <!-- Champs spécifiques pour validateurs -->
+            <div id="validateurFields" style="display: none;">
+                <div class="form-group">
+                    <label for="niveauValidation">Niveau de validation</label>
+                    <select id="niveauValidation" th:field="*{niveauValidation}">
+                        <option value="">-- Choisir --</option>
+                        <option value="NIVEAU_1">Niveau 1</option>
+                        <option value="NIVEAU_2">Niveau 2</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="plafondValidation">Plafond de validation (€)</label>
+                    <input type="number" id="plafondValidation" th:field="*{plafondValidation}" placeholder="50000">
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">💾 Créer</button>
+                <a href="/agent/prestataires" class="btn btn-secondary">❌ Annuler</a>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // Afficher/masquer champs validateurs
+        document.getElementById('type').addEventListener('change', function() {
+            const valFields = document.getElementById('validateurFields');
+            const isValidateur = this.value.includes('VALIDATEUR');
+            valFields.style.display = isValidateur ? 'block' : 'none';
+        });
+    </script>
+</body>
+</html>

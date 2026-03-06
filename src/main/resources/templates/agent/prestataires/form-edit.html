@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifier Prestataire</title>
+    <style>
+        /* Mêmes styles que create.html */
+        .readonly-field { background: #f5f5f5; color: #666; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>✏️ Modifier Prestataire</h1>
+        
+        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
+
+        <form th:action="@{/agent/prestataires/{id}/edit(id=${prestataire.id})}" 
+              method="post" th:object="${prestataire}">
+            
+            <div class="form-group">
+                <label>Type</label>
+                <input type="text" th:value="${prestataire.type}" class="readonly-field" readonly>
+                <small>Le type ne peut pas être modifié</small>
+            </div>
+
+            <div class="form-group">
+                <label>Nom d'utilisateur</label>
+                <input type="text" th:value="${prestataire.username}" class="readonly-field" readonly>
+                <small>L'identifiant ne peut pas être modifié</small>
+            </div>
+
+            <div class="form-group">
+                <label for="nom">Nom *</label>
+                <input type="text" id="nom" th:field="*{nom}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="prenom">Prénom *</label>
+                <input type="text" id="prenom" th:field="*{prenom}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" th:field="*{email}" required>
+            </div>
+
+            <div class="form-group">
+                <label for="telephone">Téléphone</label>
+                <input type="tel" id="telephone" th:field="*{telephone}">
+            </div>
+
+            <div class="form-group">
+                <label for="adresse">Adresse</label>
+                <input type="text" id="adresse" th:field="*{adresse}">
+            </div>
+
+            <div class="form-group">
+                <label for="specialite">Spécialité</label>
+                <input type="text" id="specialite" th:field="*{specialite}">
+            </div>
+
+            <div class="form-group">
+                <label for="numeroCartePro">Numéro carte pro</label>
+                <input type="text" id="numeroCartePro" th:field="*{numeroCartePro}">
+            </div>
+
+            <!-- Champs validateurs (affichés conditionnellement) -->
+            <div th:if="${prestataire.type.contains('VALIDATEUR')}" id="validateurFields">
+                <div class="form-group">
+                    <label for="niveauValidation">Niveau validation</label>
+                    <select id="niveauValidation" th:field="*{niveauValidation}">
+                        <option value="">-- Choisir --</option>
+                        <option value="NIVEAU_1" th:selected="${prestataire.niveauValidation == 'NIVEAU_1'}">Niveau 1</option>
+                        <option value="NIVEAU_2" th:selected="${prestataire.niveauValidation == 'NIVEAU_2'}">Niveau 2</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="plafondValidation">Plafond (€)</label>
+                    <input type="number" id="plafondValidation" th:field="*{plafondValidation}">
+                </div>
+            </div>
+
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+                <a href="/agent/prestataires" class="btn btn-secondary">❌ Annuler</a>
+            </div>
+        </form>
+    </div>
+</body>
+</html>

@@ -10,8 +10,7 @@ import java.util.Optional;
 @Repository
 public interface AgentBancaireRepository extends JpaRepository<AgentBancaire, Long> {
     
-    // Retourne une liste pour gérer les doublons temporairement
-    List<AgentBancaire> findByUsername(String username);
+    List<AgentBancaire> findByUsername(String username);  // ✅ Liste pour gérer les doublons
     
     Optional<AgentBancaire> findById(Long id);
     

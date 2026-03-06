@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Dashboard Expert')}"></head>
+<body>
+
+<nav th:replace="~{fragments/layout :: sidebar('EXPERT', ${#authentication.name})}"></nav>
+
+<main class="main">
+    <div class="page-header">
+        <h1>Dashboard Expert</h1>
+        <p>Bienvenue, <strong th:text="${#authentication.name}">Expert</strong> — vos missions d'expertise en cours</p>
+    </div>
+
+    <!-- Statistiques -->
+    <div class="cards cards-4">
+        <div class="card stat-card blue">
+            <div class="label">Missions actives</div>
+            <div class="value" th:text="${missionsActives ?: 9}">9</div>
+            <div class="delta">En cours d'expertise</div>
+        </div>
+        <div class="card stat-card warn">
+            <div class="label">Rapports à rendre</div>
+            <div class="value" th:text="${rapportsAttente ?: 3}">3</div>
+            <div class="delta">Délai moyen : 8 jours</div>
+        </div>
+        <div class="card stat-card green">
+            <div class="label">Évaluations finalisées</div>
+            <div class="value" th:text="${evaluationsFinalisees ?: 28}">28</div>
+            <div class="delta">Depuis le début d'année</div>
+        </div>
+        <div class="card stat-card red">
+            <div class="label">Contre-expertises</div>
+            <div class="value" th:text="${contreExpertises ?: 2}">2</div>
+            <div class="delta">Contestations reçues</div>
+        </div>
+    </div>
+
+    <!-- Missions en cours -->
+    <div class="table-wrap" style="margin-top:24px;">
+        <div class="table-head">
+            <h2>🔍 Missions d'expertise en cours</h2>
+            <a th:href="@{/expert/missions}" class="btn btn-outline" style="font-size:12px;">Toutes les missions</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>N° Mission</th>
+                    <th>Dossier</th>
+                    <th>Objet de l'expertise</th>
+                    <th>Valeur estimée (DZD)</th>
+                    <th>Type de bien</th>
+                    <th>Date limite rapport</th>
+                    <th>Avancement</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="mission : ${missionsEnCours}">
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);" th:text="${mission.numero}">-</td>
+                    <td style="font-family:'DM Mono',monospace;" th:text="${mission.dossierRef}">-</td>
+                    <td th:text="${mission.objet}">-</td>
+                    <td style="font-family:'DM Mono',monospace;" th:text="${#numbers.formatDecimal(mission.valeurEstimee,1,'COMMA',2,'POINT')}">-</td>
+                    <td><span th:class="'badge ' + ${mission.typeBadge}" th:text="${mission.typeBien}">-</span></td>
+                    <td th:style="${mission.delaiDepasse} ? 'color:var(--danger)' : 'color:var(--warn)'"
+                        style="font-family:'DM Mono',monospace;"
+                        th:text="${#temporals.format(mission.dateLimite,'dd/MM/yyyy')}">-</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; background:var(--border); border-radius:4px; height:6px; min-width:60px;">
+                                <div th:style="'width:' + ${mission.avancement} + '%; height:100%; background:var(--accent2); border-radius:4px;'"></div>
+                            </div>
+                            <span style="font-size:12px; font-family:'DM Mono',monospace;" th:text="${mission.avancement + '%'}">-</span>
+                        </div>
+                    </td>
+                    <td><a th:href="@{/expert/mission/{id}(id=${mission.id})}" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+                <!-- Démo -->
+                <tr th:if="${missionsEnCours == null or #lists.isEmpty(missionsEnCours)}">
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);">EXP-2025-014</td>
+                    <td style="font-family:'DM Mono',monospace;">DOS-2025-003</td>
+                    <td>Évaluation bien immobilier</td>
+                    <td style="font-family:'DM Mono',monospace;">12 500 000,00</td>
+                    <td><span class="badge badge-blue">Immobilier</span></td>
+                    <td style="color:var(--warn); font-family:'DM Mono',monospace;">30/01/2025</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; background:var(--border); border-radius:4px; height:6px; min-width:60px;">
+                                <div style="width:65%; height:100%; background:var(--accent2); border-radius:4px;"></div>
+                            </div>
+                            <span style="font-size:12px; font-family:'DM Mono',monospace;">65%</span>
+                        </div>
+                    </td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+                <tr th:if="${missionsEnCours == null or #lists.isEmpty(missionsEnCours)}">
+                    <td style="font-family:'DM Mono',monospace; color:var(--accent);">EXP-2025-019</td>
+                    <td style="font-family:'DM Mono',monospace;">DOS-2025-007</td>
+                    <td>Inventaire fonds de commerce</td>
+                    <td style="font-family:'DM Mono',monospace;">850 000,00</td>
+                    <td><span class="badge badge-warn">Commercial</span></td>
+                    <td style="color:var(--danger); font-family:'DM Mono',monospace;">18/01/2025</td>
+                    <td>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div style="flex:1; background:var(--border); border-radius:4px; height:6px; min-width:60px;">
+                                <div style="width:90%; height:100%; background:var(--accent2); border-radius:4px;"></div>
+                            </div>
+                            <span style="font-size:12px; font-family:'DM Mono',monospace;">90%</span>
+                        </div>
+                    </td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- Rapports + contre-expertises -->
+    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:16px;">
+        <div class="card">
+            <h2 style="font-size:14px; font-weight:600; margin-bottom:14px;">📝 Rapports à finaliser</h2>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:rgba(248,81,73,.06); border-radius:8px; border:1px solid rgba(248,81,73,.15);">
+                    <div>
+                        <div style="font-size:13px; font-weight:500;">Rapport EXP-2025-019</div>
+                        <div style="font-size:12px; color:var(--danger); margin-top:2px;">⚠ Délai dépassé — 18/01/2025</div>
+                    </div>
+                    <a href="#" class="btn btn-primary" style="font-size:12px; padding:6px 14px;">Finaliser</a>
+                </div>
+                <div style="display:flex; align-items:center; justify-content:space-between; padding:12px; background:rgba(210,153,34,.06); border-radius:8px; border:1px solid rgba(210,153,34,.15);">
+                    <div>
+                        <div style="font-size:13px; font-weight:500;">Rapport EXP-2025-014</div>
+                        <div style="font-size:12px; color:var(--warn); margin-top:2px;">📅 Dans 10 jours — 30/01/2025</div>
+                    </div>
+                    <a href="#" class="btn btn-outline" style="font-size:12px; padding:6px 14px;">Continuer</a>
+                </div>
+                <a th:href="@{/expert/rapports}" class="btn btn-outline" style="font-size:12px; justify-content:center;">Tous les rapports</a>
+            </div>
+        </div>
+
+        <div class="card">
+            <h2 style="font-size:14px; font-weight:600; margin-bottom:14px;">🏗 Contre-expertises</h2>
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <div style="padding:12px; background:rgba(88,166,255,.06); border-radius:8px; border:1px solid rgba(88,166,255,.15);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-size:13px; font-weight:500;">EXP-2025-009 — DOS-2025-001</span>
+                        <span class="badge badge-blue">Demandée</span>
+                    </div>
+                    <div style="font-size:12px; color:var(--muted);">Contestation par le débiteur — Bien immobilier Alger</div>
+                    <div style="margin-top:8px;">
+                        <a href="#" class="btn btn-outline" style="font-size:11px; padding:4px 12px;">Consulter</a>
+                    </div>
+                </div>
+                <div style="padding:12px; background:rgba(88,166,255,.06); border-radius:8px; border:1px solid rgba(88,166,255,.15);">
+                    <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                        <span style="font-size:13px; font-weight:500;">EXP-2025-006 — DOS-2024-089</span>
+                        <span class="badge badge-muted">En traitement</span>
+                    </div>
+                    <div style="font-size:12px; color:var(--muted);">Opposition banque — Fonds de commerce Constantine</div>
+                    <div style="margin-top:8px;">
+                        <a href="#" class="btn btn-outline" style="font-size:11px; padding:4px 12px;">Consulter</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+</body>
+</html>

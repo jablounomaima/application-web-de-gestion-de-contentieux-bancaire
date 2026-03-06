@@ -2,56 +2,53 @@ package com.example.contentieux_security.service;
 
 import com.example.contentieux_security.dto.AgentBancaireDTO;
 import com.example.contentieux_security.dto.AgentCreationRequest;
+import com.example.contentieux_security.dto.AgentProfileUpdateRequest;
+import com.example.contentieux_security.dto.PasswordChangeRequest;
 import com.example.contentieux_security.entity.Agence;
 import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.repository.AgenceRepository;
+
 import com.example.contentieux_security.repository.AgentBancaireRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.contentieux_security.dto.PasswordChangeRequest;  // AJOUTER CETTE LIGNE
-
+import com.example.contentieux_security.config.KeycloakUserService;
 import java.util.List;
 import java.util.stream.Collectors;
 
+// ✅ Service
 @Service
-@RequiredArgsConstructor
 public class AgentBancaireService {
 
     private final AgentBancaireRepository agentRepository;
     private final AgenceRepository agenceRepository;
     private final PasswordEncoder passwordEncoder;
-    private final KeycloakUserService keycloakUserService;
+    private final KeycloakUserService keycloakUserService; // Correct
 
-    /**
-     * Récupère un agent par username (gère les doublons)
-     */
+    // Constructeur
+    public AgentBancaireService(AgentBancaireRepository agentRepository,
+                                AgenceRepository agenceRepository,
+                                PasswordEncoder passwordEncoder,
+                                KeycloakUserService keycloakUserService) {
+        this.agentRepository = agentRepository;
+        this.agenceRepository = agenceRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.keycloakUserService = keycloakUserService;
+    }
+
+    // =================== Méthodes ===================
+
     public AgentBancaire findAgentByUsername(String username) {
         List<AgentBancaire> agents = agentRepository.findByUsername(username);
-        
-        if (agents.isEmpty()) {
-            System.out.println("Aucun agent trouvé avec username: " + username);
-            return null;
-        }
-        
-        if (agents.size() > 1) {
+        if (agents.isEmpty()) return null;
+        if (agents.size() > 1)
             System.out.println("⚠️ ATTENTION: " + agents.size() + " agents avec username '" + username + "'");
-            System.out.println("IDs: " + agents.stream().map(AgentBancaire::getId).toList());
-            System.out.println("Utilisation du premier (ID: " + agents.get(0).getId() + ")");
-        }
-        
         return agents.get(0);
     }
 
-    /**
-     * Récupère un agent par username (lance exception si non trouvé)
-     */
     public AgentBancaire getAgentByUsername(String username) {
         AgentBancaire agent = findAgentByUsername(username);
-        if (agent == null) {
-            throw new RuntimeException("Agent non trouvé dans la base locale: " + username);
-        }
+        if (agent == null) throw new RuntimeException("Agent non trouvé: " + username);
         return agent;
     }
 
@@ -75,37 +72,34 @@ public class AgentBancaireService {
 
     @Transactional
     public AgentBancaireDTO createAgent(AgentCreationRequest request) {
-        if (agentRepository.existsByUsername(request.getUsername())) {
+        if (agentRepository.existsByUsername(request.getUsername()))
             throw new RuntimeException("Nom d'utilisateur déjà existant");
-        }
 
         Agence agence = agenceRepository.findById(request.getAgenceId())
                 .orElseThrow(() -> new RuntimeException("Agence non trouvée"));
 
-        // Créer dans Keycloak d'abord
+        // Créer dans Keycloak
         keycloakUserService.createUser(
-            request.getUsername(),
-            request.getEmail(),
-            request.getNom(),
-            request.getPrenom(),
-            request.getPassword(),
-            "AGENT"
+                request.getUsername(),
+                request.getEmail(),
+                request.getNom(),
+                request.getPrenom(),
+                request.getPassword(),
+                "AGENT"
         );
 
-        // Créer dans la base locale
-        AgentBancaire agent = AgentBancaire.builder()
-                .username(request.getUsername())
-                .password(passwordEncoder.encode(request.getPassword()))
-                .nom(request.getNom())
-                .prenom(request.getPrenom())
-                .email(request.getEmail())
-                .telephone(request.getTelephone())
-                .role("AGENT")
-                .matricule(request.getMatricule())
-                .dateEmbauche(request.getDateEmbauche())
-                .agence(agence)
-                .actif(true)
-                .build();
+        AgentBancaire agent = new AgentBancaire();
+        agent.setUsername(request.getUsername());
+        agent.setPassword(passwordEncoder.encode(request.getPassword()));
+        agent.setNom(request.getNom());
+        agent.setPrenom(request.getPrenom());
+        agent.setEmail(request.getEmail());
+        agent.setTelephone(request.getTelephone());
+        agent.setRole("AGENT");
+        agent.setMatricule(request.getMatricule());
+        agent.setDateEmbauche(request.getDateEmbauche());
+        agent.setAgence(agence);
+        agent.setActif(true);
 
         return convertToDTO(agentRepository.save(agent));
     }
@@ -131,7 +125,6 @@ public class AgentBancaireService {
     public void deleteAgent(Long id) {
         AgentBancaire agent = agentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
-
         keycloakUserService.deleteUser(agent.getUsername());
         agentRepository.deleteById(id);
     }
@@ -140,7 +133,40 @@ public class AgentBancaireService {
     public void toggleAgentStatus(Long id) {
         AgentBancaire agent = agentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
-        agent.setActif(!agent.getActif());
+        agent.setActif(!agent.isActif());
+        agentRepository.save(agent);
+    }
+
+    @Transactional
+    public void changePassword(String username, PasswordChangeRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword()))
+            throw new RuntimeException("La confirmation du mot de passe est incorrecte");
+
+        AgentBancaire agent = agentRepository.findByUsername(username)
+                .stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), agent.getPassword()))
+            throw new RuntimeException("Mot de passe actuel incorrect");
+
+        String encodedPassword = passwordEncoder.encode(request.getNewPassword());
+        agent.setPassword(encodedPassword);
+        agentRepository.save(agent);
+
+        keycloakUserService.updatePassword(username, request.getNewPassword());
+    }
+
+    @Transactional
+    public void updateProfile(String username, AgentProfileUpdateRequest request) {
+        AgentBancaire agent = agentRepository.findByUsername(username)
+                .stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
+
+        agent.setNom(request.getNom());
+        agent.setPrenom(request.getPrenom());
+        agent.setEmail(request.getEmail());
+        agent.setTelephone(request.getTelephone());
+
         agentRepository.save(agent);
     }
 
@@ -156,39 +182,7 @@ public class AgentBancaireService {
         dto.setDateEmbauche(agent.getDateEmbauche());
         dto.setAgenceId(agent.getAgence() != null ? agent.getAgence().getId() : null);
         dto.setNomAgence(agent.getAgence() != null ? agent.getAgence().getNom() : null);
-        dto.setActif(agent.getActif());
+        dto.setActif(agent.isActif());
         return dto;
     }
-
-    @Transactional
-public void changePassword(String username, PasswordChangeRequest request) {
-    // Validation
-    if (!request.getNewPassword().equals(request.getConfirmPassword())) {
-        throw new RuntimeException("Les nouveaux mots de passe ne correspondent pas");
-    }
-    
-    if (request.getNewPassword().length() < 6) {
-        throw new RuntimeException("Le mot de passe doit faire au moins 6 caractères");
-    }
-    
-    // Récupérer l'agent
-    AgentBancaire agent = findAgentByUsername(username);
-    if (agent == null) {
-        throw new RuntimeException("Agent non trouvé");
-    }
-    
-    // Vérifier l'ancien mot de passe (dans la base locale)
-    if (!passwordEncoder.matches(request.getCurrentPassword(), agent.getPassword())) {
-        throw new RuntimeException("Mot de passe actuel incorrect");
-    }
-    
-    // 1. Changer dans Keycloak
-    keycloakUserService.changeUserPassword(username, request.getNewPassword());
-    
-    // 2. Changer dans la base locale
-    agent.setPassword(passwordEncoder.encode(request.getNewPassword()));
-    agentRepository.save(agent);
-    
-    System.out.println("✅ Mot de passe changé avec succès pour: " + username);
-}
 }

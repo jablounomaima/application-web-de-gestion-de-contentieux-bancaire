@@ -1,67 +1,141 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Dashboard Agent</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-        .header { background: #3498db; color: white; padding: 20px; border-radius: 5px; margin-bottom: 20px; }
-        .card { background: white; padding: 20px; border-radius: 5px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        .nav { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
-        .nav a { background: #2ecc71; color: white; padding: 10px 20px; text-decoration: none; border-radius: 4px; }
-        .nav a:hover { background: #27ae60; }
-        .logout { background: #e74c3c !important; }
-        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
-        .label { font-weight: bold; color: #7f8c8d; }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Dashboard Agent')}"></head>
 <body>
-    <div class="header">
-        <h1>🏦 Dashboard Agent</h1>
-        <p>Bienvenue, <span th:text="${username}">Agent</span> ! 👋</p>
+
+<nav th:replace="~{fragments/layout :: sidebar('AGENT', ${#authentication.name})}"></nav>
+
+<main class="main">
+    <div class="page-header">
+        <h1>Dashboard Agent Bancaire</h1>
+        <p>Bienvenue, <strong th:text="${#authentication.name}">Agent</strong> — suivi de vos dossiers en cours</p>
     </div>
 
-    <div class="nav">
-        <a href="/agent/dossiers">📁 Dossiers</a>
-        <a href="/agent/clients">👥 Clients</a>
-        <a href="/agent/prestataires">🤝 Prestataires</a>
-        <a href="/agent/missions">📋 Missions</a>
-        <a href="/agent/change-password">🔐 Changer mot de passe</a>  <!-- NOUVEAU -->
-        <a href="/logout" class="logout">🚪 Déconnexion</a>
-    </div>
-
-    <div class="card" th:if="${agent != null}">
-        <h2>👤 Informations Agent</h2>
-        <div class="info-grid">
-            <div>
-                <p class="label">Nom complet:</p>
-                <p th:text="${agent.nom} + ' ' + ${agent.prenom}">Nom Prénom</p>
-            </div>
-            <div>
-                <p class="label">Email:</p>
-                <p th:text="${agent.email}">email@example.com</p>
-            </div>
-            <div>
-                <p class="label">Téléphone:</p>
-                <p th:text="${agent.telephone} ?: 'Non renseigné'">0123456789</p>
-            </div>
-            <div>
-                <p class="label">Matricule:</p>
-                <p th:text="${agent.matricule} ?: 'Non renseigné'">MAT-001</p>
-            </div>
+    <!-- Statistiques -->
+    <div class="cards cards-4">
+        <div class="card stat-card blue">
+            <div class="label">Mes dossiers</div>
+            <div class="value" th:text="${mesDossiers ?: 34}">34</div>
+            <div class="delta">Total affectés</div>
+        </div>
+        <div class="card stat-card warn">
+            <div class="label">En instruction</div>
+            <div class="value" th:text="${enInstruction ?: 18}">18</div>
+            <div class="delta">À traiter</div>
+        </div>
+        <div class="card stat-card red">
+            <div class="label">Relances urgentes</div>
+            <div class="value" th:text="${relancesUrgentes ?: 5}">5</div>
+            <div class="delta">Délai dépassé</div>
+        </div>
+        <div class="card stat-card green">
+            <div class="label">Clôturés (mois)</div>
+            <div class="value" th:text="${clotures ?: 11}">11</div>
+            <div class="delta">↑ 3 vs mois dernier</div>
         </div>
     </div>
 
-    <div class="card" th:if="${agence != null}">
-        <h2>🏢 Agence</h2>
-        <p><span class="label">Nom:</span> <span th:text="${agence.nom}">Agence Centrale</span></p>
-        <p><span class="label">Adresse:</span> <span th:text="${agence.adresse} ?: 'Non renseignée'">Adresse</span></p>
+    <!-- Actions rapides -->
+    <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
+        <a th:href="@{/agent/nouveau}" class="btn btn-primary">➕ Nouveau dossier</a>
+        <a th:href="@{/agent/relances}" class="btn btn-outline">🔔 Voir les relances</a>
+        <a th:href="@{/agent/rapports}" class="btn btn-outline">📊 Générer un rapport</a>
     </div>
 
-    <div class="card" th:if="${agent == null}" style="background: #f8d7da; color: #721c24;">
-        <h2>⚠️ Agent non trouvé</h2>
-        <p>Votre compte Keycloak existe mais vous n'êtes pas enregistré dans la base locale.</p>
-        <p>Veuillez contacter un administrateur.</p>
+    <!-- Dossiers en cours -->
+    <div class="table-wrap">
+        <div class="table-head">
+            <h2>Mes dossiers en cours</h2>
+            <a th:href="@{/agent/dossiers}" class="btn btn-outline" style="font-size:12px;">Tous les dossiers</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Référence</th>
+                    <th>Débiteur</th>
+                    <th>Créance (DZD)</th>
+                    <th>Phase</th>
+                    <th>Avocat assigné</th>
+                    <th>Prochaine échéance</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="dossier : ${mesDossiersListe}">
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);" th:text="${dossier.reference}">-</span></td>
+                    <td th:text="${dossier.debiteurNom}">-</td>
+                    <td style="font-family:'DM Mono',monospace;" th:text="${#numbers.formatDecimal(dossier.montantCreance,1,'COMMA',2,'POINT')}">-</td>
+                    <td><span th:class="'badge ' + ${dossier.phaseBadge}" th:text="${dossier.phase}">-</span></td>
+                    <td th:text="${dossier.avocatNom ?: 'Non assigné'}" th:style="${dossier.avocatNom == null} ? 'color:var(--muted)' : ''">-</td>
+                    <td style="color:var(--warn); font-family:'DM Mono',monospace; font-size:13px;" th:text="${#temporals.format(dossier.prochaineEcheance,'dd/MM/yyyy')}">-</td>
+                    <td>
+                        <a th:href="@{/agent/dossier/{id}(id=${dossier.id})}" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a>
+                    </td>
+                </tr>
+                <!-- Démo -->
+                <tr th:if="${mesDossiersListe == null or #lists.isEmpty(mesDossiersListe)}">
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-007</span></td>
+                    <td>Hamza Bouzid</td>
+                    <td style="font-family:'DM Mono',monospace;">2 100 000,00</td>
+                    <td><span class="badge badge-warn">JUDICIAIRE</span></td>
+                    <td>Me. Slimane</td>
+                    <td style="color:var(--warn); font-family:'DM Mono',monospace; font-size:13px;">28/01/2025</td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+                <tr th:if="${mesDossiersListe == null or #lists.isEmpty(mesDossiersListe)}">
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-011</span></td>
+                    <td>Zineb Rahmani</td>
+                    <td style="font-family:'DM Mono',monospace;">540 000,00</td>
+                    <td><span class="badge badge-blue">AMIABLE</span></td>
+                    <td style="color:var(--muted);">Non assigné</td>
+                    <td style="color:var(--warn); font-family:'DM Mono',monospace; font-size:13px;">05/02/2025</td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+                <tr th:if="${mesDossiersListe == null or #lists.isEmpty(mesDossiersListe)}">
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-015</span></td>
+                    <td>Mounir Tabet</td>
+                    <td style="font-family:'DM Mono',monospace;">890 000,00</td>
+                    <td><span class="badge badge-red">URGENT</span></td>
+                    <td>Me. Ferhat</td>
+                    <td style="color:var(--danger); font-family:'DM Mono',monospace; font-size:13px;">19/01/2025</td>
+                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
+                </tr>
+            </tbody>
+        </table>
     </div>
+
+    <!-- Relances -->
+    <div class="table-wrap" style="margin-top:16px;">
+        <div class="table-head">
+            <h2>Relances à effectuer</h2>
+            <a th:href="@{/agent/relances}" class="btn btn-outline" style="font-size:12px;">Voir tout</a>
+        </div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Dossier</th>
+                    <th>Type de relance</th>
+                    <th>Priorité</th>
+                    <th>Délai</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-015</span></td>
+                    <td>Mise en demeure</td>
+                    <td><span class="badge badge-red">Haute</span></td>
+                    <td style="color:var(--danger);">Dépassé de 3j</td>
+                </tr>
+                <tr>
+                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-007</span></td>
+                    <td>Rappel amiable</td>
+                    <td><span class="badge badge-warn">Moyenne</span></td>
+                    <td style="color:var(--warn);">Dans 2 jours</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</main>
 </body>
 </html>
