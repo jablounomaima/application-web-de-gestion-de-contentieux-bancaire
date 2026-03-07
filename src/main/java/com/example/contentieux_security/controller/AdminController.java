@@ -9,9 +9,14 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
+import org.springframework.ui.Model;
 import java.security.Principal;
 import java.util.List;
+
+
+import org.springframework.security.oauth2.core.user.OAuth2User;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.Authentication;
 
 @Controller
 @RequestMapping("/admin")
@@ -23,12 +28,24 @@ public class AdminController {
     private final AgentBancaireService agentService;
 
     // ==================== DASHBOARD ====================
-    
     @GetMapping("/dashboard")
-    public String adminDashboard(Model model, Principal principal) {
-        model.addAttribute("username", principal.getName());
-        model.addAttribute("totalAgences", agenceService.getAllAgences().size());
-        model.addAttribute("totalAgents", agentService.getAllAgents().size());
+    public String dashboard(Authentication authentication, Model model) {
+
+        // ── Nom depuis Keycloak ──
+        String fullname = "";
+        Object given  = authentication.getPrincipal() instanceof
+            org.springframework.security.oauth2.core.oidc.user.OidcUser oidc ?
+            oidc.getAttribute("given_name") : null;
+        Object family = authentication.getPrincipal() instanceof
+            org.springframework.security.oauth2.core.oidc.user.OidcUser oidc2 ?
+            oidc2.getAttribute("family_name") : null;
+        if (given != null)  fullname += given + " ";
+        if (family != null) fullname += family;
+        model.addAttribute("fullname", fullname.trim());
+
+        // ── OBLIGATOIRE — objet vide pour le formulaire modal ──
+        model.addAttribute("nouveauUtilisateur", new UtilisateurDto());
+
         return "admin/dashboard";
     }
 

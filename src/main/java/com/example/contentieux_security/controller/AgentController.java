@@ -11,8 +11,9 @@ import com.example.contentieux_security.service.PrestataireService;
 
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-
+import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
@@ -33,28 +34,27 @@ public class AgentController {
         this.prestataireService = prestataireService;
     }
 
-    // ================= DASHBOARD =================
-
     @GetMapping("/dashboard")
-    public String agentDashboard(Model model, RedirectAttributes redirectAttrs) {
-
-        String username = getCurrentUsername();
-
-        if (username == null || username.equals("anonymousUser")) {
-            redirectAttrs.addFlashAttribute("error", "Session invalide");
-            return "redirect:/login";
-        }
-
-        AgentBancaire agent = agentService.findAgentByUsername(username);
-
+    public String agentDashboard(Model model,
+                                 @AuthenticationPrincipal OidcUser oidcUser) {
+    
+        // ── Données base locale ──
+        AgentBancaire agent = agentService.findAgentByUsername(oidcUser.getPreferredUsername());
+    
         if (agent == null) {
-            model.addAttribute("error", "Agent non trouvé en base locale");
+            model.addAttribute("error",
+                "Compte Keycloak non enregistré en base. Contactez un administrateur.");
             return "error";
         }
-
-        model.addAttribute("agent", agent);
-        model.addAttribute("agence", agent.getAgence());
-
+    
+        model.addAttribute("agent",      agent);
+        model.addAttribute("agence",     agent.getAgence());
+    
+        // ── Données Keycloak pour le layout ──
+        model.addAttribute("givenName",  oidcUser.getGivenName());
+        model.addAttribute("familyName", oidcUser.getFamilyName());
+        model.addAttribute("username",   oidcUser.getPreferredUsername());
+    
         return "agent/dashboard";
     }
 

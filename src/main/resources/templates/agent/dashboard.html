@@ -1,141 +1,174 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <head th:replace="~{fragments/layout :: head('Dashboard Agent')}"></head>
+
 <body>
+<div class="layout-wrapper">
 
-<nav th:replace="~{fragments/layout :: sidebar('AGENT', ${#authentication.name})}"></nav>
+    <!-- ═══ SIDEBAR ═══ -->
+    <aside th:replace="~{fragments/layout :: sidebar('AGENT', ${username})}"></aside>
 
-<main class="main">
-    <div class="page-header">
-        <h1>Dashboard Agent Bancaire</h1>
-        <p>Bienvenue, <strong th:text="${#authentication.name}">Agent</strong> — suivi de vos dossiers en cours</p>
+    <!-- ═══ CONTENU PRINCIPAL ═══ -->
+    <div class="page-content">
+
+        <!-- Topbar -->
+        <header th:replace="~{fragments/layout :: topbar('Dashboard', ${username}, 'AGENT')}"></header>
+
+        <div class="page-inner fade-in">
+
+            <!-- Alerts -->
+            <div th:if="${successMessage}" class="alert alert-success">
+                ✅ <span th:text="${successMessage}"></span>
+            </div>
+            <div th:if="${errorMessage}" class="alert alert-error">
+                ⚠️ <span th:text="${errorMessage}"></span>
+            </div>
+
+            <!-- ═══ CAS : Agent non trouvé ═══ -->
+            <div th:if="${agent == null}" class="alert alert-error" style="font-size:14px;">
+                <div>
+                    <strong>⚠️ Agent non trouvé</strong><br/>
+                    Votre compte Keycloak existe mais vous n'êtes pas enregistré dans la base locale.
+                    Veuillez contacter un administrateur.
+                </div>
+            </div>
+
+            <!-- ═══ CAS NORMAL : Agent trouvé ═══ -->
+            <div th:if="${agent != null}">
+
+                <!-- Welcome banner -->
+                <div class="welcome-banner fade-in">
+                    <div class="welcome-inner">
+                        <div>
+                            <h2>Bonjour, <span th:text="${agent.prenom} + ' ' + ${agent.nom}">Prénom Nom</span> 👋</h2>
+                            <p>Bienvenue sur votre espace agent — gérez vos dossiers et suivez vos missions.</p>
+                        </div>
+                        <div class="role-pill">👤 Agent</div>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="stats-grid">
+                    <div class="stat-card blue fade-in delay-1">
+                        <div class="stat-icon">📁</div>
+                        <div class="stat-label">Dossiers actifs</div>
+                        <div class="stat-value" th:text="${nbDossiers ?: '0'}">0</div>
+                        <div class="stat-delta">En cours de traitement</div>
+                    </div>
+                    <div class="stat-card amber fade-in delay-2">
+                        <div class="stat-icon">🔔</div>
+                        <div class="stat-label">Relances en attente</div>
+                        <div class="stat-value" th:text="${nbRelances ?: '0'}">0</div>
+                        <div class="stat-delta">À traiter</div>
+                    </div>
+                    <div class="stat-card green fade-in delay-3">
+                        <div class="stat-icon">✅</div>
+                        <div class="stat-label">Missions terminées</div>
+                        <div class="stat-value" th:text="${nbMissions ?: '0'}">0</div>
+                        <div class="stat-delta">Ce mois-ci</div>
+                    </div>
+                    <div class="stat-card purple fade-in delay-4">
+                        <div class="stat-icon">🤝</div>
+                        <div class="stat-label">Prestataires</div>
+                        <div class="stat-value" th:text="${nbPrestataires ?: '0'}">0</div>
+                        <div class="stat-delta">Associés à votre portefeuille</div>
+                    </div>
+                </div>
+
+                <!-- Grille infos : Agent + Agence -->
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px; margin-bottom:24px;">
+
+                    <!-- Card Agent -->
+                    <div class="card fade-in delay-1">
+                        <div class="card-header">
+                            <h2>👤 Informations personnelles</h2>
+                            <a th:href="@{/agent/profile/edit}" class="btn btn-outline btn-sm">✏️ Modifier</a>
+                        </div>
+                        <div class="card-body">
+                            <table style="width:100%; border-collapse:collapse;">
+                                <tbody>
+                                    <tr style="border-bottom:1px solid var(--border);">
+                                        <td style="padding:10px 0; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; width:40%;">Nom complet</td>
+                                        <td style="padding:10px 0; font-size:13.5px; font-weight:500;"
+                                            th:text="${agent.prenom} + ' ' + ${agent.nom}">Prénom Nom</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid var(--border);">
+                                        <td style="padding:10px 0; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase;">Email</td>
+                                        <td style="padding:10px 0; font-size:13.5px;"
+                                            th:text="${agent.email}">email@example.com</td>
+                                    </tr>
+                                    <tr style="border-bottom:1px solid var(--border);">
+                                        <td style="padding:10px 0; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase;">Téléphone</td>
+                                        <td style="padding:10px 0; font-size:13.5px;"
+                                            th:text="${agent.telephone} ?: 'Non renseigné'">—</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 0; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase;">Matricule</td>
+                                        <td style="padding:10px 0;">
+                                            <span class="badge badge-navy"
+                                                  th:text="${agent.matricule} ?: 'Non renseigné'">MAT-001</span>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Card Agence -->
+                    <div class="card fade-in delay-2">
+                        <div class="card-header">
+                            <h2>🏢 Mon agence</h2>
+                        </div>
+                        <div class="card-body" th:if="${agence != null}">
+                            <table style="width:100%; border-collapse:collapse;">
+                                <tbody>
+                                    <tr style="border-bottom:1px solid var(--border);">
+                                        <td style="padding:10px 0; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase; width:40%;">Nom</td>
+                                        <td style="padding:10px 0; font-size:13.5px; font-weight:500;"
+                                            th:text="${agence.nom}">Agence Centrale</td>
+                                    </tr>
+                                    <tr>
+                                        <td style="padding:10px 0; font-size:12px; color:var(--muted); font-weight:600; text-transform:uppercase;">Adresse</td>
+                                        <td style="padding:10px 0; font-size:13.5px;"
+                                            th:text="${agence.adresse} ?: 'Non renseignée'">—</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="card-body" th:if="${agence == null}">
+                            <p style="color:var(--muted); font-size:13px;">Aucune agence associée.</p>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Actions rapides -->
+                <div class="card fade-in delay-3">
+                    <div class="card-header">
+                        <h2>⚡ Actions rapides</h2>
+                    </div>
+                    <div class="card-body" style="display:flex; gap:12px; flex-wrap:wrap;">
+                        <a th:href="@{/agent/dossiers}"       class="btn btn-primary">📁 Mes dossiers</a>
+                        <a th:href="@{/agent/clients}"         class="btn btn-outline">👥 Clients</a>
+                        <a th:href="@{/agent/prestataires}"    class="btn btn-outline">🤝 Prestataires</a>
+                        <a th:href="@{/agent/missions}"         class="btn btn-outline">📋 Missions</a>
+                        <a th:href="@{/agent/profile/edit}"    class="btn btn-outline">✏️ Modifier profil</a>
+                        <a th:href="@{/agent/change-password}" class="btn btn-outline">🔐 Mot de passe</a>
+                    </div>
+                </div>
+
+            </div>
+            <!-- fin th:if agent != null -->
+
+        </div>
+        <!-- fin page-inner -->
+
     </div>
+    <!-- fin page-content -->
 
-    <!-- Statistiques -->
-    <div class="cards cards-4">
-        <div class="card stat-card blue">
-            <div class="label">Mes dossiers</div>
-            <div class="value" th:text="${mesDossiers ?: 34}">34</div>
-            <div class="delta">Total affectés</div>
-        </div>
-        <div class="card stat-card warn">
-            <div class="label">En instruction</div>
-            <div class="value" th:text="${enInstruction ?: 18}">18</div>
-            <div class="delta">À traiter</div>
-        </div>
-        <div class="card stat-card red">
-            <div class="label">Relances urgentes</div>
-            <div class="value" th:text="${relancesUrgentes ?: 5}">5</div>
-            <div class="delta">Délai dépassé</div>
-        </div>
-        <div class="card stat-card green">
-            <div class="label">Clôturés (mois)</div>
-            <div class="value" th:text="${clotures ?: 11}">11</div>
-            <div class="delta">↑ 3 vs mois dernier</div>
-        </div>
-    </div>
-
-    <!-- Actions rapides -->
-    <div style="margin-top:24px; display:flex; gap:12px; flex-wrap:wrap;">
-        <a th:href="@{/agent/nouveau}" class="btn btn-primary">➕ Nouveau dossier</a>
-        <a th:href="@{/agent/relances}" class="btn btn-outline">🔔 Voir les relances</a>
-        <a th:href="@{/agent/rapports}" class="btn btn-outline">📊 Générer un rapport</a>
-    </div>
-
-    <!-- Dossiers en cours -->
-    <div class="table-wrap">
-        <div class="table-head">
-            <h2>Mes dossiers en cours</h2>
-            <a th:href="@{/agent/dossiers}" class="btn btn-outline" style="font-size:12px;">Tous les dossiers</a>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Référence</th>
-                    <th>Débiteur</th>
-                    <th>Créance (DZD)</th>
-                    <th>Phase</th>
-                    <th>Avocat assigné</th>
-                    <th>Prochaine échéance</th>
-                    <th>Actions</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr th:each="dossier : ${mesDossiersListe}">
-                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);" th:text="${dossier.reference}">-</span></td>
-                    <td th:text="${dossier.debiteurNom}">-</td>
-                    <td style="font-family:'DM Mono',monospace;" th:text="${#numbers.formatDecimal(dossier.montantCreance,1,'COMMA',2,'POINT')}">-</td>
-                    <td><span th:class="'badge ' + ${dossier.phaseBadge}" th:text="${dossier.phase}">-</span></td>
-                    <td th:text="${dossier.avocatNom ?: 'Non assigné'}" th:style="${dossier.avocatNom == null} ? 'color:var(--muted)' : ''">-</td>
-                    <td style="color:var(--warn); font-family:'DM Mono',monospace; font-size:13px;" th:text="${#temporals.format(dossier.prochaineEcheance,'dd/MM/yyyy')}">-</td>
-                    <td>
-                        <a th:href="@{/agent/dossier/{id}(id=${dossier.id})}" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a>
-                    </td>
-                </tr>
-                <!-- Démo -->
-                <tr th:if="${mesDossiersListe == null or #lists.isEmpty(mesDossiersListe)}">
-                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-007</span></td>
-                    <td>Hamza Bouzid</td>
-                    <td style="font-family:'DM Mono',monospace;">2 100 000,00</td>
-                    <td><span class="badge badge-warn">JUDICIAIRE</span></td>
-                    <td>Me. Slimane</td>
-                    <td style="color:var(--warn); font-family:'DM Mono',monospace; font-size:13px;">28/01/2025</td>
-                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
-                </tr>
-                <tr th:if="${mesDossiersListe == null or #lists.isEmpty(mesDossiersListe)}">
-                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-011</span></td>
-                    <td>Zineb Rahmani</td>
-                    <td style="font-family:'DM Mono',monospace;">540 000,00</td>
-                    <td><span class="badge badge-blue">AMIABLE</span></td>
-                    <td style="color:var(--muted);">Non assigné</td>
-                    <td style="color:var(--warn); font-family:'DM Mono',monospace; font-size:13px;">05/02/2025</td>
-                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
-                </tr>
-                <tr th:if="${mesDossiersListe == null or #lists.isEmpty(mesDossiersListe)}">
-                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-015</span></td>
-                    <td>Mounir Tabet</td>
-                    <td style="font-family:'DM Mono',monospace;">890 000,00</td>
-                    <td><span class="badge badge-red">URGENT</span></td>
-                    <td>Me. Ferhat</td>
-                    <td style="color:var(--danger); font-family:'DM Mono',monospace; font-size:13px;">19/01/2025</td>
-                    <td><a href="#" class="btn btn-outline" style="padding:5px 12px; font-size:12px;">Voir</a></td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Relances -->
-    <div class="table-wrap" style="margin-top:16px;">
-        <div class="table-head">
-            <h2>Relances à effectuer</h2>
-            <a th:href="@{/agent/relances}" class="btn btn-outline" style="font-size:12px;">Voir tout</a>
-        </div>
-        <table>
-            <thead>
-                <tr>
-                    <th>Dossier</th>
-                    <th>Type de relance</th>
-                    <th>Priorité</th>
-                    <th>Délai</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-015</span></td>
-                    <td>Mise en demeure</td>
-                    <td><span class="badge badge-red">Haute</span></td>
-                    <td style="color:var(--danger);">Dépassé de 3j</td>
-                </tr>
-                <tr>
-                    <td><span style="font-family:'DM Mono',monospace; color:var(--accent);">DOS-2025-007</span></td>
-                    <td>Rappel amiable</td>
-                    <td><span class="badge badge-warn">Moyenne</span></td>
-                    <td style="color:var(--warn);">Dans 2 jours</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-</main>
+</div>
+<!-- fin layout-wrapper -->
 </body>
 </html>

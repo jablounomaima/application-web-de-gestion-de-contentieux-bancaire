@@ -1,403 +1,439 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
-<head>
-    <meta charset="UTF-8">
-    <title>Gestion des Agences</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f5f5f5;
-            padding: 20px;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-        }
-        
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        h2 {
-            color: #555;
-            margin: 30px 0 15px 0;
-            border-bottom: 2px solid #4CAF50;
-            padding-bottom: 10px;
-        }
-        
-        /* Messages */
-        .alert {
-            padding: 15px;
-            margin-bottom: 20px;
-            border-radius: 4px;
-        }
-        
-        .alert-success {
-            background-color: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-        
-        .alert-error {
-            background-color: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-        
-        /* Formulaire */
-        .form-section {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-            margin-bottom: 30px;
-        }
-        
-        .form-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 15px;
-            margin-bottom: 15px;
-        }
-        
-        .form-group {
-            flex: 1;
-            min-width: 200px;
-        }
-        
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #555;
-            font-weight: 500;
-        }
-        
-        input[type="text"],
-        input[type="email"],
-        input[type="tel"] {
-            width: 100%;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 4px;
-            font-size: 14px;
-        }
-        
-        input[type="text"]:focus,
-        input[type="email"]:focus,
-        input[type="tel"]:focus {
-            outline: none;
-            border-color: #4CAF50;
-        }
-        
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 14px;
-            transition: background-color 0.3s;
-        }
-        
-        .btn-primary {
-            background-color: #4CAF50;
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background-color: #45a049;
-        }
-        
-        .btn-warning {
-            background-color: #ff9800;
-            color: white;
-        }
-        
-        .btn-warning:hover {
-            background-color: #e68900;
-        }
-        
-        .btn-danger {
-            background-color: #f44336;
-            color: white;
-        }
-        
-        .btn-danger:hover {
-            background-color: #da190b;
-        }
-        
-        /* Tableau */
-        .table-section {
-            background: white;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-        }
-        
-        thead {
-            background-color: #4CAF50;
-            color: white;
-        }
-        
-        th, td {
-            padding: 12px;
-            text-align: left;
-            border-bottom: 1px solid #ddd;
-        }
-        
-        th {
-            font-weight: 600;
-        }
-        
-        tbody tr:hover {
-            background-color: #f5f5f5;
-        }
-        
-        .actions {
-            display: flex;
-            gap: 10px;
-        }
-        
-        .actions form {
-            display: inline;
-        }
-        
-        /* Modal pour édition */
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1000;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            background-color: rgba(0,0,0,0.5);
-        }
-        
-        .modal-content {
-            background-color: white;
-            margin: 10% auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: 90%;
-            max-width: 500px;
-        }
-        
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        
-        .close:hover {
-            color: black;
-        }
-        
-        /* Navigation */
-        .nav-links {
-            margin-bottom: 20px;
-        }
-        
-        .nav-links a {
-            color: #4CAF50;
-            text-decoration: none;
-            margin-right: 20px;
-        }
-        
-        .nav-links a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head th:replace="~{fragments/layout :: head('Gestion des Agences')}"></head>
+
 <body>
-    <div class="container">
-        <h1>🏦 Gestion des Agences</h1>
-        
-        <!-- Navigation -->
-        <div class="nav-links">
-            <a href="/admin/dashboard">← Retour Dashboard</a>
-            <a href="/admin/agents">Gestion des Agents →</a>
+<div class="layout-wrapper">
+
+    <!-- ── SIDEBAR ── -->
+    <aside th:replace="~{fragments/layout :: sidebar('ADMIN', ${#authentication.name})}"></aside>
+
+    <div class="page-content">
+
+        <!-- ── TOPBAR ── -->
+        <header th:replace="~{fragments/layout :: topbar('Gestion des Agences', ${#authentication.name}, 'Administrateur')}"></header>
+
+        <div class="page-inner">
+
+            <!-- Titre -->
+            <div class="page-title-bar fade-in">
+                <div>
+                    <h1>🏢 Gestion des Agences</h1>
+                    <p>Créer, modifier et supprimer les agences bancaires</p>
+                </div>
+                <a href="/admin/dashboard" class="btn btn-outline">← Retour Dashboard</a>
+            </div>
+
+            <!-- Messages flash -->
+            <div th:if="${success}" class="alert alert-success fade-in">
+                ✓ <span th:text="${success}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-error fade-in">
+                ⚠ <span th:text="${error}"></span>
+            </div>
+
+            <!-- ══════════════════════════════════
+                 FORMULAIRE CRÉATION
+            ══════════════════════════════════ -->
+            <div class="card fade-in delay-1" style="margin-bottom: 24px;">
+                <div class="card-header">
+                    <h2>➕ Créer une nouvelle agence</h2>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/admin/agences}" th:object="${agence}" method="post">
+                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+                        <div class="form-grid">
+
+                            <div class="form-group">
+                                <label for="nom">Nom de l'agence <span style="color:var(--red)">*</span></label>
+                                <input type="text" id="nom" th:field="*{nom}"
+                                       placeholder="ex : Agence Centrale" required/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="code">Code <span style="color:var(--red)">*</span></label>
+                                <input type="text" id="code" th:field="*{code}"
+                                       placeholder="ex : AGC-001" required/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="ville">Ville <span style="color:var(--red)">*</span></label>
+                                <input type="text" id="ville" th:field="*{ville}"
+                                       placeholder="ex : Alger" required/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="telephone">Téléphone</label>
+                                <input type="tel" id="telephone" th:field="*{telephone}"
+                                       placeholder="ex : 021 XX XX XX"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" th:field="*{email}"
+                                       placeholder="ex : agence@banque.dz"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="adresse">Adresse</label>
+                                <input type="text" id="adresse" th:field="*{adresse}"
+                                       placeholder="ex : 123 Rue Didouche Mourad"/>
+                            </div>
+
+                            <div class="form-group" style="grid-column: 1 / -1;">
+                                <label for="directeur">Directeur</label>
+                                <input type="text" id="directeur" th:field="*{directeur}"
+                                       placeholder="Nom complet du directeur"/>
+                            </div>
+
+                        </div><!-- /form-grid -->
+
+                        <div style="margin-top: 20px; display:flex; gap:10px;">
+                            <button type="submit" class="btn btn-primary">💾 Créer l'agence</button>
+                            <button type="reset"  class="btn btn-outline">↺ Réinitialiser</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ══════════════════════════════════
+                 LISTE DES AGENCES
+            ══════════════════════════════════ -->
+            <div class="table-wrap fade-in delay-2">
+                <div class="table-header">
+                    <h2>📋 Liste des agences</h2>
+                    <span class="badge badge-blue"
+                          th:text="${#lists.size(agences)} + ' agence(s)'">0 agence(s)</span>
+                </div>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nom</th>
+                            <th>Code</th>
+                            <th>Ville</th>
+                            <th>Téléphone</th>
+                            <th>Email</th>
+                            <th>Directeur</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:each="a : ${agences}">
+                            <td>
+                                <span style="font-family:'JetBrains Mono',monospace; font-size:12px; color:var(--muted);"
+                                      th:text="${a.id}">-</span>
+                            </td>
+                            <td>
+                                <span style="font-weight:500;" th:text="${a.nom}">-</span>
+                            </td>
+                            <td>
+                                <span class="badge badge-navy"
+                                      style="font-family:'JetBrains Mono',monospace; font-size:11px;"
+                                      th:text="${a.code}">-</span>
+                            </td>
+                            <td th:text="${a.ville}">-</td>
+                            <td style="color:var(--muted); font-size:13px;" th:text="${a.telephone}">-</td>
+                            <td style="color:var(--muted); font-size:13px;" th:text="${a.email}">-</td>
+                            <td th:text="${a.directeur}">-</td>
+                            <td>
+                                <div style="display:flex; gap:8px; align-items:center;">
+
+                                    <!-- Bouton modifier -->
+                                    <button type="button" class="btn btn-outline btn-sm"
+                                            th:onclick="'openEditModal(' + ${a.id} + ', this)'">
+                                        ✏️ Modifier
+                                    </button>
+
+                                    <!-- Formulaire supprimer -->
+                                    <form th:action="@{/admin/agences/{id}/delete(id=${a.id})}"
+                                          method="post"
+                                          onsubmit="return confirmDelete(event)">
+                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                                        <button type="submit" class="btn btn-danger btn-sm">🗑️ Supprimer</button>
+                                    </form>
+
+                                </div>
+                            </td>
+                        </tr>
+
+                        <!-- Ligne vide -->
+                        <tr th:if="${#lists.isEmpty(agences)}">
+                            <td colspan="8" style="text-align:center; color:var(--muted); padding:40px 20px; font-size:14px;">
+                                🏢 Aucune agence trouvée. Créez votre première agence ci-dessus.
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div><!-- /page-inner -->
+    </div><!-- /page-content -->
+</div><!-- /layout-wrapper -->
+
+
+<!-- ══════════════════════════════════════════════
+     MODAL — MODIFIER UNE AGENCE
+══════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editModalOverlay" onclick="handleOverlayClick(event)">
+    <div class="modal" id="editModal" role="dialog" aria-modal="true">
+
+        <div class="modal-header">
+            <div>
+                <div class="modal-pill">🏢 Agences</div>
+                <div class="modal-title">Modifier l'agence</div>
+                <div class="modal-sub">Mettre à jour les informations de cette agence</div>
+            </div>
+            <button class="modal-close" onclick="closeEditModal()">✕</button>
         </div>
-        
-        <!-- Messages -->
-        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
-        <div th:if="${error}" class="alert alert-error" th:text="${error}"></div>
-        
-        <!-- Formulaire création -->
-        <div class="form-section">
-            <h2>➕ Créer une Nouvelle Agence</h2>
-            <form th:action="@{/admin/agences}" th:object="${agence}" method="post">
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="nom">Nom de l'agence *</label>
-                        <input type="text" id="nom" th:field="*{nom}" placeholder="Ex: Agence Centrale" required/>
-                    </div>
-                    <div class="form-group">
-                        <label for="code">Code *</label>
-                        <input type="text" id="code" th:field="*{code}" placeholder="Ex: AGC-001" required/>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="ville">Ville *</label>
-                        <input type="text" id="ville" th:field="*{ville}" placeholder="Ex: Casablanca" required/>
-                    </div>
-                    <div class="form-group">
-                        <label for="telephone">Téléphone</label>
-                        <input type="tel" id="telephone" th:field="*{telephone}" placeholder="Ex: 0522123456"/>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="email">Email</label>
-                        <input type="email" id="email" th:field="*{email}" placeholder="Ex: agence@banque.ma"/>
-                    </div>
-                    <div class="form-group">
-                        <label for="adresse">Adresse</label>
-                        <input type="text" id="adresse" th:field="*{adresse}" placeholder="Ex: 123 Boulevard Mohammed V"/>
-                    </div>
-                </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label for="directeur">Directeur</label>
-                        <input type="text" id="directeur" th:field="*{directeur}" placeholder="Nom du directeur"/>
-                    </div>
-                </div>
-                <button type="submit" class="btn btn-primary">💾 Créer l'Agence</button>
-            </form>
-        </div>
-        
-        <!-- Liste des agences -->
-        <div class="table-section">
-            <h2>📋 Liste des Agences</h2>
-            <table>
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nom</th>
-                        <th>Code</th>
-                        <th>Ville</th>
-                        <th>Téléphone</th>
-                        <th>Email</th>
-                        <th>Directeur</th>
-                        <th>Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="a : ${agences}">
-                        <td th:text="${a.id}"></td>
-                        <td th:text="${a.nom}"></td>
-                        <td th:text="${a.code}"></td>
-                        <td th:text="${a.ville}"></td>
-                        <td th:text="${a.telephone}"></td>
-                        <td th:text="${a.email}"></td>
-                        <td th:text="${a.directeur}"></td>
-                        <td class="actions">
-                            <button type="button" class="btn btn-warning" 
-                                    th:onclick="'openEditModal(' + ${a.id} + ')'">✏️ Modifier</button>
-                            <form th:action="@{/admin/agences/{id}/delete(id=${a.id})}" method="post" 
-                                  onsubmit="return confirm('Êtes-vous sûr de vouloir supprimer cette agence ?');">
-                                <button type="submit" class="btn btn-danger">🗑️ Supprimer</button>
-                            </form>
-                        </td>
-                    </tr>
-                    <tr th:if="${#lists.isEmpty(agences)}">
-                        <td colspan="8" style="text-align: center; color: #999; padding: 30px;">
-                            Aucune agence trouvée. Créez votre première agence ci-dessus.
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    
-    <!-- Modal d'édition (simplifié) -->
-    <div id="editModal" class="modal">
-        <div class="modal-content">
-            <span class="close" onclick="closeEditModal()">&times;</span>
-            <h2>✏️ Modifier l'Agence</h2>
+
+        <div class="modal-body">
             <form id="editForm" method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
                 <input type="hidden" id="editId" name="id"/>
-                <div class="form-group">
-                    <label>Nom</label>
-                    <input type="text" id="editNom" name="nom" required/>
+
+                <div class="form-grid">
+
+                    <div class="form-group">
+                        <label for="editNom">Nom <span style="color:var(--red)">*</span></label>
+                        <input type="text" id="editNom" name="nom" required placeholder="Nom de l'agence"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editCode">Code <span style="color:var(--red)">*</span></label>
+                        <input type="text" id="editCode" name="code" required placeholder="ex : AGC-001"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editVille">Ville <span style="color:var(--red)">*</span></label>
+                        <input type="text" id="editVille" name="ville" required placeholder="Ville"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editTelephone">Téléphone</label>
+                        <input type="tel" id="editTelephone" name="telephone" placeholder="021 XX XX XX"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editEmail">Email</label>
+                        <input type="email" id="editEmail" name="email" placeholder="agence@banque.dz"/>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="editAdresse">Adresse</label>
+                        <input type="text" id="editAdresse" name="adresse" placeholder="Adresse complète"/>
+                    </div>
+
+                    <div class="form-group" style="grid-column:1/-1;">
+                        <label for="editDirecteur">Directeur</label>
+                        <input type="text" id="editDirecteur" name="directeur" placeholder="Nom complet du directeur"/>
+                    </div>
+
                 </div>
-                <div class="form-group">
-                    <label>Code</label>
-                    <input type="text" id="editCode" name="code" required/>
-                </div>
-                <div class="form-group">
-                    <label>Ville</label>
-                    <input type="text" id="editVille" name="ville" required/>
-                </div>
-                <div class="form-group">
-                    <label>Téléphone</label>
-                    <input type="tel" id="editTelephone" name="telephone"/>
-                </div>
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" id="editEmail" name="email"/>
-                </div>
-                <div class="form-group">
-                    <label>Adresse</label>
-                    <input type="text" id="editAdresse" name="adresse"/>
-                </div>
-                <div class="form-group">
-                    <label>Directeur</label>
-                    <input type="text" id="editDirecteur" name="directeur"/>
-                </div>
-                <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
             </form>
         </div>
+
+        <div class="modal-footer">
+            <button class="btn btn-outline" onclick="closeEditModal()">Annuler</button>
+            <button class="btn btn-primary" onclick="document.getElementById('editForm').submit()">
+                💾 Enregistrer
+            </button>
+        </div>
+
     </div>
-    
-    <script>
-        function openEditModal(id) {
-            // Récupérer les données de la ligne
-            const row = event.target.closest('tr');
-            const cells = row.getElementsByTagName('td');
-            
-            document.getElementById('editId').value = cells[0].textContent;
-            document.getElementById('editNom').value = cells[1].textContent;
-            document.getElementById('editCode').value = cells[2].textContent;
-            document.getElementById('editVille').value = cells[3].textContent;
-            document.getElementById('editTelephone').value = cells[4].textContent;
-            document.getElementById('editEmail').value = cells[5].textContent;
-            document.getElementById('editDirecteur').value = cells[6].textContent;
-            
-            // Définir l'action du formulaire
-            document.getElementById('editForm').action = '/admin/agences/' + id + '/update';
-            
-            document.getElementById('editModal').style.display = 'block';
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     STYLES SPÉCIFIQUES
+══════════════════════════════════════════════ -->
+<style>
+    /* Form grid */
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+
+    label {
+        font-size: 11.5px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: .07em;
+        color: var(--text2);
+    }
+
+    input[type="text"],
+    input[type="email"],
+    input[type="tel"] {
+        background: var(--surface2);
+        border: 1.5px solid var(--border2);
+        border-radius: var(--radius-sm);
+        padding: 10px 13px;
+        font-size: 13.5px;
+        color: var(--text);
+        font-family: 'Outfit', sans-serif;
+        outline: none;
+        transition: border-color .15s, box-shadow .15s;
+        width: 100%;
+    }
+    input:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+        background: white;
+    }
+    input::placeholder { color: var(--muted); }
+
+    /* Modal */
+    .modal-overlay {
+        position: fixed; inset: 0;
+        background: rgba(15,23,42,.6);
+        backdrop-filter: blur(6px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 1000;
+        opacity: 0; pointer-events: none;
+        transition: opacity .22s ease;
+    }
+    .modal-overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        width: 600px; max-height: 90vh; overflow-y: auto;
+        transform: translateY(20px) scale(.97);
+        transition: transform .28s cubic-bezier(.34,1.4,.64,1);
+        box-shadow: 0 32px 80px rgba(0,0,0,.18);
+    }
+    .modal-overlay.open .modal { transform: translateY(0) scale(1); }
+
+    .modal-header {
+        padding: 22px 26px 18px;
+        border-bottom: 1px solid var(--border);
+        display: flex; align-items: flex-start; justify-content: space-between;
+        background: linear-gradient(135deg, var(--navy), var(--navy2));
+        border-radius: 16px 16px 0 0; color: white;
+    }
+    .modal-pill { display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:20px;background:rgba(255,255,255,.12);font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd;margin-bottom:6px; }
+    .modal-title { font-size: 16px; font-weight: 600; }
+    .modal-sub   { font-size: 12.5px; color: rgba(255,255,255,.5); margin-top:3px; }
+    .modal-close { width:30px;height:30px;border-radius:8px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);color:rgba(255,255,255,.7);font-size:15px;cursor:pointer;display:grid;place-items:center;transition:all .15s;flex-shrink:0; }
+    .modal-close:hover { background:rgba(220,38,38,.3); color:white; }
+    .modal-body   { padding: 22px 26px; }
+    .modal-footer { padding:14px 26px;border-top:1px solid var(--border);background:var(--surface2);border-radius:0 0 16px 16px;display:flex;justify-content:flex-end;gap:10px; }
+
+    /* Confirm dialog */
+    .confirm-overlay {
+        position: fixed; inset: 0;
+        background: rgba(15,23,42,.6);
+        backdrop-filter: blur(4px);
+        display: flex; align-items: center; justify-content: center;
+        z-index: 2000;
+        opacity: 0; pointer-events: none;
+        transition: opacity .2s;
+    }
+    .confirm-overlay.open { opacity:1; pointer-events:all; }
+    .confirm-box {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 28px 32px;
+        width: 380px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,.15);
+        transform: scale(.95);
+        transition: transform .2s cubic-bezier(.34,1.4,.64,1);
+    }
+    .confirm-overlay.open .confirm-box { transform: scale(1); }
+    .confirm-icon { font-size: 40px; margin-bottom: 14px; }
+    .confirm-title { font-size: 16px; font-weight: 600; margin-bottom: 8px; }
+    .confirm-msg   { font-size: 13.5px; color: var(--muted); margin-bottom: 22px; line-height: 1.5; }
+    .confirm-btns  { display:flex; gap:10px; justify-content:center; }
+</style>
+
+<!-- Confirm delete dialog -->
+<div class="confirm-overlay" id="confirmOverlay">
+    <div class="confirm-box">
+        <div class="confirm-icon">🗑️</div>
+        <div class="confirm-title">Supprimer cette agence ?</div>
+        <div class="confirm-msg">Cette action est irréversible. Toutes les données associées à cette agence seront supprimées.</div>
+        <div class="confirm-btns">
+            <button class="btn btn-outline" onclick="cancelDelete()">Annuler</button>
+            <button class="btn btn-danger" id="confirmDeleteBtn">Confirmer</button>
+        </div>
+    </div>
+</div>
+
+
+<!-- ══════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════ -->
+<script>
+    /* ── Modal édition ── */
+    function openEditModal(id, btn) {
+        const row   = btn.closest('tr');
+        const cells = row.getElementsByTagName('td');
+
+        document.getElementById('editId').value        = cells[0].textContent.trim();
+        document.getElementById('editNom').value       = cells[1].textContent.trim();
+        document.getElementById('editCode').value      = cells[2].textContent.trim();
+        document.getElementById('editVille').value     = cells[3].textContent.trim();
+        document.getElementById('editTelephone').value = cells[4].textContent.trim();
+        document.getElementById('editEmail').value     = cells[5].textContent.trim();
+        // adresse n'est pas dans le tableau → laisser vide, l'utilisateur peut remplir
+        document.getElementById('editDirecteur').value = cells[6].textContent.trim();
+
+        document.getElementById('editForm').action = '/admin/agences/' + id + '/update';
+
+        document.getElementById('editModalOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModalOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function handleOverlayClick(e) {
+        if (e.target === document.getElementById('editModalOverlay')) closeEditModal();
+    }
+
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            closeEditModal();
+            cancelDelete();
         }
-        
-        function closeEditModal() {
-            document.getElementById('editModal').style.display = 'none';
+    });
+
+    /* ── Confirm suppression ── */
+    let pendingDeleteForm = null;
+
+    function confirmDelete(e) {
+        e.preventDefault();
+        pendingDeleteForm = e.target;
+        document.getElementById('confirmOverlay').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        return false;
+    }
+
+    document.getElementById('confirmDeleteBtn').addEventListener('click', () => {
+        if (pendingDeleteForm) {
+            pendingDeleteForm.submit();
         }
-        
-        // Fermer le modal en cliquant à l'extérieur
-        window.onclick = function(event) {
-            const modal = document.getElementById('editModal');
-            if (event.target == modal) {
-                modal.style.display = 'none';
-            }
-        }
-    </script>
+    });
+
+    function cancelDelete() {
+        document.getElementById('confirmOverlay').classList.remove('open');
+        document.body.style.overflow = '';
+        pendingDeleteForm = null;
+    }
+
+    document.getElementById('confirmOverlay').addEventListener('click', e => {
+        if (e.target === document.getElementById('confirmOverlay')) cancelDelete();
+    });
+</script>
+
 </body>
 </html>
