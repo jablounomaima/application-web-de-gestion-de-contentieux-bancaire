@@ -17,7 +17,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
-
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
 
 import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
@@ -37,124 +36,100 @@ import java.util.*;
 @EnableMethodSecurity
 public class SecurityConfig {
 
-    /**
-     * Encoder pour crypter les mots de passe
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
     }
 
-    /**
-     * Configuration principale de Spring Security
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
         http
             .authorizeHttpRequests(auth -> auth
 
-                /**
-                 * Pages publiques accessibles sans authentification
-                 */
+                // Pages publiques
                 .requestMatchers("/", "/login", "/error",
                         "/css/**", "/js/**", "/images/**")
                 .permitAll()
 
-                /**
-                 * Accès ADMIN uniquement
-                 */
+                // Admin
                 .requestMatchers("/admin/**")
                 .hasRole("ADMIN")
 
-                /**
-                 * Accès Agent bancaire
-                 */
+                // Agent bancaire
                 .requestMatchers("/agent/**")
                 .hasRole("AGENT")
 
-                /**
-                 * Accès Avocat
-                 */
+                // Avocat
                 .requestMatchers("/avocat/**")
                 .hasRole("AVOCAT")
 
-                /**
-                 * Accès Expert
-                 */
+                // Expert
                 .requestMatchers("/expert/**")
                 .hasRole("EXPERT")
 
-                /**
-                 * Accès Huissier
-                 */
+                // Huissier
                 .requestMatchers("/huissier/**")
                 .hasRole("HUISSIER")
 
-                /**
-                 * Accès aux validateurs
-                 */
-                .requestMatchers("/validateur/**")
-                .hasAnyRole(
-                        "VALIDATEUR",
-                        "VALID_FINANCIER",
-                        "VALID_JURIDIQUE",
-                        "ADMIN"
-                )
+                // ✅ Validateur financier — URL spécifique en premier
+                .requestMatchers("/validateur/financier/**")
+                .hasAnyRole("VALIDATEUR_FINANCIER", "ADMIN")
 
-                /**
-                 * Toutes les autres pages nécessitent une authentification
-                 */
+                // ✅ Validateur juridique — URL spécifique en premier
+                .requestMatchers("/validateur/juridique/**")
+                .hasAnyRole("VALIDATEUR_JURIDIQUE", "ADMIN")
+
+                // ✅ Commun validateurs
+                .requestMatchers("/validateur/**")
+                .hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
+
                 .anyRequest().authenticated()
             )
 
-            /**
-             * Configuration login avec OAuth2 (Keycloak)
-             */
             .oauth2Login(oauth2 -> oauth2
-
-                /**
-                 * Récupération des informations utilisateur depuis Keycloak
-                 */
                 .userInfoEndpoint(user ->
-                        user.oidcUserService(oidcUserService())
+                    user.oidcUserService(oidcUserService())
                 )
-
-                /**
-                 * Après login -> redirection selon le rôle
-                 */
+                // ✅ Redirection après login selon le rôle
                 .successHandler((request, response, authentication) -> {
 
-                    boolean isAdmin = hasRole(authentication, "ROLE_ADMIN");
-                    boolean isAgent = hasRole(authentication, "ROLE_AGENT");
-                    boolean isAvocat = hasRole(authentication, "ROLE_AVOCAT");
-                    boolean isHuissier = hasRole(authentication, "ROLE_HUISSIER");
-                    boolean isExpert = hasRole(authentication, "ROLE_EXPERT");
-
-                    if (isAdmin) {
+                    // ← ajoutez ces 4 lignes
+                    System.out.println("=== ROLES SPRING ===");
+                    authentication.getAuthorities().forEach(a ->
+                        System.out.println("  → " + a.getAuthority())
+                    );
+                    System.out.println("====================");
+                
+                    if (hasRole(authentication, "ROLE_ADMIN")) {
                         response.sendRedirect("/admin/dashboard");
-                    }
-                    else if (isAgent) {
+
+                    } else if (hasRole(authentication, "ROLE_AGENT")) {
                         response.sendRedirect("/agent/dashboard");
-                    }
-                    else if (isAvocat) {
+
+                    } else if (hasRole(authentication, "ROLE_AVOCAT")) {
                         response.sendRedirect("/avocat/dashboard");
-                    }
-                    else if (isHuissier) {
+
+                    } else if (hasRole(authentication, "ROLE_HUISSIER")) {
                         response.sendRedirect("/huissier/dashboard");
-                    }
-                    else if (isExpert) {
+
+                    } else if (hasRole(authentication, "ROLE_EXPERT")) {
                         response.sendRedirect("/expert/dashboard");
-                    }
-                    else {
-                        response.sendRedirect("/");
+
+                    // ✅ Ajout des deux validateurs
+                    } else if (hasRole(authentication, "ROLE_VALIDATEUR_JURIDIQUE")) {
+                        response.sendRedirect("/validateur/juridique/dashboard");
+
+                    } else if (hasRole(authentication, "ROLE_VALIDATEUR_FINANCIER")) {
+                        response.sendRedirect("/validateur/financier/dashboard");
+
+                    } else {
+                        // Aucun rôle reconnu → page d'accès refusé
+                        response.sendRedirect("/access-denied");
                     }
                 })
             )
 
-            /**
-             * Configuration du logout
-             */
             .logout(logout ->
                 logout.logoutSuccessHandler(keycloakLogoutSuccessHandler())
             );
@@ -162,19 +137,12 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Fonction utilitaire pour vérifier si l'utilisateur possède un rôle
-     */
     private boolean hasRole(Authentication authentication, String role) {
-
         return authentication.getAuthorities()
                 .stream()
                 .anyMatch(a -> a.getAuthority().equals(role));
     }
 
-    /**
-     * Logout propre vers Keycloak
-     */
     @Bean
     public LogoutSuccessHandler keycloakLogoutSuccessHandler() {
 
@@ -184,45 +152,24 @@ public class SecurityConfig {
 
             String idToken = null;
 
-            /**
-             * Récupérer le token utilisateur depuis Keycloak
-             */
             if (authentication instanceof OAuth2AuthenticationToken oauthToken
                     && oauthToken.getPrincipal() instanceof OidcUser oidcUser) {
-
                 idToken = oidcUser.getIdToken().getTokenValue();
             }
 
-            /**
-             * URL de logout Keycloak
-             */
             String logoutUrl =
                     "http://127.0.0.1:8080/realms/contentieux-realm/protocol/openid-connect/logout"
                     + "?post_logout_redirect_uri=http://localhost:8097";
 
-            /**
-             * Ajouter token pour logout complet
-             */
             if (idToken != null) {
                 logoutUrl += "&id_token_hint=" + idToken;
             }
 
-            /**
-             * Déconnexion Spring Security
-             */
-            new SecurityContextLogoutHandler()
-                    .logout(request, response, authentication);
-
-            /**
-             * Redirection vers logout Keycloak
-             */
+            new SecurityContextLogoutHandler().logout(request, response, authentication);
             response.sendRedirect(logoutUrl);
         };
     }
 
-    /**
-     * Mapping des rôles Keycloak vers Spring Security
-     */
     @Bean
     public OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
 
@@ -230,24 +177,18 @@ public class SecurityConfig {
 
         return (userRequest) -> {
 
-            /**
-             * Charger l'utilisateur depuis Keycloak
-             */
             OidcUser oidcUser = delegate.loadUser(userRequest);
-
             Map<String, Object> claims = oidcUser.getClaims();
             Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
 
-            /**
-             * Debug informations Keycloak
-             */
             System.out.println("Claims Keycloak: " + claims);
             System.out.println("Preferred username: " + claims.get("preferred_username"));
-            System.out.println("Email: " + claims.get("email"));
+            System.out.println("Roles: " + (
+                claims.containsKey("realm_access")
+                ? ((Map<?,?>) claims.get("realm_access")).get("roles")
+                : "aucun"
+            ));
 
-            /**
-             * Récupérer les rôles dans realm_access.roles
-             */
             if (claims.containsKey("realm_access")) {
 
                 Map<String, Object> realmAccess =
@@ -255,39 +196,24 @@ public class SecurityConfig {
 
                 if (realmAccess.containsKey("roles")) {
 
-                    List<String> roles =
-                            (List<String>) realmAccess.get("roles");
+                    List<String> roles = (List<String>) realmAccess.get("roles");
 
-                    /**
-                     * Transformer les rôles en ROLE_XXXX
-                     */
                     roles.forEach(role ->
                         mappedAuthorities.add(
-                            new SimpleGrantedAuthority(
-                                    "ROLE_" + role.toUpperCase()
-                            )
+                            new SimpleGrantedAuthority("ROLE_" + role.toUpperCase())
                         )
                     );
                 }
             }
 
-            /**
-             * récupérer username et email
-             */
             String preferredUsername = (String) claims.get("preferred_username");
             String email = (String) claims.get("email");
 
-            /**
-             * créer utilisateur Spring Security
-             */
             return new DefaultOidcUser(
                     mappedAuthorities,
                     oidcUser.getIdToken(),
                     oidcUser.getUserInfo()) {
 
-                /**
-                 * définir le nom principal de l'utilisateur
-                 */
                 @Override
                 public String getName() {
                     return preferredUsername != null ? preferredUsername : email;

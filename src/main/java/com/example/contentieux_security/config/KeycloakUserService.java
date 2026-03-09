@@ -1,4 +1,5 @@
 package com.example.contentieux_security.config;
+
 import jakarta.annotation.PostConstruct;
 import jakarta.ws.rs.core.Response;
 import org.keycloak.admin.client.Keycloak;
@@ -9,6 +10,7 @@ import org.keycloak.representations.idm.UserRepresentation;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
@@ -18,7 +20,6 @@ public class KeycloakUserService {
     private Keycloak keycloak;
     private String realm;
 
-    // Configuration depuis application.properties
     @Value("${keycloak.auth-server-url:http://localhost:8080}")
     private String serverUrl;
 
@@ -31,9 +32,6 @@ public class KeycloakUserService {
     @Value("${keycloak.admin-password:admin}")
     private String adminPassword;
 
-    /**
-     * Initialisation après construction du bean
-     */
     @PostConstruct
     public void init() {
         this.realm = realmName;
@@ -44,17 +42,15 @@ public class KeycloakUserService {
                 .password(adminPassword)
                 .clientId("admin-cli")
                 .build();
-        
-        System.out.println("✅ KeycloakUserService initialisé");
-        System.out.println("   Server URL: " + serverUrl);
-        System.out.println("   Realm: " + realm);
+        System.out.println("✅ KeycloakUserService initialisé — Realm: " + realm);
     }
 
-    /**
-     * Créer un utilisateur dans Keycloak
-     */
-    public void createUser(String username, String email, String firstName, 
-                          String lastName, String password, String roleName) {
+    // ══════════════════════════════════════════════════════════════
+    //  CRÉER UTILISATEUR + RÔLE
+    // ══════════════════════════════════════════════════════════════
+
+    public void createUser(String username, String email, String firstName,
+                           String lastName, String password, String roleName) {
         try {
             UserRepresentation user = new UserRepresentation();
             user.setUsername(username);
@@ -62,65 +58,106 @@ public class KeycloakUserService {
             user.setFirstName(firstName);
             user.setLastName(lastName);
             user.setEnabled(true);
+            user.setEmailVerified(true);
 
-            Response response = keycloak
-                    .realm(realm)
-                    .users()
-                    .create(user);
+            Response response = keycloak.realm(realm).users().create(user);
 
             if (response.getStatus() != 201) {
-                throw new RuntimeException("Erreur création utilisateur Keycloak: " + response.getStatus());
+                String body = response.readEntity(String.class);
+                throw new RuntimeException(
+                    "Erreur création Keycloak [" + response.getStatus() + "]: " + body);
             }
 
             String userId = response.getLocation()
                     .getPath()
                     .replaceAll(".*/([^/]+)$", "$1");
 
-            // Mot de passe
+            // Mot de passe temporaire
             CredentialRepresentation credential = new CredentialRepresentation();
             credential.setType(CredentialRepresentation.PASSWORD);
             credential.setValue(password);
-            credential.setTemporary(false);
+            credential.setTemporary(true);
+            keycloak.realm(realm).users().get(userId).resetPassword(credential);
 
-            keycloak.realm(realm)
-                    .users()
-                    .get(userId)
-                    .resetPassword(credential);
+            // ✅ Crée le rôle automatiquement s'il n'existe pas puis l'assigne
+            assignRoleToUser(userId, roleName);
 
-            // Rôle
-            try {
-                RoleRepresentation role = keycloak.realm(realm)
-                        .roles()
-                        .get(roleName)
-                        .toRepresentation();
-
-                keycloak.realm(realm)
-                        .users()
-                        .get(userId)
-                        .roles()
-                        .realmLevel()
-                        .add(Collections.singletonList(role));
-            } catch (Exception e) {
-                System.out.println("Rôle " + roleName + " non trouvé: " + e.getMessage());
-            }
+            System.out.println("✅ Utilisateur Keycloak créé: " + username + " | Rôle: " + roleName);
 
         } catch (Exception e) {
-            throw new RuntimeException("Erreur création utilisateur Keycloak", e);
+            throw new RuntimeException("Erreur création utilisateur Keycloak: " + e.getMessage(), e);
         }
     }
 
-    /**
-     * Supprimer un utilisateur
-     */
+    // ══════════════════════════════════════════════════════════════
+    //  ✅ ASSIGNER RÔLE — avec création automatique si inexistant
+    // ══════════════════════════════════════════════════════════════
+
+    public void assignRoleToUser(String userId, String roleName) {
+        RoleRepresentation role = getOrCreateRole(roleName);
+        keycloak.realm(realm)
+                .users()
+                .get(userId)
+                .roles()
+                .realmLevel()
+                .add(Collections.singletonList(role));
+        System.out.println("✅ Rôle assigné: " + roleName + " → userId: " + userId);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ✅ RÉCUPÉRER OU CRÉER LE RÔLE AUTOMATIQUEMENT
+    // ══════════════════════════════════════════════════════════════
+
+    private RoleRepresentation getOrCreateRole(String roleName) {
+        try {
+            // Essayer de récupérer le rôle existant
+            RoleRepresentation role = keycloak.realm(realm)
+                    .roles()
+                    .get(roleName)
+                    .toRepresentation();
+            System.out.println("✅ Rôle trouvé: " + roleName);
+            return role;
+        } catch (Exception e) {
+            // Rôle inexistant → créer automatiquement
+            System.out.println("⚠️ Rôle '" + roleName + "' inexistant → création automatique");
+            RoleRepresentation newRole = new RoleRepresentation();
+            newRole.setName(roleName);
+            newRole.setDescription("Rôle créé automatiquement pour: " + roleName);
+            keycloak.realm(realm).roles().create(newRole);
+            System.out.println("✅ Rôle créé dans Keycloak: " + roleName);
+            // Récupérer le rôle fraîchement créé
+            return keycloak.realm(realm).roles().get(roleName).toRepresentation();
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ENVOYER EMAIL (reset password) — non bloquant
+    // ══════════════════════════════════════════════════════════════
+
+    public void sendVerificationEmail(String username) {
+        try {
+            String userId = getUserId(username);
+            keycloak.realm(realm)
+                    .users()
+                    .get(userId)
+                    .executeActionsEmail(Arrays.asList("UPDATE_PASSWORD"));
+            System.out.println("✅ Email envoyé à: " + username);
+        } catch (Exception e) {
+            System.out.println("⚠️ Email non envoyé pour " + username + ": " + e.getMessage());
+            throw new RuntimeException("Erreur envoi email", e);
+        }
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  SUPPRIMER UTILISATEUR
+    // ══════════════════════════════════════════════════════════════
+
     public void deleteUser(String username) {
         try {
             List<UserRepresentation> users = keycloak.realm(realm)
-                    .users()
-                    .search(username, true);
-
+                    .users().search(username, true);
             if (!users.isEmpty()) {
-                String userId = users.get(0).getId();
-                keycloak.realm(realm).users().delete(userId);
+                keycloak.realm(realm).users().delete(users.get(0).getId());
                 System.out.println("✅ Utilisateur supprimé: " + username);
             }
         } catch (Exception e) {
@@ -128,124 +165,60 @@ public class KeycloakUserService {
         }
     }
 
-    /**
-     * Changer le mot de passe
-     */
+    // ══════════════════════════════════════════════════════════════
+    //  CHANGER MOT DE PASSE
+    // ══════════════════════════════════════════════════════════════
+
     public void changeUserPassword(String username, String newPassword) {
-        try {
-            List<UserRepresentation> users = keycloak.realm(realm)
-                    .users()
-                    .search(username, true);
-            
-            if (users.isEmpty()) {
-                throw new RuntimeException("Utilisateur non trouvé: " + username);
-            }
-            
-            String userId = users.get(0).getId();
-            
-            CredentialRepresentation credential = new CredentialRepresentation();
-            credential.setType(CredentialRepresentation.PASSWORD);
-            credential.setValue(newPassword);
-            credential.setTemporary(false);
-            
-            keycloak.realm(realm)
-                    .users()
-                    .get(userId)
-                    .resetPassword(credential);
-            
-            System.out.println("✅ Mot de passe changé pour: " + username);
-            
-        } catch (Exception e) {
-            System.out.println("❌ Erreur: " + e.getMessage());
-            throw new RuntimeException("Erreur changement mot de passe", e);
-        }
+        String userId = getUserId(username);
+        CredentialRepresentation credential = new CredentialRepresentation();
+        credential.setType(CredentialRepresentation.PASSWORD);
+        credential.setValue(newPassword);
+        credential.setTemporary(false);
+        keycloak.realm(realm).users().get(userId).resetPassword(credential);
+        System.out.println("✅ Mot de passe changé pour: " + username);
     }
 
+    public void updatePassword(String username, String newPassword) {
+        changeUserPassword(username, newPassword);
+    }
 
-    // ========== MISE À JOUR UTILISATEUR ==========
+    // ══════════════════════════════════════════════════════════════
+    //  METTRE À JOUR UTILISATEUR
+    // ══════════════════════════════════════════════════════════════
 
-public void updateUser(String username, String email, String firstName, String lastName) {
-    try {
-        List<UserRepresentation> users = keycloak.realm(realm)
-                .users()
-                .search(username, true);
-        
-        if (users.isEmpty()) {
-            throw new RuntimeException("Utilisateur non trouvé: " + username);
-        }
-        
-        String userId = users.get(0).getId();
-        
+    public void updateUser(String username, String email, String firstName, String lastName) {
+        String userId = getUserId(username);
         UserRepresentation user = new UserRepresentation();
         user.setEmail(email);
         user.setFirstName(firstName);
         user.setLastName(lastName);
-        
-        keycloak.realm(realm)
-                .users()
-                .get(userId)
-                .update(user);
-        
-        System.out.println("✅ Utilisateur mis à jour dans Keycloak: " + username);
-        
-    } catch (Exception e) {
-        System.out.println("❌ Erreur mise à jour Keycloak: " + e.getMessage());
-        throw new RuntimeException("Erreur mise à jour utilisateur", e);
+        keycloak.realm(realm).users().get(userId).update(user);
+        System.out.println("✅ Utilisateur mis à jour: " + username);
     }
-}
 
-// ========== ACTIVER/DÉSACTIVER UTILISATEUR ==========
+    // ══════════════════════════════════════════════════════════════
+    //  ACTIVER / DÉSACTIVER
+    // ══════════════════════════════════════════════════════════════
 
-public void toggleUserStatus(String username, boolean enabled) {
-    try {
-        List<UserRepresentation> users = keycloak.realm(realm)
-                .users()
-                .search(username, true);
-        
-        if (users.isEmpty()) {
-            throw new RuntimeException("Utilisateur non trouvé: " + username);
-        }
-        
-        String userId = users.get(0).getId();
-        
+    public void toggleUserStatus(String username, boolean enabled) {
+        String userId = getUserId(username);
         UserRepresentation user = new UserRepresentation();
         user.setEnabled(enabled);
-        
-        keycloak.realm(realm)
-                .users()
-                .get(userId)
-                .update(user);
-        
-        System.out.println("✅ Statut utilisateur mis à jour: " + username + " (enabled=" + enabled + ")");
-        
-    } catch (Exception e) {
-        System.out.println("❌ Erreur toggle status Keycloak: " + e.getMessage());
-        throw new RuntimeException("Erreur changement statut", e);
-    }
-}
-
-public void updatePassword(String username, String newPassword) {
-
-    var users = keycloak.realm(realm).users().search(username);
-
-    if (users.isEmpty()) {
-        throw new RuntimeException("Utilisateur non trouvé dans Keycloak");
+        keycloak.realm(realm).users().get(userId).update(user);
+        System.out.println("✅ Statut mis à jour: " + username + " (enabled=" + enabled + ")");
     }
 
-    String userId = users.get(0).getId();
+    // ══════════════════════════════════════════════════════════════
+    //  UTILITAIRE PRIVÉ
+    // ══════════════════════════════════════════════════════════════
 
-    CredentialRepresentation credential = new CredentialRepresentation();
-    credential.setType(CredentialRepresentation.PASSWORD);
-    credential.setTemporary(false);
-    credential.setValue(newPassword);
-
-    keycloak.realm(realm)
-            .users()
-            .get(userId)
-            .resetPassword(credential);
-}
-
-
-
-
+    private String getUserId(String username) {
+        List<UserRepresentation> users = keycloak.realm(realm)
+                .users().search(username, true);
+        if (users.isEmpty()) {
+            throw new RuntimeException("Utilisateur Keycloak non trouvé: " + username);
+        }
+        return users.get(0).getId();
+    }
 }

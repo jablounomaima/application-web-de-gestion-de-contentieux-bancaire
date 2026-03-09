@@ -6,232 +6,227 @@ import com.example.contentieux_security.dto.PrestataireDTO;
 import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.entity.Prestataire;
 import com.example.contentieux_security.entity.TypePrestataire;
+import com.example.contentieux_security.repository.AgentBancaireRepository;
 import com.example.contentieux_security.repository.PrestataireRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import java.time.LocalDate;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @Service
+@RequiredArgsConstructor
 public class PrestataireService {
 
     private final PrestataireRepository prestataireRepository;
-    private final AgentBancaireService agentService;
+    private final AgentBancaireRepository agentRepository;
     private final KeycloakUserService keycloakUserService;
 
-    public PrestataireService(PrestataireRepository prestataireRepository,
-                              AgentBancaireService agentService,
-                              KeycloakUserService keycloakUserService) {
-        this.prestataireRepository = prestataireRepository;
-        this.agentService = agentService;
-        this.keycloakUserService = keycloakUserService;
-    }
-
-    // ================== LECTURE ==================
-
-    public List<PrestataireDTO> getPrestatairesByAgent(Long agentId) {
-        return prestataireRepository.findByAgentResponsableId(agentId)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    public List<PrestataireDTO> getPrestatairesByTypeAndAgent(String type, Long agentId) {
-
-        TypePrestataire typeEnum;
-        try {
-            typeEnum = TypePrestataire.valueOf(type.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Type de prestataire invalide");
-        }
-
-        return prestataireRepository
-                .findByTypeAndAgentResponsableId(typeEnum, agentId)
-                .stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
-
-    public PrestataireDTO getPrestataireByIdAndAgent(Long id, String agentUsername) {
-
-        Prestataire prestataire = prestataireRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
-
-        checkAuthorization(prestataire, agentUsername);
-
-        return convertToDTO(prestataire);
-    }
-
-    // ================== CRÉATION ==================
+    // ══════════════════════════════════════════════════════════════
+    //  CRÉATION — Keycloak + base locale
+    // ══════════════════════════════════════════════════════════════
 
     @Transactional
-    public PrestataireDTO createPrestataire(PrestataireCreationRequest request,
-                                            String agentUsername) {
+    public Prestataire creerPrestataire(PrestataireCreationRequest request,
+                                        String agentUsername) {
 
         if (prestataireRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException("Ce nom d'utilisateur existe déjà");
+            throw new RuntimeException(
+                "Le nom d'utilisateur '" + request.getUsername() + "' est déjà utilisé.");
+        }
+        if (prestataireRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException(
+                "L'email '" + request.getEmail() + "' est déjà utilisé.");
         }
 
-        AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
-        if (agent == null) {
-            throw new RuntimeException("Agent responsable non trouvé");
-        }
+        String motDePasse = (request.getMotDePasse() != null && !request.getMotDePasse().isBlank())
+                ? request.getMotDePasse()
+                : genererMotDePasseTemporaire();
 
-        TypePrestataire typeEnum;
-        try {
-            typeEnum = TypePrestataire.valueOf(request.getType().toUpperCase());
-        } catch (IllegalArgumentException e) {
-            throw new RuntimeException("Type de prestataire invalide");
-        }
-
-        String keycloakRole = mapTypeToRole(typeEnum);
-
-        // Création dans Keycloak
+        // 1 — Créer dans Keycloak
+        String roleKeycloak = request.getType().toKeycloakRole();
         keycloakUserService.createUser(
-                request.getUsername(),
-                request.getEmail(),
-                request.getNom(),
-                request.getPrenom(),
-                request.getPassword(),
-                keycloakRole
-        );
+                request.getUsername(), request.getEmail(),
+                request.getPrenom(), request.getNom(),
+                motDePasse, roleKeycloak);
 
-        Prestataire prestataire = new Prestataire();
-        prestataire.setUsername(request.getUsername());
-        prestataire.setNom(request.getNom());
-        prestataire.setPrenom(request.getPrenom());
-        prestataire.setEmail(request.getEmail());
-        prestataire.setTelephone(request.getTelephone());
-        prestataire.setAdresse(request.getAdresse());
-        prestataire.setType(typeEnum);
-        prestataire.setSpecialite(request.getSpecialite());
-        prestataire.setNumeroCartePro(request.getNumeroCartePro());
-        prestataire.setDateDebutCollaboration(LocalDate.now());
-        prestataire.setActif(true);
-        prestataire.setAgentResponsable(agent);
-        prestataire.setAgence(agent.getAgence());
-        prestataire.setNiveauValidation(request.getNiveauValidation());
-        prestataire.setPlafondValidation(request.getPlafondValidation());
+        // 2 — Envoyer email (non bloquant)
+        try {
+            keycloakUserService.sendVerificationEmail(request.getUsername());
+        } catch (Exception e) {
+            System.out.println("⚠️ Email non envoyé: " + e.getMessage());
+        }
 
-        return convertToDTO(prestataireRepository.save(prestataire));
+        // 3 — Trouver l'agent
+        AgentBancaire agent = agentRepository.findByUsername(agentUsername)
+                .stream().findFirst()
+                .orElseThrow(() -> new RuntimeException("Agent non trouvé: " + agentUsername));
+
+        // 4 — Sauvegarder en base
+        Prestataire prestataire = Prestataire.builder()
+                .username(request.getUsername())
+                .prenom(request.getPrenom())
+                .nom(request.getNom())
+                .email(request.getEmail())
+                .telephone(request.getTelephone())
+                .adresse(request.getAdresse())
+                .type(request.getType())
+                .specialite(request.getSpecialite())
+                .numeroCartePro(request.getNumeroCartePro())
+                .niveauValidation(request.getNiveauValidation())
+                .plafondValidation(request.getPlafondValidation())
+                .dateDebutCollaboration(LocalDate.now())
+                .agentResponsable(agent)
+                .agence(agent.getAgence())
+                .actif(true)
+                .build();
+
+        return prestataireRepository.save(prestataire);
     }
 
-    // ================== MODIFICATION ==================
+    // Alias pour AgentPrestataireController existant
+    @Transactional
+    public Prestataire createPrestataire(PrestataireCreationRequest request,
+                                         String agentUsername) {
+        return creerPrestataire(request, agentUsername);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  LECTURE
+    // ══════════════════════════════════════════════════════════════
+
+    public List<Prestataire> getAllPrestataires() {
+        return prestataireRepository.findAll();
+    }
+
+    public List<Prestataire> getPrestatairesParAgent(String agentUsername) {
+        return prestataireRepository.findByAgentResponsable_Username(agentUsername);
+    }
+
+    // Alias pour AgentPrestataireController existant (par ID agent)
+    public List<Prestataire> getPrestatairesByAgent(Long agentId) {
+        return prestataireRepository.findByAgentResponsable_Id(agentId);
+    }
+
+    // Alias pour AgentPrestataireController existant (par type + agent)
+    public List<Prestataire> getPrestatairesByTypeAndAgent(String type, Long agentId) {
+        TypePrestataire typeEnum = TypePrestataire.valueOf(type.toUpperCase());
+        return prestataireRepository.findByTypeAndAgentResponsable_Id(typeEnum, agentId);
+    }
+
+    public Prestataire findById(Long id) {
+        return prestataireRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé: " + id));
+    }
+
+    // Pour AgentController — retourne un DTO vérifiant que l'agent est propriétaire
+    public PrestataireDTO getPrestataireByIdAndAgent(Long id, String agentUsername) {
+        Prestataire p = findById(id);
+        if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
+            throw new RuntimeException("Accès refusé à ce prestataire.");
+        }
+        return toDTO(p);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  MISE À JOUR
+    // ══════════════════════════════════════════════════════════════
 
     @Transactional
-    public void updatePrestataire(Long id,
-                                  PrestataireCreationRequest request,
-                                  String agentUsername) {
-
-        Prestataire prestataire = prestataireRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
-
-        checkAuthorization(prestataire, agentUsername);
-
-        prestataire.setNom(request.getNom());
-        prestataire.setPrenom(request.getPrenom());
-        prestataire.setEmail(request.getEmail());
-        prestataire.setTelephone(request.getTelephone());
-        prestataire.setAdresse(request.getAdresse());
-        prestataire.setSpecialite(request.getSpecialite());
-        prestataire.setNumeroCartePro(request.getNumeroCartePro());
-        prestataire.setNiveauValidation(request.getNiveauValidation());
-        prestataire.setPlafondValidation(request.getPlafondValidation());
+    public Prestataire updatePrestataire(Long id, PrestataireCreationRequest request,
+                                          String agentUsername) {
+        Prestataire p = findById(id);
+        if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
+            throw new RuntimeException("Accès refusé.");
+        }
 
         // Mise à jour Keycloak
         keycloakUserService.updateUser(
-                prestataire.getUsername(),
-                request.getEmail(),
-                request.getNom(),
-                request.getPrenom()
-        );
+                p.getUsername(), request.getEmail(),
+                request.getPrenom(), request.getNom());
 
-        prestataireRepository.save(prestataire);
+        // Mise à jour base locale
+        p.setPrenom(request.getPrenom());
+        p.setNom(request.getNom());
+        p.setEmail(request.getEmail());
+        p.setTelephone(request.getTelephone());
+        p.setAdresse(request.getAdresse());
+        p.setSpecialite(request.getSpecialite());
+        p.setNumeroCartePro(request.getNumeroCartePro());
+        p.setNiveauValidation(request.getNiveauValidation());
+        p.setPlafondValidation(request.getPlafondValidation());
+
+        return prestataireRepository.save(p);
     }
 
-    // ================== SUPPRESSION ==================
+    // ══════════════════════════════════════════════════════════════
+    //  TOGGLE ACTIF/INACTIF
+    // ══════════════════════════════════════════════════════════════
 
     @Transactional
-    public void deletePrestataire(Long id, String agentUsername) {
-
-        Prestataire prestataire = prestataireRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
-
-        checkAuthorization(prestataire, agentUsername);
-
-        keycloakUserService.deleteUser(prestataire.getUsername());
-        prestataireRepository.delete(prestataire);
+    public void toggleStatut(Long id) {
+        Prestataire p = findById(id);
+        p.setActif(!p.isActif());
+        keycloakUserService.toggleUserStatus(p.getUsername(), p.isActif());
+        prestataireRepository.save(p);
     }
 
-    // ================== ACTIVER / DÉSACTIVER ==================
-
+    // Alias avec vérification agent
     @Transactional
     public void togglePrestataireStatus(Long id, String agentUsername) {
-
-        Prestataire prestataire = prestataireRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
-
-        checkAuthorization(prestataire, agentUsername);
-
-        boolean newStatus = !prestataire.isActif();
-        prestataire.setActif(newStatus);
-
-        keycloakUserService.toggleUserStatus(
-                prestataire.getUsername(),
-                newStatus
-        );
-
-        prestataireRepository.save(prestataire);
-    }
-
-    // ================== MÉTHODES UTILITAIRES ==================
-
-    private void checkAuthorization(Prestataire prestataire,
-                                    String agentUsername) {
-
-        if (prestataire.getAgentResponsable() == null ||
-                !prestataire.getAgentResponsable()
-                        .getUsername()
-                        .equals(agentUsername)) {
-
-            throw new RuntimeException(
-                    "Vous n'êtes pas autorisé à effectuer cette action");
+        Prestataire p = findById(id);
+        if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
+            throw new RuntimeException("Accès refusé.");
         }
+        toggleStatut(id);
     }
 
-    private String mapTypeToRole(TypePrestataire type) {
-        return type.name(); // plus propre et automatique
+    // ══════════════════════════════════════════════════════════════
+    //  SUPPRESSION
+    // ══════════════════════════════════════════════════════════════
+
+    @Transactional
+    public void supprimerPrestataire(Long id) {
+        Prestataire p = findById(id);
+        keycloakUserService.deleteUser(p.getUsername());
+        prestataireRepository.delete(p);
     }
 
-    private PrestataireDTO convertToDTO(Prestataire p) {
+    // Alias avec vérification agent (pour AgentController)
+    @Transactional
+    public void deletePrestataire(Long id, String agentUsername) {
+        Prestataire p = findById(id);
+        if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
+            throw new RuntimeException("Accès refusé.");
+        }
+        supprimerPrestataire(id);
+    }
 
+    // ══════════════════════════════════════════════════════════════
+    //  UTILITAIRES
+    // ══════════════════════════════════════════════════════════════
+
+    private String genererMotDePasseTemporaire() {
+        return "Prest@" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+    }
+
+    private PrestataireDTO toDTO(Prestataire p) {
         PrestataireDTO dto = new PrestataireDTO();
         dto.setId(p.getId());
         dto.setUsername(p.getUsername());
-        dto.setNom(p.getNom());
         dto.setPrenom(p.getPrenom());
+        dto.setNom(p.getNom());
         dto.setEmail(p.getEmail());
         dto.setTelephone(p.getTelephone());
         dto.setAdresse(p.getAdresse());
-        dto.setType(p.getType() != null ? p.getType().name() : null);
+        dto.setType(p.getType());
         dto.setSpecialite(p.getSpecialite());
         dto.setNumeroCartePro(p.getNumeroCartePro());
-        dto.setActif(p.isActif());
         dto.setNiveauValidation(p.getNiveauValidation());
         dto.setPlafondValidation(p.getPlafondValidation());
-
-        if (p.getAgentResponsable() != null) {
-            dto.setAgentResponsableNom(
-                    p.getAgentResponsable().getNom() + " " +
-                    p.getAgentResponsable().getPrenom()
-            );
-        }
-
-        if (p.getAgence() != null) {
-            dto.setAgenceNom(p.getAgence().getNom());
-        }
-
+        dto.setActif(p.isActif());
         return dto;
     }
 }

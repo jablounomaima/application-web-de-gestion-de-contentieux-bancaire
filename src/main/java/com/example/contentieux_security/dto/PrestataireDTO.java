@@ -1,22 +1,21 @@
 package com.example.contentieux_security.dto;
 
+import com.example.contentieux_security.entity.TypePrestataire;
 import lombok.Data;
 
-@Data  // Génère tous les getters/setters
+@Data
 public class PrestataireDTO {
     private Long id;
     private String username;
-    private String nom;
     private String prenom;
+    private String nom;
     private String email;
     private String telephone;
     private String adresse;
-    private String type;
+    private TypePrestataire type;
     private String specialite;
     private String numeroCartePro;
-    private boolean actif;
     private String niveauValidation;
     private Double plafondValidation;
-    private String agentResponsableNom;
-    private String agenceNom;
+    private boolean actif;
 }

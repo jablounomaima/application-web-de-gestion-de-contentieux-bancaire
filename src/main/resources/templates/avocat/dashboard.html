@@ -1,19 +1,17 @@
-
-
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head>
-    
-    
-        <head th:replace="~{fragments/layout :: head('Dashboard')}"></head>
+<head th:replace="~{fragments/layout :: head('Dashboard')}"></head>
 
 <body>
 
-<aside th:replace="~{fragments/layout :: sidebar('ADMIN', ${username}, ${fullname})}"></aside>
+<aside th:replace="~{fragments/layout :: sidebar('AVOCAT', ${#authentication.name})}"></aside>
 
-<header th:replace="~{fragments/layout :: topbar('Dashboard', ${username}, 'ADMIN')}"></header>
+<header th:replace="~{fragments/layout :: topbar('Dashboard', ${#authentication.name}, 'AVOCAT')}"></header>
 
+<main>
+    <!-- contenu dashboard avocat -->
+</main>
 
-    <a href="/logout">Déconnexion</a>
+<a th:href="@{/logout}">Déconnexion</a>
 </body>
 </html>

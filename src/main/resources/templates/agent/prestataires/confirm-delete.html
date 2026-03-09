@@ -4,81 +4,44 @@
     <meta charset="UTF-8">
     <title>Confirmer Suppression</title>
     <style>
-        body { 
-            font-family: 'Segoe UI', Arial, sans-serif; 
-            background: #f5f5f5; 
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .confirm-box {
-            background: white;
-            padding: 40px;
-            border-radius: 10px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            text-align: center;
-            max-width: 400px;
-        }
-        .warning {
-            color: #e74c3c;
-            font-size: 48px;
-            margin-bottom: 20px;
-        }
-        .info {
-            background: #f8f9fa;
-            padding: 15px;
-            border-radius: 5px;
-            margin: 20px 0;
-            text-align: left;
-        }
-        .btn-group {
-            display: flex;
-            gap: 10px;
-            margin-top: 30px;
-        }
-        .btn {
-            flex: 1;
-            padding: 12px;
-            border: none;
-            border-radius: 5px;
-            font-size: 16px;
-            cursor: pointer;
-        }
-        .btn-danger {
-            background: #e74c3c;
-            color: white;
-        }
-        .btn-secondary {
-            background: #95a5a6;
-            color: white;
-            text-decoration: none;
-        }
+        body { font-family: 'Segoe UI', Arial, sans-serif; background: #f5f5f5; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
+        .confirm-box { background: white; padding: 40px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; max-width: 400px; width: 100%; }
+        .warning { color: #e74c3c; font-size: 48px; margin-bottom: 20px; }
+        .info { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; text-align: left; }
+        .info p { margin: 6px 0; font-size: 14px; }
+        .btn-group { display: flex; gap: 10px; margin-top: 30px; }
+        .btn { flex: 1; padding: 12px; border: none; border-radius: 5px; font-size: 16px; cursor: pointer; text-decoration: none; text-align: center; display: inline-block; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-secondary { background: #95a5a6; color: white; }
     </style>
 </head>
 <body>
-    <div class="confirm-box">
-        <div class="warning">⚠️</div>
-        <h2>Confirmer la suppression</h2>
-        <p>Êtes-vous sûr de vouloir supprimer ce prestataire ?</p>
-        
-        <div class="info">
-            <p><strong>Type:</strong> <span th:text="${prestataire.type}">TYPE</span></p>
-            <p><strong>Nom:</strong> <span th:text="${prestataire.nom} + ' ' + ${prestataire.prenom}">Nom</span></p>
-            <p><strong>Email:</strong> <span th:text="${prestataire.email}">email</span></p>
-        </div>
-        
-        <p style="color: #e74c3c; font-size: 14px;">
-            Cette action supprimera également l'utilisateur de Keycloak.
-        </p>
+<div class="confirm-box">
+    <div class="warning">⚠️</div>
+    <h2>Confirmer la suppression</h2>
+    <p>Êtes-vous sûr de vouloir supprimer ce prestataire ?</p>
 
-        <form th:action="@{/agent/prestataires/{id}/delete(id=${prestataire.id})}" method="post">
-            <div class="btn-group">
-                <button type="submit" class="btn btn-danger">🗑️ Oui, supprimer</button>
-                <a href="/agent/prestataires" class="btn btn-secondary">❌ Annuler</a>
-            </div>
-        </form>
+    <div class="info">
+        <!-- ✅ .getLibelle() pour afficher le type lisible -->
+        <p><strong>Type :</strong> <span th:text="${prestataire.type.getLibelle()}">TYPE</span></p>
+        <!-- ✅ concaténation dans un seul ${} -->
+        <p><strong>Nom :</strong> <span th:text="${prestataire.nom + ' ' + prestataire.prenom}">Nom</span></p>
+        <p><strong>Email :</strong> <span th:text="${prestataire.email}">email</span></p>
+        <p><strong>Username :</strong> <span th:text="${prestataire.username}">username</span></p>
     </div>
+
+    <p style="color:#e74c3c;font-size:14px">
+        ⚠️ Cette action supprimera également le compte Keycloak de cet utilisateur.
+    </p>
+
+    <form th:action="@{/agent/prestataires/{id}/delete(id=${prestataire.id})}" method="post">
+        <!-- ✅ CSRF obligatoire pour les POST -->
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <div class="btn-group">
+            <button type="submit" class="btn btn-danger">🗑️ Oui, supprimer</button>
+            <a th:href="@{/agent/prestataires}" class="btn btn-secondary">❌ Annuler</a>
+        </div>
+    </form>
+</div>
 </body>
 </html>
