@@ -84,6 +84,11 @@ public class SecurityConfig {
                 .requestMatchers("/validateur/**")
                 .hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
 
+
+                .requestMatchers("/prestataire/**")
+                .hasAnyRole("AVOCAT", "HUISSIER", "EXPERT",
+                "VALIDATEUR_JURIDIQUE", "VALIDATEUR_FINANCIER")
+
                 .anyRequest().authenticated()
             )
 

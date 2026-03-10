@@ -275,6 +275,7 @@
             <a th:href="@{/avocat/audiences}" class="nav-item">
                 <span class="nav-ico">🏛</span><span class="nav-label">Audiences</span>
             </a>
+            <a th:href="@{/prestataire/change-password}">🔐 Changer mon mot de passe</a>
         </div>
         <div th:if="${role == 'AVOCAT'}" class="nav-section">
             <div class="nav-section-label">Documents</div>
@@ -298,6 +299,7 @@
             <a th:href="@{/huissier/significations}" class="nav-item">
                 <span class="nav-ico">📮</span><span class="nav-label">Significations</span>
             </a>
+            <a th:href="@{/prestataire/change-password}">🔐 Changer mon mot de passe</a>
         </div>
         <div th:if="${role == 'HUISSIER'}" class="nav-section">
             <div class="nav-section-label">Recouvrement</div>
@@ -321,6 +323,7 @@
             <a th:href="@{/expert/evaluations}" class="nav-item">
                 <span class="nav-ico">📊</span><span class="nav-label">Évaluations</span>
             </a>
+            <a th:href="@{/prestataire/change-password}">🔐 Changer mon mot de passe</a>
         </div>
         <div th:if="${role == 'EXPERT'}" class="nav-section">
             <div class="nav-section-label">Rapports</div>

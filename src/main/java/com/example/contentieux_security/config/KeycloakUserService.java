@@ -61,16 +61,10 @@ public class KeycloakUserService {
             user.setEmailVerified(true);
 
             Response response = keycloak.realm(realm).users().create(user);
+            if (response.getStatus() != 201)
+                throw new RuntimeException("Erreur Keycloak [" + response.getStatus() + "]");
 
-            if (response.getStatus() != 201) {
-                String body = response.readEntity(String.class);
-                throw new RuntimeException(
-                    "Erreur création Keycloak [" + response.getStatus() + "]: " + body);
-            }
-
-            String userId = response.getLocation()
-                    .getPath()
-                    .replaceAll(".*/([^/]+)$", "$1");
+            String userId = response.getLocation().getPath().replaceAll(".*/([^/]+)$", "$1");
 
             // Mot de passe temporaire
             CredentialRepresentation credential = new CredentialRepresentation();
@@ -79,18 +73,16 @@ public class KeycloakUserService {
             credential.setTemporary(true);
             keycloak.realm(realm).users().get(userId).resetPassword(credential);
 
-            // ✅ Crée le rôle automatiquement s'il n'existe pas puis l'assigne
+            // Assigner le rôle
             assignRoleToUser(userId, roleName);
 
-            System.out.println("✅ Utilisateur Keycloak créé: " + username + " | Rôle: " + roleName);
-
         } catch (Exception e) {
-            throw new RuntimeException("Erreur création utilisateur Keycloak: " + e.getMessage(), e);
+            throw new RuntimeException("Erreur création utilisateur: " + e.getMessage(), e);
         }
     }
 
     // ══════════════════════════════════════════════════════════════
-    //  ✅ ASSIGNER RÔLE — avec création automatique si inexistant
+    //  ASSIGNER RÔLE
     // ══════════════════════════════════════════════════════════════
 
     public void assignRoleToUser(String userId, String roleName) {
@@ -105,41 +97,33 @@ public class KeycloakUserService {
     }
 
     // ══════════════════════════════════════════════════════════════
-    //  ✅ RÉCUPÉRER OU CRÉER LE RÔLE AUTOMATIQUEMENT
+    //  RÉCUPÉRER OU CRÉER LE RÔLE AUTOMATIQUEMENT
     // ══════════════════════════════════════════════════════════════
 
     private RoleRepresentation getOrCreateRole(String roleName) {
         try {
-            // Essayer de récupérer le rôle existant
             RoleRepresentation role = keycloak.realm(realm)
-                    .roles()
-                    .get(roleName)
-                    .toRepresentation();
+                    .roles().get(roleName).toRepresentation();
             System.out.println("✅ Rôle trouvé: " + roleName);
             return role;
         } catch (Exception e) {
-            // Rôle inexistant → créer automatiquement
             System.out.println("⚠️ Rôle '" + roleName + "' inexistant → création automatique");
             RoleRepresentation newRole = new RoleRepresentation();
             newRole.setName(roleName);
-            newRole.setDescription("Rôle créé automatiquement pour: " + roleName);
             keycloak.realm(realm).roles().create(newRole);
-            System.out.println("✅ Rôle créé dans Keycloak: " + roleName);
-            // Récupérer le rôle fraîchement créé
+            System.out.println("✅ Rôle créé: " + roleName);
             return keycloak.realm(realm).roles().get(roleName).toRepresentation();
         }
     }
 
     // ══════════════════════════════════════════════════════════════
-    //  ENVOYER EMAIL (reset password) — non bloquant
+    //  ENVOYER EMAIL
     // ══════════════════════════════════════════════════════════════
 
     public void sendVerificationEmail(String username) {
         try {
             String userId = getUserId(username);
-            keycloak.realm(realm)
-                    .users()
-                    .get(userId)
+            keycloak.realm(realm).users().get(userId)
                     .executeActionsEmail(Arrays.asList("UPDATE_PASSWORD"));
             System.out.println("✅ Email envoyé à: " + username);
         } catch (Exception e) {
@@ -216,9 +200,8 @@ public class KeycloakUserService {
     private String getUserId(String username) {
         List<UserRepresentation> users = keycloak.realm(realm)
                 .users().search(username, true);
-        if (users.isEmpty()) {
+        if (users.isEmpty())
             throw new RuntimeException("Utilisateur Keycloak non trouvé: " + username);
-        }
         return users.get(0).getId();
     }
 }

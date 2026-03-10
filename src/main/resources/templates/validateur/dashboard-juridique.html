@@ -1,230 +1,11 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Dashboard Validateur Juridique | Contentieux</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com"/>
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
-    <style>
-        :root {
-            --bg:#f0f4f8; --surface:#fff; --surface2:#f8fafc;
-            --border:#e2e8f0; --border2:#cbd5e1;
-            --text:#0f172a; --text2:#334155; --muted:#94a3b8;
-            --navy:#1e3a5f; --navy2:#2d5282;
-            --accent:#2563eb; --accent-soft:#dbeafe;
-            --green:#059669; --green-soft:#d1fae5;
-            --red:#dc2626; --red-soft:#fee2e2;
-            --amber:#d97706; --amber-soft:#fef3c7;
-            --purple:#7c3aed; --purple-soft:#ede9fe;
-            --shadow-sm:0 1px 3px rgba(0,0,0,.08);
-            --shadow:0 4px 16px rgba(0,0,0,.08);
-            --shadow-lg:0 10px 40px rgba(0,0,0,.12);
-            --radius:12px; --radius-sm:8px;
-            --sidebar-w:240px; --navbar-h:64px;
-        }
-        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
-        body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
-
-        /* SIDEBAR */
-        .sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--navy);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:200;box-shadow:2px 0 16px rgba(0,0,0,.15)}
-        .sidebar-brand{height:var(--navbar-h);padding:0 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
-        .brand-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#7c3aed,#5b21b6);display:grid;place-items:center;font-size:18px;flex-shrink:0}
-        .brand-name{font-size:13px;font-weight:700;color:white;letter-spacing:.04em;text-transform:uppercase}
-        .brand-sub{font-size:10.5px;color:rgba(255,255,255,.4);margin-top:1px}
-        .sidebar-nav{flex:1;padding:16px 10px;overflow-y:auto}
-        .nav-section{margin-bottom:24px}
-        .nav-section-label{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);padding:0 10px 8px}
-        .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-sm);font-size:13.5px;color:rgba(255,255,255,.55);text-decoration:none;transition:all .15s;margin-bottom:2px}
-        .nav-item:hover{background:rgba(255,255,255,.08);color:white}
-        .nav-item.active{background:rgba(124,58,237,.25);color:#c4b5fd;font-weight:500}
-        .nav-item .ico{width:18px;text-align:center;font-size:15px;flex-shrink:0}
-        .sidebar-footer{padding:16px 14px;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
-        .user-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);margin-bottom:10px}
-        .user-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#5b21b6);display:grid;place-items:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;text-transform:uppercase}
-        .uname{font-size:13px;font-weight:500;color:white}
-        .ulogin{font-size:10px;color:rgba(255,255,255,.35);font-family:'JetBrains Mono',monospace;margin-top:1px}
-        .urole{font-size:10.5px;color:rgba(255,255,255,.4);margin-top:1px}
-        .sidebar-logout{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px;border-radius:var(--radius-sm);background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.2);color:#fca5a5;font-size:12.5px;font-weight:500;text-decoration:none;transition:background .15s}
-        .sidebar-logout:hover{background:rgba(220,38,38,.22)}
-
-        /* TOPBAR */
-        .topbar{position:fixed;top:0;left:var(--sidebar-w);right:0;height:var(--navbar-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;z-index:100;box-shadow:var(--shadow-sm)}
-        .topbar-bc{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted)}
-        .topbar-bc .sep{color:var(--border2)}
-        .topbar-bc .cur{color:var(--text);font-weight:500}
-        .topbar-right{display:flex;align-items:center;gap:12px}
-        .topbar-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#7c3aed,#5b21b6);display:grid;place-items:center;font-size:13px;font-weight:700;color:white;text-transform:uppercase}
-        .topbar-name{font-size:13.5px;font-weight:500}
-        .topbar-role{font-size:11px;color:var(--muted)}
-
-        /* LAYOUT */
-        .page-content{margin-left:var(--sidebar-w);padding-top:var(--navbar-h);flex:1}
-        .page-inner{padding:28px 32px;max-width:1300px}
-
-        /* COMPONENTS */
-        .alert{padding:13px 16px;border-radius:var(--radius-sm);margin-bottom:18px;font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:10px}
-        .alert-success{background:var(--green-soft);color:#065f46;border:1px solid #a7f3d0}
-        .alert-error{background:var(--red-soft);color:#991b1b;border:1px solid #fca5a5}
-
-        .welcome-banner{background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 60%,#7c3aed 100%);padding:24px 28px;border-radius:var(--radius);margin-bottom:24px;color:white;position:relative;overflow:hidden;box-shadow:var(--shadow-lg)}
-        .welcome-banner::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;background:rgba(255,255,255,.05);border-radius:50%}
-        .welcome-banner::after{content:'';position:absolute;bottom:-60px;right:80px;width:240px;height:240px;background:rgba(255,255,255,.03);border-radius:50%}
-        .welcome-inner{position:relative;display:flex;align-items:center;justify-content:space-between}
-        .welcome-banner h2{font-size:1.3rem;font-weight:600;margin-bottom:4px}
-        .welcome-banner h2 span{color:#c4b5fd}
-        .welcome-banner p{font-size:13.5px;color:rgba(255,255,255,.7)}
-        .role-pill{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.2);border-radius:20px;font-size:12px;font-weight:600;color:white;white-space:nowrap}
-
-        .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-        .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px 20px;position:relative;overflow:hidden;transition:box-shadow .2s,transform .2s}
-        .stat-card:hover{box-shadow:var(--shadow);transform:translateY(-2px)}
-        .stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;border-radius:var(--radius) var(--radius) 0 0}
-        .stat-card.purple::before{background:linear-gradient(90deg,#7c3aed,#a78bfa)}
-        .stat-card.amber::before{background:linear-gradient(90deg,#f59e0b,#fbbf24)}
-        .stat-card.green::before{background:linear-gradient(90deg,#10b981,#34d399)}
-        .stat-card.red::before{background:linear-gradient(90deg,#ef4444,#f87171)}
-        .stat-icon{width:42px;height:42px;border-radius:10px;display:grid;place-items:center;font-size:20px;margin-bottom:12px}
-        .stat-card.purple .stat-icon{background:var(--purple-soft)}
-        .stat-card.amber  .stat-icon{background:var(--amber-soft)}
-        .stat-card.green  .stat-icon{background:var(--green-soft)}
-        .stat-card.red    .stat-icon{background:var(--red-soft)}
-        .stat-label{font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-bottom:6px;font-weight:600}
-        .stat-value{font-family:'JetBrains Mono',monospace;font-size:2rem;font-weight:500;line-height:1;margin-bottom:5px}
-        .stat-card.purple .stat-value{color:var(--purple)}
-        .stat-card.amber  .stat-value{color:var(--amber)}
-        .stat-card.green  .stat-value{color:var(--green)}
-        .stat-card.red    .stat-value{color:var(--red)}
-        .stat-delta{font-size:12px;color:var(--muted)}
-
-        .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);margin-bottom:20px}
-        .card-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border)}
-        .card-header h2{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
-        .card-body{padding:16px 20px}
-
-        .table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:20px;box-shadow:var(--shadow-sm)}
-        .table-header{display:flex;align-items:center;justify-content:space-between;padding:14px 20px;border-bottom:1px solid var(--border);background:var(--surface2)}
-        .table-header h2{font-size:14px;font-weight:600;display:flex;align-items:center;gap:8px}
-        table{width:100%;border-collapse:collapse}
-        thead th{text-align:left;padding:11px 18px;font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--border)}
-        tbody tr{transition:background .1s}
-        tbody tr:hover{background:#f8fafc}
-        tbody td{padding:12px 18px;font-size:13px;border-bottom:1px solid var(--border)}
-        tbody tr:last-child td{border-bottom:none}
-
-        .badge{display:inline-flex;align-items:center;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:600}
-        .badge-purple{background:var(--purple-soft);color:#5b21b6}
-        .badge-green{background:var(--green-soft);color:#065f46}
-        .badge-amber{background:var(--amber-soft);color:#92400e}
-        .badge-red{background:var(--red-soft);color:#991b1b}
-        .badge-blue{background:var(--accent-soft);color:#1d4ed8}
-        .badge-muted{background:var(--border);color:var(--muted)}
-
-        .btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:'Outfit',sans-serif;transition:all .18s;text-decoration:none}
-        .btn:hover{transform:translateY(-1px)}
-        .btn-primary{background:var(--purple);color:white;box-shadow:0 2px 8px rgba(124,58,237,.25)}
-        .btn-primary:hover{background:#5b21b6}
-        .btn-outline{background:var(--surface2);border:1.5px solid var(--border2);color:var(--text2)}
-        .btn-outline:hover{background:var(--border)}
-        .btn-danger{background:var(--red-soft);color:var(--red);border:1px solid #fca5a5}
-        .btn-success{background:var(--green-soft);color:var(--green);border:1px solid #a7f3d0}
-        .btn-sm{padding:5px 12px;font-size:12px}
-
-        .page-title-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px}
-        .page-title-bar h1{font-size:20px;font-weight:700}
-        .page-title-bar p{font-size:13px;color:var(--muted);margin-top:3px}
-
-        .timeline{display:flex;flex-direction:column;gap:12px}
-        .timeline-item{display:flex;gap:12px;align-items:flex-start}
-        .timeline-dot{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;font-size:14px;flex-shrink:0;margin-top:2px}
-        .timeline-dot.purple{background:var(--purple-soft)}
-        .timeline-dot.green{background:var(--green-soft)}
-        .timeline-dot.amber{background:var(--amber-soft)}
-        .timeline-dot.red{background:var(--red-soft)}
-        .timeline-content{flex:1}
-        .timeline-title{font-size:13.5px;font-weight:500}
-        .timeline-meta{font-size:11.5px;color:var(--muted);margin-top:2px}
-
-        .fade-in{animation:fadeIn .4s ease both}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
-        .delay-1{animation-delay:.06s}
-        .delay-2{animation-delay:.12s}
-        .delay-3{animation-delay:.18s}
-        .delay-4{animation-delay:.24s}
-    </style>
-</head>
-
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments/layout :: head('Dashboard Validateur Juridique')}"></head>
 <body>
-<div style="display:flex;width:100%">
 
-<!-- ═══════════ SIDEBAR ═══════════ -->
-<aside class="sidebar">
-    <div class="sidebar-brand">
-        <div class="brand-icon">⚖️</div>
-        <div>
-            <div class="brand-name">Contentieux</div>
-            <div class="brand-sub">Validation Juridique</div>
-        </div>
-    </div>
-    <nav class="sidebar-nav">
-        <div class="nav-section">
-            <div class="nav-section-label">Mon espace</div>
-            <a th:href="@{/validateur/juridique/dashboard}" class="nav-item active">
-                <span class="ico">📊</span> Dashboard
-            </a>
-            <a th:href="@{/validateur/dossiers}" class="nav-item">
-                <span class="ico">📁</span> Dossiers à valider
-            </a>
-            <a th:href="@{/validateur/actes}" class="nav-item">
-                <span class="ico">📜</span> Actes juridiques
-            </a>
-            <a th:href="@{/validateur/jugements}" class="nav-item">
-                <span class="ico">🏛️</span> Jugements
-            </a>
-        </div>
-        <div class="nav-section">
-            <div class="nav-section-label">Suivi</div>
-            <a th:href="@{/validateur/audiences}" class="nav-item">
-                <span class="ico">📅</span> Audiences
-            </a>
-            <a th:href="@{/validateur/historique}" class="nav-item">
-                <span class="ico">📋</span> Historique
-            </a>
-        </div>
-    </nav>
-    <div class="sidebar-footer">
-        <div class="user-card">
-            <div class="user-avatar"
-                 th:text="${#strings.substring(givenName ?: username ?: 'V', 0, 1)}">V</div>
-            <div>
-                <div class="uname" th:text="${(givenName ?: '') + ' ' + (familyName ?: '')}">Nom Prénom</div>
-                <div class="ulogin" th:text="${'@' + (username ?: '')}">@username</div>
-                <div class="urole">Validateur Juridique</div>
-            </div>
-        </div>
-        <a th:href="@{/logout}" class="sidebar-logout">⏻ Déconnexion</a>
-    </div>
-</aside>
+<aside th:replace="~{fragments/layout :: sidebar('VALIDATEUR_JURIDIQUE', ${#authentication.name})}"></aside>
+<header th:replace="~{fragments/layout :: topbar('Dashboard', ${#authentication.name}, 'VALIDATEUR_JURIDIQUE')}"></header>
 
-<!-- ═══════════ TOPBAR ═══════════ -->
-<div class="topbar">
-    <div class="topbar-bc">
-        <span>Validation Juridique</span>
-        <span class="sep">›</span>
-        <span class="cur">Dashboard</span>
-    </div>
-    <div class="topbar-right">
-        <div class="topbar-av"
-             th:text="${#strings.substring(givenName ?: username ?: 'V', 0, 1)}">V</div>
-        <div>
-            <div class="topbar-name" th:text="${(givenName ?: '') + ' ' + (familyName ?: '')}">Nom Prénom</div>
-            <div class="topbar-role" th:text="${(username ?: '') + ' · Validateur Juridique'}">username</div>
-        </div>
-    </div>
-</div>
-
-<!-- ═══════════ CONTENU ═══════════ -->
 <div class="page-content">
     <div class="page-inner">
 
@@ -237,14 +18,15 @@
                 <h1>Dashboard — Validation Juridique</h1>
                 <p>Contrôle de la conformité juridique des actes et dossiers contentieux</p>
             </div>
-            <a th:href="@{/validateur/dossiers}" class="btn btn-primary">📁 Dossiers en attente</a>
+            <a th:href="@{/validateur/juridique/dossiers}" class="btn btn-primary">📁 Dossiers en attente</a>
         </div>
 
         <!-- Bannière -->
-        <div class="welcome-banner fade-in delay-1">
+        <div class="welcome-banner fade-in delay-1"
+             style="background:linear-gradient(135deg,#4c1d95 0%,#6d28d9 60%,#7c3aed 100%)">
             <div class="welcome-inner">
                 <div>
-                    <h2>Bonjour, <span th:text="${givenName ?: username}">Prénom</span> 👋</h2>
+                    <h2>Bonjour, <span th:text="${givenName ?: #authentication.name}">Prénom</span> 👋</h2>
                     <p>Des actes juridiques sont en attente de votre validation.</p>
                 </div>
                 <div class="role-pill">⚖️ Validateur Juridique</div>
@@ -284,28 +66,26 @@
             <!-- Audiences prochaines -->
             <div class="card fade-in delay-2">
                 <div class="card-header"><h2>📅 Prochaines audiences</h2></div>
-                <div class="card-body">
-                    <div class="timeline">
-                        <div class="timeline-item">
-                            <div class="timeline-dot purple">🏛️</div>
-                            <div class="timeline-content">
-                                <div class="timeline-title">DOS-2025-0142 — SARL Technolab</div>
-                                <div class="timeline-meta">10/03/2026 · Tribunal de Commerce d'Alger · Chambre 3</div>
-                            </div>
+                <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;gap:12px;align-items:flex-start">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#ede9fe;display:grid;place-items:center;font-size:14px;flex-shrink:0">🏛️</div>
+                        <div>
+                            <div style="font-size:13.5px;font-weight:500">DOS-2025-0142 — SARL Technolab</div>
+                            <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">10/03/2026 · Tribunal de Commerce d'Alger · Chambre 3</div>
                         </div>
-                        <div class="timeline-item">
-                            <div class="timeline-dot amber">🏛️</div>
-                            <div class="timeline-content">
-                                <div class="timeline-title">DOS-2025-0131 — SPA Immobilière Sud</div>
-                                <div class="timeline-meta">14/03/2026 · Cour d'Appel de Constantine</div>
-                            </div>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#fef3c7;display:grid;place-items:center;font-size:14px;flex-shrink:0">🏛️</div>
+                        <div>
+                            <div style="font-size:13.5px;font-weight:500">DOS-2025-0131 — SPA Immobilière Sud</div>
+                            <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">14/03/2026 · Cour d'Appel de Constantine</div>
                         </div>
-                        <div class="timeline-item">
-                            <div class="timeline-dot green">🏛️</div>
-                            <div class="timeline-content">
-                                <div class="timeline-title">DOS-2025-0118 — M. Karim Hadj</div>
-                                <div class="timeline-meta">20/03/2026 · Tribunal de Première Instance d'Oran</div>
-                            </div>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#d1fae5;display:grid;place-items:center;font-size:14px;flex-shrink:0">🏛️</div>
+                        <div>
+                            <div style="font-size:13.5px;font-weight:500">DOS-2025-0118 — M. Karim Hadj</div>
+                            <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">20/03/2026 · Tribunal de Première Instance d'Oran</div>
                         </div>
                     </div>
                 </div>
@@ -314,66 +94,62 @@
             <!-- Actes récents -->
             <div class="card fade-in delay-3">
                 <div class="card-header"><h2>📜 Actes récents à vérifier</h2></div>
-                <div class="card-body">
-                    <div class="timeline">
-                        <div class="timeline-item">
-                            <div class="timeline-dot purple">📝</div>
-                            <div class="timeline-content">
-                                <div class="timeline-title">Assignation — DOS-2025-0142</div>
-                                <div class="timeline-meta">Soumis le 07/03/2026 · Me. Touri Karim</div>
-                            </div>
+                <div class="card-body" style="display:flex;flex-direction:column;gap:12px">
+                    <div style="display:flex;gap:12px;align-items:flex-start">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#ede9fe;display:grid;place-items:center;font-size:14px;flex-shrink:0">📝</div>
+                        <div>
+                            <div style="font-size:13.5px;font-weight:500">Assignation — DOS-2025-0142</div>
+                            <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">Soumis le 07/03/2026 · Me. Touri Karim</div>
                         </div>
-                        <div class="timeline-item">
-                            <div class="timeline-dot red">⚠️</div>
-                            <div class="timeline-content">
-                                <div class="timeline-title">Conclusions — DOS-2025-0138 <span class="badge badge-red" style="font-size:10px">Non conforme</span></div>
-                                <div class="timeline-meta">Rejeté le 06/03/2026 · Signature manquante</div>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#fee2e2;display:grid;place-items:center;font-size:14px;flex-shrink:0">⚠️</div>
+                        <div>
+                            <div style="font-size:13.5px;font-weight:500">Conclusions — DOS-2025-0138
+                                <span class="badge badge-red" style="font-size:10px">Non conforme</span>
                             </div>
+                            <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">Rejeté le 06/03/2026 · Signature manquante</div>
                         </div>
-                        <div class="timeline-item">
-                            <div class="timeline-dot green">✅</div>
-                            <div class="timeline-content">
-                                <div class="timeline-title">Jugement — DOS-2025-0115 <span class="badge badge-green" style="font-size:10px">Validé</span></div>
-                                <div class="timeline-meta">Validé le 05/03/2026</div>
+                    </div>
+                    <div style="display:flex;gap:12px;align-items:flex-start">
+                        <div style="width:32px;height:32px;border-radius:50%;background:#d1fae5;display:grid;place-items:center;font-size:14px;flex-shrink:0">✅</div>
+                        <div>
+                            <div style="font-size:13.5px;font-weight:500">Jugement — DOS-2025-0115
+                                <span class="badge badge-green" style="font-size:10px">Validé</span>
                             </div>
+                            <div style="font-size:11.5px;color:#94a3b8;margin-top:2px">Validé le 05/03/2026</div>
                         </div>
                     </div>
                 </div>
             </div>
         </div>
 
-        <!-- Tableau dossiers à valider -->
+        <!-- Tableau dossiers -->
         <div class="table-wrap fade-in delay-3">
             <div class="table-header">
                 <h2>⏳ Dossiers juridiques en attente de validation</h2>
-                <a th:href="@{/validateur/dossiers}" class="btn btn-outline btn-sm">Voir tout</a>
+                <a th:href="@{/validateur/juridique/dossiers}" class="btn btn-outline btn-sm">Voir tout</a>
             </div>
             <table>
                 <thead>
                     <tr>
-                        <th>Référence</th>
-                        <th>Débiteur</th>
-                        <th>Type d'acte</th>
-                        <th>Avocat</th>
-                        <th>Stade judiciaire</th>
-                        <th>Soumis le</th>
-                        <th>Statut</th>
-                        <th>Actions</th>
+                        <th>Référence</th><th>Débiteur</th><th>Type d'acte</th>
+                        <th>Avocat</th><th>Stade judiciaire</th><th>Soumis le</th>
+                        <th>Statut</th><th>Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Données réelles -->
                     <tr th:each="d : ${dossiers}">
                         <td style="font-family:'JetBrains Mono',monospace;font-size:12px" th:text="${d.reference}">-</td>
                         <td th:text="${d.debiteur}">-</td>
                         <td><span class="badge badge-purple" th:text="${d.typeActe}">-</span></td>
                         <td th:text="${d.avocat}">-</td>
                         <td><span class="badge badge-blue" th:text="${d.stade}">-</span></td>
-                        <td style="color:var(--muted);font-size:12px" th:text="${d.dateSoumission}">-</td>
+                        <td style="color:#94a3b8;font-size:12px" th:text="${d.dateSoumission}">-</td>
                         <td><span class="badge badge-amber">En attente</span></td>
                         <td style="display:flex;gap:6px">
-                            <a th:href="@{/validateur/dossiers/{id}/valider(id=${d.id})}" class="btn btn-success btn-sm">✅ Valider</a>
-                            <a th:href="@{/validateur/dossiers/{id}/rejeter(id=${d.id})}" class="btn btn-danger btn-sm">❌ Rejeter</a>
+                            <a th:href="@{/validateur/juridique/dossiers/{id}/valider(id=${d.id})}" class="btn btn-green btn-sm">✅ Valider</a>
+                            <a th:href="@{/validateur/juridique/dossiers/{id}/rejeter(id=${d.id})}" class="btn btn-danger btn-sm">❌ Rejeter</a>
                         </td>
                     </tr>
                     <!-- Démo -->
@@ -383,10 +159,10 @@
                         <td><span class="badge badge-purple">Assignation</span></td>
                         <td>Me. Touri Karim</td>
                         <td><span class="badge badge-blue">1ère instance</span></td>
-                        <td style="color:var(--muted);font-size:12px">07/03/2026</td>
+                        <td style="color:#94a3b8;font-size:12px">07/03/2026</td>
                         <td><span class="badge badge-amber">En attente</span></td>
                         <td style="display:flex;gap:6px">
-                            <a href="#" class="btn btn-success btn-sm">✅ Valider</a>
+                            <a href="#" class="btn btn-green btn-sm">✅ Valider</a>
                             <a href="#" class="btn btn-danger btn-sm">❌ Rejeter</a>
                         </td>
                     </tr>
@@ -396,10 +172,10 @@
                         <td><span class="badge badge-purple">Conclusions</span></td>
                         <td>Me. Benali Samir</td>
                         <td><span class="badge badge-blue">Appel</span></td>
-                        <td style="color:var(--muted);font-size:12px">06/03/2026</td>
+                        <td style="color:#94a3b8;font-size:12px">06/03/2026</td>
                         <td><span class="badge badge-red">Non conforme</span></td>
                         <td style="display:flex;gap:6px">
-                            <a href="#" class="btn btn-success btn-sm">✅ Valider</a>
+                            <a href="#" class="btn btn-green btn-sm">✅ Valider</a>
                             <a href="#" class="btn btn-danger btn-sm">❌ Rejeter</a>
                         </td>
                     </tr>
@@ -409,10 +185,10 @@
                         <td><span class="badge badge-purple">Jugement</span></td>
                         <td>Me. Meziane Amel</td>
                         <td><span class="badge badge-amber">Cassation</span></td>
-                        <td style="color:var(--muted);font-size:12px">05/03/2026</td>
+                        <td style="color:#94a3b8;font-size:12px">05/03/2026</td>
                         <td><span class="badge badge-amber">En attente</span></td>
                         <td style="display:flex;gap:6px">
-                            <a href="#" class="btn btn-success btn-sm">✅ Valider</a>
+                            <a href="#" class="btn btn-green btn-sm">✅ Valider</a>
                             <a href="#" class="btn btn-danger btn-sm">❌ Rejeter</a>
                         </td>
                     </tr>
@@ -421,7 +197,6 @@
         </div>
 
     </div>
-</div>
 </div>
 </body>
 </html>
