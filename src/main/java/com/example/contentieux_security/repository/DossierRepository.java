@@ -10,22 +10,24 @@ import java.util.Optional;
 
 public interface DossierRepository extends JpaRepository<DossierContentieux, Long> {
 
-    // ── Requêtes par agent ────────────────────────────────────────
-    List<DossierContentieux> findByAgentCreateur_Username(String username);
+    @Query("""
+        SELECT DISTINCT d FROM DossierContentieux d
+        LEFT JOIN FETCH d.client
+        LEFT JOIN FETCH d.agence
+        WHERE d.agentCreateur.username = :username
+    """)
+    List<DossierContentieux> findByAgentCreateur_Username(@Param("username") String username);
 
     List<DossierContentieux> findByAgentCreateur_UsernameAndStatut(
             String username, DossierStatus statut);
 
     // ── Requêtes par agence ───────────────────────────────────────
     List<DossierContentieux> findByAgence_Id(Long agenceId);
-
     List<DossierContentieux> findByAgence_IdAndStatut(Long agenceId, DossierStatus statut);
 
     // ── Requêtes par statut ───────────────────────────────────────
     List<DossierContentieux> findByStatut(DossierStatus statut);
-
     long countByStatut(DossierStatus statut);
-
     long countByAgentCreateur_UsernameAndStatut(String username, DossierStatus statut);
 
     // ── Requêtes par client ───────────────────────────────────────
@@ -37,8 +39,7 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
     @Query("SELECT MAX(d.numeroDossier) FROM DossierContentieux d WHERE d.numeroDossier LIKE :prefix%")
     Optional<String> findLastNumero(@Param("prefix") String prefix);
 
-    // ── Validation — dossiers en attente pour chaque validateur ───
-
+    // ── Validation ────────────────────────────────────────────────
     @Query("SELECT d FROM DossierContentieux d " +
            "WHERE d.statut = 'EN_TRAITEMENT' AND d.validationFinanciere IS NULL")
     List<DossierContentieux> findEnAttenteValidationFinanciere();
@@ -46,8 +47,6 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
     @Query("SELECT d FROM DossierContentieux d " +
            "WHERE d.statut = 'EN_TRAITEMENT' AND d.validationJuridique IS NULL")
     List<DossierContentieux> findEnAttenteValidationJuridique();
-
-    // ── Requête pour l'agence du validateur ───────────────────────
 
     @Query("SELECT d FROM DossierContentieux d " +
            "WHERE d.agence.id = :agenceId " +
@@ -60,22 +59,20 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
     List<DossierContentieux> findEnAttenteValidationJuridiqueParAgence(@Param("agenceId") Long agenceId);
 
     // ── Statistiques ──────────────────────────────────────────────
-
     @Query("SELECT d.statut, COUNT(d) FROM DossierContentieux d GROUP BY d.statut")
     List<Object[]> countByStatutGrouped();
 
     @Query("SELECT d.agence.nom, COUNT(d) FROM DossierContentieux d GROUP BY d.agence.nom")
     List<Object[]> countByAgenceGrouped();
 
-    // Ajouter cette méthode
+    // ── Détail dossier — SANS garanties (évite MultipleBagFetchException) ──
+    // ✅ Charge seulement risques — les garanties sont chargées séparément
     @Query("""
         SELECT DISTINCT d FROM DossierContentieux d
         LEFT JOIN FETCH d.client
         LEFT JOIN FETCH d.agence
-        LEFT JOIN FETCH d.risques r
-        LEFT JOIN FETCH r.garanties
+        LEFT JOIN FETCH d.risques
         WHERE d.id = :id
     """)
     Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
-
 }

@@ -58,7 +58,7 @@ public class SecurityConfig {
 
                 // Agent bancaire
                 .requestMatchers("/agent/**")
-                .hasRole("AGENT")
+                .hasAnyRole("AGENT", "ADMIN")
 
                 // Avocat
                 .requestMatchers("/avocat/**")

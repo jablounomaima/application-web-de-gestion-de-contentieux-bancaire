@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title th:text="'Modifier dossier ' + ${dossier.numeroDossier}">Modifier dossier</title>
+    <meta charset="UTF-8">
+    <style>
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f5f5f5;
+            color: #333;
+        }
+
+        h2 { color: #2c3e50; margin-bottom: 4px; }
+        .subtitle { color: #777; margin-bottom: 24px; font-size: 14px; }
+
+        .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; max-width: 700px; }
+        .alert-success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+        .alert-error   { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+
+        .card {
+            background: white;
+            padding: 28px;
+            border-radius: 6px;
+            max-width: 700px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            margin-bottom: 20px;
+        }
+
+        .card-title {
+            font-size: 14px; font-weight: bold; color: #555;
+            margin: 0 0 20px; padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .form-group {
+            margin-bottom: 18px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 6px;
+        }
+
+        input[type="text"],
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            font-family: Arial, sans-serif;
+            background: white;
+            transition: border-color .2s;
+        }
+
+        input[type="text"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 3px rgba(52,152,219,.1);
+        }
+
+        input[readonly] {
+            background: #f8f8f8;
+            color: #999;
+            cursor: not-allowed;
+        }
+
+        textarea { resize: vertical; min-height: 90px; }
+
+        .hint {
+            font-size: 12px;
+            color: #aaa;
+            margin-top: 4px;
+        }
+
+        /* Risques ajout */
+        .risque-block {
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: #fafafa;
+        }
+
+        .risque-block .risque-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            font-weight: bold;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        /* Actions */
+        .actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            border: none;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .btn-save   { background: #2ecc71; color: white; }
+        .btn-save:hover { background: #27ae60; }
+        .btn-back   { background: #777; color: white; }
+        .btn-back:hover { background: #555; }
+        .btn-add    { background: #3498db; color: white; font-size: 13px; padding: 7px 14px; }
+        .btn-add:hover { background: #2980b9; }
+        .btn-remove { background: #e74c3c; color: white; font-size: 12px;
+                      padding: 4px 10px; border-radius: 3px; cursor: pointer; border: none; }
+    </style>
+</head>
+<body>
+
+<h2>Modifier le dossier</h2>
+<p class="subtitle">
+    Agent connecté : <b sec:authentication="name">–</b>
+</p>
+
+<!-- Flash messages -->
+<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+<div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+
+<!-- ── Informations générales ── -->
+<form th:action="@{/agent/dossiers/{id}/edit(id=${dossier.id})}"
+      method="post">
+
+    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+    <div class="card">
+        <div class="card-title">Informations générales</div>
+
+        <!-- Numéro dossier — lecture seule -->
+        <div class="form-group">
+            <label>Numéro dossier</label>
+            <input type="text"
+                   th:value="${dossier.numeroDossier}"
+                   readonly/>
+            <div class="hint">Non modifiable</div>
+        </div>
+
+        <!-- Libellé -->
+        <div class="form-group">
+            <label for="libelle">Libellé <span style="color:red">*</span></label>
+            <input type="text"
+                   id="libelle"
+                   name="libelle"
+                   th:value="${dossier.libelle}"
+                   required
+                   placeholder="Libellé du dossier"/>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description"
+                      name="description"
+                      th:text="${dossier.description}"
+                      placeholder="Description du dossier"></textarea>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+            <label for="notes">Notes internes</label>
+            <textarea id="notes"
+                      name="notes"
+                      th:text="${dossier.notes}"
+                      placeholder="Notes internes (optionnel)"></textarea>
+        </div>
+    </div>
+
+    <!-- ── Client — lecture seule ── -->
+    <div class="card">
+        <div class="card-title">Client <span style="color:#aaa;font-weight:normal;font-size:12px">(non modifiable)</span></div>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label>Nom</label>
+                <input type="text" th:value="${dossier.clientNom}" readonly/>
+            </div>
+            <div class="form-group">
+                <label>Prénom</label>
+                <input type="text" th:value="${dossier.clientPrenom}" readonly/>
+            </div>
+            <div class="form-group">
+                <label>CIN</label>
+                <input type="text" th:value="${dossier.clientCin}" readonly/>
+            </div>
+            <div class="form-group">
+                <label>Téléphone</label>
+                <input type="text" th:value="${dossier.clientTelephone}" readonly/>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── Actions ── -->
+    <div class="card" style="padding: 20px 28px;">
+        <div class="actions">
+            <button class="btn btn-save" type="submit">
+                💾 Enregistrer les modifications
+            </button>
+            <a class="btn btn-back"
+               th:href="@{/agent/dossiers/{id}(id=${dossier.id})}">
+                ← Annuler
+            </a>
+        </div>
+    </div>
+
+</form>
+
+<!-- ── Ajout de risque ── -->
+<div class="card">
+    <div class="card-title">Ajouter un crédit / risque</div>
+
+    <form th:action="@{/agent/dossiers/{id}/risques/ajouter(id=${dossier.id})}"
+          method="post">
+        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+
+        <div class="grid-2">
+            <div class="form-group">
+                <label for="type">Type de crédit <span style="color:red">*</span></label>
+                <input type="text" id="type" name="type"
+                       required placeholder="Ex: Crédit immobilier"/>
+            </div>
+            <div class="form-group">
+                <label for="dateEcheance">Date d'échéance</label>
+                <input type="text" id="dateEcheance" name="dateEcheance"
+                       placeholder="YYYY-MM-DD"/>
+            </div>
+            <div class="form-group">
+                <label for="montantInitial">Montant initial (DT)</label>
+                <input type="text" id="montantInitial" name="montantInitial"
+                       placeholder="0.00"/>
+            </div>
+            <div class="form-group">
+                <label for="montantImpaye">Montant impayé (DT)</label>
+                <input type="text" id="montantImpaye" name="montantImpaye"
+                       placeholder="0.00"/>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label for="descRisque">Description</label>
+            <textarea id="descRisque" name="description"
+                      placeholder="Description du crédit (optionnel)"></textarea>
+        </div>
+
+        <button class="btn btn-add" type="submit">➕ Ajouter ce crédit</button>
+    </form>
+</div>
+<!-- ── Liste des risques existants ── -->
+<div class="card"
+     th:if="${dossier.risques != null and !dossier.risques.empty}">
+    <div class="card-title">Crédits enregistrés</div>
+
+    <div th:each="risque : ${dossier.risques}" class="risque-block">
+        <div class="risque-header">
+            <span th:text="${risque.type} ?: '–'"></span>
+            <span th:if="${risque.selectionne}"
+                  style="font-size:11px;color:#3498db">★ Sélectionné</span>
+        </div>
+
+        <div class="grid-2" style="font-size:13px;color:#555;margin-bottom:10px">
+            <div>
+                Montant initial :
+                <b th:text="${risque.montantInitial != null}
+                            ? ${#numbers.formatDecimal(risque.montantInitial,1,'COMMA',2,'POINT')} + ' DT'
+                            : '–'"></b>
+            </div>
+            <div>
+                Montant impayé :
+                <b th:text="${risque.montantImpaye != null}
+                            ? ${#numbers.formatDecimal(risque.montantImpaye,1,'COMMA',2,'POINT')} + ' DT'
+                            : '–'"></b>
+            </div>
+        </div>
+
+        <!-- Garanties existantes -->
+        <div th:if="${risque.garanties != null and !risque.garanties.empty}"
+             style="margin-bottom:10px">
+            <div style="font-size:12px;color:#999;margin-bottom:4px">Garanties :</div>
+            <div th:each="g : ${risque.garanties}"
+                 style="font-size:13px;color:#555;padding:3px 0 3px 12px;
+                        border-left:3px solid #3498db;margin:3px 0">
+                <span th:text="${g.typeGarantie} ?: '–'"></span>
+                <span th:if="${g.valeurEstimee != null}"
+                      th:text="' — ' + ${#numbers.formatDecimal(g.valeurEstimee,1,'COMMA',2,'POINT')} + ' DT'">
+                </span>
+            </div>
+        </div>
+
+        <!-- ✅ Form 1 — Ajouter une garantie (SEUL dans son bloc) -->
+        <form th:action="@{/agent/dossiers/risques/{rId}/garanties/ajouter(rId=${risque.id})}"
+              method="post"
+              style="border-top:1px solid #eee;padding-top:10px;margin-top:6px">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <div style="font-size:12px;color:#999;margin-bottom:8px">Ajouter une garantie :</div>
+            <div class="grid-2">
+                <div class="form-group" style="margin-bottom:8px">
+                    <input type="text" name="typeGarantie"
+                           placeholder="Type (ex: Hypothèque)" required/>
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                    <input type="text" name="valeurEstimee"
+                           placeholder="Valeur estimée (DT)"/>
+                </div>
+            </div>
+            <input type="text" name="description"
+                   placeholder="Description (optionnel)"
+                   style="width:100%;margin-bottom:8px;padding:8px 10px;
+                          border:1px solid #ddd;border-radius:4px;font-size:13px"/>
+            <input type="text" name="documentRef"
+                   placeholder="Référence document (optionnel)"
+                   style="width:100%;margin-bottom:8px;padding:8px 10px;
+                          border:1px solid #ddd;border-radius:4px;font-size:13px"/>
+            <button class="btn btn-add" type="submit">➕ Garantie</button>
+        </form>
+        <!-- FIN form garantie -->
+
+        <!-- ✅ Form 2 — Sélectionner (COMPLÈTEMENT séparé, APRÈS la fermeture du form garantie) -->
+        <form th:unless="${risque.selectionne}"
+              th:action="@{/agent/dossiers/risques/{rId}/selectionner(rId=${risque.id})}"
+              method="post"
+              style="margin-top:8px">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit"
+                    style="padding:7px 14px;background:#9b59b6;color:white;
+                           border:none;border-radius:4px;font-size:13px;cursor:pointer">
+                ☑ Sélectionner ce crédit
+            </button>
+        </form>
+
+        <!-- Message si déjà sélectionné -->
+        <div th:if="${risque.selectionne}"
+             style="margin-top:8px;font-size:13px;color:#3498db;font-weight:bold">
+            ★ Ce crédit est sélectionné pour la procédure
+        </div>
+
+    </div>
+</div>

@@ -12,6 +12,7 @@ import com.example.contentieux_security.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.contentieux_security.repository.DossierRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -65,13 +66,19 @@ public class DossierService {
     }
 
     /** DTO complet (évite les LazyInitializationException dans Thymeleaf) */
+    // ✅ Après
     @Transactional(readOnly = true)
     public DossierDetailDTO getDossierDetail(Long id) {
-    DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-            .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-    return DossierDetailDTO.from(d, historiqueService.getHistorique(id));
+        // Requête 1 — dossier + client + agence + risques
+        DossierContentieux d = dossierRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
+    
+        // Requête 2 — garanties chargées séparément dans la même session Hibernate
+        // Hibernate les associe automatiquement aux risques déjà en mémoire
+        risqueRepository.findByDossierIdWithGaranties(id);
+    
+        return DossierDetailDTO.from(d, historiqueService.getHistorique(id));
     }
-
     // ════════════════════════════════════════════════════
     //  CRÉATION DOSSIER
     // ════════════════════════════════════════════════════

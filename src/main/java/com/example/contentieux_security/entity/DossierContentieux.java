@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
+import java.util.HashSet; 
 
 @Entity
 @Table(name = "dossier")
@@ -78,7 +80,7 @@ public class DossierContentieux {
     private AgentBancaire agentCreateur;
 
     @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Risque> risques;
+    private Set<Risque> risques;
 
     // ── Méthodes utilitaires ──────────────────────────────────────
 

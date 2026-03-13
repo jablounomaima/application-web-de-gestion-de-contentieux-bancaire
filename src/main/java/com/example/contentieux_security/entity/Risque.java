@@ -4,7 +4,8 @@ import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
 import java.util.List;
-
+import java.util.Set;                    
+import java.util.HashSet;  
 @Entity
 @Table(name = "risques")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -39,7 +40,7 @@ public class Risque {
     private DossierContentieux dossier;
 
     @OneToMany(mappedBy = "risque", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private List<Garantie> garanties;
+    private Set<Garantie> garanties;
 
     // ── Méthode ───────────────────────────────────────────────────
     public Double calculerScore() {

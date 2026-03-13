@@ -31,7 +31,29 @@ public class DossierController {
     @GetMapping("/agent/dossiers")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String listeDossiers(Model model, Principal principal) {
-        model.addAttribute("dossiers", dossierService.getDossiersAgent(principal.getName()));
+    
+        String username = principal.getName();
+        List<DossierContentieux> dossiers = dossierService.getDossiersAgent(username);
+    
+        System.out.println("=== username : " + username);
+        System.out.println("=== dossiers : " + dossiers.size());
+    
+        model.addAttribute("dossiers",          dossiers);
+        model.addAttribute("givenName",         username);
+        model.addAttribute("totalDossiers",     dossiers.size());
+        model.addAttribute("dossiersOuverts",
+            dossiers.stream()
+                .filter(d -> d.getStatut() == DossierStatus.OUVERT)
+                .count());
+        model.addAttribute("dossiersEnAttente",
+            dossiers.stream()
+                .filter(d -> d.getStatut() == DossierStatus.EN_TRAITEMENT)
+                .count());
+        model.addAttribute("dossiersValides",
+            dossiers.stream()
+                .filter(d -> d.getStatut() == DossierStatus.VALIDE)
+                .count());
+    
         return "agent/dossiers/list";
     }
 
@@ -60,14 +82,19 @@ public class DossierController {
 
     @GetMapping("/agent/dossiers/{id}")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-    public String detailDossier(@PathVariable Long id, Model model) {
+    public String detailDossier(@PathVariable Long id, Model model,
+                                RedirectAttributes redirectAttributes) {
         try {
             DossierDetailDTO dossier = dossierService.getDossierDetail(id);
             model.addAttribute("dossier", dossier);
             return "agent/dossiers/detail";
         } catch (Exception e) {
-            model.addAttribute("error", e.getMessage());
-            return "agent/dossiers/list"; // ou une page d'erreur
+            // ← log pour voir l'erreur exacte
+            System.err.println("=== ERREUR detailDossier id=" + id + " : " + e.getMessage());
+            e.printStackTrace();
+            redirectAttributes.addFlashAttribute("error",
+                    "Impossible de charger le dossier : " + e.getMessage());
+            return "redirect:/agent/dossiers";
         }
     }
 

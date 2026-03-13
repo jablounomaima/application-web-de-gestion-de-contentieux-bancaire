@@ -1,144 +1,184 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <title>Dossiers Contentieux</title>
     <meta charset="UTF-8">
-
     <style>
-        body{
-            font-family: Arial;
-            margin:40px;
-            background:#f5f5f5;
+        * { box-sizing: border-box; }
+
+        body {
+            font-family: Arial, sans-serif;
+            margin: 40px;
+            background: #f5f5f5;
+            color: #333;
         }
 
-        h2{
-            color:#2c3e50;
+        h2 { color: #2c3e50; margin-bottom: 4px; }
+
+        .subtitle { color: #777; margin-bottom: 20px; font-size: 14px; }
+
+        /* Flash */
+        .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+        .alert-success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+        .alert-error   { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+
+        /* Stats */
+        .stats { margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
+
+        .card {
+            padding: 14px 20px;
+            background: white;
+            border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            font-size: 14px;
+            min-width: 130px;
         }
 
-        table{
-            width:100%;
+        .card b { display: block; font-size: 22px; color: #2c3e50; margin-top: 2px; }
+
+        /* Boutons */
+        .btn {
+            padding: 7px 14px;
+            text-decoration: none;
+            border-radius: 4px;
+            font-size: 13px;
+            display: inline-block;
+        }
+        .btn-detail { background: #3498db; color: white; }
+        .btn-detail:hover { background: #2980b9; }
+        .btn-create { background: #2ecc71; color: white; }
+        .btn-create:hover { background: #27ae60; }
+
+        /* Table */
+        table {
+            width: 100%;
             border-collapse: collapse;
-            background:white;
+            background: white;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            border-radius: 6px;
+            overflow: hidden;
         }
 
-        th,td{
-            padding:10px;
-            border:1px solid #ddd;
-            text-align:center;
+        th, td {
+            padding: 11px 12px;
+            border-bottom: 1px solid #eee;
+            text-align: center;
         }
 
-        th{
-            background:#34495e;
-            color:white;
-        }
+        th { background: #34495e; color: white; font-size: 13px; }
 
-        .btn{
-            padding:6px 12px;
-            text-decoration:none;
-            border-radius:4px;
-        }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f9f9f9; }
 
-        .btn-detail{
-            background:#3498db;
-            color:white;
+        /* Badge statut */
+        .badge {
+            display: inline-block;
+            padding: 3px 9px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: bold;
+            text-transform: uppercase;
         }
+        .badge-OUVERT        { background:#cce5ff; color:#004085; }
+        .badge-EN_TRAITEMENT { background:#fff3cd; color:#856404; }
+        .badge-VALIDE        { background:#d4edda; color:#155724; }
+        .badge-REJETE        { background:#f8d7da; color:#721c24; }
+        .badge-CLOTURE       { background:#e2e3e5; color:#383d41; }
 
-        .btn-create{
-            background:#2ecc71;
-            color:white;
-        }
-
-        .stats{
-            margin-bottom:20px;
-        }
-
-        .card{
-            display:inline-block;
-            padding:15px;
-            margin-right:15px;
-            background:white;
-            border-radius:6px;
-            box-shadow:0 2px 5px rgba(0,0,0,0.1);
-        }
+        .empty-row td { color: #aaa; font-style: italic; padding: 30px; }
     </style>
 </head>
-
 <body>
 
 <h2>Gestion des dossiers contentieux</h2>
 
-<p>
-    Bonjour <b th:text="${givenName}"></b>
+<!-- ✅ sec:authentication="name" — ne dépend pas d'une variable injectée -->
+<p class="subtitle">
+    Bonjour <b sec:authentication="name">–</b>
 </p>
 
+<!-- Flash messages -->
+<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+<div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+
+<!-- ✅ Stats — ?: '0' évite l'affichage null si le controller oublie de les injecter -->
 <div class="stats">
-
     <div class="card">
-        Total dossiers :
-        <b th:text="${totalDossiers}"></b>
+        Total dossiers
+        <b th:text="${totalDossiers} ?: ${#lists.size(dossiers)}">0</b>
     </div>
-
     <div class="card">
-        Ouverts :
-        <b th:text="${dossiersOuverts}"></b>
+        Ouverts
+        <b th:text="${dossiersOuverts} ?: '0'">0</b>
     </div>
-
     <div class="card">
-        En attente :
-        <b th:text="${dossiersEnAttente}"></b>
+        En attente
+        <b th:text="${dossiersEnAttente} ?: '0'">0</b>
     </div>
-
     <div class="card">
-        Validés :
-        <b th:text="${dossiersValides}"></b>
+        Validés
+        <b th:text="${dossiersValides} ?: '0'">0</b>
     </div>
-
 </div>
 
-<a class="btn btn-create" th:href="@{/agent/dossiers/create}">
+<a class="btn btn-create" th:href="@{/agent/dossiers/create}" style="margin-bottom:16px;display:inline-block">
     ➕ Créer un dossier
 </a>
 
-<br><br>
-
 <table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Numéro dossier</th>
+        <th>Client</th>
+        <th>Statut</th>
+        <th>Date création</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
 
-<thead>
-<tr>
-    <th>ID</th>
-    <th>Numéro dossier</th>
-    <th>Client</th>
-    <th>Statut</th>
-    <th>Date création</th>
-    <th>Action</th>
-</tr>
-</thead>
+    <!-- Ligne vide si aucun dossier -->
+    <tr th:if="${dossiers == null or dossiers.empty}" class="empty-row">
+        <td colspan="6">Aucun dossier trouvé.</td>
+    </tr>
 
-<tbody>
+    <tr th:each="dossier : ${dossiers}">
 
-<tr th:each="dossier : ${dossiers}">
+        <td th:text="${dossier.id}"></td>
 
-    <td th:text="${dossier.id}"></td>
+        <td th:text="${dossier.numeroDossier} ?: '–'"></td>
 
-    <td th:text="${dossier.numeroDossier}"></td>
+        <!-- ✅ null-safe client -->
+        <td th:text="${dossier.client != null
+                      ? dossier.client.nom + ' ' + dossier.client.prenom
+                      : '–'}">
+        </td>
 
-    <td th:text="${dossier.client.nom}"></td>
+        <!-- ✅ Badge coloré selon statut -->
+        <td>
+            <span class="badge"
+                  th:classappend="'badge-' + ${dossier.statut}"
+                  th:text="${dossier.statut} ?: '–'">
+            </span>
+        </td>
 
-    <td th:text="${dossier.statut}"></td>
+        <!-- ✅ Format date -->
+        <td th:text="${dossier.dateCreation != null}
+                     ? ${#temporals.format(dossier.dateCreation, 'dd/MM/yyyy')}
+                     : '–'">
+        </td>
 
-    <td th:text="${dossier.dateCreation}"></td>
+        <td>
+            <a class="btn btn-detail"
+               th:href="@{/agent/dossiers/{id}(id=${dossier.id})}">
+                Voir
+            </a>
+        </td>
 
-    <td>
-        <a class="btn btn-detail"
-           th:href="@{/agent/dossiers/{id}(id=${dossier.id})}">
-            Voir
-        </a>
-    </td>
-
-</tr>
-
-</tbody>
-
+    </tr>
+    </tbody>
 </table>
 
 </body>
