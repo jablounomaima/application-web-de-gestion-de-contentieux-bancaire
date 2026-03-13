@@ -359,5 +359,66 @@
             ★ Ce crédit est sélectionné pour la procédure
         </div>
 
+
+        <!-- Garanties existantes -->
+<div th:if="${risque.garanties != null and !risque.garanties.empty}"
+style="margin-bottom:10px">
+
+
+
+<!-- Garanties existantes -->
+<div th:if="${risque.garanties != null and !risque.garanties.empty}"
+     style="margin-bottom:10px">
+    <div style="font-size:12px;color:#999;margin-bottom:4px">Garanties :</div>
+
+    <div th:each="g : ${risque.garanties}"
+         style="font-size:13px;color:#555;padding:6px 8px;
+                border-left:3px solid #3498db;margin:4px 0;background:#f9f9f9;
+                border-radius:0 4px 4px 0;
+                display:flex;justify-content:space-between;align-items:center">
+
+        <!-- Infos garantie -->
+        <span>
+            <b th:text="${g.typeGarantie} ?: '–'"></b>
+            <span th:if="${g.valeurEstimee != null}"
+                  th:text="' — ' + ${#numbers.formatDecimal(g.valeurEstimee,1,'COMMA',2,'POINT')} + ' DT'"
+                  style="color:#999">
+            </span>
+            <span th:if="${g.description != null}"
+                  th:text="' | ' + ${g.description}"
+                  style="color:#bbb;font-size:12px">
+            </span>
+        </span>
+
+        <!-- Boutons actions -->
+        <span style="display:flex;gap:6px;flex-shrink:0;margin-left:10px">
+
+            <!-- ✏ Modifier -->
+            <a th:href="@{/agent/dossiers/garanties/{gId}/edit(gId=${g.id})}"
+               style="font-size:12px;padding:3px 10px;background:#f39c12;color:white;
+                      border-radius:3px;text-decoration:none">
+                ✏ Modifier
+            </a>
+
+            <!-- 🗑 Supprimer — form séparé -->
+            <form th:action="@{/agent/dossiers/garanties/{gId}/supprimer(gId=${g.id})}"
+                  method="post"
+                  style="margin:0"
+                  onsubmit="return confirm('Supprimer cette garantie ?')">
+                <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                <button type="submit"
+                        style="font-size:12px;padding:3px 10px;background:#e74c3c;
+                               color:white;border:none;border-radius:3px;cursor:pointer">
+                    🗑 Supprimer
+                </button>
+            </form>
+
+        </span>
+    </div>
+</div>
+
+
+
+
     </div>
 </div>

@@ -14,7 +14,8 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
+import com.example.contentieux_security.entity.Garantie;
+import com.example.contentieux_security.repository.GarantieRepository;
 import java.security.Principal;
 import java.util.List;
 @Controller
@@ -23,7 +24,7 @@ public class DossierController {
 
     private final DossierService    dossierService;
     private final HistoriqueService historiqueService;
-
+    private final GarantieRepository  garantieRepository; 
     // ══════════════════════════════════════════════════════
     //  AGENT — Dossiers
     // ══════════════════════════════════════════════════════
@@ -314,4 +315,69 @@ public class DossierController {
         }
         return "redirect:/validateur/juridique/dossiers";
     }
+// GET — formulaire modification garantie
+@GetMapping("/agent/dossiers/garanties/{gId}/edit")
+@PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+public String formulaireEditGarantie(@PathVariable Long gId,
+                                      Model model,
+                                      Principal principal) {
+    try {
+        // ✅ findById → findByIdWithRisqueAndDossier
+        Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
+                .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
+        model.addAttribute("garantie", g);
+        model.addAttribute("dossierId", g.getRisque().getDossier().getId());
+        return "agent/dossiers/edit-garantie";
+    } catch (Exception e) {
+        System.err.println("=== ERREUR editGarantie : " + e.getMessage());
+        e.printStackTrace();
+        return "redirect:/agent/dossiers";
+    }
+}
+
+// POST — sauvegarde modification garantie
+@PostMapping("/agent/dossiers/garanties/{gId}/edit")
+@PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+public String modifierGarantie(@PathVariable Long gId,
+                                @RequestParam String typeGarantie,
+                                @RequestParam(required = false) String description,
+                                @RequestParam(required = false) Double valeurEstimee,
+                                @RequestParam(required = false) String documentRef,
+                                Principal principal,
+                                RedirectAttributes redirectAttributes) {
+    try {
+        dossierService.modifierGarantie(gId, typeGarantie, description,
+                                         valeurEstimee, documentRef, principal.getName());
+        redirectAttributes.addFlashAttribute("success", "Garantie modifiée avec succès.");
+    } catch (Exception e) {
+        redirectAttributes.addFlashAttribute("error", e.getMessage());
+    }
+    // ✅ findById → findByIdWithRisqueAndDossier
+    Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
+            .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
+    Long dossierId = g.getRisque().getDossier().getId();
+    return "redirect:/agent/dossiers/" + dossierId + "/edit";
+}
+
+
+@PostMapping("/agent/dossiers/garanties/{gId}/supprimer")
+@PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+public String supprimerGarantie(@PathVariable Long gId,
+                                 Principal principal,
+                                 RedirectAttributes redirectAttributes) {
+    try {
+        Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
+                .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
+        Long dossierId = g.getRisque().getDossier().getId();
+        garantieRepository.deleteById(gId);
+        redirectAttributes.addFlashAttribute("success", "Garantie supprimée.");
+        return "redirect:/agent/dossiers/" + dossierId + "/edit";
+    } catch (Exception e) {
+        redirectAttributes.addFlashAttribute("error", e.getMessage());
+        return "redirect:/agent/dossiers";
+    }
+}
+
+
+
 }

@@ -27,8 +27,9 @@ public class Garantie {
     private String statut = "VALIDE";       // VALIDE, EXPIRE, EN_LITIGE
 
     // ── Relation ──────────────────────────────────────────────────
+    // La relation doit exister avec EAGER ou être dans une @Transactional
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "risque_id", nullable = false)
+    @JoinColumn(name = "risque_id")
     private Risque risque;
 
     public Boolean verifierValidite() {

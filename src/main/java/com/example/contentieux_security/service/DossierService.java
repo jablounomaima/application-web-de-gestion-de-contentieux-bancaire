@@ -275,4 +275,28 @@ public class DossierService {
         }
         return String.format("%s-%05d", prefix, sequence);
     }
+
+
+    @Transactional
+public void modifierGarantie(Long garantieId, String typeGarantie,
+                              String description, Double valeurEstimee,
+                              String documentRef, String username) {
+    Garantie g = garantieRepository.findById(garantieId)
+            .orElseThrow(() -> new RuntimeException("Garantie introuvable"));
+
+    // Vérifie que l'agent est bien propriétaire du dossier
+    getDossierByIdAndAgent(g.getRisque().getDossier().getId(), username);
+
+    g.setTypeGarantie(typeGarantie);
+    g.setDescription(description);
+    g.setValeurEstimee(valeurEstimee);
+    g.setDocumentRef(documentRef);
+    garantieRepository.save(g);
+}
+
+
+
+
+
+
 }
