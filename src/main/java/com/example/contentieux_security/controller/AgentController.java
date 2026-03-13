@@ -6,14 +6,13 @@ import com.example.contentieux_security.dto.PrestataireCreationRequest;
 import com.example.contentieux_security.dto.PrestataireDTO;
 import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.entity.Client;
+import com.example.contentieux_security.entity.DossierContentieux;
 import com.example.contentieux_security.entity.Prestataire;
 import com.example.contentieux_security.entity.TypePrestataire;
 import com.example.contentieux_security.service.AgentBancaireService;
 import com.example.contentieux_security.service.ClientService;
-import com.example.contentieux_security.service.PrestataireService;
-import com.example.contentieux_security.entity.Agence;        // ← VÉRIFIER
-import com.example.contentieux_security.entity.Dossier;
 import com.example.contentieux_security.service.DossierService;
+import com.example.contentieux_security.service.PrestataireService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -24,6 +23,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -37,7 +37,7 @@ public class AgentController {
     private final AgentBancaireService agentService;
     private final PrestataireService prestataireService;
     private final ClientService clientService;
-    private final DossierService dossierService;  // ← AJOUTER
+    private final DossierService dossierService;
 
     // ══════════════════════════════════════════════════════════════
     //  DASHBOARD
@@ -72,14 +72,12 @@ public class AgentController {
             return "error";
         }
         
-        // Vérifier que l'agence existe
-        Agence agence = agent.getAgence();
-        if (agence == null) {
+        if (agent.getAgence() == null) {
             model.addAttribute("error", "Agent non rattaché à une agence");
             return "error";
         }
         
-        List<Client> clients = clientService.findByAgence(agence);
+        List<Client> clients = clientService.findByAgence(agent.getAgence());
         
         model.addAttribute("pageTitle", "Gérer les Clients");
         model.addAttribute("clients", clients != null ? clients : new ArrayList<>());
@@ -89,74 +87,109 @@ public class AgentController {
         model.addAttribute("username", agentUsername);
         return "agent/clients";
     }
+
     @PostMapping("/clients/creer")
-public String creerClient(@ModelAttribute Client nouveauClient,
-                          @AuthenticationPrincipal OidcUser oidcUser,
-                          RedirectAttributes redirectAttrs) {
-    try {
-        String agentUsername = oidcUser.getPreferredUsername();
-        AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
-        
-        if (agent == null || agent.getAgence() == null) {
-            redirectAttrs.addFlashAttribute("error", "Agent ou agence non trouvé");
+    public String creerClient(@ModelAttribute Client nouveauClient,
+                              @AuthenticationPrincipal OidcUser oidcUser,
+                              RedirectAttributes redirectAttrs) {
+        try {
+            String agentUsername = oidcUser.getPreferredUsername();
+            AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
+            
+            if (agent == null || agent.getAgence() == null) {
+                redirectAttrs.addFlashAttribute("error", "Agent ou agence non trouvé");
+                return "redirect:/agent/clients";
+            }
+            
+            nouveauClient.setAgence(agent.getAgence());
+            nouveauClient.setDateInscription(LocalDate.now());
+            
+            clientService.save(nouveauClient);
+            
+            redirectAttrs.addFlashAttribute("success", "Client créé avec succès !");
+            return "redirect:/agent/clients";
+            
+        } catch (Exception e) {
+            redirectAttrs.addFlashAttribute("error", "Erreur: " + e.getMessage());
             return "redirect:/agent/clients";
         }
-        
-        // Associer le client à l'agence de l'agent
-        nouveauClient.setAgence(agent.getAgence());
-        nouveauClient.setDateInscription(LocalDate.now());
-        
-        clientService.save(nouveauClient);
-        
-        redirectAttrs.addFlashAttribute("success", "Client créé avec succès !");
-        return "redirect:/agent/clients";
-        
-    } catch (Exception e) {
-        redirectAttrs.addFlashAttribute("error", "Erreur: " + e.getMessage());
-        return "redirect:/agent/clients";
     }
-}
 
-
-@GetMapping("/clients/{id}/dossiers")
-public String voirDossiersClient(@PathVariable Long id, 
-                                  Model model,
-                                  @AuthenticationPrincipal OidcUser oidcUser) {
-    String agentUsername = oidcUser.getPreferredUsername();
-    AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
-    
-    if (agent == null) {
-        model.addAttribute("error", "Agent non trouvé");
-        return "error";
+    @GetMapping("/clients/{id}/dossiers")
+    public String voirDossiersClient(@PathVariable Long id, 
+                                       Model model,
+                                       @AuthenticationPrincipal OidcUser oidcUser) {
+        try {
+            String agentUsername = oidcUser.getPreferredUsername();
+            AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
+            
+            if (agent == null) {
+                model.addAttribute("error", "Agent non trouvé");
+                return "error";
+            }
+            
+            // Charger l'agence explicitement si nécessaire
+            if (agent.getAgence() == null) {
+                model.addAttribute("error", "Agent non rattaché à une agence");
+                return "error";
+            }
+            
+            Long agentAgenceId = agent.getAgence().getId();
+            
+            // Vérifier que le service existe
+            if (clientService == null) {
+                model.addAttribute("error", "Service client non injecté");
+                return "error";
+            }
+            
+            Client client = clientService.findById(id);
+            
+            // Debug
+            System.out.println("Client trouvé: " + client);
+            
+            if (client == null) {
+                model.addAttribute("error", "Client non trouvé avec l'id: " + id);
+                return "error";
+            }
+            
+            // Vérifier l'agence du client
+            if (client.getAgence() == null) {
+                model.addAttribute("error", "Client " + id + " non rattaché à une agence");
+                return "error";
+            }
+            
+            Long clientAgenceId = client.getAgence().getId();
+            System.out.println("Agent agence: " + agentAgenceId + ", Client agence: " + clientAgenceId);
+            
+            if (!clientAgenceId.equals(agentAgenceId)) {
+                model.addAttribute("error", "Client non autorisé pour cette agence");
+                return "error";
+            }
+            
+            // Vérifier dossierService
+            if (dossierService == null) {
+                model.addAttribute("error", "Service dossier non injecté");
+                return "error";
+            }
+            
+            List<DossierContentieux> dossiers = dossierService.findByClientId(id);
+            System.out.println("Dossiers trouvés: " + (dossiers != null ? dossiers.size() : 0));
+            
+            model.addAttribute("client", client);
+            model.addAttribute("dossiers", dossiers != null ? dossiers : new ArrayList<>());
+            model.addAttribute("pageTitle", "Dossiers de " + client.getNom() + " " + client.getPrenom());
+            model.addAttribute("givenName", oidcUser.getGivenName());
+            model.addAttribute("familyName", oidcUser.getFamilyName());
+            model.addAttribute("username", agentUsername);
+            
+            return "agent/clients/dossiers";
+            
+        } catch (Exception e) {
+            e.printStackTrace(); // IMPORTANT: Log l'erreur complète
+            model.addAttribute("error", "Erreur technique: " + e.getClass().getSimpleName() + " - " + e.getMessage());
+            return "error";
+        }
     }
-    
-    // Vérifier que le client existe et appartient à l'agence de l'agent
-    Client client = clientService.findById(id);
-    if (client == null || !client.getAgence().getId().equals(agent.getAgence().getId())) {
-        model.addAttribute("error", "Client non trouvé ou non autorisé");
-        return "error";
-    }
-    
-    // Récupérer les dossiers du client
-    List<Dossier> dossiers = dossierService.findByClientId(id);
-    
-    model.addAttribute("client", client);
-    model.addAttribute("dossiers", dossiers);
-    model.addAttribute("pageTitle", "Dossiers de " + client.getNom() + " " + client.getPrenom());
-    model.addAttribute("givenName", oidcUser.getGivenName());
-    model.addAttribute("familyName", oidcUser.getFamilyName());
-    model.addAttribute("username", agentUsername);
-    
-    return "agent/clients/dossiers";
-}
-
-
-
-
-
-
-
-
 
     @GetMapping("/missions")
     public String suivreMissions(Model model) {
@@ -338,8 +371,4 @@ public String voirDossiersClient(@PathVariable Long id,
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth.getName();
     }
-
-
-
-    
 }

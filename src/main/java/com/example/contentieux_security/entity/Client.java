@@ -1,5 +1,5 @@
 package com.example.contentieux_security.entity;
-
+import com.example.contentieux_security.entity.DossierContentieux;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -40,7 +40,7 @@ public class Client {
     private Agence agence;                  // rattaché à une agence
 
     @OneToMany(mappedBy = "client", fetch = FetchType.LAZY)
-    private List<Dossier> dossiers;
+    private List<DossierContentieux> dossiers;
 
     // ── Utilitaire ────────────────────────────────────────────────
     public String getNomComplet() {

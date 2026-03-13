@@ -1,108 +1,307 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-    <title>Détail dossier</title>
+    <title th:text="'Dossier ' + ${dossier.numeroDossier}">Détail dossier</title>
     <meta charset="UTF-8">
-
     <style>
-        body{font-family:Arial;margin:40px;background:#f5f5f5;}
-        .card{
-            background:white;
-            padding:20px;
-            border-radius:6px;
-            width:600px;
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; color: #333; }
+        h2   { margin-bottom: 4px; }
+        .subtitle { color: #777; margin-bottom: 20px; font-size: 14px; }
+
+        .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; max-width: 700px; }
+        .alert-success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+        .alert-error   { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+
+        .card {
+            background: white; padding: 24px; border-radius: 6px;
+            max-width: 700px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            margin-bottom: 20px;
+        }
+        .card-title {
+            font-size: 14px; font-weight: bold; color: #555;
+            margin: 0 0 14px; padding-bottom: 8px; border-bottom: 2px solid #eee;
         }
 
-        table{
-            width:100%;
-            border-collapse: collapse;
+        table { width: 100%; border-collapse: collapse; }
+        td { padding: 10px 8px; border-bottom: 1px solid #eee; vertical-align: top; }
+        td:first-child {
+            width: 36%; color: #777; font-size: 13px;
+            font-weight: bold; white-space: nowrap;
+        }
+        tr:last-child td { border-bottom: none; }
+
+        /* Badge statut */
+        .badge {
+            display: inline-block; padding: 3px 10px; border-radius: 12px;
+            font-size: 12px; font-weight: bold; text-transform: uppercase;
+        }
+        .badge-OUVERT     { background:#cce5ff; color:#004085; }
+        .badge-EN_TRAITEMENT { background:#fff3cd; color:#856404; }
+        .badge-VALIDE     { background:#d4edda; color:#155724; }
+        .badge-REJETE     { background:#f8d7da; color:#721c24; }
+        .badge-CLOTURE    { background:#e2e3e5; color:#383d41; }
+
+        /* Risques */
+        .risque-block {
+            border: 1px solid #e0e0e0; border-radius: 4px;
+            padding: 12px 14px; margin-bottom: 10px; background: #fafafa;
+        }
+        .risque-titre { font-weight: bold; margin-bottom: 6px; }
+        .risque-selectionne { border-left: 3px solid #3498db; }
+        .garantie-item {
+            font-size: 13px; color: #555;
+            padding: 3px 0 3px 12px;
+            border-left: 3px solid #3498db; margin: 4px 0;
         }
 
-        td{
-            padding:10px;
-            border-bottom:1px solid #ddd;
-        }
+        /* Historique */
+        .histo-row { font-size: 13px; }
+        .histo-date { color: #999; font-size: 12px; }
 
-        .btn{
-            padding:10px 15px;
-            text-decoration:none;
-            border-radius:4px;
+        /* Actions */
+        .actions { display:flex; gap:10px; margin-top:10px; flex-wrap:wrap; }
+        .btn {
+            padding: 10px 18px; text-decoration: none; border-radius: 4px;
+            font-size: 14px; cursor: pointer; border: none; display: inline-block;
         }
-
-        .btn-submit{
-            background:#3498db;
-            color:white;
-            border:none;
-        }
-
-        .btn-back{
-            background:#777;
-            color:white;
-        }
+        .btn-submit { background:#3498db; color:white; }
+        .btn-submit:hover { background:#2980b9; }
+        .btn-edit   { background:#f39c12; color:white; }
+        .btn-edit:hover { background:#d68910; }
+        .btn-back   { background:#777; color:white; }
+        .btn-back:hover { background:#555; }
     </style>
 </head>
-
 <body>
 
 <h2>Détail du dossier</h2>
+<p class="subtitle">
+    Agent connecté : <b sec:authentication="name">–</b>
+</p>
 
-<p>Agent : <b th:text="${givenName}"></b></p>
+<!-- Flash messages -->
+<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+<div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
 
+<!-- ── 1. Informations générales ── -->
 <div class="card">
+    <div class="card-title">Informations générales</div>
+    <table>
+        <tr>
+            <td>Numéro dossier</td>
+            <td th:text="${dossier.numeroDossier} ?: '–'"></td>
+        </tr>
+        <tr>
+            <td>Libellé</td>
+            <td th:text="${dossier.libelle} ?: '–'"></td>
+        </tr>
+        <tr>
+            <td>Statut</td>
+            <td>
+                <span class="badge"
+                      th:classappend="'badge-' + ${dossier.statut}"
+                      th:text="${dossier.statut} ?: '–'">
+                </span>
+            </td>
+        </tr>
+        <tr>
+            <td>Date création</td>
+            <td th:text="${dossier.dateCreation != null}
+                         ? ${#temporals.format(dossier.dateCreation,'dd/MM/yyyy HH:mm')}
+                         : '–'">
+            </td>
+        </tr>
+        <tr>
+            <td>Créé par</td>
+            <td th:text="${dossier.creePar} ?: '–'"></td>
+        </tr>
+        <tr>
+            <td>Description</td>
+            <td th:text="${dossier.description} ?: '–'"></td>
+        </tr>
+        <tr th:if="${dossier.notes != null and !#strings.isEmpty(dossier.notes)}">
+            <td>Notes</td>
+            <td th:text="${dossier.notes}"></td>
+        </tr>
+    </table>
+</div>
 
-<table>
+<!-- ── 2. Client ── -->
+<div class="card">
+    <div class="card-title">Client</div>
+    <table>
+        <tr>
+            <td>Nom / Prénom</td>
+            <!-- ✅ clientNom + clientPrenom (pas dossier.client.nom) -->
+            <td th:text="${(dossier.clientNom ?: '') + ' ' + (dossier.clientPrenom ?: '')}"></td>
+        </tr>
+        <tr>
+            <td>CIN</td>
+            <td th:text="${dossier.clientCin} ?: '–'"></td>
+        </tr>
+        <tr>
+            <td>Email</td>
+            <td th:text="${dossier.clientEmail} ?: '–'"></td>
+        </tr>
+        <tr>
+            <td>Téléphone</td>
+            <td th:text="${dossier.clientTelephone} ?: '–'"></td>
+        </tr>
+        <tr th:if="${dossier.agenceNom != null}">
+            <td>Agence</td>
+            <td th:text="${dossier.agenceNom + (dossier.agenceVille != null ? ' — ' + dossier.agenceVille : '')}"></td>
+        </tr>
+    </table>
+</div>
 
-<tr>
-<td>ID dossier</td>
-<td th:text="${dossier.id}"></td>
-</tr>
+<!-- ── 3. Validation ── -->
+<div class="card"
+     th:if="${dossier.statut != 'OUVERT'}">
+    <div class="card-title">Validation</div>
+    <table>
+        <tr>
+            <td>Validation financière</td>
+            <td>
+                <span th:if="${dossier.validationFinanciere == true}"  style="color:green">✅ Accordée</span>
+                <span th:if="${dossier.validationFinanciere == false}" style="color:red">❌ Rejetée</span>
+                <span th:if="${dossier.validationFinanciere == null}"  style="color:#999">⏳ En attente</span>
+                <span th:if="${dossier.commentaireFinancier != null}"
+                      th:text="' — ' + ${dossier.commentaireFinancier}"
+                      style="color:#777;font-size:13px">
+                </span>
+            </td>
+        </tr>
+        <tr>
+            <td>Validation juridique</td>
+            <td>
+                <span th:if="${dossier.validationJuridique == true}"  style="color:green">✅ Accordée</span>
+                <span th:if="${dossier.validationJuridique == false}" style="color:red">❌ Rejetée</span>
+                <span th:if="${dossier.validationJuridique == null}"  style="color:#999">⏳ En attente</span>
+                <span th:if="${dossier.commentaireJuridique != null}"
+                      th:text="' — ' + ${dossier.commentaireJuridique}"
+                      style="color:#777;font-size:13px">
+                </span>
+            </td>
+        </tr>
+    </table>
+</div>
 
-<tr>
-<td>Numéro dossier</td>
-<td th:text="${dossier.numeroDossier}"></td>
-</tr>
+<!-- ── 4. Crédits / Risques ── -->
+<div class="card">
+    <div class="card-title">
+        Crédits / Risques
+        <!-- ✅ montantTotalEngagement (pas montantDette) -->
+        <span th:if="${dossier.montantTotalEngagement != null}"
+              style="float:right;font-weight:normal;color:#777">
+            Total impayé :
+            <b th:text="${#numbers.formatDecimal(dossier.montantTotalEngagement,1,'COMMA',2,'POINT')} + ' DT'"></b>
+        </span>
+    </div>
 
-<tr>
-<td>Client</td>
-<td th:text="${dossier.client.nom + ' ' + dossier.client.prenom}"></td>
-</tr>
+    <div th:if="${dossier.risques != null and !dossier.risques.empty}">
+        <div th:each="risque : ${dossier.risques}"
+             class="risque-block"
+             th:classappend="${risque.selectionne} ? ' risque-selectionne' : ''">
 
-<tr>
-<td>Statut</td>
-<td th:text="${dossier.statut}"></td>
-</tr>
+            <div class="risque-titre">
+                <!-- ✅ risque.type (pas risque.typeCredit) -->
+                <span th:text="${risque.type} ?: '–'"></span>
+                <span th:if="${risque.selectionne}"
+                      style="font-size:11px;color:#3498db;margin-left:8px">
+                    ★ Sélectionné
+                </span>
+            </div>
 
-<tr>
-<td>Date création</td>
-<td th:text="${dossier.dateCreation}"></td>
-</tr>
+            <table style="font-size:13px;margin-bottom:8px;">
+                <tr>
+                    <td style="color:#777;width:40%">Montant initial</td>
+                    <td th:text="${risque.montantInitial != null}
+                                 ? ${#numbers.formatDecimal(risque.montantInitial,1,'COMMA',2,'POINT')} + ' DT'
+                                 : '–'">
+                    </td>
+                </tr>
+                <tr>
+                    <td style="color:#777">Montant impayé</td>
+                    <td th:text="${risque.montantImpaye != null}
+                                 ? ${#numbers.formatDecimal(risque.montantImpaye,1,'COMMA',2,'POINT')} + ' DT'
+                                 : '–'">
+                    </td>
+                </tr>
+                <tr th:if="${risque.dateEcheance != null}">
+                    <td style="color:#777">Échéance</td>
+                    <td th:text="${risque.dateEcheance}"></td>
+                </tr>
+                <tr th:if="${risque.description != null}">
+                    <td style="color:#777">Description</td>
+                    <td th:text="${risque.description}"></td>
+                </tr>
+            </table>
 
-<tr>
-<td>Montant dette</td>
-<td th:text="${dossier.montantDette}"></td>
-</tr>
+            <!-- Garanties -->
+            <div th:if="${risque.garanties != null and !risque.garanties.empty}">
+                <div style="font-size:12px;color:#999;margin-bottom:4px">Garanties :</div>
+                <div th:each="g : ${risque.garanties}" class="garantie-item">
+                    <!-- ✅ g.typeGarantie + g.valeurEstimee (pas g.valeur) -->
+                    <span th:text="${g.typeGarantie} ?: '–'"></span>
+                    <span th:if="${g.valeurEstimee != null}"
+                          th:text="' — ' + ${#numbers.formatDecimal(g.valeurEstimee,1,'COMMA',2,'POINT')} + ' DT'">
+                    </span>
+                </div>
+            </div>
+            <div th:unless="${risque.garanties != null and !risque.garanties.empty}"
+                 style="font-size:13px;color:#aaa;">
+                Aucune garantie.
+            </div>
+        </div>
+    </div>
 
-<tr>
-<td>Description</td>
-<td th:text="${dossier.description}"></td>
-</tr>
+    <p th:unless="${dossier.risques != null and !dossier.risques.empty}"
+       style="color:#aaa;font-size:13px">
+        Aucun crédit enregistré.
+    </p>
+</div>
 
-</table>
+<!-- ── 5. Historique ── -->
+<div class="card"
+     th:if="${dossier.historique != null and !dossier.historique.empty}">
+    <div class="card-title">Historique</div>
+    <table>
+        <tr th:each="h : ${dossier.historique}" class="histo-row">
+            <td style="width:36%">
+                <!-- ✅ h.typeAction (pas h.action) -->
+                <span th:text="${h.typeAction} ?: '–'"></span><br>
+                <span class="histo-date" th:text="${h.dateAction} ?: ''"></span>
+            </td>
+            <td>
+                <span th:text="${h.description} ?: '–'"></span><br>
+                <span style="font-size:12px;color:#aaa"
+                      th:text="${h.utilisateur} ?: ''">
+                </span>
+            </td>
+        </tr>
+    </table>
+</div>
 
-<br>
+<!-- ── Actions ── -->
+<div style="max-width:700px">
+    <div class="actions">
+        <form th:if="${dossier.statut == 'OUVERT'}"
+              th:action="@{/agent/dossiers/{id}/soumettre(id=${dossier.id})}"
+              method="post" style="margin:0">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button class="btn btn-submit" type="submit">Soumettre à validation</button>
+        </form>
 
-<form th:action="@{/agent/dossiers/{id}/soumettre(id=${dossier.id})}" method="post">
+        <a th:if="${dossier.statut == 'OUVERT'}"
+           class="btn btn-edit"
+           th:href="@{/agent/dossiers/{id}/edit(id=${dossier.id})}">
+            Modifier
+        </a>
 
-<button class="btn btn-submit" type="submit">
-Soumettre à validation
-</button>
-
-<a class="btn btn-back" th:href="@{/agent/dossiers}">
-Retour
-</a>
-
-</form>
-
+        <a class="btn btn-back" th:href="@{/agent/dossiers}">← Retour</a>
+    </div>
 </div>
 
 </body>

@@ -24,6 +24,7 @@ public class AgentBancaireService {
     private final PasswordEncoder         passwordEncoder;
     private final KeycloakUserService     keycloakUserService;
 
+
     public AgentBancaireService(AgentBancaireRepository agentRepository,
                                 AgenceRepository agenceRepository,
                                 PasswordEncoder passwordEncoder,

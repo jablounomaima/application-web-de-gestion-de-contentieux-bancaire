@@ -20,4 +20,7 @@ public class ClientService {
     public Client save(Client client) {
         return clientRepository.save(client);
     }
+    public Client findById(Long id) {
+        return clientRepository.findById(id).orElse(null);
+    }
 }

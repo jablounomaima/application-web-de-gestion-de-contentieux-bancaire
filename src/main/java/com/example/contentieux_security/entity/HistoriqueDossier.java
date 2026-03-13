@@ -1,5 +1,5 @@
 package com.example.contentieux_security.entity;
-
+import com.example.contentieux_security.entity.DossierContentieux;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -28,5 +28,5 @@ public class HistoriqueDossier {
     // ── Relation ──────────────────────────────────────────────────
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "dossier_id", nullable = false)
-    private Dossier dossier;
+    private DossierContentieux dossier;
 }

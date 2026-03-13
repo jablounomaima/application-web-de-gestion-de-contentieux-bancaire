@@ -16,6 +16,7 @@ public class DossierDetailDTO {
     private Long id;
     private String numeroDossier;
     private String libelle;
+    private String description;         // ← ajouté
     private String statut;
     private LocalDateTime dateCreation;
     private String creePar;
@@ -82,12 +83,13 @@ public class DossierDetailDTO {
     }
 
     // ── Factory method depuis l'entité ────────────────────────
-    public static DossierDetailDTO from(Dossier d,
+    public static DossierDetailDTO from(DossierContentieux d,
                                         List<HistoriqueDossier> historique) {
         DossierDetailDTOBuilder b = DossierDetailDTO.builder()
                 .id(d.getId())
                 .numeroDossier(d.getNumeroDossier())
                 .libelle(d.getLibelle())
+                .description(d.getDescription())         // ← ajouté
                 .statut(d.getStatut() != null ? d.getStatut().name() : null)
                 .dateCreation(d.getDateCreation())
                 .creePar(d.getCreePar())

@@ -1,38 +1,541 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
-<meta charset="UTF-8">
-<title>Créer dossier</title>
-</head>
+    <meta charset="UTF-8"/>
+    <title>Nouveau Dossier | Contentieux</title>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet"/>
+    <style>
+        :root{--bg:#f0f4f8;--surface:#fff;--surface2:#f8fafc;--border:#e2e8f0;--border2:#cbd5e1;
+              --text:#0f172a;--muted:#94a3b8;--navy:#1e3a5f;--accent:#2563eb;--accent-soft:#dbeafe;
+              --green:#059669;--green-soft:#d1fae5;--red:#dc2626;--red-soft:#fee2e2;
+              --amber:#d97706;--amber-soft:#fef3c7;
+              --shadow-sm:0 1px 3px rgba(0,0,0,.08);--radius:12px;--radius-sm:8px;
+              --sidebar-w:240px;--navbar-h:64px;}
+        *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
+        body{font-family:'Outfit',sans-serif;background:var(--bg);color:var(--text);display:flex;min-height:100vh;}
 
+        /* ── SIDEBAR ── */
+        .sidebar{width:var(--sidebar-w);min-height:100vh;background:var(--navy);display:flex;flex-direction:column;position:fixed;top:0;left:0;z-index:200;box-shadow:2px 0 16px rgba(0,0,0,.15);}
+        .sidebar-brand{height:var(--navbar-h);padding:0 20px;display:flex;align-items:center;gap:12px;border-bottom:1px solid rgba(255,255,255,.08);}
+        .brand-icon{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:grid;place-items:center;font-size:18px;flex-shrink:0;}
+        .brand-name{font-size:13px;font-weight:700;color:white;letter-spacing:.04em;text-transform:uppercase;}
+        .brand-sub{font-size:10.5px;color:rgba(255,255,255,.4);margin-top:1px;}
+        .sidebar-nav{flex:1;padding:16px 10px;}
+        .nav-section{margin-bottom:24px;}
+        .nav-label{font-size:9.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:rgba(255,255,255,.3);padding:0 10px 8px;}
+        .nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:var(--radius-sm);font-size:13.5px;color:rgba(255,255,255,.55);text-decoration:none;transition:all .15s;margin-bottom:2px;}
+        .nav-item:hover{background:rgba(255,255,255,.08);color:white;}
+        .nav-item.active{background:rgba(59,130,246,.2);color:#93c5fd;font-weight:500;}
+        .nav-item .ico{width:18px;text-align:center;font-size:15px;flex-shrink:0;}
+        .sidebar-footer{padding:16px 14px;border-top:1px solid rgba(255,255,255,.08);}
+        .user-card{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.08);margin-bottom:10px;}
+        .user-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#3b82f6,#1d4ed8);display:grid;place-items:center;font-size:13px;font-weight:700;color:white;flex-shrink:0;text-transform:uppercase;}
+        .user-name{font-size:13px;font-weight:500;color:white;}
+        .user-role{font-size:10.5px;color:rgba(255,255,255,.4);margin-top:1px;}
+        .sidebar-logout{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:8px;border-radius:var(--radius-sm);background:rgba(220,38,38,.12);border:1px solid rgba(220,38,38,.2);color:#fca5a5;font-size:12.5px;font-weight:500;text-decoration:none;transition:background .15s;}
+        .sidebar-logout:hover{background:rgba(220,38,38,.22);}
+
+        /* ── TOPBAR ── */
+        .topbar{position:fixed;top:0;left:var(--sidebar-w);right:0;height:var(--navbar-h);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 28px;z-index:100;box-shadow:var(--shadow-sm);}
+        .topbar-breadcrumb{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--muted);}
+        .topbar-breadcrumb .sep{color:var(--border2);}
+        .topbar-breadcrumb .current{color:var(--text);font-weight:500;}
+        .topbar-right{display:flex;align-items:center;gap:12px;}
+        .topbar-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--accent),#1d4ed8);display:grid;place-items:center;font-size:13px;font-weight:700;color:white;text-transform:uppercase;}
+        .topbar-name{font-size:13.5px;font-weight:500;}
+        .topbar-role{font-size:11px;color:var(--muted);}
+
+        /* ── PAGE ── */
+        .page-content{margin-left:var(--sidebar-w);padding-top:var(--navbar-h);flex:1;}
+        .page-inner{padding:28px 32px;max-width:900px;}
+        .page-title-bar{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;}
+        .page-title-bar h1{font-size:1.35rem;font-weight:700;color:var(--navy);}
+        .page-title-bar p{font-size:13px;color:var(--muted);margin-top:4px;}
+
+        /* ── BUTTONS ── */
+        .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:var(--radius-sm);font-size:13.5px;font-weight:500;border:none;cursor:pointer;text-decoration:none;font-family:'Outfit',sans-serif;transition:all .15s;}
+        .btn-primary{background:var(--accent);color:white;} .btn-primary:hover{background:#1d4ed8;}
+        .btn-outline{background:transparent;color:var(--text);border:1px solid var(--border);} .btn-outline:hover{background:var(--surface2);}
+        .btn-red{background:transparent;color:var(--red);border:1px solid #fca5a5;} .btn-red:hover{background:var(--red-soft);}
+        .btn-green{background:transparent;color:var(--green);border:1px solid #6ee7b7;} .btn-green:hover{background:var(--green-soft);}
+        .btn-sm{padding:6px 12px;font-size:12.5px;}
+
+        /* ── ALERTS ── */
+        .alert{padding:13px 16px;border-radius:var(--radius-sm);margin-bottom:18px;font-size:13.5px;font-weight:500;display:flex;align-items:center;gap:10px;}
+        .alert-error{background:var(--red-soft);color:#991b1b;border:1px solid #fca5a5;}
+
+        /* ── CARDS ── */
+        .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);margin-bottom:20px;}
+        .card-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+        .card-header h2{font-size:14.5px;font-weight:600;color:var(--text);display:flex;align-items:center;gap:8px;}
+        .card-body{padding:24px;}
+
+        /* ── FORM ── */
+        .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;}
+        .form-group{display:flex;flex-direction:column;gap:5px;}
+        .form-group.full{grid-column:1/-1;}
+        label{font-size:12px;font-weight:600;color:var(--text);text-transform:uppercase;letter-spacing:.05em;}
+        label .req{color:var(--red);}
+        input[type=text],input[type=email],input[type=number],input[type=date],
+        input[type=tel],textarea,select{
+            padding:9px 12px;border:1.5px solid var(--border);border-radius:var(--radius-sm);
+            font-family:'Outfit',sans-serif;font-size:13.5px;background:var(--surface);
+            color:var(--text);outline:none;transition:border .15s,box-shadow .15s;width:100%;}
+        input:focus,textarea:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(37,99,235,.1);}
+        textarea{resize:vertical;min-height:80px;}
+        .form-hint{font-size:11.5px;color:var(--muted);margin-top:2px;}
+
+        /* ── STEPS ── */
+        .steps{display:flex;align-items:center;gap:0;margin-bottom:28px;}
+        .step{display:flex;align-items:center;gap:8px;padding:10px 18px;border-radius:var(--radius-sm);font-size:13px;font-weight:500;color:var(--muted);}
+        .step.active{background:var(--accent-soft);color:var(--accent);}
+        .step.done{color:var(--green);}
+        .step-num{width:24px;height:24px;border-radius:50%;display:grid;place-items:center;font-size:12px;font-weight:700;background:var(--border);color:var(--muted);}
+        .step.active .step-num{background:var(--accent);color:white;}
+        .step.done .step-num{background:var(--green);color:white;}
+        .step-sep{color:var(--border2);margin:0 4px;font-size:18px;}
+
+        /* ── CLIENT TOGGLE ── */
+        .toggle-tabs{display:flex;border:1.5px solid var(--border);border-radius:var(--radius-sm);overflow:hidden;width:fit-content;margin-bottom:20px;}
+        .toggle-tab{padding:8px 20px;font-size:13px;font-weight:500;cursor:pointer;border:none;background:var(--surface);color:var(--muted);font-family:'Outfit',sans-serif;transition:all .15s;}
+        .toggle-tab.active{background:var(--accent);color:white;}
+
+        /* ── RISQUE CARD ── */
+        .risque-block{background:var(--surface2);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:18px;margin-bottom:14px;position:relative;}
+        .risque-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;}
+        .risque-title{font-size:13px;font-weight:700;color:var(--navy);text-transform:uppercase;letter-spacing:.06em;}
+
+        /* ── GARANTIE BLOC ── */
+        .garantie-block{background:white;border:1px solid var(--border);border-radius:var(--radius-sm);padding:14px;margin-bottom:10px;position:relative;}
+        .garanties-list{margin-top:10px;}
+
+        .form-actions{display:flex;gap:12px;align-items:center;padding-top:8px;}
+        .fade-in{animation:fadeUp .4s ease both;}
+        @keyframes fadeUp{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+        .hidden{display:none!important;}
+    </style>
+</head>
 <body>
 
-<h2>Créer un dossier</h2>
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside class="sidebar">
+    <div class="sidebar-brand">
+        <div class="brand-icon">🏛️</div>
+        <div><div class="brand-name">Contentieux</div><div class="brand-sub">Gestion bancaire</div></div>
+    </div>
+    <nav class="sidebar-nav">
+        <div class="nav-section">
+            <div class="nav-label">Mon espace</div>
+            <a href="/agent/dashboard" class="nav-item"><span class="ico">📊</span> Dashboard</a>
+            <a href="/agent/dossiers" class="nav-item"><span class="ico">📁</span> Mes dossiers</a>
+            <a href="/agent/dossiers/create" class="nav-item active"><span class="ico">➕</span> Nouveau dossier</a>
+            <a href="/agent/prestataires" class="nav-item"><span class="ico">👥</span> Prestataires</a>
+        </div>
+        <div class="nav-section">
+            <div class="nav-label">Compte</div>
+            <a href="/agent/profile/edit" class="nav-item"><span class="ico">⚙️</span> Mon profil</a>
+            <a href="/agent/change-password" class="nav-item"><span class="ico">🔐</span> Mot de passe</a>
+        </div>
+    </nav>
+    <div class="sidebar-footer">
+        <div class="user-card">
+            <div class="user-avatar"
+                 th:text="${#strings.substring(#authentication.principal.attributes['given_name'],0,1)}">A</div>
+            <div>
+                <div class="user-name">
+                    <span sec:authentication="principal.attributes['given_name']"></span>
+                    <span sec:authentication="principal.attributes['family_name']"></span>
+                </div>
+                <div class="user-role">Agent Bancaire</div>
+            </div>
+        </div>
+        <a href="/logout" class="sidebar-logout">⏻ Déconnexion</a>
+    </div>
+</aside>
 
-<form th:action="@{/agent/dossiers/create}" 
-      th:object="${dossierRequest}" 
-      method="post">
+<!-- ═══════════ TOPBAR ═══════════ -->
+<div class="topbar">
+    <div class="topbar-breadcrumb">
+        <span>Agent</span><span class="sep">›</span>
+        <a href="/agent/dossiers" style="color:var(--muted);text-decoration:none;">Dossiers</a>
+        <span class="sep">›</span>
+        <span class="current">Nouveau dossier</span>
+    </div>
+    <div class="topbar-right">
+        <div class="topbar-avatar"
+             th:text="${#strings.substring(#authentication.principal.attributes['given_name'],0,1)}">A</div>
+        <div>
+            <div class="topbar-name">
+                <span sec:authentication="principal.attributes['given_name']"></span>
+                <span sec:authentication="principal.attributes['family_name']"></span>
+            </div>
+            <div class="topbar-role">
+                <span th:text="${#authentication.name}">username</span> · Agent Bancaire
+            </div>
+        </div>
+    </div>
+</div>
 
-<label>Client</label>
-<select th:field="*{clientId}">
-<option value="">Choisir client</option>
+<!-- ═══════════ CONTENU ═══════════ -->
+<div class="page-content">
+    <div class="page-inner">
 
-<option th:each="c : ${clients}"
-        th:value="${c.id}"
-        th:text="${c.nom + ' ' + c.prenom}">
-</option>
+        <!-- Titre -->
+        <div class="page-title-bar fade-in">
+            <div>
+                <h1>➕ Nouveau Dossier Contentieux</h1>
+                <p>Remplissez les 3 étapes pour créer le dossier</p>
+            </div>
+            <a href="/agent/dossiers" class="btn btn-outline">← Retour</a>
+        </div>
 
-</select>
+        <!-- Étapes -->
+        <div class="steps fade-in">
+            <div class="step active" id="step-indicator-1">
+                <span class="step-num">1</span> Client
+            </div>
+            <span class="step-sep">›</span>
+            <div class="step" id="step-indicator-2">
+                <span class="step-num">2</span> Dossier
+            </div>
+            <span class="step-sep">›</span>
+            <div class="step" id="step-indicator-3">
+                <span class="step-num">3</span> Risques
+            </div>
+        </div>
 
-<label>Libellé</label>
-<input type="text" th:field="*{libelle}">
+        <!-- Alerte erreur -->
+        <div th:if="${error}" class="alert alert-error">❌ <span th:text="${error}"></span></div>
 
-<label>Notes</label>
-<input type="text" th:field="*{notes}">
+        <!-- ═══════ FORMULAIRE PRINCIPAL ═══════ -->
+        <form th:action="@{/agent/dossiers/creer}" method="post" th:object="${dossierRequest}" id="mainForm">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
-<button type="submit">Créer dossier</button>
+            <!-- ═══ ÉTAPE 1 : CLIENT ═══ -->
+            <div id="step-1">
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <h2>👤 Étape 1 — Client concerné</h2>
+                    </div>
+                    <div class="card-body">
 
-</form>
+                        <!-- Toggle existant / nouveau -->
+                        <div class="toggle-tabs">
+                            <button type="button" class="toggle-tab active" id="tab-btn-existant"
+                                    onclick="switchClient('existant')">🔍 Client existant</button>
+                            <button type="button" class="toggle-tab" id="tab-btn-nouveau"
+                                    onclick="switchClient('nouveau')">➕ Nouveau client</button>
+                        </div>
 
+                        <!-- Client existant -->
+                        <div id="section-existant">
+                            <div class="form-group" style="max-width:500px;">
+                                <label>Sélectionner un client <span class="req">*</span></label>
+                                <select th:field="*{clientId}" id="clientIdSelect">
+                                    <option value="">-- Choisir un client --</option>
+                                    <option th:each="client : ${clients}"
+                                            th:value="${client.id}"
+                                            th:text="${client.nom + ' ' + client.prenom + '  |  CIN: ' + client.cin}">
+                                    </option>
+                                </select>
+                                <span class="form-hint">Si le client n'existe pas encore, utilisez "Nouveau client".</span>
+                            </div>
+                        </div>
+
+                        <!-- Nouveau client -->
+                        <div id="section-nouveau" class="hidden">
+                            <div class="form-grid">
+                                <div class="form-group">
+                                    <label>Type de client</label>
+                                    <select th:field="*{clientTypeClient}" id="typeClientSelect"
+                                            onchange="toggleRaisonSociale(this.value)">
+                                        <option value="PARTICULIER">👤 Particulier</option>
+                                        <option value="ENTREPRISE">🏭 Entreprise</option>
+                                    </select>
+                                </div>
+                                <div class="form-group" id="raisonSocialeDiv" style="display:none;">
+                                    <label>Raison sociale</label>
+                                    <input type="text" th:field="*{clientRaisonSociale}"
+                                           placeholder="Nom de l'entreprise"/>
+                                </div>
+                                <div class="form-group">
+                                    <label>Nom <span class="req">*</span></label>
+                                    <input type="text" th:field="*{clientNom}" placeholder="Ben Salem"/>
+                                </div>
+                                <div class="form-group">
+                                    <label>Prénom</label>
+                                    <input type="text" th:field="*{clientPrenom}" placeholder="Ahmed"/>
+                                </div>
+                                <div class="form-group">
+                                    <label>CIN <span class="req">*</span></label>
+                                    <input type="text" th:field="*{clientCin}"
+                                           placeholder="12345678" maxlength="8"/>
+                                </div>
+                                <div class="form-group">
+                                    <label>Téléphone</label>
+                                    <input type="tel" th:field="*{clientTelephone}"
+                                           placeholder="+216 XX XXX XXX"/>
+                                </div>
+                                <div class="form-group">
+                                    <label>Email</label>
+                                    <input type="email" th:field="*{clientEmail}"
+                                           placeholder="client@email.com"/>
+                                </div>
+                                <div class="form-group">
+                                    <label>Adresse</label>
+                                    <input type="text" th:field="*{clientAdresse}"
+                                           placeholder="12 Rue..."/>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="display:flex;justify-content:flex-end;margin-top:20px;">
+                            <button type="button" class="btn btn-primary"
+                                    onclick="goStep(2)">Suivant → Dossier</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ ÉTAPE 2 : DOSSIER ═══ -->
+            <div id="step-2" class="hidden">
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <h2>📋 Étape 2 — Informations du dossier</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-grid">
+                            <div class="form-group full">
+                                <label>Libellé <span class="req">*</span></label>
+                                <input type="text" th:field="*{libelle}"
+                                       placeholder="Ex : Contentieux crédit immobilier – Ahmed Ben Salem"
+                                       required/>
+                            </div>
+                            <div class="form-group full">
+                                <label>Description détaillée</label>
+                                <textarea th:field="*{description}" rows="4"
+                                          placeholder="Contexte, historique, motifs du contentieux..."></textarea>
+                            </div>
+                            <div class="form-group full">
+                                <label>Notes internes</label>
+                                <textarea th:field="*{notes}" rows="2"
+                                          placeholder="Observations pour l'équipe..."></textarea>
+                            </div>
+                        </div>
+                        <div style="display:flex;justify-content:space-between;margin-top:20px;">
+                            <button type="button" class="btn btn-outline"
+                                    onclick="goStep(1)">← Retour Client</button>
+                            <button type="button" class="btn btn-primary"
+                                    onclick="goStep(3)">Suivant → Risques</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ ÉTAPE 3 : RISQUES ═══ -->
+            <div id="step-3" class="hidden">
+                <div class="card fade-in">
+                    <div class="card-header">
+                        <h2>💰 Étape 3 — Risques (crédits)</h2>
+                        <button type="button" class="btn btn-primary btn-sm"
+                                onclick="ajouterRisque()">➕ Ajouter un risque</button>
+                    </div>
+                    <div class="card-body">
+
+                        <div id="risquesContainer">
+                            <!-- Les risques sont ajoutés dynamiquement -->
+                        </div>
+
+                        <p id="risquesVide" style="color:var(--muted);font-size:13px;text-align:center;padding:20px;">
+                            Aucun risque ajouté. Cliquez sur "Ajouter un risque" ou créez le dossier sans risque pour en ajouter plus tard.
+                        </p>
+
+                        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+                            <button type="button" class="btn btn-outline"
+                                    onclick="goStep(2)">← Retour Dossier</button>
+                            <button type="submit" class="btn btn-primary" style="padding:11px 28px;font-size:14.5px;">
+                                💾 Créer le dossier
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </form><!-- fin form -->
+    </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════
+//  ÉTAPES
+// ═══════════════════════════════════════════════
+function goStep(num) {
+    [1,2,3].forEach(n => {
+        document.getElementById('step-' + n).classList.toggle('hidden', n !== num);
+        const ind = document.getElementById('step-indicator-' + n);
+        ind.classList.remove('active','done');
+        if (n === num) ind.classList.add('active');
+        if (n < num)   ind.classList.add('done');
+    });
+}
+
+// ═══════════════════════════════════════════════
+//  CLIENT
+// ═══════════════════════════════════════════════
+function switchClient(type) {
+    const isExistant = type === 'existant';
+    document.getElementById('section-existant').classList.toggle('hidden', !isExistant);
+    document.getElementById('section-nouveau').classList.toggle('hidden', isExistant);
+    document.getElementById('tab-btn-existant').classList.toggle('active', isExistant);
+    document.getElementById('tab-btn-nouveau').classList.toggle('active', !isExistant);
+    // Si nouveau client, vider clientId pour ne pas bloquer
+    if (!isExistant) document.getElementById('clientIdSelect').value = '';
+}
+
+function toggleRaisonSociale(val) {
+    document.getElementById('raisonSocialeDiv').style.display =
+        val === 'ENTREPRISE' ? 'flex' : 'none';
+}
+
+// ═══════════════════════════════════════════════
+//  RISQUES — index global incrémental
+// ═══════════════════════════════════════════════
+let risqueIndex = 0;
+
+function ajouterRisque() {
+    const container = document.getElementById('risquesContainer');
+    document.getElementById('risquesVide').style.display = 'none';
+
+    const idx = risqueIndex++;
+    const div = document.createElement('div');
+    div.className = 'risque-block';
+    div.id = 'risque-block-' + idx;
+
+    div.innerHTML = `
+        <div class="risque-header">
+            <span class="risque-title">💰 Risque ${idx + 1}</span>
+            <button type="button" class="btn btn-red btn-sm"
+                    onclick="supprimerRisque(${idx})">✕ Supprimer</button>
+        </div>
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Type de crédit <span class="req">*</span></label>
+                <select name="risques[${idx}].type" required>
+                    <option value="">-- Choisir --</option>
+                    <option value="Crédit immobilier">🏠 Crédit immobilier</option>
+                    <option value="Crédit véhicule">🚗 Crédit véhicule</option>
+                    <option value="Crédit consommation">💳 Crédit consommation</option>
+                    <option value="Crédit professionnel">🏭 Crédit professionnel</option>
+                    <option value="Crédit agricole">🌾 Crédit agricole</option>
+                    <option value="Découvert">📉 Découvert</option>
+                    <option value="Caution">🤝 Caution</option>
+                    <option value="Autre">Autre</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Date d'échéance</label>
+                <input type="date" name="risques[${idx}].dateEcheance"/>
+            </div>
+            <div class="form-group">
+                <label>Montant initial (DT) <span class="req">*</span></label>
+                <input type="number" name="risques[${idx}].montantInitial"
+                       step="0.001" min="0" placeholder="50000" required/>
+            </div>
+            <div class="form-group">
+                <label>Montant impayé (DT) <span class="req">*</span></label>
+                <input type="number" name="risques[${idx}].montantImpaye"
+                       step="0.001" min="0" placeholder="35000" required/>
+            </div>
+            <div class="form-group full">
+                <label>Description</label>
+                <input type="text" name="risques[${idx}].description"
+                       placeholder="Ex : Crédit accordé en 2021, impayé depuis mars 2024"/>
+            </div>
+        </div>
+
+        <!-- Garanties -->
+        <div style="margin-top:16px;padding-top:14px;border-top:1px dashed var(--border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+                <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);">
+                    🔒 Garanties
+                </span>
+                <button type="button" class="btn btn-green btn-sm"
+                        onclick="ajouterGarantie(${idx})">+ Garantie</button>
+            </div>
+            <div id="garanties-${idx}"></div>
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+function supprimerRisque(idx) {
+    const el = document.getElementById('risque-block-' + idx);
+    if (el) el.remove();
+    if (document.querySelectorAll('.risque-block').length === 0)
+        document.getElementById('risquesVide').style.display = 'block';
+}
+
+// ═══════════════════════════════════════════════
+//  GARANTIES — index par risque
+// ═══════════════════════════════════════════════
+const garantieCounters = {};
+
+function ajouterGarantie(risqueIdx) {
+    if (garantieCounters[risqueIdx] === undefined) garantieCounters[risqueIdx] = 0;
+    const gIdx = garantieCounters[risqueIdx]++;
+
+    const container = document.getElementById('garanties-' + risqueIdx);
+    const div = document.createElement('div');
+    div.className = 'garantie-block';
+    div.id = `garantie-${risqueIdx}-${gIdx}`;
+
+    div.innerHTML = `
+        <div class="form-grid">
+            <div class="form-group">
+                <label>Type de garantie <span class="req">*</span></label>
+                <select name="risques[${risqueIdx}].garanties[${gIdx}].typeGarantie" required>
+                    <option value="">-- Choisir --</option>
+                    <option value="VEHICULE">🚗 Véhicule</option>
+                    <option value="IMMOBILIER">🏠 Immobilier</option>
+                    <option value="HYPOTHEQUE">🏛️ Hypothèque</option>
+                    <option value="NANTISSEMENT">📑 Nantissement</option>
+                    <option value="CAUTIONNEMENT">🤝 Cautionnement</option>
+                    <option value="AUTRE">Autre</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Valeur estimée (DT)</label>
+                <input type="number" name="risques[${risqueIdx}].garanties[${gIdx}].valeurEstimee"
+                       step="0.001" min="0" placeholder="20000"/>
+            </div>
+            <div class="form-group">
+                <label>Référence document</label>
+                <input type="text" name="risques[${risqueIdx}].garanties[${gIdx}].documentRef"
+                       placeholder="N° immatriculation, titre foncier..."/>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <input type="text" name="risques[${risqueIdx}].garanties[${gIdx}].description"
+                       placeholder="Ex : Renault Clio 2019"/>
+            </div>
+        </div>
+        <div style="text-align:right;margin-top:8px;">
+            <button type="button" class="btn btn-red btn-sm"
+                    onclick="document.getElementById('garantie-${risqueIdx}-${gIdx}').remove()">
+                ✕ Supprimer cette garantie
+            </button>
+        </div>
+    `;
+    container.appendChild(div);
+}
+
+// ═══════════════════════════════════════════════
+//  INIT — ajouter un risque par défaut
+// ═══════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', () => {
+    ajouterRisque();
+});
+</script>
 </body>
 </html>
