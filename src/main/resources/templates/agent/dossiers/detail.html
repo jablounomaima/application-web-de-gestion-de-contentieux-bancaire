@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Détail dossier</title>
+    <meta charset="UTF-8">
+
+    <style>
+        body{font-family:Arial;margin:40px;background:#f5f5f5;}
+        .card{
+            background:white;
+            padding:20px;
+            border-radius:6px;
+            width:600px;
+        }
+
+        table{
+            width:100%;
+            border-collapse: collapse;
+        }
+
+        td{
+            padding:10px;
+            border-bottom:1px solid #ddd;
+        }
+
+        .btn{
+            padding:10px 15px;
+            text-decoration:none;
+            border-radius:4px;
+        }
+
+        .btn-submit{
+            background:#3498db;
+            color:white;
+            border:none;
+        }
+
+        .btn-back{
+            background:#777;
+            color:white;
+        }
+    </style>
+</head>
+
+<body>
+
+<h2>Détail du dossier</h2>
+
+<p>Agent : <b th:text="${givenName}"></b></p>
+
+<div class="card">
+
+<table>
+
+<tr>
+<td>ID dossier</td>
+<td th:text="${dossier.id}"></td>
+</tr>
+
+<tr>
+<td>Numéro dossier</td>
+<td th:text="${dossier.numeroDossier}"></td>
+</tr>
+
+<tr>
+<td>Client</td>
+<td th:text="${dossier.client.nom + ' ' + dossier.client.prenom}"></td>
+</tr>
+
+<tr>
+<td>Statut</td>
+<td th:text="${dossier.statut}"></td>
+</tr>
+
+<tr>
+<td>Date création</td>
+<td th:text="${dossier.dateCreation}"></td>
+</tr>
+
+<tr>
+<td>Montant dette</td>
+<td th:text="${dossier.montantDette}"></td>
+</tr>
+
+<tr>
+<td>Description</td>
+<td th:text="${dossier.description}"></td>
+</tr>
+
+</table>
+
+<br>
+
+<form th:action="@{/agent/dossiers/{id}/soumettre(id=${dossier.id})}" method="post">
+
+<button class="btn btn-submit" type="submit">
+Soumettre à validation
+</button>
+
+<a class="btn btn-back" th:href="@{/agent/dossiers}">
+Retour
+</a>
+
+</form>
+
+</div>
+
+</body>
+</html>

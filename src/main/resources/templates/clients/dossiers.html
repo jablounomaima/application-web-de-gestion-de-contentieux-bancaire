@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${pageTitle}">Dossiers Client</title>
+</head>
+<body>
+    <header>
+        <h1>Contentieux Bancaire</h1>
+        <nav>
+            <a th:href="@{/agent/dashboard}">Dashboard</a>
+            <a th:href="@{/agent/clients}">Clients</a>
+        </nav>
+    </header>
+
+    <main>
+        <h2 th:text="'Dossiers de ' + ${client.nom} + ' ' + ${client.prenom}">Dossiers</h2>
+        
+        <div th:if="${#lists.isEmpty(dossiers)}">
+            <p>Aucun dossier pour ce client.</p>
+            <a th:href="@{/agent/dossiers/creer(clientId=${client.id})}">+ Créer un dossier</a>
+        </div>
+        
+        <table th:if="${not #lists.isEmpty(dossiers)}">
+            <thead>
+                <tr>
+                    <th>Numéro</th>
+                    <th>Libellé</th>
+                    <th>Statut</th>
+                    <th>Date création</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="dossier : ${dossiers}">
+                    <td th:text="${dossier.numeroDossier}"></td>
+                    <td th:text="${dossier.libelle}"></td>
+                    <td th:text="${dossier.statut}"></td>
+                    <td th:text="${#temporals.format(dossier.dateCreation, 'dd/MM/yyyy')}"></td>
+                    <td>
+                        <a th:href="@{/agent/dossiers/{id}(id=${dossier.id})}">Voir</a>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <a th:href="@{/agent/clients}">← Retour aux clients</a>
+    </main>
+</body>
+</html>

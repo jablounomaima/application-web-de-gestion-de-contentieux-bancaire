@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="${pageTitle} ?: 'Gérer les Clients'">Gérer les Clients</title>
+</head>
+<body>
+
+<!-- En-tête -->
+<header>
+    <h1>Contentieux Bancaire</h1>
+    <nav>
+        <a th:href="@{/agent/dashboard}">Dashboard</a>
+        <a th:href="@{/agent/clients}">Clients</a>
+        <a th:href="@{/agent/prestataires}">Prestataires</a>
+        <a th:href="@{/agent/missions}">Missions</a>
+    </nav>
+    <div>
+        <span sec:authentication="name"></span>
+        <form th:action="@{/logout}" method="post">
+            <button type="submit">Déconnexion</button>
+        </form>
+    </div>
+</header>
+
+<!-- Messages flash -->
+<div th:if="${success}" role="alert">
+    <span th:text="${success}"></span>
+</div>
+<div th:if="${error}" role="alert">
+    <span th:text="${error}"></span>
+</div>
+
+<!-- Contenu principal -->
+<main>
+    <h2 th:text="${pageTitle} ?: 'Gestion des Clients'">Gestion des Clients</h2>
+    
+    <!-- Bouton création -->
+    <button onclick="toggleForm()">+ Nouveau Client</button>
+    
+    <!-- Formulaire de création (caché par défaut) -->
+    <div id="createForm" style="display: none;">
+        <h3>Créer un nouveau client</h3>
+        <form th:action="@{/agent/clients/creer}" method="post" th:object="${nouveauClient}">
+            <div>
+                <label for="nom">Nom :</label>
+                <input type="text" id="nom" th:field="*{nom}" required>
+            </div>
+            
+            <div>
+                <label for="prenom">Prénom :</label>
+                <input type="text" id="prenom" th:field="*{prenom}" required>
+            </div>
+            
+            <div>
+                <label for="cin">CIN :</label>
+                <input type="text" id="cin" th:field="*{cin}" required>
+            </div>
+            
+            <div>
+                <label for="email">Email :</label>
+                <input type="email" id="email" th:field="*{email}">
+            </div>
+            
+            <div>
+                <label for="telephone">Téléphone :</label>
+                <input type="tel" id="telephone" th:field="*{telephone}">
+            </div>
+            
+            <div>
+                <label for="adresse">Adresse :</label>
+                <textarea id="adresse" th:field="*{adresse}" rows="3"></textarea>
+            </div>
+            
+            <div>
+                <button type="submit">Enregistrer</button>
+                <button type="button" onclick="toggleForm()">Annuler</button>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Liste des clients -->
+    <section>
+        <h3>Liste des clients</h3>
+        
+        <div th:if="${#lists.isEmpty(clients)}">
+            <p>Aucun client trouvé.</p>
+        </div>
+        
+        <table th:if="${not #lists.isEmpty(clients)}">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Nom</th>
+                    <th>Prénom</th>
+                    <th>CIN</th>
+                    <th>Email</th>
+                    <th>Téléphone</th>
+                    <th>Date inscription</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="client : ${clients}">
+                    <td th:text="${client.id}"></td>
+                    <td th:text="${client.nom}"></td>
+                    <td th:text="${client.prenom}"></td>
+                    <td th:text="${client.cin}"></td>
+                    <td th:text="${client.email}"></td>
+                    <td th:text="${client.telephone}"></td>
+                    <td th:text="${#temporals.format(client.dateInscription, 'dd/MM/yyyy')}"></td>
+                    <td>
+                        <a th:href="@{/agent/clients/{id}(id=${client.id})}">Voir</a>
+                        <a th:href="@{/agent/clients/{id}/edit(id=${client.id})}">Modifier</a>
+                        <a th:href="@{/agent/clients/{id}/dossiers(id=${client.id})}">Dossiers</a>
+                        <form th:action="@{/agent/clients/{id}/delete(id=${client.id})}" method="post" style="display: inline;">
+                            <button type="submit" onclick="return confirm('Confirmer la suppression ?')">Supprimer</button>
+                        </form>
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </section>
+    
+    <!-- Recherche -->
+    <section>
+        <h3>Rechercher un client</h3>
+        <form th:action="@{/agent/clients/rechercher}" method="get">
+            <input type="text" name="keyword" placeholder="Nom, CIN, email...">
+            <button type="submit">Rechercher</button>
+        </form>
+    </section>
+</main>
+
+<!-- Pied de page -->
+<footer>
+    <p>&copy; 2024 Contentieux Bancaire</p>
+</footer>
+
+<!-- Script minimal -->
+<script>
+    function toggleForm() {
+        var form = document.getElementById('createForm');
+        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    }
+</script>
+
+</body>
+</html>

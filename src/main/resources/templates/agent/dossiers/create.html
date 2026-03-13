@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+<meta charset="UTF-8">
+<title>Créer dossier</title>
+</head>
+
+<body>
+
+<h2>Créer un dossier</h2>
+
+<form th:action="@{/agent/dossiers/create}" 
+      th:object="${dossierRequest}" 
+      method="post">
+
+<label>Client</label>
+<select th:field="*{clientId}">
+<option value="">Choisir client</option>
+
+<option th:each="c : ${clients}"
+        th:value="${c.id}"
+        th:text="${c.nom + ' ' + c.prenom}">
+</option>
+
+</select>
+
+<label>Libellé</label>
+<input type="text" th:field="*{libelle}">
+
+<label>Notes</label>
+<input type="text" th:field="*{notes}">
+
+<button type="submit">Créer dossier</button>
+
+</form>
+
+</body>
+</html>
