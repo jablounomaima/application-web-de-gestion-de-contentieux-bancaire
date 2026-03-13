@@ -17,6 +17,14 @@ public class DossierContentieux {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+
+    // Validateurs choisis par l'agent
+    @Column
+    private String validateurFinancierChoisi;   // username du validateur financier choisi
+
+    @Column
+    private String validateurJuridiqueChoisi;   // username du validateur juridique choisi
+
     @Column(name = "numero_dossier", unique = true, nullable = false)
     private String numeroDossier;           // ex: DOS-2026-0001
 

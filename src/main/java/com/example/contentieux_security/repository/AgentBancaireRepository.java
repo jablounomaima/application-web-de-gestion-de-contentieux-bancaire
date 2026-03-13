@@ -2,6 +2,7 @@ package com.example.contentieux_security.repository;
 
 import com.example.contentieux_security.entity.AgentBancaire;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -17,4 +18,7 @@ public interface AgentBancaireRepository extends JpaRepository<AgentBancaire, Lo
     List<AgentBancaire> findByAgenceId(Long agenceId);
     
     boolean existsByUsername(String username);
+    Optional<AgentBancaire> findByEmail(String email);
+
+   
 }

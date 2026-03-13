@@ -5,6 +5,9 @@ import com.example.contentieux_security.entity.TypePrestataire;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 
@@ -29,4 +32,9 @@ public interface PrestataireRepository extends JpaRepository<Prestataire, Long> 
     List<Prestataire> findByType(TypePrestataire type);
 
     List<Prestataire> findByActif(boolean actif);
+
+
+// Méthodes nommées directes — plus simples
+List<Prestataire> findByTypeAndActifTrue(TypePrestataire type);
+
 }

@@ -75,4 +75,28 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
         WHERE d.id = :id
     """)
     Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
+
+
+    // ✅ Financier voit uniquement ses dossiers assignés
+@Query("""
+    SELECT d FROM DossierContentieux d
+    WHERE d.statut = 'EN_TRAITEMENT'
+    AND d.validationFinanciere IS NULL
+    AND d.validateurFinancierChoisi = :username
+""")
+List<DossierContentieux> findEnAttenteValidationFinanciere(
+        @Param("username") String username);
+
+// ✅ Juridique voit uniquement ses dossiers assignés
+@Query("""
+    SELECT d FROM DossierContentieux d
+    WHERE d.statut = 'EN_TRAITEMENT'
+    AND d.validationJuridique IS NULL
+    AND d.validateurJuridiqueChoisi = :username
+""")
+List<DossierContentieux> findEnAttenteValidationJuridique(
+        @Param("username") String username);
+
+
+
 }

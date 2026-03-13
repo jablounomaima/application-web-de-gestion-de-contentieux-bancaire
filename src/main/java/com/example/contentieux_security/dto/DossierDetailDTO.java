@@ -35,19 +35,24 @@ public class DossierDetailDTO {
     private String agenceVille;
 
     // ── Validation ────────────────────────────────────────────
-    private Boolean validationFinanciere;
-    private Boolean validationJuridique;
-    private String commentaireFinancier;
-    private String commentaireJuridique;
-    private String validateurFinancierUsername;
-    private String validateurJuridiqueUsername;
-
+  // ── Validation ────────────────────────────────────────────
+private Boolean validationFinanciere;
+private Boolean validationJuridique;
+private String commentaireFinancier;
+private String commentaireJuridique;
+private String validateurFinancierUsername;
+private String validateurJuridiqueUsername;
+private String validateurFinancierChoisi;    // ← ajouter
+private String validateurJuridiqueChoisi;    // ← ajouter
     // ── Risques ───────────────────────────────────────────────
     private List<RisqueDTO> risques;
     private Double montantTotalEngagement;
 
     // ── Historique ────────────────────────────────────────────
     private List<HistoriqueEntryDTO> historique;
+
+
+   
 
     // ── Sous-DTO Risque ───────────────────────────────────────
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -82,6 +87,10 @@ public class DossierDetailDTO {
         private String utilisateur;
     }
 
+    
+
+    
+
     // ── Factory method depuis l'entité ────────────────────────
     public static DossierDetailDTO from(DossierContentieux d,
                                         List<HistoriqueDossier> historique) {
@@ -99,7 +108,11 @@ public class DossierDetailDTO {
                 .commentaireFinancier(d.getCommentaireFinancier())
                 .commentaireJuridique(d.getCommentaireJuridique())
                 .validateurFinancierUsername(d.getValidateurFinancierUsername())
-                .validateurJuridiqueUsername(d.getValidateurJuridiqueUsername());
+                .validateurJuridiqueUsername(d.getValidateurJuridiqueUsername())
+                .validateurFinancierChoisi(d.getValidateurFinancierChoisi())   
+                .validateurJuridiqueChoisi(d.getValidateurJuridiqueChoisi());   
+
+
 
         if (d.getClient() != null) {
             b.clientId(d.getClient().getId())

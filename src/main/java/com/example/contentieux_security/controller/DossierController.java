@@ -5,7 +5,12 @@ import com.example.contentieux_security.dto.DossierDetailDTO;
 import com.example.contentieux_security.dto.GarantieAjoutRequest;
 import com.example.contentieux_security.dto.RisqueAjoutRequest;
 import com.example.contentieux_security.entity.DossierContentieux;
+import com.example.contentieux_security.entity.Garantie;
+import com.example.contentieux_security.entity.TypePrestataire;
 import com.example.contentieux_security.enums.DossierStatus;
+import com.example.contentieux_security.repository.DossierRepository;
+import com.example.contentieux_security.repository.GarantieRepository;
+import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.HistoriqueService;
 import lombok.RequiredArgsConstructor;
@@ -14,17 +19,20 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import com.example.contentieux_security.entity.Garantie;
-import com.example.contentieux_security.repository.GarantieRepository;
+
 import java.security.Principal;
 import java.util.List;
+
 @Controller
 @RequiredArgsConstructor
 public class DossierController {
 
-    private final DossierService    dossierService;
-    private final HistoriqueService historiqueService;
-    private final GarantieRepository  garantieRepository; 
+    private final DossierService        dossierService;
+    private final HistoriqueService     historiqueService;
+    private final GarantieRepository    garantieRepository;
+    private final DossierRepository     dossierRepository;
+    private final PrestataireRepository prestataireRepository;
+
     // ══════════════════════════════════════════════════════
     //  AGENT — Dossiers
     // ══════════════════════════════════════════════════════
@@ -32,29 +40,17 @@ public class DossierController {
     @GetMapping("/agent/dossiers")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String listeDossiers(Model model, Principal principal) {
-    
         String username = principal.getName();
         List<DossierContentieux> dossiers = dossierService.getDossiersAgent(username);
-    
-        System.out.println("=== username : " + username);
-        System.out.println("=== dossiers : " + dossiers.size());
-    
-        model.addAttribute("dossiers",          dossiers);
+        model.addAttribute("dossiers",         dossiers);
         model.addAttribute("givenName",         username);
         model.addAttribute("totalDossiers",     dossiers.size());
         model.addAttribute("dossiersOuverts",
-            dossiers.stream()
-                .filter(d -> d.getStatut() == DossierStatus.OUVERT)
-                .count());
+            dossiers.stream().filter(d -> d.getStatut() == DossierStatus.OUVERT).count());
         model.addAttribute("dossiersEnAttente",
-            dossiers.stream()
-                .filter(d -> d.getStatut() == DossierStatus.EN_TRAITEMENT)
-                .count());
+            dossiers.stream().filter(d -> d.getStatut() == DossierStatus.EN_TRAITEMENT).count());
         model.addAttribute("dossiersValides",
-            dossiers.stream()
-                .filter(d -> d.getStatut() == DossierStatus.VALIDE)
-                .count());
-    
+            dossiers.stream().filter(d -> d.getStatut() == DossierStatus.VALIDE).count());
         return "agent/dossiers/list";
     }
 
@@ -73,7 +69,7 @@ public class DossierController {
         try {
             DossierContentieux d = dossierService.creerDossier(request, principal.getName());
             redirectAttributes.addFlashAttribute("success",
-                    "DossierContentieux " + d.getNumeroDossier() + " créé avec succès !");
+                    "Dossier " + d.getNumeroDossier() + " créé avec succès !");
             return "redirect:/agent/dossiers/" + d.getId();
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -88,42 +84,80 @@ public class DossierController {
         try {
             DossierDetailDTO dossier = dossierService.getDossierDetail(id);
             model.addAttribute("dossier", dossier);
+
+            var vf = prestataireRepository
+                    .findByTypeAndActifTrue(TypePrestataire.VALIDATEUR_FINANCIER);
+            var vj = prestataireRepository
+                    .findByTypeAndActifTrue(TypePrestataire.VALIDATEUR_JURIDIQUE);
+
+            System.out.println("=== Validateurs financiers : " + vf.size());
+            System.out.println("=== Validateurs juridiques : " + vj.size());
+
+            model.addAttribute("validateurs_financiers", vf);
+            model.addAttribute("validateurs_juridiques", vj);
+
             return "agent/dossiers/detail";
-        } catch (Exception e) {
-            // ← log pour voir l'erreur exacte
-            System.err.println("=== ERREUR detailDossier id=" + id + " : " + e.getMessage());
+
+        } catch (Exception e) {  // ✅ accolade fermante manquante — corrigée
+            System.err.println("=== ERREUR detailDossier : " + e.getMessage());
             e.printStackTrace();
             redirectAttributes.addFlashAttribute("error",
                     "Impossible de charger le dossier : " + e.getMessage());
             return "redirect:/agent/dossiers";
         }
+    } // ✅ fin de detailDossier
+
+    @PostMapping("/agent/dossiers/{id}/choisir-validateurs")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String choisirValidateurs(@PathVariable Long id,
+                                      @RequestParam String validateurFinancier,
+                                      @RequestParam String validateurJuridique,
+                                      Principal principal,
+                                      RedirectAttributes redirectAttributes) {
+        try {
+            dossierService.choisirValidateurs(id, validateurFinancier,
+                                               validateurJuridique, principal.getName());
+            redirectAttributes.addFlashAttribute("success", "Validateurs assignés avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/agent/dossiers/" + id;
     }
 
     @GetMapping("/agent/dossiers/{id}/edit")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-    public String formulaireEdition(@PathVariable Long id, Model model) {
-        DossierDetailDTO dossier = dossierService.getDossierDetail(id);
-        if (!dossier.getStatut().equals("OUVERT")) {
-            return "redirect:/agent/dossiers/" + id + "?error=non-modifiable";
+    public String formulaireEdition(@PathVariable Long id, Model model,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            DossierDetailDTO dossier = dossierService.getDossierDetail(id);
+            if (!dossier.getStatut().equals("OUVERT")) {
+                redirectAttributes.addFlashAttribute("error",
+                        "Ce dossier n'est plus modifiable (statut : " + dossier.getStatut() + ").");
+                return "redirect:/agent/dossiers/" + id;
+            }
+            model.addAttribute("dossier", dossier);
+            return "agent/dossiers/edit";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/agent/dossiers";
         }
-        model.addAttribute("dossier", dossier);
-        return "agent/dossiers/edit";
     }
 
     @PostMapping("/agent/dossiers/{id}/edit")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String modifierDossier(@PathVariable Long id,
                                   @RequestParam String libelle,
+                                  @RequestParam(required = false) String description,
                                   @RequestParam(required = false) String notes,
                                   Principal principal,
                                   RedirectAttributes redirectAttributes) {
         try {
             DossierContentieux d = dossierService.getDossierByIdAndAgent(id, principal.getName());
             d.setLibelle(libelle);
+            d.setDescription(description);
             d.setNotes(notes);
-            // appel save direct via repository si DossierService n'a pas de méthode update
-            // dossierRepository.save(d);  ← à ajouter au besoin
-            redirectAttributes.addFlashAttribute("success", "DossierContentieux modifié avec succès.");
+            dossierRepository.save(d);
+            redirectAttributes.addFlashAttribute("success", "Dossier modifié avec succès.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
@@ -137,7 +171,7 @@ public class DossierController {
         try {
             dossierService.soumettreAValidation(id, principal.getName());
             redirectAttributes.addFlashAttribute("success",
-                    "DossierContentieux soumis à validation. En attente des décisions financière et juridique.");
+                    "Dossier soumis à validation. En attente des décisions financière et juridique.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
@@ -160,7 +194,7 @@ public class DossierController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/agent/dossiers/" + id;
+        return "redirect:/agent/dossiers/" + id + "/edit";
     }
 
     @PostMapping("/agent/dossiers/risques/{rId}/selectionner")
@@ -194,14 +228,72 @@ public class DossierController {
         return referer != null ? "redirect:" + referer : "redirect:/agent/dossiers";
     }
 
+    @GetMapping("/agent/dossiers/garanties/{gId}/edit")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String formulaireEditGarantie(@PathVariable Long gId,
+                                          Model model,
+                                          Principal principal) {
+        try {
+            Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
+                    .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
+            model.addAttribute("garantie", g);
+            model.addAttribute("dossierId", g.getRisque().getDossier().getId());
+            return "agent/dossiers/edit-garantie";
+        } catch (Exception e) {
+            System.err.println("=== ERREUR editGarantie : " + e.getMessage());
+            e.printStackTrace();
+            return "redirect:/agent/dossiers";
+        }
+    }
+
+    @PostMapping("/agent/dossiers/garanties/{gId}/edit")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String modifierGarantie(@PathVariable Long gId,
+                                    @RequestParam String typeGarantie,
+                                    @RequestParam(required = false) String description,
+                                    @RequestParam(required = false) Double valeurEstimee,
+                                    @RequestParam(required = false) String documentRef,
+                                    Principal principal,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            dossierService.modifierGarantie(gId, typeGarantie, description,
+                                             valeurEstimee, documentRef, principal.getName());
+            redirectAttributes.addFlashAttribute("success", "Garantie modifiée avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
+                .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
+        return "redirect:/agent/dossiers/" + g.getRisque().getDossier().getId() + "/edit";
+    }
+
+    @PostMapping("/agent/dossiers/garanties/{gId}/supprimer")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String supprimerGarantie(@PathVariable Long gId,
+                                     Principal principal,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
+                    .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
+            Long dossierId = g.getRisque().getDossier().getId();
+            garantieRepository.deleteById(gId);
+            redirectAttributes.addFlashAttribute("success", "Garantie supprimée.");
+            return "redirect:/agent/dossiers/" + dossierId + "/edit";
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/agent/dossiers";
+        }
+    }
+
     // ══════════════════════════════════════════════════════
     //  VALIDATEUR FINANCIER
     // ══════════════════════════════════════════════════════
 
     @GetMapping("/validateur/financier/dossiers")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
-    public String dossiersFinancier(Model model) {
-        model.addAttribute("dossiers", dossierService.getDossiersEnAttenteValidationFinanciere());
+    public String dossiersFinancier(Model model, Principal principal) {
+        model.addAttribute("dossiers",
+                dossierService.getDossiersEnAttenteValidationFinanciere(principal.getName()));
         return "validateur/dossiers-financier";
     }
 
@@ -224,8 +316,10 @@ public class DossierController {
             d.setCommentaireFinancier(commentaire);
             d.setValidateurFinancierUsername(principal.getName());
             if (d.isEntierementValide()) d.setStatut(DossierStatus.VALIDE);
+            dossierRepository.save(d);
             historiqueService.enregistrer(d, HistoriqueService.VALIDATION_FIN,
-                    "Validation financière accordée." + (commentaire != null ? " " + commentaire : ""),
+                    "Validation financière accordée."
+                    + (commentaire != null ? " " + commentaire : ""),
                     principal.getName());
             redirectAttributes.addFlashAttribute("success", "Validation financière accordée ✅");
         } catch (Exception e) {
@@ -246,9 +340,10 @@ public class DossierController {
             d.setCommentaireFinancier(commentaire);
             d.setValidateurFinancierUsername(principal.getName());
             d.setStatut(DossierStatus.REJETE);
+            dossierRepository.save(d);
             historiqueService.enregistrer(d, HistoriqueService.REJET_FIN,
                     "Rejet financier. Motif : " + commentaire, principal.getName());
-            redirectAttributes.addFlashAttribute("success", "DossierContentieux rejeté ❌");
+            redirectAttributes.addFlashAttribute("success", "Dossier rejeté ❌");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
@@ -261,8 +356,9 @@ public class DossierController {
 
     @GetMapping("/validateur/juridique/dossiers")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
-    public String dossiersJuridique(Model model) {
-        model.addAttribute("dossiers", dossierService.getDossiersEnAttenteValidationJuridique());
+    public String dossiersJuridique(Model model, Principal principal) {
+        model.addAttribute("dossiers",
+                dossierService.getDossiersEnAttenteValidationJuridique(principal.getName()));
         return "validateur/dossiers-juridique";
     }
 
@@ -285,8 +381,10 @@ public class DossierController {
             d.setCommentaireJuridique(commentaire);
             d.setValidateurJuridiqueUsername(principal.getName());
             if (d.isEntierementValide()) d.setStatut(DossierStatus.VALIDE);
+            dossierRepository.save(d);
             historiqueService.enregistrer(d, HistoriqueService.VALIDATION_JUR,
-                    "Validation juridique accordée." + (commentaire != null ? " " + commentaire : ""),
+                    "Validation juridique accordée."
+                    + (commentaire != null ? " " + commentaire : ""),
                     principal.getName());
             redirectAttributes.addFlashAttribute("success", "Validation juridique accordée ✅");
         } catch (Exception e) {
@@ -307,77 +405,13 @@ public class DossierController {
             d.setCommentaireJuridique(commentaire);
             d.setValidateurJuridiqueUsername(principal.getName());
             d.setStatut(DossierStatus.REJETE);
+            dossierRepository.save(d);
             historiqueService.enregistrer(d, HistoriqueService.REJET_JUR,
                     "Rejet juridique. Motif : " + commentaire, principal.getName());
-            redirectAttributes.addFlashAttribute("success", "DossierContentieux rejeté ❌");
+            redirectAttributes.addFlashAttribute("success", "Dossier rejeté ❌");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/validateur/juridique/dossiers";
     }
-// GET — formulaire modification garantie
-@GetMapping("/agent/dossiers/garanties/{gId}/edit")
-@PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-public String formulaireEditGarantie(@PathVariable Long gId,
-                                      Model model,
-                                      Principal principal) {
-    try {
-        // ✅ findById → findByIdWithRisqueAndDossier
-        Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
-                .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
-        model.addAttribute("garantie", g);
-        model.addAttribute("dossierId", g.getRisque().getDossier().getId());
-        return "agent/dossiers/edit-garantie";
-    } catch (Exception e) {
-        System.err.println("=== ERREUR editGarantie : " + e.getMessage());
-        e.printStackTrace();
-        return "redirect:/agent/dossiers";
-    }
-}
-
-// POST — sauvegarde modification garantie
-@PostMapping("/agent/dossiers/garanties/{gId}/edit")
-@PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-public String modifierGarantie(@PathVariable Long gId,
-                                @RequestParam String typeGarantie,
-                                @RequestParam(required = false) String description,
-                                @RequestParam(required = false) Double valeurEstimee,
-                                @RequestParam(required = false) String documentRef,
-                                Principal principal,
-                                RedirectAttributes redirectAttributes) {
-    try {
-        dossierService.modifierGarantie(gId, typeGarantie, description,
-                                         valeurEstimee, documentRef, principal.getName());
-        redirectAttributes.addFlashAttribute("success", "Garantie modifiée avec succès.");
-    } catch (Exception e) {
-        redirectAttributes.addFlashAttribute("error", e.getMessage());
-    }
-    // ✅ findById → findByIdWithRisqueAndDossier
-    Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
-            .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
-    Long dossierId = g.getRisque().getDossier().getId();
-    return "redirect:/agent/dossiers/" + dossierId + "/edit";
-}
-
-
-@PostMapping("/agent/dossiers/garanties/{gId}/supprimer")
-@PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-public String supprimerGarantie(@PathVariable Long gId,
-                                 Principal principal,
-                                 RedirectAttributes redirectAttributes) {
-    try {
-        Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
-                .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
-        Long dossierId = g.getRisque().getDossier().getId();
-        garantieRepository.deleteById(gId);
-        redirectAttributes.addFlashAttribute("success", "Garantie supprimée.");
-        return "redirect:/agent/dossiers/" + dossierId + "/edit";
-    } catch (Exception e) {
-        redirectAttributes.addFlashAttribute("error", e.getMessage());
-        return "redirect:/agent/dossiers";
-    }
-}
-
-
-
-}
+} // ✅ une seule accolade fermante pour la classe

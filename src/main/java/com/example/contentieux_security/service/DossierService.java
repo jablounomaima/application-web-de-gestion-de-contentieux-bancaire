@@ -12,7 +12,6 @@ import com.example.contentieux_security.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.contentieux_security.repository.DossierRepository;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -29,6 +28,7 @@ public class DossierService {
     private final RisqueRepository        risqueRepository;
     private final GarantieRepository      garantieRepository;
     private final HistoriqueService       historiqueService;
+    private final NotificationService     notificationService; // ← déplacé ici avec les autres
 
     // ════════════════════════════════════════════════════
     //  LECTURE
@@ -42,7 +42,6 @@ public class DossierService {
         return dossierRepository.findById(id).orElse(null);
     }
 
-    /** Lève une exception si non trouvé (utilisé par le Controller) */
     public DossierContentieux getDossierById(Long id) {
         return dossierRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
@@ -65,20 +64,14 @@ public class DossierService {
         return d;
     }
 
-    /** DTO complet (évite les LazyInitializationException dans Thymeleaf) */
-    // ✅ Après
     @Transactional(readOnly = true)
     public DossierDetailDTO getDossierDetail(Long id) {
-        // Requête 1 — dossier + client + agence + risques
         DossierContentieux d = dossierRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-    
-        // Requête 2 — garanties chargées séparément dans la même session Hibernate
-        // Hibernate les associe automatiquement aux risques déjà en mémoire
         risqueRepository.findByDossierIdWithGaranties(id);
-    
         return DossierDetailDTO.from(d, historiqueService.getHistorique(id));
     }
+
     // ════════════════════════════════════════════════════
     //  CRÉATION DOSSIER
     // ════════════════════════════════════════════════════
@@ -88,7 +81,6 @@ public class DossierService {
         AgentBancaire agent = agentRepository.findByUsername(agentUsername)
                 .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
 
-        // ── Client ─────────────────────────────────────
         Client client;
         if (request.getClientId() != null) {
             client = clientRepository.findById(request.getClientId())
@@ -106,7 +98,6 @@ public class DossierService {
             client = clientRepository.save(client);
         }
 
-        // ── Dossier ────────────────────────────────────
         DossierContentieux dossier = new DossierContentieux();
         dossier.setNumeroDossier(genererNumeroDossier(agent.getAgence()));
         dossier.setLibelle(request.getLibelle());
@@ -120,7 +111,6 @@ public class DossierService {
         dossier.setCreePar(agentUsername);
         dossier = dossierRepository.save(dossier);
 
-        // ── Risques & Garanties ────────────────────────
         if (request.getRisques() != null) {
             for (RisqueRequest rq : request.getRisques()) {
                 Risque risque = new Risque();
@@ -158,6 +148,15 @@ public class DossierService {
     // ════════════════════════════════════════════════════
 
     @Transactional
+    public void choisirValidateurs(Long id, String validateurFinancier,
+                                    String validateurJuridique, String username) {
+        DossierContentieux dossier = getDossierByIdAndAgent(id, username);
+        dossier.setValidateurFinancierChoisi(validateurFinancier);
+        dossier.setValidateurJuridiqueChoisi(validateurJuridique);
+        dossierRepository.save(dossier);
+    }
+
+    @Transactional
     public void soumettreAValidation(Long id, String username) {
         DossierContentieux dossier = getDossierByIdAndAgent(id, username);
 
@@ -167,12 +166,45 @@ public class DossierService {
         if (dossier.getRisques().stream().noneMatch(Risque::isSelectionne))
             throw new RuntimeException("Sélectionnez le risque à traiter avant de soumettre.");
 
+        if (dossier.getValidateurFinancierChoisi() == null
+                || dossier.getValidateurFinancierChoisi().isBlank())
+            throw new RuntimeException("Veuillez choisir un validateur financier.");
+
+        if (dossier.getValidateurJuridiqueChoisi() == null
+                || dossier.getValidateurJuridiqueChoisi().isBlank())
+            throw new RuntimeException("Veuillez choisir un validateur juridique.");
+
         dossier.setStatut(DossierStatus.EN_TRAITEMENT);
         dossierRepository.save(dossier);
 
+        // ✅ Notifications — DANS la méthode
+        notificationService.notifier(
+                dossier.getValidateurFinancierChoisi(),
+                "Nouveau dossier à valider",
+                "Le dossier " + dossier.getNumeroDossier()
+                + " de " + dossier.getClient().getNom()
+                + " " + dossier.getClient().getPrenom()
+                + " nécessite votre validation financière.",
+                "VALIDATION_FINANCIERE",
+                dossier
+        );
+
+        notificationService.notifier(
+                dossier.getValidateurJuridiqueChoisi(),
+                "Nouveau dossier à valider",
+                "Le dossier " + dossier.getNumeroDossier()
+                + " de " + dossier.getClient().getNom()
+                + " " + dossier.getClient().getPrenom()
+                + " nécessite votre validation juridique.",
+                "VALIDATION_JURIDIQUE",
+                dossier
+        );
+
         historiqueService.enregistrer(dossier, HistoriqueService.SOUMISSION,
-                "Soumis à validation financière et juridique", username);
-    }
+                "Soumis à : " + dossier.getValidateurFinancierChoisi()
+                + " (financier) et " + dossier.getValidateurJuridiqueChoisi()
+                + " (juridique)", username);
+    } // ← accolade fermante de soumettreAValidation
 
     // ════════════════════════════════════════════════════
     //  RISQUES
@@ -202,9 +234,9 @@ public class DossierService {
         Risque risque = risqueRepository.findById(risqueId)
                 .orElseThrow(() -> new RuntimeException("Risque introuvable"));
 
-        DossierContentieux dossier = getDossierByIdAndAgent(risque.getDossier().getId(), username);
+        DossierContentieux dossier = getDossierByIdAndAgent(
+                risque.getDossier().getId(), username);
 
-        // Désélectionner tous, puis sélectionner le demandé
         risqueRepository.findByDossier_Id(dossier.getId())
                 .forEach(r -> { r.setSelectionne(false); risqueRepository.save(r); });
 
@@ -220,11 +252,12 @@ public class DossierService {
     // ════════════════════════════════════════════════════
 
     @Transactional
-    public Garantie ajouterGarantie(Long risqueId, GarantieAjoutRequest request, String username) {
+    public Garantie ajouterGarantie(Long risqueId, GarantieAjoutRequest request,
+                                     String username) {
         Risque risque = risqueRepository.findById(risqueId)
                 .orElseThrow(() -> new RuntimeException("Risque introuvable"));
 
-        getDossierByIdAndAgent(risque.getDossier().getId(), username); // vérifie accès
+        getDossierByIdAndAgent(risque.getDossier().getId(), username);
 
         Garantie garantie = new Garantie();
         garantie.setTypeGarantie(request.getTypeGarantie());
@@ -239,16 +272,32 @@ public class DossierService {
         return garantie;
     }
 
-    // ════════════════════════════════════════════════════
-    //  VALIDATION (utilisé par le Controller validateur)
-    // ════════════════════════════════════════════════════
+    @Transactional
+    public void modifierGarantie(Long garantieId, String typeGarantie,
+                                  String description, Double valeurEstimee,
+                                  String documentRef, String username) {
+        Garantie g = garantieRepository.findByIdWithRisqueAndDossier(garantieId)
+                .orElseThrow(() -> new RuntimeException("Garantie introuvable"));
 
-    public List<DossierContentieux> getDossiersEnAttenteValidationFinanciere() {
-        return dossierRepository.findEnAttenteValidationFinanciere();
+        getDossierByIdAndAgent(g.getRisque().getDossier().getId(), username);
+
+        g.setTypeGarantie(typeGarantie);
+        g.setDescription(description);
+        g.setValeurEstimee(valeurEstimee);
+        g.setDocumentRef(documentRef);
+        garantieRepository.save(g);
     }
 
-    public List<DossierContentieux> getDossiersEnAttenteValidationJuridique() {
-        return dossierRepository.findEnAttenteValidationJuridique();
+    // ════════════════════════════════════════════════════
+    //  VALIDATION
+    // ════════════════════════════════════════════════════
+
+    public List<DossierContentieux> getDossiersEnAttenteValidationFinanciere(String username) {
+        return dossierRepository.findEnAttenteValidationFinanciere(username);
+    }
+
+    public List<DossierContentieux> getDossiersEnAttenteValidationJuridique(String username) {
+        return dossierRepository.findEnAttenteValidationJuridique(username);
     }
 
     public List<DossierContentieux> getDossiersByStatut(DossierStatus statut) {
@@ -275,28 +324,4 @@ public class DossierService {
         }
         return String.format("%s-%05d", prefix, sequence);
     }
-
-
-    @Transactional
-public void modifierGarantie(Long garantieId, String typeGarantie,
-                              String description, Double valeurEstimee,
-                              String documentRef, String username) {
-    Garantie g = garantieRepository.findById(garantieId)
-            .orElseThrow(() -> new RuntimeException("Garantie introuvable"));
-
-    // Vérifie que l'agent est bien propriétaire du dossier
-    getDossierByIdAndAgent(g.getRisque().getDossier().getId(), username);
-
-    g.setTypeGarantie(typeGarantie);
-    g.setDescription(description);
-    g.setValeurEstimee(valeurEstimee);
-    g.setDocumentRef(documentRef);
-    garantieRepository.save(g);
-}
-
-
-
-
-
-
 }
