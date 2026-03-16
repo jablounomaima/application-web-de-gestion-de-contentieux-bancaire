@@ -2,6 +2,7 @@ package com.example.contentieux_security.dto;
 
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.DossierStatus;
+import com.itextpdf.text.pdf.draw.LineSeparator;
 import lombok.*;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,7 +30,7 @@ public class DossierDetailDTO {
     private String clientCin;
     private String clientEmail;
     private String clientTelephone;
-
+    private String clientAdresse;    // ← ajouter
     // ── Agence ────────────────────────────────────────────────
     private String agenceNom;
     private String agenceVille;

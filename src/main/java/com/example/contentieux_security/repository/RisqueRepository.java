@@ -2,6 +2,7 @@ package com.example.contentieux_security.repository;
 
 import com.example.contentieux_security.entity.Risque;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -17,4 +18,8 @@ public interface RisqueRepository extends JpaRepository<Risque, Long> {
     WHERE r.dossier.id = :dossierId
 """)
 List<Risque> findByDossierIdWithGaranties(@Param("dossierId") Long dossierId);
+
+@Modifying
+@Query("DELETE FROM Risque r WHERE r.dossier.id = :dossierId")
+void deleteByDossierId(@Param("dossierId") Long dossierId);
 }

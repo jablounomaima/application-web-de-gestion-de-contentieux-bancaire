@@ -16,11 +16,21 @@ public class NotificationService {
 
     private final NotificationRepository notificationRepository;
 
-    // ── Créer une notification pour un validateur ──────────
+    // ── Créer une notification ─────────────────────────────────────────────
     @Transactional
     public void notifier(String destinataire, String titre,
                           String message, String type,
                           DossierContentieux dossier) {
+        String urlAction = switch (type) {
+            case "VALIDATION_FINANCIERE"    -> "/validateur/financier/dossiers/" + dossier.getId();
+            case "VALIDATION_JURIDIQUE"     -> "/validateur/juridique/dossiers/" + dossier.getId();
+            case "VALIDATION_FINANCIERE_OK",
+                 "REJET_FINANCIER",
+                 "VALIDATION_JURIDIQUE_OK",
+                 "REJET_JURIDIQUE"          -> "/agent/dossiers/" + dossier.getId();
+            default                         -> "/agent/dossiers/" + dossier.getId();
+        };
+    
         Notification n = Notification.builder()
                 .destinataire(destinataire)
                 .titre(titre)
@@ -29,29 +39,28 @@ public class NotificationService {
                 .dossier(dossier)
                 .dateCreation(LocalDateTime.now())
                 .lue(false)
-                .urlAction("/validateur/" +
-                        (type.equals("VALIDATION_FINANCIERE") ? "financier" : "juridique")
-                        + "/dossiers/" + dossier.getId())
+                .urlAction(urlAction)
                 .build();
         notificationRepository.save(n);
     }
 
-    // ── Lecture ────────────────────────────────────────────
+    // ── Lecture ────────────────────────────────────────────────────────────
     public List<Notification> getNotifications(String username) {
         return notificationRepository
-                .findByDestinataire_OrderByDateCreationDesc(username);
+                .findByDestinataireOrderByDateCreationDesc(username); // ✅ sans _
     }
 
     public List<Notification> getNonLues(String username) {
         return notificationRepository
-                .findByDestinataire_AndLueFalseOrderByDateCreationDesc(username);
+                .findByDestinataireAndLueFalseOrderByDateCreationDesc(username); // ✅ sans _
     }
 
     public long countNonLues(String username) {
-        return notificationRepository.countByDestinataire_AndLueFalse(username);
+        return notificationRepository
+                .countByDestinataireAndLueFalse(username); // ✅ sans _
     }
 
-    // ── Marquer comme lue ──────────────────────────────────
+    // ── Marquer comme lue ──────────────────────────────────────────────────
     @Transactional
     public void marquerLue(Long id) {
         notificationRepository.findById(id).ifPresent(n -> {

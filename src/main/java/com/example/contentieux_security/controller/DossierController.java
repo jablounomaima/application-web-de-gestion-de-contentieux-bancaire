@@ -13,6 +13,8 @@ import com.example.contentieux_security.repository.GarantieRepository;
 import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.HistoriqueService;
+import com.example.contentieux_security.service.NotificationService;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -32,11 +34,12 @@ public class DossierController {
     private final GarantieRepository    garantieRepository;
     private final DossierRepository     dossierRepository;
     private final PrestataireRepository prestataireRepository;
+    private final NotificationService   notificationService; // ← ajouter
+
 
     // ══════════════════════════════════════════════════════
     //  AGENT — Dossiers
     // ══════════════════════════════════════════════════════
-
     @GetMapping("/agent/dossiers")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String listeDossiers(Model model, Principal principal) {
@@ -51,6 +54,11 @@ public class DossierController {
             dossiers.stream().filter(d -> d.getStatut() == DossierStatus.EN_TRAITEMENT).count());
         model.addAttribute("dossiersValides",
             dossiers.stream().filter(d -> d.getStatut() == DossierStatus.VALIDE).count());
+    
+        // ✅ Badge notifications non lues
+        model.addAttribute("notifCount",
+            notificationService.countNonLues(username));
+    
         return "agent/dossiers/list";
     }
 
@@ -162,6 +170,26 @@ public class DossierController {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/agent/dossiers/" + id;
+    }
+
+
+
+    @PostMapping("/agent/dossiers/{id}/supprimer")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String supprimerDossier(@PathVariable Long id,
+                                    Principal principal,
+                                    RedirectAttributes redirectAttributes) {
+        try {
+            // ✅ Utiliser la méthode service qui gère les FK
+            DossierContentieux d = dossierService.getDossierById(id);
+            String numero = d.getNumeroDossier();
+            dossierService.supprimerDossier(id, principal.getName());
+            redirectAttributes.addFlashAttribute("success",
+                    "Dossier " + numero + " supprimé avec succès.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/agent/dossiers";
     }
 
     @PostMapping("/agent/dossiers/{id}/soumettre")
@@ -317,17 +345,30 @@ public class DossierController {
             d.setValidateurFinancierUsername(principal.getName());
             if (d.isEntierementValide()) d.setStatut(DossierStatus.VALIDE);
             dossierRepository.save(d);
+    
             historiqueService.enregistrer(d, HistoriqueService.VALIDATION_FIN,
                     "Validation financière accordée."
                     + (commentaire != null ? " " + commentaire : ""),
                     principal.getName());
+    
+            // ✅ Notifier l'agent créateur
+            notificationService.notifier(
+                    d.getAgentCreateur().getUsername(),
+                    "✅ Validation financière accordée",
+                    "Le dossier " + d.getNumeroDossier()
+                    + " a été validé financièrement par " + principal.getName()
+                    + (commentaire != null ? ". Commentaire : " + commentaire : "."),
+                    "VALIDATION_FINANCIERE_OK",
+                    d
+            );
+    
             redirectAttributes.addFlashAttribute("success", "Validation financière accordée ✅");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/validateur/financier/dossiers";
     }
-
+    
     @PostMapping("/validateur/financier/dossiers/{id}/rejeter")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
     public String rejeterFinancier(@PathVariable Long id,
@@ -341,14 +382,32 @@ public class DossierController {
             d.setValidateurFinancierUsername(principal.getName());
             d.setStatut(DossierStatus.REJETE);
             dossierRepository.save(d);
+    
             historiqueService.enregistrer(d, HistoriqueService.REJET_FIN,
                     "Rejet financier. Motif : " + commentaire, principal.getName());
+    
+            // ✅ Notifier l'agent créateur
+            notificationService.notifier(
+                    d.getAgentCreateur().getUsername(),
+                    "❌ Dossier rejeté — validation financière",
+                    "Le dossier " + d.getNumeroDossier()
+                    + " a été rejeté par " + principal.getName()
+                    + ". Motif : " + commentaire,
+                    "REJET_FINANCIER",
+                    d
+            );
+    
             redirectAttributes.addFlashAttribute("success", "Dossier rejeté ❌");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/validateur/financier/dossiers";
     }
+
+
+
+
+  
 
     // ══════════════════════════════════════════════════════
     //  VALIDATEUR JURIDIQUE
@@ -382,10 +441,23 @@ public class DossierController {
             d.setValidateurJuridiqueUsername(principal.getName());
             if (d.isEntierementValide()) d.setStatut(DossierStatus.VALIDE);
             dossierRepository.save(d);
+    
             historiqueService.enregistrer(d, HistoriqueService.VALIDATION_JUR,
                     "Validation juridique accordée."
                     + (commentaire != null ? " " + commentaire : ""),
                     principal.getName());
+    
+            // ✅ Notifier l'agent créateur
+            notificationService.notifier(
+                    d.getAgentCreateur().getUsername(),
+                    "✅ Validation juridique accordée",
+                    "Le dossier " + d.getNumeroDossier()
+                    + " a été validé juridiquement par " + principal.getName()
+                    + (commentaire != null ? ". Commentaire : " + commentaire : "."),
+                    "VALIDATION_JURIDIQUE_OK",
+                    d
+            );
+    
             redirectAttributes.addFlashAttribute("success", "Validation juridique accordée ✅");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -406,8 +478,21 @@ public class DossierController {
             d.setValidateurJuridiqueUsername(principal.getName());
             d.setStatut(DossierStatus.REJETE);
             dossierRepository.save(d);
+    
             historiqueService.enregistrer(d, HistoriqueService.REJET_JUR,
                     "Rejet juridique. Motif : " + commentaire, principal.getName());
+    
+            // ✅ Notifier l'agent créateur
+            notificationService.notifier(
+                    d.getAgentCreateur().getUsername(),
+                    "❌ Dossier rejeté — validation juridique",
+                    "Le dossier " + d.getNumeroDossier()
+                    + " a été rejeté par " + principal.getName()
+                    + ". Motif : " + commentaire,
+                    "REJET_JURIDIQUE",
+                    d
+            );
+    
             redirectAttributes.addFlashAttribute("success", "Dossier rejeté ❌");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());

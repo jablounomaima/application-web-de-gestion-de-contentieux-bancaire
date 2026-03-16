@@ -3,11 +3,10 @@ package com.example.contentieux_security.controller;
 import com.example.contentieux_security.entity.Notification;
 import com.example.contentieux_security.service.NotificationService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.security.Principal;
 import java.util.List;
@@ -20,11 +19,23 @@ public class NotificationController {
 
     // ── Page notifications validateur financier ────────────
     @GetMapping("/validateur/financier/notifications")
-    @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
-    public String notificationsFinancier(Model model, Principal principal) {
+    public String notificationsFinancier(Model model, Principal principal,
+                                          Authentication authentication) {
+        System.out.println("=== ROLES utilisateur : ");
+        authentication.getAuthorities()
+                .forEach(a -> System.out.println("  → " + a.getAuthority()));
+
         String username = principal.getName();
+        System.out.println("=== Notifications pour username : " + username);
+
         List<Notification> notifications = notificationService.getNotifications(username);
-        notificationService.marquerToutesLues(username); // marquer lues à l'ouverture
+        System.out.println("=== Nombre de notifications trouvées : " + notifications.size());
+        notifications.forEach(n -> System.out.println(
+                "  → destinataire=" + n.getDestinataire()
+                + " | titre=" + n.getTitre()
+                + " | lue=" + n.isLue()));
+
+        notificationService.marquerToutesLues(username);
         model.addAttribute("notifications", notifications);
         model.addAttribute("titre", "Mes notifications — Validateur Financier");
         model.addAttribute("retourUrl", "/validateur/financier/dossiers");
@@ -33,10 +44,22 @@ public class NotificationController {
 
     // ── Page notifications validateur juridique ────────────
     @GetMapping("/validateur/juridique/notifications")
-    @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
-    public String notificationsJuridique(Model model, Principal principal) {
+    public String notificationsJuridique(Model model, Principal principal,
+                                          Authentication authentication) {
+        System.out.println("=== ROLES utilisateur : ");
+        authentication.getAuthorities()
+                .forEach(a -> System.out.println("  → " + a.getAuthority()));
+
         String username = principal.getName();
+        System.out.println("=== Notifications pour username : " + username);
+
         List<Notification> notifications = notificationService.getNotifications(username);
+        System.out.println("=== Nombre de notifications trouvées : " + notifications.size());
+        notifications.forEach(n -> System.out.println(
+                "  → destinataire=" + n.getDestinataire()
+                + " | titre=" + n.getTitre()
+                + " | lue=" + n.isLue()));
+
         notificationService.marquerToutesLues(username);
         model.addAttribute("notifications", notifications);
         model.addAttribute("titre", "Mes notifications — Validateur Juridique");
@@ -51,4 +74,20 @@ public class NotificationController {
         notificationService.marquerLue(id);
         return referer != null ? "redirect:" + referer : "redirect:/";
     }
+
+
+
+
+    // ── Page notifications agent ───────────────────────────
+@GetMapping("/agent/notifications")
+public String notificationsAgent(Model model, Principal principal,
+                                  Authentication authentication) {
+    String username = principal.getName();
+    List<Notification> notifications = notificationService.getNotifications(username);
+    notificationService.marquerToutesLues(username);
+    model.addAttribute("notifications", notifications);
+    model.addAttribute("titre", "Mes notifications — Agent Bancaire");
+    model.addAttribute("retourUrl", "/agent/dossiers");
+    return "validateur/notifications"; // ← réutilise le même template
+}
 }

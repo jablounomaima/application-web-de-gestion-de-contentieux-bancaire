@@ -28,6 +28,7 @@ public class DossierService {
     private final RisqueRepository        risqueRepository;
     private final GarantieRepository      garantieRepository;
     private final HistoriqueService       historiqueService;
+    private final NotificationRepository notificationRepository;
     private final NotificationService     notificationService; // ← déplacé ici avec les autres
 
     // ════════════════════════════════════════════════════
@@ -173,6 +174,9 @@ public class DossierService {
         if (dossier.getValidateurJuridiqueChoisi() == null
                 || dossier.getValidateurJuridiqueChoisi().isBlank())
             throw new RuntimeException("Veuillez choisir un validateur juridique.");
+
+            System.out.println("=== Validateur financier choisi : " + dossier.getValidateurFinancierChoisi());
+            System.out.println("=== Validateur juridique choisi : " + dossier.getValidateurJuridiqueChoisi());    
 
         dossier.setStatut(DossierStatus.EN_TRAITEMENT);
         dossierRepository.save(dossier);
@@ -323,5 +327,29 @@ public class DossierService {
             } catch (Exception ignored) { }
         }
         return String.format("%s-%05d", prefix, sequence);
+    }
+
+
+
+    @Transactional
+    public void supprimerDossier(Long id, String username) {
+        DossierContentieux d = getDossierByIdAndAgent(id, username);
+    
+        // ✅ Ordre correct — du plus profond au plus haut
+    
+        // 1. Supprimer toutes les garanties du dossier
+        garantieRepository.deleteByDossierId(id);
+    
+        // 2. Supprimer tous les risques du dossier
+        risqueRepository.deleteByDossierId(id);
+    
+        // 3. Supprimer l'historique
+        historiqueService.supprimerParDossier(id);
+    
+        // 4. Supprimer les notifications
+        notificationRepository.deleteByDossierId(id);
+    
+        // 5. Supprimer le dossier
+        dossierRepository.deleteById(id);
     }
 }

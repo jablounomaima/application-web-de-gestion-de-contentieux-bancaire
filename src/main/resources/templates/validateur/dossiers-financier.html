@@ -1,0 +1,58 @@
+<!-- Tableau dossiers -->
+<div class="table-wrap fade-in delay-3">
+    <div class="table-header">
+        <h2>⏳ Dossiers financiers en attente de validation</h2>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Référence</th>
+                <th>Client</th>
+                <th>Agence</th>
+                <th>Statut</th>
+                <th>Date création</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            <!-- ✅ Dossiers réels -->
+            <tr th:each="d : ${dossiers}" th:if="${dossiers != null and !#lists.isEmpty(dossiers)}">
+                <td style="font-family:'JetBrains Mono',monospace;font-size:12px"
+                    th:text="${d.numeroDossier} ?: '–'">
+                </td>
+                <td th:text="${d.client != null}
+                             ? ${d.client.nom + ' ' + d.client.prenom}
+                             : '–'">
+                </td>
+                <td th:text="${d.agence != null ? d.agence.nom : '–'}"></td>
+                <td>
+                    <span class="badge badge-amber"
+                          th:text="${d.statut}">
+                    </span>
+                </td>
+                <td style="color:#94a3b8;font-size:12px"
+                    th:text="${d.dateCreation != null}
+                             ? ${#temporals.format(d.dateCreation,'dd/MM/yyyy')}
+                             : '–'">
+                </td>
+                <td style="display:flex;gap:6px">
+                    <!-- ✅ Lien vers le détail pour valider/rejeter -->
+                    <a th:href="@{/validateur/financier/dossiers/{id}(id=${d.id})}"
+                       class="btn btn-green btn-sm">
+                        👁 Voir / Valider
+                    </a>
+                </td>
+            </tr>
+
+            <!-- ✅ Aucun dossier -->
+            <tr th:if="${dossiers == null or #lists.isEmpty(dossiers)}">
+                <td colspan="6"
+                    style="text-align:center;color:#aaa;font-style:italic;padding:30px">
+                    Aucun dossier en attente de validation financière.
+                </td>
+            </tr>
+
+        </tbody>
+    </table>
+</div>

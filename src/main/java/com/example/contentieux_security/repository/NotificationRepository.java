@@ -12,13 +12,19 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    List<Notification> findByDestinataire_OrderByDateCreationDesc(String destinataire);
+    // ❌ Avant : findByDestinataire_OrderByDateCreationDesc  ← _ parasite
+    // ✅ Après : findByDestinataireOrderByDateCreationDesc   ← sans _
+    List<Notification> findByDestinataireOrderByDateCreationDesc(String destinataire);
 
-    List<Notification> findByDestinataire_AndLueFalseOrderByDateCreationDesc(String destinataire);
+    List<Notification> findByDestinataireAndLueFalseOrderByDateCreationDesc(String destinataire);
 
-    long countByDestinataire_AndLueFalse(String destinataire);
+    long countByDestinataireAndLueFalse(String destinataire);
 
     @Modifying
     @Query("UPDATE Notification n SET n.lue = true WHERE n.destinataire = :dest")
     void marquerToutesLues(@Param("dest") String destinataire);
+
+    @Modifying
+@Query("DELETE FROM Notification n WHERE n.dossier.id = :id")
+void deleteByDossierId(@Param("id") Long id);
 }

@@ -76,6 +76,7 @@
 </head>
 <body>
 
+
 <h2>Détail du dossier</h2>
 <p class="subtitle">
     Agent connecté : <b sec:authentication="name">–</b>
@@ -84,6 +85,28 @@
 <!-- Flash messages -->
 <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
 <div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+
+
+<!-- ── Bouton PDF — visible seulement si entièrement validé ── -->
+<div th:if="${dossier.validationFinanciere != null
+    and dossier.validationFinanciere
+    and dossier.validationJuridique != null
+    and dossier.validationJuridique}"
+style="max-width:700px;margin-top:16px">
+
+<a th:href="@{/agent/dossiers/{id}/pdf(id=${dossier.id})}"
+style="display:inline-block;padding:10px 24px;
+    background:linear-gradient(135deg,#27ae60,#2ecc71);
+    color:white;border-radius:4px;text-decoration:none;
+    font-size:14px;font-weight:bold;
+    box-shadow:0 2px 6px rgba(39,174,96,.4)">
+📄 Télécharger le dossier en PDF
+</a>
+
+<p style="font-size:12px;color:#777;margin-top:6px">
+✅ Validation financière et juridique accordées — dossier prêt à être exporté.
+</p>
+</div>
 
 <!-- ── 1. Informations générales ── -->
 <div class="card">
@@ -433,6 +456,8 @@
         ✅ Juridique assigné : <b th:text="${dossier.validateurJuridiqueChoisi}"></b>
     </div>
 </div>
+
+
 
 </body>
 </html>

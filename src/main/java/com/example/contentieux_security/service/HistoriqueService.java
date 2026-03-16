@@ -81,4 +81,10 @@ public class HistoriqueService {
     public List<HistoriqueDossier> getHistorique(Long dossierId) {
         return historiqueRepository.findByDossier_IdOrderByDateActionDesc(dossierId);
     }
+
+
+    @Transactional
+public void supprimerParDossier(Long dossierId) {
+    historiqueRepository.deleteByDossierId(dossierId);
+}
 }
