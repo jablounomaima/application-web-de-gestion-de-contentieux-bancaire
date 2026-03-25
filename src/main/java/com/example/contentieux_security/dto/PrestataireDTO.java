@@ -1,6 +1,6 @@
 package com.example.contentieux_security.dto;
 
-import com.example.contentieux_security.entity.TypePrestataire;
+import com.example.contentieux_security.enums.TypePrestataire;
 import lombok.Data;
 
 @Data
@@ -12,7 +12,7 @@ public class PrestataireDTO {
     private String email;
     private String telephone;
     private String adresse;
-    private TypePrestataire type;
+    private TypePrestataire typePrestataire;
     private String specialite;
     private String numeroCartePro;
     private String niveauValidation;

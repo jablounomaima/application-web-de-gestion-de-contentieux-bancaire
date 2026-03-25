@@ -1,58 +1,151 @@
-<!-- Tableau dossiers -->
-<div class="table-wrap fade-in delay-3">
-    <div class="table-header">
-        <h2>⏳ Dossiers financiers en attente de validation</h2>
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head>
+    <title>Dossiers — Validateur Financier</title>
+    <meta charset="UTF-8">
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 40px;
+               background: #f5f5f5; color: #333; }
+        h2 { color: #2c3e50; margin-bottom: 4px; }
+        .subtitle { color: #777; margin-bottom: 20px; font-size: 14px; }
+
+        .alert { padding: 12px 16px; border-radius: 4px; margin-bottom: 16px; }
+        .alert-success { background:#d4edda; color:#155724; border:1px solid #c3e6cb; }
+        .alert-error   { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb; }
+
+        .notif-bar {
+            display: flex; justify-content: space-between;
+            align-items: center; margin-bottom: 16px;
+        }
+        .notif-link {
+            text-decoration: none; font-size: 14px; font-weight: bold;
+            color: #e74c3c; background: white; padding: 7px 14px;
+            border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+            border: 1px solid #f5c6cb;
+        }
+        .notif-link:hover { background: #fff0f0; }
+        .notif-badge {
+            display: inline-block; background: #e74c3c; color: white;
+            border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 6px;
+        }
+
+        .stats { margin-bottom: 20px; display: flex; gap: 12px; flex-wrap: wrap; }
+        .card {
+            padding: 14px 20px; background: white; border-radius: 6px;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08); font-size: 14px; min-width: 130px;
+        }
+        .card b { display: block; font-size: 22px; color: #2c3e50; margin-top: 2px; }
+
+        table {
+            width: 100%; border-collapse: collapse; background: white;
+            box-shadow: 0 1px 4px rgba(0,0,0,.08); border-radius: 6px; overflow: hidden;
+        }
+        th, td { padding: 11px 14px; border-bottom: 1px solid #eee;
+                 text-align: center; vertical-align: middle; }
+        th { background: #2c3e50; color: white; font-size: 13px; }
+        tr:last-child td { border-bottom: none; }
+        tr:hover td { background: #f9f9f9; }
+
+        .badge {
+            display: inline-block; padding: 3px 9px; border-radius: 12px;
+            font-size: 11px; font-weight: bold; text-transform: uppercase;
+        }
+        .badge-EN_TRAITEMENT { background:#fff3cd; color:#856404; }
+        .badge-VALIDE        { background:#d4edda; color:#155724; }
+        .badge-REJETE        { background:#f8d7da; color:#721c24; }
+
+        .btn {
+            padding: 7px 14px; text-decoration: none; border-radius: 4px;
+            font-size: 13px; display: inline-block;
+        }
+        .btn-voir { background: #27ae60; color: white; }
+        .btn-voir:hover { background: #219a52; }
+
+        .empty-row td { color: #aaa; font-style: italic; padding: 30px; }
+    </style>
+</head>
+<body>
+
+<h2>💰 Dossiers — Validation Financière</h2>
+<p class="subtitle">
+    Connecté : <b sec:authentication="name">–</b>
+</p>
+
+<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+<div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+
+<!-- ✅ Barre notifications — même structure que dossiers-juridique.html -->
+<div class="notif-bar">
+    <div style="font-size:14px;color:#555">
+        Dossiers assignés à votre validation financière
     </div>
-    <table>
-        <thead>
-            <tr>
-                <th>Référence</th>
-                <th>Client</th>
-                <th>Agence</th>
-                <th>Statut</th>
-                <th>Date création</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody>
-
-            <!-- ✅ Dossiers réels -->
-            <tr th:each="d : ${dossiers}" th:if="${dossiers != null and !#lists.isEmpty(dossiers)}">
-                <td style="font-family:'JetBrains Mono',monospace;font-size:12px"
-                    th:text="${d.numeroDossier} ?: '–'">
-                </td>
-                <td th:text="${d.client != null}
-                             ? ${d.client.nom + ' ' + d.client.prenom}
-                             : '–'">
-                </td>
-                <td th:text="${d.agence != null ? d.agence.nom : '–'}"></td>
-                <td>
-                    <span class="badge badge-amber"
-                          th:text="${d.statut}">
-                    </span>
-                </td>
-                <td style="color:#94a3b8;font-size:12px"
-                    th:text="${d.dateCreation != null}
-                             ? ${#temporals.format(d.dateCreation,'dd/MM/yyyy')}
-                             : '–'">
-                </td>
-                <td style="display:flex;gap:6px">
-                    <!-- ✅ Lien vers le détail pour valider/rejeter -->
-                    <a th:href="@{/validateur/financier/dossiers/{id}(id=${d.id})}"
-                       class="btn btn-green btn-sm">
-                        👁 Voir / Valider
-                    </a>
-                </td>
-            </tr>
-
-            <!-- ✅ Aucun dossier -->
-            <tr th:if="${dossiers == null or #lists.isEmpty(dossiers)}">
-                <td colspan="6"
-                    style="text-align:center;color:#aaa;font-style:italic;padding:30px">
-                    Aucun dossier en attente de validation financière.
-                </td>
-            </tr>
-
-        </tbody>
-    </table>
+    <a class="notif-link" th:href="@{/validateur/financier/notifications}">
+        🔔 Notifications
+        <span th:if="${notifCount != null and notifCount > 0}"
+              class="notif-badge" th:text="${notifCount}">
+        </span>
+    </a>
 </div>
+
+<!-- Stats -->
+<div class="stats">
+    <div class="card">
+        En attente
+        <b th:text="${enAttente} ?: ${dossiers != null ? #lists.size(dossiers) : 0}">0</b>
+    </div>
+</div>
+
+<!-- Tableau -->
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Numéro dossier</th>
+        <th>Client</th>
+        <th>Agence</th>
+        <th>Statut</th>
+        <th>Date création</th>
+        <th>Action</th>
+    </tr>
+    </thead>
+    <tbody>
+
+    <tr th:if="${dossiers == null or dossiers.empty}" class="empty-row">
+        <td colspan="7">Aucun dossier en attente de validation financière.</td>
+    </tr>
+
+    <tr th:each="d : ${dossiers}">
+        <td th:text="${d.id}"></td>
+        <td style="font-weight:bold"
+            th:text="${d.numeroDossier} ?: '–'">
+        </td>
+        <td th:text="${d.client != null}
+                     ? ${d.client.nom + ' ' + d.client.prenom}
+                     : '–'">
+        </td>
+        <td th:text="${d.agence != null ? d.agence.nom : '–'}"></td>
+        <td>
+            <span class="badge"
+                  th:classappend="'badge-' + ${d.statut}"
+                  th:text="${d.statut}">
+            </span>
+        </td>
+        <td th:text="${d.dateCreation != null}
+                     ? ${#temporals.format(d.dateCreation, 'dd/MM/yyyy')}
+                     : '–'">
+        </td>
+        <td>
+            <a class="btn btn-voir"
+               th:href="@{/validateur/financier/dossiers/{id}(id=${d.id})}">
+                👁 Voir / Valider
+            </a>
+        </td>
+    </tr>
+
+    </tbody>
+</table>
+
+</body>
+</html>

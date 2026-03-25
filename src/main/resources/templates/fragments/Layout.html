@@ -372,22 +372,51 @@
     </div>
 
     <div class="topbar-right">
-        <a th:href="@{/notifications}" class="topbar-notif" title="Notifications">
+
+        <!-- ✅ Notifications avec compteur réel -->
+        <a th:href="${role == 'VALIDATEUR_FINANCIER'}
+                    ? @{/validateur/financier/notifications}
+                    : (${role == 'VALIDATEUR_JURIDIQUE'}
+                    ? @{/validateur/juridique/notifications}
+                    : (${role == 'AGENT'}
+                    ? @{/agent/notifications}
+                    : @{/notifications}))"
+           class="topbar-notif"
+           title="Notifications"
+           style="position:relative;text-decoration:none;
+                  width:36px;height:36px;border-radius:8px;
+                  background:var(--surface2);border:1px solid var(--border);
+                  display:grid;place-items:center;font-size:16px">
             🔔
-            <span class="notif-dot"></span>
+            <!-- ✅ Badge rouge avec compteur -->
+            <span th:if="${notifCount != null and notifCount > 0}"
+                  style="position:absolute;top:-6px;right:-6px;
+                         background:#dc2626;color:white;
+                         border-radius:10px;padding:1px 6px;
+                         font-size:10px;font-weight:700;
+                         min-width:18px;text-align:center;
+                         border:1.5px solid white;
+                         font-family:'Outfit',sans-serif"
+                  th:text="${notifCount}">
+            </span>
         </a>
-        <div class="topbar-avatar"
-        th:with="displayUser=${(username != null and !#strings.isEmpty(username)) ? username : 'U'}"
-        th:text="${#strings.substring(displayUser,0,1)}">
-       U
-   </div>
+
+        <div class="topbar-user">
+            <div class="topbar-avatar"
+                 th:with="displayUser=${(username != null
+                          and !#strings.isEmpty(username)) ? username : 'U'}"
+                 th:text="${#strings.substring(displayUser, 0, 1)}">
+                U
+            </div>
             <div>
-                <div class="topbar-name" th:text="${username ?: 'Utilisateur'}">Utilisateur</div>
-                <div class="topbar-role" th:text="${role}">Rôle</div>
+                <div class="topbar-name"
+                     th:text="${username ?: 'Utilisateur'}">Utilisateur</div>
+                <div class="topbar-role"
+                     th:text="${role}">Rôle</div>
             </div>
         </div>
+
     </div>
 
 </header>
-
 </html>

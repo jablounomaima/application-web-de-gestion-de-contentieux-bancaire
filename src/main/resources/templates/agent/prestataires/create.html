@@ -20,104 +20,125 @@
     </style>
 </head>
 <body>
-<div class="container">
-    <h1>➕ Nouveau Prestataire</h1>
+   
+    <div class="container">
+        <h1>➕ Nouveau Prestataire</h1>
+    
+        <div th:if="${error}" class="alert-error" th:text="${error}"></div>
+        <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    
+        <form th:action="@{/agent/prestataires/create}" method="post" th:object="${nouveauPrestataire}">
+    
+            <!-- CSRF géré automatiquement par Spring Security + Thymeleaf -->
+            <!-- Plus besoin de ligne manuelle qui causait l'erreur -->
 
-    <div th:if="${error}" class="alert-error" th:text="${error}"></div>
-
-    <!-- ✅ th:object correspond exactement au nom passé dans le modèle -->
-    <form th:action="@{/agent/prestataires/creer}"
-          method="post"
-          th:object="${nouveauPrestataire}">
-
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-
-        <div class="form-group">
-            <label for="type">Type de prestataire *</label>
-            <select id="type" th:field="*{type}" required>
-                <option value="">-- Choisir --</option>
-                <!-- ✅ typesPrestataire est un tableau d'enum TypePrestataire -->
-                <option th:each="t : ${typesPrestataire}"
-                        th:value="${t.name()}"
-                        th:text="${t.getLibelle()}">TYPE</option>
-            </select>
-        </div>
-
-        <div class="form-group">
-            <label for="username">Nom d'utilisateur *</label>
-            <input type="text" id="username" th:field="*{username}" required
-                   placeholder="ex: dupont.avocat"/>
-        </div>
-
-        <!-- ✅ motDePasse — nom exact du champ dans PrestataireCreationRequest -->
-        <div class="form-group">
-            <label for="motDePasse">Mot de passe temporaire</label>
-            <input type="text" id="motDePasse" th:field="*{motDePasse}"
-                   placeholder="Laissez vide pour générer automatiquement"/>
-        </div>
-
-        <div class="form-group">
-            <label for="prenom">Prénom *</label>
-            <input type="text" id="prenom" th:field="*{prenom}" required/>
-        </div>
-
-        <div class="form-group">
-            <label for="nom">Nom *</label>
-            <input type="text" id="nom" th:field="*{nom}" required/>
-        </div>
-
-        <div class="form-group">
-            <label for="email">Email *</label>
-            <input type="email" id="email" th:field="*{email}" required/>
-        </div>
-
-        <div class="form-group">
-            <label for="telephone">Téléphone</label>
-            <input type="tel" id="telephone" th:field="*{telephone}"
-                   placeholder="0555 XX XX XX"/>
-        </div>
-
-        <div class="form-group">
-            <label for="specialite">Spécialité</label>
-            <input type="text" id="specialite" th:field="*{specialite}"
-                   placeholder="Ex: Droit bancaire, Immobilier..."/>
-        </div>
-
-        <div class="form-group">
-            <label for="numeroCartePro">Numéro carte professionnelle</label>
-            <input type="text" id="numeroCartePro" th:field="*{numeroCartePro}"/>
-        </div>
-
-        <!-- Champs validateurs — affichés si VALIDATEUR_FINANCIER ou VALIDATEUR_JURIDIQUE -->
-        <div id="validateurFields">
+            <!-- Type de Prestataire -->
             <div class="form-group">
-                <label for="niveauValidation">Niveau de validation</label>
-                <select id="niveauValidation" th:field="*{niveauValidation}">
-                    <option value="">-- Choisir --</option>
-                    <option value="NIVEAU_1">Niveau 1</option>
-                    <option value="NIVEAU_2">Niveau 2</option>
+                <label for="typePrestataire">Type de prestataire *</label>
+                <select id="typePrestataire" th:field="*{typePrestataire}" required>
+                    <option value="">-- Choisir un type --</option>
+                    <option th:each="t : ${typesPrestataire}"
+                            th:value="${t.name}"
+                            th:text="${t.name}">
+                    </option>
                 </select>
             </div>
+    
+            <!-- Nom d'utilisateur -->
             <div class="form-group">
-                <label for="plafondValidation">Plafond de validation (DZD)</label>
-                <input type="number" id="plafondValidation" th:field="*{plafondValidation}"
-                       placeholder="50000" min="0" step="1000"/>
+                <label for="username">Nom d'utilisateur *</label>
+                <input type="text" id="username" th:field="*{username}" required
+                       placeholder="ex: dupont.avocat"/>
             </div>
-        </div>
 
-        <div class="btn-group">
-            <button type="submit" class="btn btn-primary">💾 Créer</button>
-            <a th:href="@{/agent/prestataires}" class="btn btn-secondary">❌ Annuler</a>
-        </div>
-    </form>
+            <!-- Adresse -->
+<div class="form-group">
+    <label for="adresse">Adresse</label>
+    <input type="text" id="adresse" th:field="*{adresse}" placeholder="Ex: 12 Rue de Tunis, Tunis"/>
 </div>
+    
+            <!-- Mot de passe temporaire -->
+            <div class="form-group">
+                <label for="motDePasse">Mot de passe temporaire</label>
+                <input type="password" id="motDePasse" th:field="*{motDePasse}"
+                       placeholder="Laissez vide pour générer automatiquement"/>
+            </div>
+    
+            <!-- Prénom -->
+            <div class="form-group">
+                <label for="prenom">Prénom *</label>
+                <input type="text" id="prenom" th:field="*{prenom}" required/>
+            </div>
+    
+            <!-- Nom -->
+            <div class="form-group">
+                <label for="nom">Nom *</label>
+                <input type="text" id="nom" th:field="*{nom}" required/>
+            </div>
+    
+            <!-- Email -->
+            <div class="form-group">
+                <label for="email">Email *</label>
+                <input type="email" id="email" th:field="*{email}" required/>
+            </div>
+    
+            <!-- Téléphone -->
+            <div class="form-group">
+                <label for="telephone">Téléphone</label>
+                <input type="tel" id="telephone" th:field="*{telephone}"
+                       placeholder="0555 XX XX XX"/>
+            </div>
+    
+            <!-- Spécialité -->
+            <div class="form-group">
+                <label for="specialite">Spécialité</label>
+                <input type="text" id="specialite" th:field="*{specialite}"
+                       placeholder="Ex: Droit bancaire, Immobilier..."/>
+            </div>
+    
+            <!-- Numéro carte pro -->
+            <div class="form-group">
+                <label for="numeroCartePro">Numéro carte professionnelle</label>
+                <input type="text" id="numeroCartePro" th:field="*{numeroCartePro}"/>
+            </div>
+    
+            <!-- Champs pour validateurs -->
+            <div id="validateurFields">
+                <div class="form-group">
+                    <label for="niveauValidation">Niveau de validation</label>
+                    <select id="niveauValidation" th:field="*{niveauValidation}">
+                        <option value="">-- Choisir --</option>
+                        <option value="NIVEAU_1">Niveau 1</option>
+                        <option value="NIVEAU_2">Niveau 2</option>
+                    </select>
+                </div>
+                
+                <div class="form-group">
+                    <label for="plafondValidation">Plafond de validation (DZD)</label>
+                    <input type="number" id="plafondValidation" th:field="*{plafondValidation}"
+                           placeholder="50000" min="0" step="1000"/>
+                </div>
+                
+            </div>
+    
+            <div class="btn-group">
+                <button type="submit" class="btn btn-primary">💾 Créer le Prestataire</button>
+                <a th:href="@{/agent/prestataires}" class="btn btn-secondary">❌ Annuler</a>
+            </div>
+        </form>
+    </div>
 
-<script>
-    // Afficher/masquer champs validateurs selon le type sélectionné
-    document.getElementById('type').addEventListener('change', function() {
-        const valFields = document.getElementById('validateurFields');
-        valFields.style.display = this.value.includes('VALIDATEUR') ? 'block' : 'none';
-    });
-</script>
+    <!-- Script pour afficher/masquer les champs validateurs selon le type -->
+    <script>
+        document.getElementById('typePrestataire').addEventListener('change', function() {
+            const validateurFields = document.getElementById('validateurFields');
+            if (this.value === 'VALIDATEUR') {
+                validateurFields.style.display = 'block';
+            } else {
+                validateurFields.style.display = 'none';
+            }
+        });
+    </script>
+    
 </body>
 </html>

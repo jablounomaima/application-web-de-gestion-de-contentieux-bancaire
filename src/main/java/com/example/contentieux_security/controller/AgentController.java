@@ -8,7 +8,7 @@ import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.entity.Client;
 import com.example.contentieux_security.entity.DossierContentieux;
 import com.example.contentieux_security.entity.Prestataire;
-import com.example.contentieux_security.entity.TypePrestataire;
+import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.service.AgentBancaireService;
 import com.example.contentieux_security.service.ClientService;
 import com.example.contentieux_security.service.DossierService;
@@ -66,19 +66,19 @@ public class AgentController {
     public String gererClients(Model model, @AuthenticationPrincipal OidcUser oidcUser) {
         String agentUsername = oidcUser.getPreferredUsername();
         AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
-        
+
         if (agent == null) {
             model.addAttribute("error", "Agent non trouvé");
             return "error";
         }
-        
+
         if (agent.getAgence() == null) {
             model.addAttribute("error", "Agent non rattaché à une agence");
             return "error";
         }
-        
+
         List<Client> clients = clientService.findByAgence(agent.getAgence());
-        
+
         model.addAttribute("pageTitle", "Gérer les Clients");
         model.addAttribute("clients", clients != null ? clients : new ArrayList<>());
         model.addAttribute("nouveauClient", new Client());
@@ -95,20 +95,20 @@ public class AgentController {
         try {
             String agentUsername = oidcUser.getPreferredUsername();
             AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
-            
+
             if (agent == null || agent.getAgence() == null) {
                 redirectAttrs.addFlashAttribute("error", "Agent ou agence non trouvé");
                 return "redirect:/agent/clients";
             }
-            
+
             nouveauClient.setAgence(agent.getAgence());
             nouveauClient.setDateInscription(LocalDate.now());
-            
+
             clientService.save(nouveauClient);
-            
+
             redirectAttrs.addFlashAttribute("success", "Client créé avec succès !");
             return "redirect:/agent/clients";
-            
+
         } catch (Exception e) {
             redirectAttrs.addFlashAttribute("error", "Erreur: " + e.getMessage());
             return "redirect:/agent/clients";
@@ -116,76 +116,57 @@ public class AgentController {
     }
 
     @GetMapping("/clients/{id}/dossiers")
-    public String voirDossiersClient(@PathVariable Long id, 
-                                       Model model,
-                                       @AuthenticationPrincipal OidcUser oidcUser) {
+    public String voirDossiersClient(@PathVariable Long id,
+                                     Model model,
+                                     @AuthenticationPrincipal OidcUser oidcUser) {
         try {
             String agentUsername = oidcUser.getPreferredUsername();
             AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
-            
+
             if (agent == null) {
                 model.addAttribute("error", "Agent non trouvé");
                 return "error";
             }
-            
-            // Charger l'agence explicitement si nécessaire
+
             if (agent.getAgence() == null) {
                 model.addAttribute("error", "Agent non rattaché à une agence");
                 return "error";
             }
-            
+
             Long agentAgenceId = agent.getAgence().getId();
-            
-            // Vérifier que le service existe
-            if (clientService == null) {
-                model.addAttribute("error", "Service client non injecté");
-                return "error";
-            }
-            
+
             Client client = clientService.findById(id);
-            
-            // Debug
-            System.out.println("Client trouvé: " + client);
-            
+
             if (client == null) {
                 model.addAttribute("error", "Client non trouvé avec l'id: " + id);
                 return "error";
             }
-            
-            // Vérifier l'agence du client
+
             if (client.getAgence() == null) {
                 model.addAttribute("error", "Client " + id + " non rattaché à une agence");
                 return "error";
             }
-            
+
             Long clientAgenceId = client.getAgence().getId();
-            System.out.println("Agent agence: " + agentAgenceId + ", Client agence: " + clientAgenceId);
-            
+
             if (!clientAgenceId.equals(agentAgenceId)) {
                 model.addAttribute("error", "Client non autorisé pour cette agence");
                 return "error";
             }
-            
-            // Vérifier dossierService
-            if (dossierService == null) {
-                model.addAttribute("error", "Service dossier non injecté");
-                return "error";
-            }
-            
+
             List<DossierContentieux> dossiers = dossierService.findByClientId(id);
-            System.out.println("Dossiers trouvés: " + (dossiers != null ? dossiers.size() : 0));
-            
+
             model.addAttribute("client", client);
             model.addAttribute("dossiers", dossiers != null ? dossiers : new ArrayList<>());
             model.addAttribute("pageTitle", "Dossiers de " + client.getNom() + " " + client.getPrenom());
             model.addAttribute("givenName", oidcUser.getGivenName());
             model.addAttribute("familyName", oidcUser.getFamilyName());
             model.addAttribute("username", agentUsername);
-            
+
             return "agent/clients/dossiers";
-            
+
         } catch (Exception e) {
-            e.printStackTrace(); // IMPORTANT: Log l'erreur complète
+            e.printStackTrace();
             model.addAttribute("error", "Erreur technique: " + e.getClass().getSimpleName() + " - " + e.getMessage());
             return "error";
         }
@@ -258,12 +239,16 @@ public class AgentController {
     //  PRESTATAIRES
     // ══════════════════════════════════════════════════════════════
 
+      // ══════════════════════════════════════════════════════════════
+    //  PRESTATAIRES
+    // ══════════════════════════════════════════════════════════════
+
     @GetMapping("/prestataires")
     public String listPrestataires(Model model, @AuthenticationPrincipal OidcUser oidcUser) {
         String agentUsername = oidcUser.getPreferredUsername();
         List<Prestataire> prestataires = prestataireService.getPrestatairesParAgent(agentUsername);
 
-        model.addAttribute("prestataires", prestataires);
+        model.addAttribute("prestataires", prestataires != null ? prestataires : new ArrayList<>());
         model.addAttribute("nouveauPrestataire", new PrestataireCreationRequest());
         model.addAttribute("typesPrestataire", TypePrestataire.values());
         model.addAttribute("givenName", oidcUser.getGivenName());
@@ -274,15 +259,29 @@ public class AgentController {
 
     @GetMapping("/prestataires/create")
     public String showCreateForm(Model model, @AuthenticationPrincipal OidcUser oidcUser) {
+        if (oidcUser == null) {
+            return "redirect:/oauth2/authorization/keycloak";
+        }
+
         model.addAttribute("nouveauPrestataire", new PrestataireCreationRequest());
         model.addAttribute("typesPrestataire", TypePrestataire.values());
-        model.addAttribute("givenName", oidcUser.getGivenName());
-        model.addAttribute("familyName", oidcUser.getFamilyName());
-        model.addAttribute("username", oidcUser.getPreferredUsername());
+
+        model.addAttribute("givenName", oidcUser.getGivenName() != null ? oidcUser.getGivenName() : "");
+        model.addAttribute("familyName", oidcUser.getFamilyName() != null ? oidcUser.getFamilyName() : "");
+        model.addAttribute("username", oidcUser.getPreferredUsername() != null ? oidcUser.getPreferredUsername() : "");
+
         return "agent/prestataires/create";
     }
 
-    @PostMapping("/prestataires/creer")
+  // Redirection pour les anciens liens en français (utile pendant la transition)
+  @GetMapping("/agent/prestataires/creer")
+public String showCreateForm(Model model) {
+    model.addAttribute("prestataire", new PrestataireCreationRequest());
+    model.addAttribute("typesPrestataire", TypePrestataire.values());
+    return "agent/prestataires/create";
+}
+
+    @PostMapping("/prestataires/create")        // ← CHANGÉ : "create" au lieu de "creer"
     public String creerPrestataire(@ModelAttribute("nouveauPrestataire") PrestataireCreationRequest request,
                                    @AuthenticationPrincipal OidcUser oidcUser,
                                    RedirectAttributes redirectAttrs) {
@@ -297,72 +296,106 @@ public class AgentController {
         return "redirect:/agent/prestataires";
     }
 
-    @GetMapping("/prestataires/{id}/edit")
-    public String showEditPrestataireForm(@PathVariable Long id, Model model,
-                                          RedirectAttributes redirectAttrs) {
-        try {
-            PrestataireDTO prestataire = prestataireService.getPrestataireByIdAndAgent(id, getCurrentUsername());
-            model.addAttribute("prestataire", prestataire);
+
+
+
+        // ====================== ÉDITION D'UN PRESTATAIRE ======================
+    
+        @GetMapping("/prestataires/{id}/edit")
+        public String editPrestataire(@PathVariable("id") Long id,
+                                      Model model,
+                                      @AuthenticationPrincipal OidcUser oidcUser) {
+        
+            Prestataire prestataire = prestataireService.findById(id);
+        
+            if (prestataire == null) {
+                return "redirect:/agent/prestataires?error=Prestataire non trouvé";
+            }
+        
+            PrestataireCreationRequest request = new PrestataireCreationRequest();
+            request.setId(prestataire.getId());                    // ← AJOUTE CETTE LIGNE
+            request.setUsername(prestataire.getUsername());
+            request.setPrenom(prestataire.getPrenom());
+            request.setNom(prestataire.getNom());
+            request.setEmail(prestataire.getEmail());
+            request.setTelephone(prestataire.getTelephone());
+            request.setSpecialite(prestataire.getSpecialite());
+            request.setNumeroCartePro(prestataire.getNumeroCartePro());
+            request.setAdresse(prestataire.getAdresse());
+            request.setTypePrestataire(prestataire.getType());           // ← Ici
+            request.setNiveauValidation(prestataire.getNiveauValidation());
+            request.setPlafondValidation(prestataire.getPlafondValidation());
+        
+            model.addAttribute("prestataire", request);
             model.addAttribute("typesPrestataire", TypePrestataire.values());
+            model.addAttribute("givenName", oidcUser != null ? oidcUser.getGivenName() : "");
+            model.addAttribute("familyName", oidcUser != null ? oidcUser.getFamilyName() : "");
+            model.addAttribute("username", oidcUser != null ? oidcUser.getPreferredUsername() : "");
+        
             return "agent/prestataires/form-edit";
-        } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", e.getMessage());
+        }
+    
+        @PostMapping("/prestataires/{id}/edit")
+        public String updatePrestataire(@PathVariable("id") Long id,
+                                        @ModelAttribute("prestataire") PrestataireCreationRequest request,
+                                        @AuthenticationPrincipal OidcUser oidcUser,
+                                        RedirectAttributes redirectAttrs) {
+            try {
+                prestataireService.updatePrestataire(id, request, oidcUser.getPreferredUsername());
+                redirectAttrs.addFlashAttribute("success", "Prestataire mis à jour avec succès !");
+            } catch (Exception e) {
+                redirectAttrs.addFlashAttribute("error", "Erreur lors de la mise à jour : " + e.getMessage());
+            }
             return "redirect:/agent/prestataires";
         }
-    }
 
-    @PostMapping("/prestataires/{id}/edit")
-    public String updatePrestataire(@PathVariable Long id,
-                                    @ModelAttribute PrestataireCreationRequest request,
-                                    RedirectAttributes redirectAttrs) {
-        try {
-            prestataireService.updatePrestataire(id, request, getCurrentUsername());
-            redirectAttrs.addFlashAttribute("success", "Prestataire mis à jour !");
-        } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", e.getMessage());
-        }
-        return "redirect:/agent/prestataires";
-    }
 
-    @PostMapping("/prestataires/{id}/toggle")
-    public String toggleStatut(@PathVariable Long id, RedirectAttributes redirectAttrs) {
-        try {
-            prestataireService.togglePrestataireStatus(id, getCurrentUsername());
-            redirectAttrs.addFlashAttribute("success", "Statut mis à jour.");
-        } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", e.getMessage());
-        }
-        return "redirect:/agent/prestataires";
-    }
+            // ====================== SUPPRESSION D'UN PRESTATAIRE ======================
 
     @PostMapping("/prestataires/{id}/delete")
-    public String deletePrestataire(@PathVariable Long id, RedirectAttributes redirectAttrs) {
+    public String deletePrestataire(@PathVariable("id") Long id,
+                                    RedirectAttributes redirectAttributes,
+                                    @AuthenticationPrincipal OidcUser oidcUser) {
+        
         try {
-            prestataireService.deletePrestataire(id, getCurrentUsername());
-            redirectAttrs.addFlashAttribute("success", "Prestataire supprimé !");
+            boolean deleted = prestataireService.deletePrestataire(id, oidcUser.getPreferredUsername());
+            
+            if (deleted) {
+                redirectAttributes.addFlashAttribute("success", "Prestataire supprimé avec succès !");
+            } else {
+                redirectAttributes.addFlashAttribute("error", "Impossible de supprimer ce prestataire.");
+            }
         } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", e.getMessage());
+            redirectAttributes.addFlashAttribute("error", "Erreur lors de la suppression : " + e.getMessage());
         }
+        
         return "redirect:/agent/prestataires";
     }
 
-    @GetMapping("/prestataires/{id}/confirm-delete")
-    public String confirmDelete(@PathVariable Long id, Model model,
-                                @AuthenticationPrincipal OidcUser oidcUser,
-                                RedirectAttributes redirectAttrs) {
-        try {
-            model.addAttribute("prestataire",
-                prestataireService.getPrestataireByIdAndAgent(id, getCurrentUsername()));
-            model.addAttribute("givenName", oidcUser.getGivenName());
-            model.addAttribute("familyName", oidcUser.getFamilyName());
-            model.addAttribute("username", oidcUser.getPreferredUsername());
-            return "agent/prestataires/confirm-delete";
-        } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", e.getMessage());
+
+
+        // ====================== ACTIVATION / DÉSACTIVATION (TOGGLE) ======================
+
+        @PostMapping("/prestataires/{id}/toggle")
+        public String togglePrestataire(@PathVariable("id") Long id,
+                                        RedirectAttributes redirectAttributes,
+                                        @AuthenticationPrincipal OidcUser oidcUser) {
+    
+            try {
+                Prestataire updated = prestataireService.toggleActif(id, oidcUser.getPreferredUsername());
+                String status = updated.isActif() ? "activé" : "désactivé";
+                
+                redirectAttributes.addFlashAttribute("success", 
+                    "Prestataire " + updated.getPrenom() + " " + updated.getNom() 
+                    + " a été " + status + " avec succès !");
+            } catch (Exception e) {
+                redirectAttributes.addFlashAttribute("error", "Erreur : " + e.getMessage());
+            }
+    
             return "redirect:/agent/prestataires";
         }
-    }
 
+    // ... le reste de tes méthodes reste identique
     // ══════════════════════════════════════════════════════════════
     //  UTILITAIRE
     // ══════════════════════════════════════════════════════════════

@@ -79,6 +79,27 @@
 <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
 <div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
 
+
+<body>
+    <div style="text-align:right;max-width:900px;margin-bottom:10px">
+        <a th:href="@{/validateur/financier/notifications}"
+           style="text-decoration:none;font-size:14px;color:#e74c3c;font-weight:bold;
+                  background:white;padding:7px 14px;border-radius:4px;
+                  box-shadow:0 1px 4px rgba(0,0,0,.08);border:1px solid #f5c6cb;">
+            🔔 Notifications
+            <span th:if="${notifCount != null and notifCount > 0}"
+                  style="display:inline-block;background:#e74c3c;color:white;
+                         border-radius:10px;padding:1px 7px;font-size:11px;
+                         margin-left:6px"
+                  th:text="${notifCount}">
+            </span>
+        </a>
+    </div>
+    
+    <!-- Flash -->
+    <div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+    <div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+
 <!-- ── Infos dossier ── -->
 <div class="card">
     <div class="card-title">📁 Informations du dossier</div>

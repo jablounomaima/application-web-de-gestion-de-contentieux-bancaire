@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Lancer une prestation</title>
+</head>
+<body>
+
+<h2>⚙ Lancer une prestation</h2>
+
+<div th:if="${error}" class="alert-error" th:text="${error}"></div>
+
+<div class="card">
+    <!-- Info dossier -->
+    <div class="info-box">
+        <strong>Dossier :</strong>
+        <span th:text="${dossier.numeroDossier}"></span> —
+        <span th:text="${dossier.client.nom + ' ' + dossier.client.prenom}"></span>
+        <br>
+        <strong>Statut :</strong>
+        <span th:text="${dossier.statut}"></span>
+    </div>
+
+    <form th:action="@{/agent/dossiers/{id}/prestations/lancer(id=${dossier.id})}"
+          method="post">
+
+        <input type="hidden"
+               th:name="${_csrf.parameterName}"
+               th:value="${_csrf.token}"/>
+
+        <label>Type de prestation *</label>
+        <select name="type" required>
+            <option value="">-- Choisir --</option>
+
+            <option th:each="t : ${typesPrestations}"
+        th:value="${t.name()}"
+        th:text="${t}">
+</option>
+        </select>
+
+        <label>Description</label>
+        <textarea name="description"
+                  placeholder="Décrivez l'objectif de cette prestation..."></textarea>
+
+        <div style="display:flex; gap:12px;">
+            <button type="submit" class="btn-primary">
+                🚀 Lancer la prestation
+            </button>
+
+            <a th:href="@{/agent/dossiers/{id}(id=${dossier.id})}"
+               class="btn-secondary">
+               ✖ Annuler
+            </a>
+        </div>
+    </form>
+</div>
+
+</body>
+</html>

@@ -157,6 +157,7 @@ public class DossierService {
         dossierRepository.save(dossier);
     }
 
+  
     @Transactional
     public void soumettreAValidation(Long id, String username) {
         DossierContentieux dossier = getDossierByIdAndAgent(id, username);
@@ -175,41 +176,45 @@ public class DossierService {
                 || dossier.getValidateurJuridiqueChoisi().isBlank())
             throw new RuntimeException("Veuillez choisir un validateur juridique.");
 
-            System.out.println("=== Validateur financier choisi : " + dossier.getValidateurFinancierChoisi());
-            System.out.println("=== Validateur juridique choisi : " + dossier.getValidateurJuridiqueChoisi());    
-
         dossier.setStatut(DossierStatus.EN_TRAITEMENT);
         dossierRepository.save(dossier);
 
-        // ✅ Notifications — DANS la méthode
-        notificationService.notifier(
-                dossier.getValidateurFinancierChoisi(),
-                "Nouveau dossier à valider",
-                "Le dossier " + dossier.getNumeroDossier()
-                + " de " + dossier.getClient().getNom()
-                + " " + dossier.getClient().getPrenom()
-                + " nécessite votre validation financière.",
-                "VALIDATION_FINANCIERE",
-                dossier
-        );
+        // ✅ Notifier UNIQUEMENT les validateurs qui n'ont pas encore validé
+        // validationFinanciere = null  → pas encore traité → notifier
+        // validationFinanciere = true  → déjà accepté     → NE PAS notifier
+        // validationFinanciere = false → rejeté           → notifier (resoumission)
 
-        notificationService.notifier(
-                dossier.getValidateurJuridiqueChoisi(),
-                "Nouveau dossier à valider",
-                "Le dossier " + dossier.getNumeroDossier()
-                + " de " + dossier.getClient().getNom()
-                + " " + dossier.getClient().getPrenom()
-                + " nécessite votre validation juridique.",
-                "VALIDATION_JURIDIQUE",
-                dossier
-        );
+        if (!Boolean.TRUE.equals(dossier.getValidationFinanciere())) {
+            notificationService.notifier(
+                    dossier.getValidateurFinancierChoisi(),
+                    "Nouveau dossier à valider",
+                    "Le dossier " + dossier.getNumeroDossier()
+                    + " de " + dossier.getClient().getNom()
+                    + " " + dossier.getClient().getPrenom()
+                    + " nécessite votre validation financière.",
+                    "VALIDATION_FINANCIERE",
+                    dossier
+            );
+        }
+
+        if (!Boolean.TRUE.equals(dossier.getValidationJuridique())) {
+            notificationService.notifier(
+                    dossier.getValidateurJuridiqueChoisi(),
+                    "Nouveau dossier à valider",
+                    "Le dossier " + dossier.getNumeroDossier()
+                    + " de " + dossier.getClient().getNom()
+                    + " " + dossier.getClient().getPrenom()
+                    + " nécessite votre validation juridique.",
+                    "VALIDATION_JURIDIQUE",
+                    dossier
+            );
+        }
 
         historiqueService.enregistrer(dossier, HistoriqueService.SOUMISSION,
                 "Soumis à : " + dossier.getValidateurFinancierChoisi()
                 + " (financier) et " + dossier.getValidateurJuridiqueChoisi()
                 + " (juridique)", username);
-    } // ← accolade fermante de soumettreAValidation
-
+    }
     // ════════════════════════════════════════════════════
     //  RISQUES
     // ════════════════════════════════════════════════════

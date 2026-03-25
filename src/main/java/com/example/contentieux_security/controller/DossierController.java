@@ -6,7 +6,7 @@ import com.example.contentieux_security.dto.GarantieAjoutRequest;
 import com.example.contentieux_security.dto.RisqueAjoutRequest;
 import com.example.contentieux_security.entity.DossierContentieux;
 import com.example.contentieux_security.entity.Garantie;
-import com.example.contentieux_security.entity.TypePrestataire;
+import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.enums.DossierStatus;
 import com.example.contentieux_security.repository.DossierRepository;
 import com.example.contentieux_security.repository.GarantieRepository;
@@ -14,7 +14,6 @@ import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.HistoriqueService;
 import com.example.contentieux_security.service.NotificationService;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
@@ -29,39 +28,48 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DossierController {
 
+    // ── Dépendances injectées ─────────────────────────────
     private final DossierService        dossierService;
     private final HistoriqueService     historiqueService;
     private final GarantieRepository    garantieRepository;
     private final DossierRepository     dossierRepository;
     private final PrestataireRepository prestataireRepository;
-    private final NotificationService   notificationService; // ← ajouter
-
+    private final NotificationService   notificationService;
 
     // ══════════════════════════════════════════════════════
-    //  AGENT — Dossiers
+    //  AGENT — Gestion des dossiers
     // ══════════════════════════════════════════════════════
+
+    /**
+     * Liste tous les dossiers de l'agent connecté.
+     * Injecte les stats et le badge de notifications non lues.
+     */
     @GetMapping("/agent/dossiers")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String listeDossiers(Model model, Principal principal) {
         String username = principal.getName();
         List<DossierContentieux> dossiers = dossierService.getDossiersAgent(username);
-        model.addAttribute("dossiers",         dossiers);
-        model.addAttribute("givenName",         username);
-        model.addAttribute("totalDossiers",     dossiers.size());
+
+        model.addAttribute("dossiers",        dossiers);
+        model.addAttribute("givenName",        username);
+        model.addAttribute("totalDossiers",    dossiers.size());
         model.addAttribute("dossiersOuverts",
             dossiers.stream().filter(d -> d.getStatut() == DossierStatus.OUVERT).count());
         model.addAttribute("dossiersEnAttente",
             dossiers.stream().filter(d -> d.getStatut() == DossierStatus.EN_TRAITEMENT).count());
         model.addAttribute("dossiersValides",
             dossiers.stream().filter(d -> d.getStatut() == DossierStatus.VALIDE).count());
-    
-        // ✅ Badge notifications non lues
+
+        // Badge 🔔 — nombre de notifications non lues pour l'agent
         model.addAttribute("notifCount",
             notificationService.countNonLues(username));
-    
+
         return "agent/dossiers/list";
     }
 
+    /**
+     * Formulaire de création d'un nouveau dossier.
+     */
     @GetMapping("/agent/dossiers/create")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String formulaireCreation(Model model) {
@@ -69,6 +77,10 @@ public class DossierController {
         return "agent/dossiers/create";
     }
 
+    /**
+     * Traitement de la création du dossier.
+     * Redirige vers le détail du dossier créé.
+     */
     @PostMapping("/agent/dossiers/creer")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String creerDossier(@ModelAttribute DossierCreationRequest request,
@@ -85,6 +97,10 @@ public class DossierController {
         }
     }
 
+    /**
+     * Détail complet d'un dossier.
+     * Charge aussi les listes de validateurs disponibles pour l'assignation.
+     */
     @GetMapping("/agent/dossiers/{id}")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String detailDossier(@PathVariable Long id, Model model,
@@ -93,6 +109,7 @@ public class DossierController {
             DossierDetailDTO dossier = dossierService.getDossierDetail(id);
             model.addAttribute("dossier", dossier);
 
+            // Listes des validateurs disponibles (depuis table Prestataire)
             var vf = prestataireRepository
                     .findByTypeAndActifTrue(TypePrestataire.VALIDATEUR_FINANCIER);
             var vj = prestataireRepository
@@ -106,15 +123,19 @@ public class DossierController {
 
             return "agent/dossiers/detail";
 
-        } catch (Exception e) {  // ✅ accolade fermante manquante — corrigée
+        } catch (Exception e) {
             System.err.println("=== ERREUR detailDossier : " + e.getMessage());
             e.printStackTrace();
             redirectAttributes.addFlashAttribute("error",
                     "Impossible de charger le dossier : " + e.getMessage());
             return "redirect:/agent/dossiers";
         }
-    } // ✅ fin de detailDossier
+    }
 
+    /**
+     * Assigne les validateurs financier et juridique au dossier.
+     * Obligatoire avant la soumission à validation.
+     */
     @PostMapping("/agent/dossiers/{id}/choisir-validateurs")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String choisirValidateurs(@PathVariable Long id,
@@ -132,25 +153,39 @@ public class DossierController {
         return "redirect:/agent/dossiers/" + id;
     }
 
+    /**
+     * Formulaire d'édition d'un dossier.
+     * Accessible uniquement si statut OUVERT ou REJETE
+     * (un dossier rejeté peut être corrigé et re-soumis).
+     */
     @GetMapping("/agent/dossiers/{id}/edit")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String formulaireEdition(@PathVariable Long id, Model model,
                                     RedirectAttributes redirectAttributes) {
         try {
             DossierDetailDTO dossier = dossierService.getDossierDetail(id);
-            if (!dossier.getStatut().equals("OUVERT")) {
+
+            // Bloquer la modification si EN_TRAITEMENT ou VALIDE
+            if (!dossier.getStatut().equals("OUVERT")
+                    && !dossier.getStatut().equals("REJETE")) {
                 redirectAttributes.addFlashAttribute("error",
-                        "Ce dossier n'est plus modifiable (statut : " + dossier.getStatut() + ").");
+                        "Ce dossier n'est plus modifiable (statut : "
+                        + dossier.getStatut() + ").");
                 return "redirect:/agent/dossiers/" + id;
             }
+
             model.addAttribute("dossier", dossier);
             return "agent/dossiers/edit";
+
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/agent/dossiers";
         }
     }
 
+    /**
+     * Sauvegarde les modifications du dossier (libellé, description, notes).
+     */
     @PostMapping("/agent/dossiers/{id}/edit")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String modifierDossier(@PathVariable Long id,
@@ -172,15 +207,17 @@ public class DossierController {
         return "redirect:/agent/dossiers/" + id;
     }
 
-
-
+    /**
+     * Supprime un dossier et toutes ses données liées
+     * dans l'ordre correct pour respecter les contraintes FK :
+     * garanties → risques → historique → notifications → dossier.
+     */
     @PostMapping("/agent/dossiers/{id}/supprimer")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String supprimerDossier(@PathVariable Long id,
                                     Principal principal,
                                     RedirectAttributes redirectAttributes) {
         try {
-            // ✅ Utiliser la méthode service qui gère les FK
             DossierContentieux d = dossierService.getDossierById(id);
             String numero = d.getNumeroDossier();
             dossierService.supprimerDossier(id, principal.getName());
@@ -192,6 +229,11 @@ public class DossierController {
         return "redirect:/agent/dossiers";
     }
 
+    /**
+     * Soumet le dossier à validation (statut OUVERT ou REJETE → EN_TRAITEMENT).
+     * Envoie une notification aux deux validateurs assignés.
+     * Si re-soumission après rejet, réinitialise les décisions précédentes.
+     */
     @PostMapping("/agent/dossiers/{id}/soumettre")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String soumettre(@PathVariable Long id, Principal principal,
@@ -199,7 +241,8 @@ public class DossierController {
         try {
             dossierService.soumettreAValidation(id, principal.getName());
             redirectAttributes.addFlashAttribute("success",
-                    "Dossier soumis à validation. En attente des décisions financière et juridique.");
+                    "Dossier soumis à validation. "
+                    + "En attente des décisions financière et juridique.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
@@ -210,6 +253,9 @@ public class DossierController {
     //  AGENT — Risques & Garanties
     // ══════════════════════════════════════════════════════
 
+    /**
+     * Ajoute un risque (crédit) au dossier.
+     */
     @PostMapping("/agent/dossiers/{id}/risques/ajouter")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String ajouterRisque(@PathVariable Long id,
@@ -225,6 +271,10 @@ public class DossierController {
         return "redirect:/agent/dossiers/" + id + "/edit";
     }
 
+    /**
+     * Sélectionne le risque principal à traiter dans la procédure contentieuse.
+     * Un seul risque peut être sélectionné à la fois.
+     */
     @PostMapping("/agent/dossiers/risques/{rId}/selectionner")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String selectionnerRisque(@PathVariable Long rId,
@@ -233,13 +283,17 @@ public class DossierController {
                                      RedirectAttributes redirectAttributes) {
         try {
             dossierService.selectionnerRisque(rId, principal.getName());
-            redirectAttributes.addFlashAttribute("success", "Crédit sélectionné pour la procédure.");
+            redirectAttributes.addFlashAttribute("success",
+                    "Crédit sélectionné pour la procédure.");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return referer != null ? "redirect:" + referer : "redirect:/agent/dossiers";
     }
 
+    /**
+     * Ajoute une garantie à un risque existant.
+     */
     @PostMapping("/agent/dossiers/risques/{rId}/garanties/ajouter")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String ajouterGarantie(@PathVariable Long rId,
@@ -256,6 +310,9 @@ public class DossierController {
         return referer != null ? "redirect:" + referer : "redirect:/agent/dossiers";
     }
 
+    /**
+     * Formulaire d'édition d'une garantie existante.
+     */
     @GetMapping("/agent/dossiers/garanties/{gId}/edit")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String formulaireEditGarantie(@PathVariable Long gId,
@@ -263,7 +320,8 @@ public class DossierController {
                                           Principal principal) {
         try {
             Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
-                    .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
+                    .orElseThrow(() -> new RuntimeException(
+                            "Garantie introuvable : " + gId));
             model.addAttribute("garantie", g);
             model.addAttribute("dossierId", g.getRisque().getDossier().getId());
             return "agent/dossiers/edit-garantie";
@@ -274,6 +332,9 @@ public class DossierController {
         }
     }
 
+    /**
+     * Sauvegarde les modifications d'une garantie.
+     */
     @PostMapping("/agent/dossiers/garanties/{gId}/edit")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String modifierGarantie(@PathVariable Long gId,
@@ -291,10 +352,15 @@ public class DossierController {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
-                .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
-        return "redirect:/agent/dossiers/" + g.getRisque().getDossier().getId() + "/edit";
+                .orElseThrow(() -> new RuntimeException(
+                        "Garantie introuvable : " + gId));
+        return "redirect:/agent/dossiers/"
+                + g.getRisque().getDossier().getId() + "/edit";
     }
 
+    /**
+     * Supprime une garantie d'un risque.
+     */
     @PostMapping("/agent/dossiers/garanties/{gId}/supprimer")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String supprimerGarantie(@PathVariable Long gId,
@@ -302,7 +368,8 @@ public class DossierController {
                                      RedirectAttributes redirectAttributes) {
         try {
             Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
-                    .orElseThrow(() -> new RuntimeException("Garantie introuvable : " + gId));
+                    .orElseThrow(() -> new RuntimeException(
+                            "Garantie introuvable : " + gId));
             Long dossierId = g.getRisque().getDossier().getId();
             garantieRepository.deleteById(gId);
             redirectAttributes.addFlashAttribute("success", "Garantie supprimée.");
@@ -317,21 +384,55 @@ public class DossierController {
     //  VALIDATEUR FINANCIER
     // ══════════════════════════════════════════════════════
 
+    /**
+     * Liste les dossiers EN_TRAITEMENT assignés au validateur financier connecté.
+     * Injecte le badge de notifications non lues.
+     */
     @GetMapping("/validateur/financier/dossiers")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
     public String dossiersFinancier(Model model, Principal principal) {
-        model.addAttribute("dossiers",
-                dossierService.getDossiersEnAttenteValidationFinanciere(principal.getName()));
+        String username = principal.getName();
+    
+        // ← logs
+        System.out.println("=== USERNAME CONNECTÉ : [" + username + "]");
+        
+        List<DossierContentieux> dossiers =
+                dossierService.getDossiersEnAttenteValidationFinanciere(username);
+    
+        long count = notificationService.countNonLues(username);
+        
+        System.out.println("=== countNonLues : " + count);
+    
+        model.addAttribute("dossiers",   dossiers);
+        model.addAttribute("givenName",  username);
+        model.addAttribute("enAttente",  dossiers.size());
+        model.addAttribute("notifCount", count); // ← une seule fois
+    
         return "validateur/dossiers-financier";
     }
 
+    /**
+     * Détail d'un dossier pour le validateur financier.
+     * Injecte le badge de notifications.
+     */
     @GetMapping("/validateur/financier/dossiers/{id}")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
-    public String detailFinancier(@PathVariable Long id, Model model) {
+    public String detailFinancier(@PathVariable Long id, Model model,
+                                   Principal principal) {
         model.addAttribute("dossier", dossierService.getDossierDetail(id));
+
+        // Badge 🔔 notifications non lues
+        model.addAttribute("notifCount",
+                notificationService.countNonLues(principal.getName()));
+
         return "validateur/detail-financier";
     }
 
+    /**
+     * Valide financièrement un dossier.
+     * Si les deux validations sont accordées → statut VALIDE.
+     * Envoie une notification à l'agent créateur.
+     */
     @PostMapping("/validateur/financier/dossiers/{id}/valider")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
     public String validerFinancier(@PathVariable Long id,
@@ -343,15 +444,17 @@ public class DossierController {
             d.setValidationFinanciere(true);
             d.setCommentaireFinancier(commentaire);
             d.setValidateurFinancierUsername(principal.getName());
+
+            // Si validation juridique déjà accordée → dossier entièrement validé
             if (d.isEntierementValide()) d.setStatut(DossierStatus.VALIDE);
             dossierRepository.save(d);
-    
+
             historiqueService.enregistrer(d, HistoriqueService.VALIDATION_FIN,
                     "Validation financière accordée."
                     + (commentaire != null ? " " + commentaire : ""),
                     principal.getName());
-    
-            // ✅ Notifier l'agent créateur
+
+            // Notifier l'agent créateur
             notificationService.notifier(
                     d.getAgentCreateur().getUsername(),
                     "✅ Validation financière accordée",
@@ -361,14 +464,19 @@ public class DossierController {
                     "VALIDATION_FINANCIERE_OK",
                     d
             );
-    
-            redirectAttributes.addFlashAttribute("success", "Validation financière accordée ✅");
+
+            redirectAttributes.addFlashAttribute("success",
+                    "Validation financière accordée ✅");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/validateur/financier/dossiers";
     }
-    
+
+    /**
+     * Rejette financièrement un dossier → statut REJETE.
+     * Envoie une notification à l'agent créateur avec le motif.
+     */
     @PostMapping("/validateur/financier/dossiers/{id}/rejeter")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
     public String rejeterFinancier(@PathVariable Long id,
@@ -382,11 +490,12 @@ public class DossierController {
             d.setValidateurFinancierUsername(principal.getName());
             d.setStatut(DossierStatus.REJETE);
             dossierRepository.save(d);
-    
+
             historiqueService.enregistrer(d, HistoriqueService.REJET_FIN,
-                    "Rejet financier. Motif : " + commentaire, principal.getName());
-    
-            // ✅ Notifier l'agent créateur
+                    "Rejet financier. Motif : " + commentaire,
+                    principal.getName());
+
+            // Notifier l'agent créateur avec le motif de rejet
             notificationService.notifier(
                     d.getAgentCreateur().getUsername(),
                     "❌ Dossier rejeté — validation financière",
@@ -396,7 +505,7 @@ public class DossierController {
                     "REJET_FINANCIER",
                     d
             );
-    
+
             redirectAttributes.addFlashAttribute("success", "Dossier rejeté ❌");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
@@ -404,30 +513,54 @@ public class DossierController {
         return "redirect:/validateur/financier/dossiers";
     }
 
-
-
-
-  
-
     // ══════════════════════════════════════════════════════
     //  VALIDATEUR JURIDIQUE
     // ══════════════════════════════════════════════════════
 
+    /**
+     * Liste les dossiers EN_TRAITEMENT assignés au validateur juridique connecté.
+     * Injecte le badge de notifications non lues.
+     */
     @GetMapping("/validateur/juridique/dossiers")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
     public String dossiersJuridique(Model model, Principal principal) {
-        model.addAttribute("dossiers",
-                dossierService.getDossiersEnAttenteValidationJuridique(principal.getName()));
+        String username = principal.getName();
+        List<DossierContentieux> dossiers =
+                dossierService.getDossiersEnAttenteValidationJuridique(username);
+
+        model.addAttribute("dossiers",   dossiers);
+        model.addAttribute("givenName",  username);
+        model.addAttribute("enAttente",  dossiers.size());
+
+        // Badge 🔔 notifications non lues
+        model.addAttribute("notifCount",
+                notificationService.countNonLues(username));
+
         return "validateur/dossiers-juridique";
     }
 
+    /**
+     * Détail d'un dossier pour le validateur juridique.
+     * Injecte le badge de notifications.
+     */
     @GetMapping("/validateur/juridique/dossiers/{id}")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
-    public String detailJuridique(@PathVariable Long id, Model model) {
+    public String detailJuridique(@PathVariable Long id, Model model,
+                                   Principal principal) {
         model.addAttribute("dossier", dossierService.getDossierDetail(id));
+
+        // Badge 🔔 notifications non lues
+        model.addAttribute("notifCount",
+                notificationService.countNonLues(principal.getName()));
+
         return "validateur/detail-juridique";
     }
 
+    /**
+     * Valide juridiquement un dossier.
+     * Si les deux validations sont accordées → statut VALIDE.
+     * Envoie une notification à l'agent créateur.
+     */
     @PostMapping("/validateur/juridique/dossiers/{id}/valider")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
     public String validerJuridique(@PathVariable Long id,
@@ -439,15 +572,17 @@ public class DossierController {
             d.setValidationJuridique(true);
             d.setCommentaireJuridique(commentaire);
             d.setValidateurJuridiqueUsername(principal.getName());
+
+            // Si validation financière déjà accordée → dossier entièrement validé
             if (d.isEntierementValide()) d.setStatut(DossierStatus.VALIDE);
             dossierRepository.save(d);
-    
+
             historiqueService.enregistrer(d, HistoriqueService.VALIDATION_JUR,
                     "Validation juridique accordée."
                     + (commentaire != null ? " " + commentaire : ""),
                     principal.getName());
-    
-            // ✅ Notifier l'agent créateur
+
+            // Notifier l'agent créateur
             notificationService.notifier(
                     d.getAgentCreateur().getUsername(),
                     "✅ Validation juridique accordée",
@@ -457,14 +592,19 @@ public class DossierController {
                     "VALIDATION_JURIDIQUE_OK",
                     d
             );
-    
-            redirectAttributes.addFlashAttribute("success", "Validation juridique accordée ✅");
+
+            redirectAttributes.addFlashAttribute("success",
+                    "Validation juridique accordée ✅");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/validateur/juridique/dossiers";
     }
 
+    /**
+     * Rejette juridiquement un dossier → statut REJETE.
+     * Envoie une notification à l'agent créateur avec le motif.
+     */
     @PostMapping("/validateur/juridique/dossiers/{id}/rejeter")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
     public String rejeterJuridique(@PathVariable Long id,
@@ -478,11 +618,12 @@ public class DossierController {
             d.setValidateurJuridiqueUsername(principal.getName());
             d.setStatut(DossierStatus.REJETE);
             dossierRepository.save(d);
-    
+
             historiqueService.enregistrer(d, HistoriqueService.REJET_JUR,
-                    "Rejet juridique. Motif : " + commentaire, principal.getName());
-    
-            // ✅ Notifier l'agent créateur
+                    "Rejet juridique. Motif : " + commentaire,
+                    principal.getName());
+
+            // Notifier l'agent créateur avec le motif de rejet
             notificationService.notifier(
                     d.getAgentCreateur().getUsername(),
                     "❌ Dossier rejeté — validation juridique",
@@ -492,11 +633,11 @@ public class DossierController {
                     "REJET_JURIDIQUE",
                     d
             );
-    
+
             redirectAttributes.addFlashAttribute("success", "Dossier rejeté ❌");
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
         return "redirect:/validateur/juridique/dossiers";
     }
-} // ✅ une seule accolade fermante pour la classe
+}

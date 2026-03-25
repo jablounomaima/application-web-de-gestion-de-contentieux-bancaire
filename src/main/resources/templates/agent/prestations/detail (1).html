@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Détail mission</title>
+    <style>
+        * { box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; margin: 40px;
+               background: #f5f5f5; color: #333; }
+        h2 { color: #1e3a5f; }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .card { background: white; border-radius: 8px; padding: 24px;
+                box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+        .section-title { font-size:15px; font-weight:bold; color:#1e3a5f;
+                         margin:0 0 14px; border-bottom:2px solid #e5e7eb; padding-bottom:6px; }
+        table { width:100%; border-collapse:collapse; }
+        td { padding:8px 4px; font-size:14px; border-bottom:1px solid #f3f4f6; }
+        td:first-child { font-weight:bold; color:#6b7280; width:40%; }
+        label { display:block; font-weight:bold; margin-bottom:6px;
+                font-size:14px; color:#444; }
+        textarea, input { width:100%; padding:9px; border:1px solid #ddd;
+                          border-radius:6px; font-size:14px; margin-bottom:14px; }
+        textarea { height:100px; }
+        .btn { padding:9px 18px; border:none; border-radius:6px;
+               cursor:pointer; font-size:14px; color:white; margin-right:8px; }
+        .btn-blue  { background:#2563eb; }
+        .btn-green { background:#059669; }
+        .btn-gray  { background:#6b7280; text-decoration:none;
+                     display:inline-block; }
+        .alert { padding:12px; border-radius:4px; margin-bottom:16px; }
+        .alert-success { background:#d1fae5; color:#065f46; }
+        .alert-error   { background:#fee2e2; color:#991b1b; }
+        .pv-box { background:#f8fafc; border:1px solid #e2e8f0;
+                  border-radius:6px; padding:14px; white-space:pre-wrap;
+                  font-size:13px; color:#374151; }
+    </style>
+</head>
+<body>
+
+<h2>📋 Mission — <span th:text="${mission.numeroMission}"></span></h2>
+
+<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
+<div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+
+<div class="grid">
+
+    <!-- ── Infos mission ── -->
+    <div class="card">
+        <p class="section-title">ℹ Informations</p>
+        <table>
+            <tr><td>Dossier</td>
+                <td th:text="${mission.prestation.dossier.numeroDossier}"></td></tr>
+            <tr><td>Client</td>
+                <td th:text="${mission.prestation.dossier.client.nom
+                              + ' ' + mission.prestation.dossier.client.prenom}"></td></tr>
+            <tr><td>Type prestation</td>
+                <td th:text="${mission.prestation.type.getLibelle()}"></td></tr>
+            <tr><td>Description</td>
+                <td th:text="${mission.description ?: '–'}"></td></tr>
+            <tr><td>Date assignation</td>
+                <td th:text="${#temporals.format(mission.dateAssignation,'dd/MM/yyyy')}"></td></tr>
+            <tr><td>Date fin prévue</td>
+                <td th:text="${mission.dateFinPrevue != null
+                              ? #temporals.format(mission.dateFinPrevue,'dd/MM/yyyy')
+                              : '–'}"></td></tr>
+            <tr><td>Statut</td>
+                <td th:text="${mission.statut.getLibelle()}"></td></tr>
+        </table>
+
+        <br>
+        <a class="btn btn-gray" href="/prestataire/missions">← Retour</a>
+    </div>
+
+    <!-- ── PV + Facture ── -->
+    <div>
+        <!-- PV -->
+        <div class="card" style="margin-bottom:20px;">
+            <p class="section-title">📄 PV de mission</p>
+
+            <!-- PV déjà soumis -->
+            <div th:if="${mission.pvMission != null}">
+                <div class="pv-box" th:text="${mission.pvMission}"></div>
+                <p style="margin-top:10px; font-size:13px;">
+                    <span th:if="${mission.pvValide == null}"
+                          style="color:#92400e;">⏳ En attente de validation</span>
+                    <span th:if="${Boolean.TRUE.equals(mission.pvValide)}"
+                          style="color:#065f46;">✅ PV validé par l'agent</span>
+                    <span th:if="${Boolean.FALSE.equals(mission.pvValide)}"
+                          style="color:#991b1b;">❌ PV rejeté — vous pouvez en soumettre un nouveau</span>
+                </p>
+            </div>
+
+            <!-- Formulaire PV -->
+            <form th:if="${mission.pvMission == null
+                           or Boolean.FALSE.equals(mission.pvValide)}"
+                  th:action="@{/prestataire/missions/{id}/pv(id=${mission.id})}"
+                  method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}"
+                       th:value="${_csrf.token}"/>
+                <label>Rédiger le PV *</label>
+                <textarea name="pvTexte" required
+                          placeholder="Décrivez les actions effectuées..."></textarea>
+                <button type="submit" class="btn btn-blue">📤 Soumettre le PV</button>
+            </form>
+        </div>
+
+        <!-- Facture -->
+        <div class="card">
+            <p class="section-title">💰 Facture honoraires</p>
+
+            <!-- Facture déjà soumise -->
+            <div th:if="${mission.montantFacture != null}">
+                <table>
+                    <tr><td>Montant</td>
+                        <td th:text="${mission.montantFacture + ' DT'}"></td></tr>
+                    <tr><td>Référence</td>
+                        <td th:text="${mission.factureRef ?: '–'}"></td></tr>
+                </table>
+                <p style="margin-top:10px; font-size:13px;">
+                    <span th:if="${mission.factureValidee == null}"
+                          style="color:#92400e;">⏳ En attente de validation</span>
+                    <span th:if="${Boolean.TRUE.equals(mission.factureValidee)}"
+                          style="color:#065f46;">✅ Facture validée</span>
+                    <span th:if="${Boolean.FALSE.equals(mission.factureValidee)}"
+                          style="color:#991b1b;">❌ Facture rejetée</span>
+                </p>
+            </div>
+
+            <!-- Formulaire facture -->
+            <form th:if="${mission.montantFacture == null
+                           or Boolean.FALSE.equals(mission.factureValidee)}"
+                  th:action="@{/prestataire/missions/{id}/facture(id=${mission.id})}"
+                  method="post">
+                <input type="hidden" th:name="${_csrf.parameterName}"
+                       th:value="${_csrf.token}"/>
+                <label>Montant (DT) *</label>
+                <input type="number" name="montant" step="0.01" min="0" required
+                       placeholder="Ex: 1500.00"/>
+                <label>Référence facture *</label>
+                <input type="text" name="factureRef" required
+                       placeholder="Ex: FAC-2026-001"/>
+                <button type="submit" class="btn btn-green">💳 Soumettre la facture</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>

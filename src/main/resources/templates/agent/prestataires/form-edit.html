@@ -9,7 +9,7 @@
         h1 { font-size: 20px; margin-bottom: 24px; color: #1e3a5f; }
         .form-group { display: flex; flex-direction: column; gap: 5px; margin-bottom: 16px; }
         label { font-size: 11.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: #334155; }
-        input, select { padding: 9px 12px; border: 1.5px solid #cbd5e1; border-radius: 7px; font-size: 13.5px; outline: none; font-family: Arial, sans-serif; }
+        input, select { padding: 9px 12px; border: 1.5px solid #cbd5e1; border-radius: 7px; font-size: 13.5px; outline: none; }
         input:focus, select:focus { border-color: #2563eb; box-shadow: 0 0 0 3px rgba(37,99,235,.1); }
         .readonly-field { background: #f8fafc; color: #94a3b8; cursor: not-allowed; }
         small { font-size: 11px; color: #94a3b8; }
@@ -17,7 +17,7 @@
         .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .1em; color: #2563eb; border-bottom: 1px solid #e2e8f0; padding-bottom: 6px; margin: 20px 0 12px; }
         .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
         .btn-group { display: flex; gap: 10px; margin-top: 24px; }
-        .btn { padding: 9px 20px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; text-decoration: none; display: inline-flex; align-items: center; gap: 5px; font-family: Arial, sans-serif; }
+        .btn { padding: 9px 20px; border-radius: 7px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; text-decoration: none; }
         .btn-primary   { background: #2563eb; color: white; }
         .btn-primary:hover { background: #1d4ed8; }
         .btn-secondary { background: #f1f5f9; color: #334155; border: 1px solid #cbd5e1; }
@@ -30,26 +30,24 @@
 
     <div th:if="${error}" class="alert-error" th:text="${error}"></div>
 
-    <!--
-        ✅ th:object pointe vers un PrestataireCreationRequest (pas PrestataireDTO)
-           Le controller doit passer un objet "editRequest" pré-rempli au modèle
-    -->
-    <form th:action="@{/agent/prestataires/{id}/edit(id=${prestataire.id})}"
+    <form th:object="${prestataire}" 
+          th:action="@{/agent/prestataires/{id}/edit(id=${prestataire.id})}" 
           method="post">
 
-        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+        <!-- CSRF - Version ultra-stable (Spring Security l'ajoute automatiquement) -->
+        <input type="hidden" name="_csrf" th:value="${_csrf?.token}" />
 
-        <!-- Champs readonly — affichage uniquement, pas soumis -->
+        <!-- Champs en lecture seule -->
         <div class="form-row">
             <div class="form-group">
                 <label>Type</label>
-                <input type="text" th:value="${prestataire.type.getLibelle()}"
+                <input type="text" th:value="${prestataire.typePrestataire}" 
                        class="readonly-field" readonly/>
                 <small>Non modifiable</small>
             </div>
             <div class="form-group">
                 <label>Nom d'utilisateur</label>
-                <input type="text" th:value="${prestataire.username}"
+                <input type="text" th:value="${prestataire.username}" 
                        class="readonly-field" readonly/>
                 <small>Non modifiable</small>
             </div>
@@ -60,70 +58,65 @@
         <div class="form-row">
             <div class="form-group">
                 <label>Nom *</label>
-                <input type="text" name="nom" th:value="${prestataire.nom}" required/>
+                <input type="text" th:field="*{nom}" required/>
             </div>
             <div class="form-group">
                 <label>Prénom *</label>
-                <input type="text" name="prenom" th:value="${prestataire.prenom}" required/>
+                <input type="text" th:field="*{prenom}" required/>
             </div>
         </div>
 
         <div class="form-group">
             <label>Email *</label>
-            <input type="email" name="email" th:value="${prestataire.email}" required/>
+            <input type="email" th:field="*{email}" required/>
         </div>
 
         <div class="form-row">
             <div class="form-group">
                 <label>Téléphone</label>
-                <input type="tel" name="telephone" th:value="${prestataire.telephone}"/>
+                <input type="tel" th:field="*{telephone}"/>
             </div>
             <div class="form-group">
                 <label>N° Carte professionnelle</label>
-                <input type="text" name="numeroCartePro" th:value="${prestataire.numeroCartePro}"/>
+                <input type="text" th:field="*{numeroCartePro}"/>
             </div>
         </div>
 
         <div class="form-group">
             <label>Adresse</label>
-            <input type="text" name="adresse" th:value="${prestataire.adresse}"/>
+            <input type="text" th:field="*{adresse}"/>
         </div>
 
         <div class="form-group">
             <label>Spécialité</label>
-            <input type="text" name="specialite" th:value="${prestataire.specialite}"/>
+            <input type="text" th:field="*{specialite}"/>
         </div>
 
-        <!-- ✅ Champs validateurs — .name() sur l'enum pour comparer -->
-        <div th:if="${prestataire.type.name() == 'VALIDATEUR_FINANCIER'
-                   or prestataire.type.name() == 'VALIDATEUR_JURIDIQUE'}">
-
+        <!-- Champs validateurs -->
+        <div th:if="${prestataire.typePrestataire?.name() == 'VALIDATEUR_FINANCIER' 
+                   or prestataire.typePrestataire?.name() == 'VALIDATEUR_JURIDIQUE'}">
             <div class="section-title">Paramètres de validation</div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Niveau de validation</label>
-                    <select name="niveauValidation">
+                    <select th:field="*{niveauValidation}">
                         <option value="">-- Choisir --</option>
-                        <option value="NIVEAU_1"
-                                th:selected="${prestataire.niveauValidation == 'NIVEAU_1'}">Niveau 1</option>
-                        <option value="NIVEAU_2"
-                                th:selected="${prestataire.niveauValidation == 'NIVEAU_2'}">Niveau 2</option>
+                        <option value="NIVEAU_1">Niveau 1</option>
+                        <option value="NIVEAU_2">Niveau 2</option>
                     </select>
                 </div>
                 <div class="form-group">
                     <label>Plafond de validation (DZD)</label>
-                    <input type="number" name="plafondValidation"
-                           th:value="${prestataire.plafondValidation}" min="0" step="1000"/>
+                    <input type="number" th:field="*{plafondValidation}" min="0" step="1000"/>
                 </div>
             </div>
         </div>
 
-        <!-- Champ type caché pour que le service sache le type -->
-        <input type="hidden" name="type" th:value="${prestataire.type.name()}"/>
+        <!-- Type caché -->
+        <input type="hidden" th:field="*{typePrestataire}" />
 
         <div class="btn-group">
-            <button type="submit" class="btn btn-primary">💾 Enregistrer</button>
+            <button type="submit" class="btn btn-primary">💾 Enregistrer les modifications</button>
             <a th:href="@{/agent/prestataires}" class="btn btn-secondary">❌ Annuler</a>
         </div>
     </form>

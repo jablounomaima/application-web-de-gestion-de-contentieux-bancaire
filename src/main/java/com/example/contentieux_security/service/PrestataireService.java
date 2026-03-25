@@ -5,7 +5,7 @@ import com.example.contentieux_security.dto.PrestataireCreationRequest;
 import com.example.contentieux_security.dto.PrestataireDTO;
 import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.entity.Prestataire;
-import com.example.contentieux_security.entity.TypePrestataire;
+import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.repository.AgentBancaireRepository;
 import com.example.contentieux_security.repository.PrestataireRepository;
 import lombok.RequiredArgsConstructor;
@@ -46,7 +46,7 @@ public class PrestataireService {
                 : genererMotDePasseTemporaire();
 
         // 1 — Créer dans Keycloak
-        String roleKeycloak = request.getType().toKeycloakRole();
+        String roleKeycloak = request.getTypePrestataire().toKeycloakRole();
         keycloakUserService.createUser(
                 request.getUsername(), request.getEmail(),
                 request.getPrenom(), request.getNom(),
@@ -72,7 +72,7 @@ public class PrestataireService {
                 .email(request.getEmail())
                 .telephone(request.getTelephone())
                 .adresse(request.getAdresse())
-                .type(request.getType())
+                .type(request.getTypePrestataire())
                 .specialite(request.getSpecialite())
                 .numeroCartePro(request.getNumeroCartePro())
                 .niveauValidation(request.getNiveauValidation())
@@ -196,12 +196,17 @@ public class PrestataireService {
 
     // Alias avec vérification agent (pour AgentController)
     @Transactional
-    public void deletePrestataire(Long id, String agentUsername) {
-        Prestataire p = findById(id);
-        if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
-            throw new RuntimeException("Accès refusé.");
+    public boolean deletePrestataire(Long id, String agentUsername) {
+        Prestataire prestataire = prestataireRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
+
+        // Vérification de sécurité : seul l'agent responsable peut supprimer
+        if (!prestataire.getAgentResponsable().getUsername().equals(agentUsername)) {
+            throw new RuntimeException("Vous n'êtes pas autorisé à supprimer ce prestataire");
         }
-        supprimerPrestataire(id);
+
+        prestataireRepository.deleteById(id);
+        return true;
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -221,7 +226,7 @@ public class PrestataireService {
         dto.setEmail(p.getEmail());
         dto.setTelephone(p.getTelephone());
         dto.setAdresse(p.getAdresse());
-        dto.setType(p.getType());
+        dto.setTypePrestataire(p.getType());
         dto.setSpecialite(p.getSpecialite());
         dto.setNumeroCartePro(p.getNumeroCartePro());
         dto.setNiveauValidation(p.getNiveauValidation());
@@ -229,4 +234,21 @@ public class PrestataireService {
         dto.setActif(p.isActif());
         return dto;
     }
+
+
+        /**
+     * Active ou désactive un prestataire (toggle)
+     */
+        public Prestataire toggleActif(Long id, String agentUsername) {
+            Prestataire p = prestataireRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
+    
+            // Sécurité : seul l'agent responsable peut modifier
+            if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
+                throw new RuntimeException("Vous n'êtes pas autorisé à modifier ce prestataire");
+            }
+    
+            p.setActif(!p.isActif());        // toggle true <-> false
+            return prestataireRepository.save(p);
+        }
 }

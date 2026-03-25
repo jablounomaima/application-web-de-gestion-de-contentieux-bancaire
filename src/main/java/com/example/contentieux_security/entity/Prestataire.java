@@ -7,7 +7,7 @@ import lombok.Data;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import com.example.contentieux_security.entity.TypePrestataire;
+import com.example.contentieux_security.enums.TypePrestataire;
 
 import java.time.LocalDate;
 @Getter
@@ -53,6 +53,10 @@ public class Prestataire {
 
     private String niveauValidation;
     private Double plafondValidation;
+
+
+  
+   
 
 
 }

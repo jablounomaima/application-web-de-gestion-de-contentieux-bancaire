@@ -39,7 +39,7 @@ public class DossierContentieux {
 
     // ── Statut ────────────────────────────────────────────────────
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
+    @Column(nullable = false, length = 50)
     private DossierStatus statut = DossierStatus.OUVERT;
 
     @Column(name = "cree_par")

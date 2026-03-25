@@ -61,12 +61,16 @@
             </div>
         </div>
 
-        <!-- Lien notifications avec badge -->
-<div style="text-align:right;max-width:900px;margin-bottom:10px">
-    <a th:href="@{/validateur/juridique/notifications}"
-       style="text-decoration:none;font-size:14px;color:#e74c3c;font-weight:bold">
+  <!-- Lien notifications avec badge -->
+  <div class="notif-bar">
+    <div style="font-size:14px;color:#555">
+        Dossiers assignés à votre validation juridique
+    </div>
+    <a class="notif-link" th:href="@{/validateur/juridique/notifications}">
         🔔 Notifications
-        <!-- Le badge se met à jour au rechargement -->
+        <span th:if="${notifCount != null and notifCount > 0}"
+              class="notif-badge" th:text="${notifCount}">
+        </span>
     </a>
 </div>
 
