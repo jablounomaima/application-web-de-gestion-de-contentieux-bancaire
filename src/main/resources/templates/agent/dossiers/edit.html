@@ -217,17 +217,7 @@
     </div>
 
     <!-- ── Actions ── -->
-    <div class="card" style="padding: 20px 28px;">
-        <div class="actions">
-            <button class="btn btn-save" type="submit">
-                💾 Enregistrer les modifications
-            </button>
-            <a class="btn btn-back"
-               th:href="@{/agent/dossiers/{id}(id=${dossier.id})}">
-                ← Annuler
-            </a>
-        </div>
-    </div>
+    
 
 </form>
 
@@ -342,9 +332,10 @@
 
         <!-- ✅ Form 2 — Sélectionner (COMPLÈTEMENT séparé, APRÈS la fermeture du form garantie) -->
         <form th:unless="${risque.selectionne}"
-              th:action="@{/agent/dossiers/risques/{rId}/selectionner(rId=${risque.id})}"
-              method="post"
-              style="margin-top:8px">
+        th:action="@{/agent/dossiers/risques/{rId}/selectionner(rId=${risque.id})}"
+        method="post"
+        sec:csrf="true"
+        style="margin-top:8px">
             <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
             <button type="submit"
                     style="padding:7px 14px;background:#9b59b6;color:white;
@@ -420,5 +411,21 @@ style="margin-bottom:10px">
 
 
 
+    </div>
+
+
+    
+</div>
+
+
+<div class="card" style="padding: 20px 28px;">
+    <div class="actions">
+        <button class="btn btn-save" type="submit">
+            💾 Enregistrer les modifications
+        </button>
+        <a class="btn btn-back"
+           th:href="@{/agent/dossiers/{id}(id=${dossier.id})}">
+            ← Annuler
+        </a>
     </div>
 </div>

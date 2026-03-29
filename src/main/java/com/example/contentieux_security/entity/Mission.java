@@ -1,8 +1,9 @@
 package com.example.contentieux_security.entity;
 
-import com.example.contentieux_security.enums.StatutMission;  // ← enums/
+import com.example.contentieux_security.enums.StatutMission;
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -15,15 +16,16 @@ public class Mission {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "numero_mission", unique = true, nullable = false)
+    @Column(name = "numero_mission", unique = true, nullable = false, length = 100)
     private String numeroMission;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
+    // ✅ CORRECTION IMPORTANTE
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 50)
-    private StatutMission statut = StatutMission.ASSIGNEE;
+    @Column(name = "statut", nullable = false, length = 50)
+    private StatutMission statut;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "prestation_id", nullable = false)
@@ -34,7 +36,7 @@ public class Mission {
     private Prestataire prestataire;
 
     @Column(name = "date_assignation", nullable = false)
-    private LocalDateTime dateAssignation = LocalDateTime.now();
+    private LocalDateTime dateAssignation;
 
     @Column(name = "date_debut")
     private LocalDate dateDebut;
@@ -51,9 +53,26 @@ public class Mission {
     @Column(name = "montant_facture")
     private Double montantFacture;
 
-    @Column(name = "facture_ref")
+    @Column(name = "facture_ref", length = 100)
     private String factureRef;
 
     @Column(columnDefinition = "TEXT")
     private String notes;
+
+    @Column(name = "date_creation", nullable = false)
+    private LocalDateTime dateCreation;
+
+    // ✅ CORRECTION: initialisation propre
+    @PrePersist
+    public void prePersist() {
+        if (this.dateCreation == null) {
+            this.dateCreation = LocalDateTime.now();
+        }
+        if (this.dateAssignation == null) {
+            this.dateAssignation = LocalDateTime.now();
+        }
+        if (this.statut == null) {
+            this.statut = StatutMission.ASSIGNEE;
+        }
+    }
 }

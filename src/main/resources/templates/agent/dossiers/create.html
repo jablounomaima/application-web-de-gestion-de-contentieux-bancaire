@@ -210,7 +210,8 @@
 
         <!-- ═══════ FORMULAIRE PRINCIPAL ═══════ -->
         <form th:action="@{/agent/dossiers/creer}" method="post" th:object="${dossierRequest}" id="mainForm">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+           
+        <!-- <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
 
             <!-- ═══ ÉTAPE 1 : CLIENT ═══ -->
             <div id="step-1">

@@ -175,7 +175,7 @@ public class DossierController {
             }
 
             model.addAttribute("dossier", dossier);
-            return "agent/dossiers/edit";
+            return "agent/dossiers/dossier-edit";
 
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());

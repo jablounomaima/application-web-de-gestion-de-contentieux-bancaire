@@ -39,8 +39,7 @@ public class SecurityConfig {
 
         http
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/login", "/error", "/css/**", "/js/**", "/images/**")
-                .permitAll()
+                .requestMatchers("/", "/login", "/error", "/css/**", "/js/**", "/images/**").permitAll()
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .requestMatchers("/agent/**").hasAnyRole("AGENT", "ADMIN")
                 .requestMatchers("/avocat/**").hasRole("AVOCAT")
@@ -51,15 +50,20 @@ public class SecurityConfig {
                 .requestMatchers("/validateur/**").hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
                 .requestMatchers("/notifications/**").hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
                 .requestMatchers("/prestataire/**")
-                .hasAnyRole("AVOCAT", "HUISSIER", "EXPERT", "VALIDATEUR_JURIDIQUE", "VALIDATEUR_FINANCIER")
+                    .hasAnyRole("AVOCAT", "HUISSIER", "EXPERT", "VALIDATEUR_JURIDIQUE", "VALIDATEUR_FINANCIER")
                 .anyRequest().authenticated()
             )
-            .csrf(csrf -> csrf.disable()) // 🔹 temporairement désactivé pour test POST
+
+            // ✅ CSRF activé par défaut (NE PAS désactiver sauf API REST)
+            //.csrf(csrf -> csrf.disable())
+
             .oauth2Login(oauth2 -> oauth2
                 .userInfoEndpoint(user -> user.oidcUserService(oidcUserService()))
                 .successHandler((request, response, authentication) -> {
 
-                    authentication.getAuthorities().forEach(a -> System.out.println("ROLE SPRING: " + a.getAuthority()));
+                    // DEBUG ROLES
+                    authentication.getAuthorities()
+                        .forEach(a -> System.out.println("ROLE SPRING: " + a.getAuthority()));
 
                     // Redirection selon rôle
                     if (hasRole(authentication, "ROLE_ADMIN")) {
@@ -81,26 +85,37 @@ public class SecurityConfig {
                     }
                 })
             )
-            .logout(logout -> logout.logoutSuccessHandler(keycloakLogoutSuccessHandler()));
+
+            .logout(logout -> logout
+                .logoutSuccessHandler(keycloakLogoutSuccessHandler())
+            );
 
         return http.build();
     }
 
     private boolean hasRole(Authentication auth, String role) {
-        return auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals(role));
+        return auth.getAuthorities().stream()
+                .anyMatch(a -> a.getAuthority().equals(role));
     }
 
     @Bean
     public LogoutSuccessHandler keycloakLogoutSuccessHandler() {
         return (HttpServletRequest request, HttpServletResponse response, Authentication authentication) -> {
+
             String idToken = null;
+
             if (authentication instanceof OAuth2AuthenticationToken oauthToken &&
                 oauthToken.getPrincipal() instanceof OidcUser oidcUser) {
                 idToken = oidcUser.getIdToken().getTokenValue();
             }
+
             String logoutUrl = "http://127.0.0.1:8080/realms/contentieux-realm/protocol/openid-connect/logout"
                     + "?post_logout_redirect_uri=http://localhost:8097";
-            if (idToken != null) logoutUrl += "&id_token_hint=" + idToken;
+
+            if (idToken != null) {
+                logoutUrl += "&id_token_hint=" + idToken;
+            }
+
             new SecurityContextLogoutHandler().logout(request, response, authentication);
             response.sendRedirect(logoutUrl);
         };
@@ -108,25 +123,48 @@ public class SecurityConfig {
 
     @Bean
     public OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
+
         OidcUserService delegate = new OidcUserService();
 
         return userRequest -> {
+
             OidcUser oidcUser = delegate.loadUser(userRequest);
             Map<String, Object> claims = oidcUser.getClaims();
-            Set<GrantedAuthority> mappedAuthorities = new HashSet<>();
 
-            if (claims.containsKey("realm_access")) {
-                Map<String, Object> realmAccess = (Map<String, Object>) claims.get("realm_access");
-                if (realmAccess.containsKey("roles")) {
-                    List<String> roles = (List<String>) realmAccess.get("roles");
-                    roles.forEach(role -> mappedAuthorities.add(new SimpleGrantedAuthority("ROLE_" + role.toUpperCase())));
+            Set<GrantedAuthority> mappedAuthorities = new HashSet<>(oidcUser.getAuthorities()); // ✅ garder les roles existants
+
+            // ✅ Extraction sécurisée des rôles Keycloak
+            Object realmAccessObj = claims.get("realm_access");
+
+            if (realmAccessObj instanceof Map<?, ?> realmAccess) {
+
+                Object rolesObj = realmAccess.get("roles");
+
+                if (rolesObj instanceof List<?> rolesList) {
+
+                    for (Object roleObj : rolesList) {
+                        if (roleObj instanceof String role) {
+
+                            String roleName = role.toUpperCase();
+
+                            if (!roleName.startsWith("ROLE_")) {
+                                roleName = "ROLE_" + roleName;
+                            }
+
+                            mappedAuthorities.add(new SimpleGrantedAuthority(roleName));
+                        }
+                    }
                 }
             }
 
             String preferredUsername = (String) claims.get("preferred_username");
             String email = (String) claims.get("email");
 
-            return new DefaultOidcUser(mappedAuthorities, oidcUser.getIdToken(), oidcUser.getUserInfo()) {
+            return new DefaultOidcUser(
+                    mappedAuthorities,
+                    oidcUser.getIdToken(),
+                    oidcUser.getUserInfo()
+            ) {
                 @Override
                 public String getName() {
                     return preferredUsername != null ? preferredUsername : email;
@@ -134,4 +172,9 @@ public class SecurityConfig {
             };
         };
     }
+
+    
+
+
+
 }

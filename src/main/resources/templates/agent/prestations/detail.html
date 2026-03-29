@@ -83,7 +83,7 @@
         <form th:action="@{/agent/dossiers/{did}/prestations/{pid}/designer
                           (did=${dossierId},pid=${prestation.id})}"
               method="post">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+           
 
             <label>Prestataire *</label>
             <select name="prestataireId" required>
