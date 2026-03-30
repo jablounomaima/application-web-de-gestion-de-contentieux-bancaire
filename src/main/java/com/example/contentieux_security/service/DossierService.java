@@ -8,10 +8,12 @@ import com.example.contentieux_security.dto.GarantieAjoutRequest;
 import com.example.contentieux_security.dto.RisqueAjoutRequest;
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.DossierStatus;
+import com.example.contentieux_security.enums.TypeValidateur;
 import com.example.contentieux_security.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.contentieux_security.entity.Agence;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,6 +32,8 @@ public class DossierService {
     private final HistoriqueService       historiqueService;
     private final NotificationRepository notificationRepository;
     private final NotificationService     notificationService; // ← déplacé ici avec les autres
+    private final ValidateurRepository validateurRepository;
+
 
     // ════════════════════════════════════════════════════
     //  LECTURE
@@ -55,6 +59,10 @@ public class DossierService {
     public List<DossierContentieux> getDossiersAgent(String username) {
         return dossierRepository.findByAgentCreateur_Username(username);
     }
+
+  
+
+
 
     public DossierContentieux getDossierByIdAndAgent(Long id, String username) {
         DossierContentieux d = getDossierById(id);
@@ -159,84 +167,79 @@ public class DossierService {
 
   
     @Transactional
-    public void soumettreAValidation(Long id, String username) {
-        DossierContentieux dossier = getDossierByIdAndAgent(id, username);
+public void soumettreAValidation(Long id, String username) {
 
-        if (dossier.getRisques() == null || dossier.getRisques().isEmpty())
-            throw new RuntimeException("Ajoutez au moins un risque avant de soumettre.");
+    DossierContentieux dossier = getDossierByIdAndAgent(id, username);
 
-        if (dossier.getRisques().stream().noneMatch(Risque::isSelectionne))
-            throw new RuntimeException("Sélectionnez le risque à traiter avant de soumettre.");
-
-        if (dossier.getValidateurFinancierChoisi() == null
-                || dossier.getValidateurFinancierChoisi().isBlank())
-            throw new RuntimeException("Veuillez choisir un validateur financier.");
-
-        if (dossier.getValidateurJuridiqueChoisi() == null
-                || dossier.getValidateurJuridiqueChoisi().isBlank())
-            throw new RuntimeException("Veuillez choisir un validateur juridique.");
-
-        dossier.setStatut(DossierStatus.EN_TRAITEMENT);
-        dossierRepository.save(dossier);
-
-        // ✅ Notifier UNIQUEMENT les validateurs qui n'ont pas encore validé
-        // validationFinanciere = null  → pas encore traité → notifier
-        // validationFinanciere = true  → déjà accepté     → NE PAS notifier
-        // validationFinanciere = false → rejeté           → notifier (resoumission)
-
-        if (!Boolean.TRUE.equals(dossier.getValidationFinanciere())) {
-            notificationService.notifier(
-                    dossier.getValidateurFinancierChoisi(),
-                    "Nouveau dossier à valider",
-                    "Le dossier " + dossier.getNumeroDossier()
-                    + " de " + dossier.getClient().getNom()
-                    + " " + dossier.getClient().getPrenom()
-                    + " nécessite votre validation financière.",
-                    "VALIDATION_FINANCIERE",
-                    dossier
-            );
-        }
-
-        if (!Boolean.TRUE.equals(dossier.getValidationJuridique())) {
-            notificationService.notifier(
-                    dossier.getValidateurJuridiqueChoisi(),
-                    "Nouveau dossier à valider",
-                    "Le dossier " + dossier.getNumeroDossier()
-                    + " de " + dossier.getClient().getNom()
-                    + " " + dossier.getClient().getPrenom()
-                    + " nécessite votre validation juridique.",
-                    "VALIDATION_JURIDIQUE",
-                    dossier
-            );
-        }
-
-        historiqueService.enregistrer(dossier, HistoriqueService.SOUMISSION,
-                "Soumis à : " + dossier.getValidateurFinancierChoisi()
-                + " (financier) et " + dossier.getValidateurJuridiqueChoisi()
-                + " (juridique)", username);
+    // ✅ Vérifications
+    if (dossier.getRisques() == null || dossier.getRisques().isEmpty()) {
+        throw new RuntimeException("Ajoutez au moins un risque avant de soumettre.");
     }
-    // ════════════════════════════════════════════════════
-    //  RISQUES
-    // ════════════════════════════════════════════════════
 
-    @Transactional
-    public Risque ajouterRisque(Long dossierId, RisqueAjoutRequest request, String username) {
-        DossierContentieux dossier = getDossierByIdAndAgent(dossierId, username);
+    boolean risqueSelectionne = dossier.getRisques()
+            .stream()
+            .anyMatch(Risque::isSelectionne);
 
-        Risque risque = new Risque();
-        risque.setType(request.getType());
-        risque.setMontantInitial(request.getMontantInitial());
-        risque.setMontantImpaye(request.getMontantImpaye());
-        risque.setDescription(request.getDescription());
-        risque.setDossier(dossier);
-        if (request.getDateEcheance() != null && !request.getDateEcheance().isBlank())
-            risque.setDateEcheance(LocalDate.parse(request.getDateEcheance()));
-        risqueRepository.save(risque);
-
-        historiqueService.enregistrer(dossier, HistoriqueService.AJOUT_RISQUE,
-                "Crédit ajouté : " + request.getType(), username);
-        return risque;
+    if (!risqueSelectionne) {
+        throw new RuntimeException("Sélectionnez le risque à traiter avant de soumettre.");
     }
+
+    if (dossier.getValidateurFinancierChoisi() == null
+            || dossier.getValidateurFinancierChoisi().isBlank()) {
+        throw new RuntimeException("Veuillez choisir un validateur financier.");
+    }
+
+    if (dossier.getValidateurJuridiqueChoisi() == null
+            || dossier.getValidateurJuridiqueChoisi().isBlank()) {
+        throw new RuntimeException("Veuillez choisir un validateur juridique.");
+    }
+
+    // ✅ Mise à jour statut
+    dossier.setStatut(DossierStatus.EN_TRAITEMENT);
+
+    // ⚠️ Reset validations si resoumission
+    dossier.setValidationFinanciere(null);
+    dossier.setValidationJuridique(null);
+
+    dossierRepository.save(dossier);
+
+    String messageBase = "Le dossier " + dossier.getNumeroDossier()
+            + " de " + dossier.getClient().getNom()
+            + " " + dossier.getClient().getPrenom();
+
+    // ✅ Notification financier
+    if (!Boolean.TRUE.equals(dossier.getValidationFinanciere())) {
+        notificationService.notifier(
+                dossier.getValidateurFinancierChoisi(),
+                "Nouveau dossier à valider",
+                messageBase + " nécessite votre validation financière.",
+                "VALIDATION_FINANCIERE",
+                dossier
+        );
+    }
+
+    // ✅ Notification juridique
+    if (!Boolean.TRUE.equals(dossier.getValidationJuridique())) {
+        notificationService.notifier(
+                dossier.getValidateurJuridiqueChoisi(),
+                "Nouveau dossier à valider",
+                messageBase + " nécessite votre validation juridique.",
+                "VALIDATION_JURIDIQUE",
+                dossier
+        );
+    }
+
+    // ✅ Historique
+    historiqueService.enregistrer(
+            dossier,
+            HistoriqueService.SOUMISSION,
+            "Soumis à : " + dossier.getValidateurFinancierChoisi()
+                    + " (financier) et "
+                    + dossier.getValidateurJuridiqueChoisi()
+                    + " (juridique)",
+            username
+    );
+}
 
     @Transactional
     public void selectionnerRisque(Long risqueId, String username) {
@@ -356,5 +359,10 @@ public class DossierService {
     
         // 5. Supprimer le dossier
         dossierRepository.deleteById(id);
+    }
+
+    public void ajouterRisque(Long id, RisqueAjoutRequest request, String username) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'ajouterRisque'");
     }
 }

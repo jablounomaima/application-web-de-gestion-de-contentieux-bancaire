@@ -1,8 +1,12 @@
 package com.example.contentieux_security.dto;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class AgenceDTO {
     private Long id;
     private String code;
@@ -11,7 +15,6 @@ public class AgenceDTO {
     private String ville;
     private String telephone;
     private String email;
-    private int nombreAgents;
-      // ✅ AJOUTÉ : Ce champ manquait !
     private String directeur;
+    private int nombreAgents;
 }

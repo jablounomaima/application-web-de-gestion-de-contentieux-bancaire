@@ -37,9 +37,22 @@ public class AgentBancaireService {
 
     // ── Recherche par username ────────────────────────────────────
 
+    /**
+     * Recherche un agent par son username avec chargement de l'agence.
+     * @Transactional(readOnly = true) permet d'accéder aux relations lazy (agence)
+     * même après la fermeture de la session Hibernate.
+     */
+    @Transactional(readOnly = true)  // ✅ AJOUTÉ : Charge l'agence en lazy loading
     public AgentBancaire findAgentByUsername(String username) {
-        // ✅ findByUsername retourne Optional maintenant
-        return agentRepository.findByUsername(username).orElse(null);
+        return agentRepository.findByUsername(username)
+                .map(agent -> {
+                    // Forcer le chargement de l'agence pour éviter LazyInitializationException
+                    if (agent.getAgence() != null) {
+                        agent.getAgence().getNom(); // Touche la propriété pour charger
+                    }
+                    return agent;
+                })
+                .orElse(null);
     }
 
     public AgentBancaire getAgentByUsername(String username) {
@@ -48,6 +61,7 @@ public class AgentBancaireService {
     }
 
     // ── CRUD ──────────────────────────────────────────────────────
+    @Transactional(readOnly = true)
 
     public List<AgentBancaireDTO> getAllAgents() {
         return agentRepository.findAll().stream()
@@ -75,29 +89,53 @@ public class AgentBancaireService {
         Agence agence = agenceRepository.findById(request.getAgenceId())
                 .orElseThrow(() -> new RuntimeException("Agence non trouvée"));
 
-        keycloakUserService.createUser(
-                request.getUsername(),
-                request.getEmail(),
-                request.getNom(),
-                request.getPrenom(),
-                request.getPassword(),
-                "AGENT"
-        );
+        // ✅ Créer d'abord dans Keycloak (si ça échoue, on n'a pas pollué la base)
+        try {
+            keycloakUserService.createUser(
+                    request.getUsername(),
+                    request.getEmail(),
+                    request.getNom(),
+                    request.getPrenom(),
+                    request.getPassword(),
+                    "AGENT"
+            );
+            System.out.println("✅ Keycloak: Utilisateur créé - " + request.getUsername());
+        } catch (Exception e) {
+            System.err.println("❌ Keycloak: Échec création - " + e.getMessage());
+            throw new RuntimeException("Erreur création Keycloak: " + e.getMessage(), e);
+        }
 
-        AgentBancaire agent = new AgentBancaire();
-        agent.setUsername(request.getUsername());
-        agent.setPassword(passwordEncoder.encode(request.getPassword()));
-        agent.setNom(request.getNom());
-        agent.setPrenom(request.getPrenom());
-        agent.setEmail(request.getEmail());
-        agent.setTelephone(request.getTelephone());
-        agent.setRole("AGENT");
-        agent.setMatricule(request.getMatricule());
-        agent.setDateEmbauche(request.getDateEmbauche());
-        agent.setAgence(agence);
-        agent.setActif(true);
+        // ✅ Puis créer dans la base
+        try {
+            AgentBancaire agent = new AgentBancaire();
+            agent.setUsername(request.getUsername());
+            agent.setPassword(passwordEncoder.encode(request.getPassword()));
+            agent.setNom(request.getNom());
+            agent.setPrenom(request.getPrenom());
+            agent.setEmail(request.getEmail());
+            agent.setTelephone(request.getTelephone());
+            agent.setRole("AGENT");
+            agent.setMatricule(request.getMatricule());
+            agent.setDateEmbauche(request.getDateEmbauche());
+            agent.setAgence(agence);
+            agent.setActif(true);
 
-        return convertToDTO(agentRepository.save(agent));
+            AgentBancaire saved = agentRepository.save(agent);
+            System.out.println("✅ Base de données: Agent créé - ID: " + saved.getId());
+            return convertToDTO(saved);
+            
+        } catch (Exception e) {
+            // ⚠️ Compensation: supprimer de Keycloak si la base échoue
+            System.err.println("❌ Base de données: Échec création - " + e.getMessage());
+            System.err.println("⚠️ Compensation: Suppression Keycloak...");
+            try {
+                keycloakUserService.deleteUser(request.getUsername());
+                System.out.println("✅ Compensation: Utilisateur Keycloak supprimé");
+            } catch (Exception deleteEx) {
+                System.err.println("❌ Compensation échouée: " + deleteEx.getMessage());
+            }
+            throw new RuntimeException("Erreur création base de données: " + e.getMessage(), e);
+        }
     }
 
     @Transactional

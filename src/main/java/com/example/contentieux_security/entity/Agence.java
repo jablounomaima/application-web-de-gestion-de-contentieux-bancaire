@@ -28,11 +28,14 @@ public class Agence {
     private String telephone;
     
     private String email;
-    
-@OneToMany(mappedBy = "agence", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-private List<AgentBancaire> agents = new ArrayList<>();
 
-public int getNombreAgents() {
-    return agents != null ? agents.size() : 0;
-}
+    @Column(name = "directeur")
+    private String directeur; // ✅ AJOUTÉ
+
+    @OneToMany(mappedBy = "agence", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private List<AgentBancaire> agents = new ArrayList<>();
+
+    public int getNombreAgents() {
+        return agents != null ? agents.size() : 0;
+    }
 }

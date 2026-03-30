@@ -2,6 +2,8 @@ package com.example.contentieux_security.repository;
 
 import com.example.contentieux_security.entity.Prestataire;
 import com.example.contentieux_security.enums.TypePrestataire;
+import com.example.contentieux_security.enums.TypeValidateur;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
@@ -28,5 +30,7 @@ public interface PrestataireRepository extends JpaRepository<Prestataire, Long> 
 
     // ── Pour PrestationController ──────────────────────
     List<Prestataire> findByTypeAndActifTrue(TypePrestataire type);
+
     List<Prestataire> findByTypeInAndActifTrue(List<TypePrestataire> types);
+
 }

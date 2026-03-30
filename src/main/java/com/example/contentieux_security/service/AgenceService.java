@@ -6,7 +6,7 @@ import com.example.contentieux_security.repository.AgenceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.example.contentieux_security.dto.AgenceDTO;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -16,11 +16,28 @@ public class AgenceService {
 
     private final AgenceRepository agenceRepository;
 
-    public List<AgenceDTO> getAllAgences() {
-        return agenceRepository.findAll().stream()
-                .map(this::convertToDTO)
-                .collect(Collectors.toList());
-    }
+  // AgenceService.java
+  @Transactional(readOnly = true)
+public List<AgenceDTO> getAllAgences() {
+    return agenceRepository.findAll().stream()
+        .map(agence -> {
+            AgenceDTO dto = new AgenceDTO();
+            dto.setId(agence.getId());
+            dto.setCode(agence.getCode());
+            dto.setNom(agence.getNom());
+            dto.setAdresse(agence.getAdresse());
+            dto.setVille(agence.getVille());
+            dto.setTelephone(agence.getTelephone());
+            dto.setEmail(agence.getEmail());
+            dto.setDirecteur(agence.getDirecteur());
+
+            // 👇 AJOUTEZ CETTE LIGNE ICI
+// In your service, if you do this AFTER the transaction closes:
+dto.setNombreAgents(agence.getNombreAgents()); // → LazyInitializationException → 500
+            return dto;
+        })
+        .collect(Collectors.toList());
+}
 
     public AgenceDTO getAgenceById(Long id) {
         Agence agence = agenceRepository.findById(id)
@@ -81,14 +98,16 @@ public class AgenceService {
 
     private AgenceDTO convertToDTO(Agence agence) {
         AgenceDTO dto = new AgenceDTO();
+    
         dto.setId(agence.getId());
-        dto.setCode(agence.getCode());
         dto.setNom(agence.getNom());
+        dto.setCode(agence.getCode());
         dto.setAdresse(agence.getAdresse());
         dto.setVille(agence.getVille());
         dto.setTelephone(agence.getTelephone());
         dto.setEmail(agence.getEmail());
-        dto.setNombreAgents(agence.getNombreAgents());
+        dto.setDirecteur(agence.getDirecteur());
+    
         return dto;
     }
 }

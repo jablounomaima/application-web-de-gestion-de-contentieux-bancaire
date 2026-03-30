@@ -158,11 +158,23 @@
         <nav class="sidebar-nav">
             <div class="nav-section">
                 <div class="nav-section-label">Principal</div>
-                <a th:href="@{/admin/dashboard}"    class="nav-item active"><span class="ico">📊</span> Dashboard</a>
-                <a th:href="@{/admin/agences}"      class="nav-item"><span class="ico">🏢</span> Agences</a>
-                <a th:href="@{/admin/agents}"       class="nav-item"><span class="ico">👤</span> Agents</a>
+        
+                <a th:href="@{/admin/dashboard}" class="nav-item">
+                    <span class="ico">📊</span> Dashboard
+                </a>
+        
+                <a th:href="@{/admin/agences}" class="nav-item">
+                    <span class="ico">🏢</span> Agences
+                </a>
+        
+                <a th:href="@{/admin/agents}" class="nav-item">
+                    <span class="ico">👤</span> Agents
+                </a>
+        
+                <a th:href="@{/admin/validateurs}" class="nav-item">
+                    <span class="ico">✅</span> Validateurs
+                </a>
             </div>
-           
         </nav>
         <div class="sidebar-footer">
             <div class="user-card">

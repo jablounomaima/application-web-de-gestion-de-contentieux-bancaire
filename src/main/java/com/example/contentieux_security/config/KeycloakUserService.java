@@ -58,7 +58,8 @@ public class KeycloakUserService {
             user.setFirstName(firstName);
             user.setLastName(lastName);
             user.setEnabled(true);
-            user.setEmailVerified(true);
+            // ← L'email n'est pas vérifié!
+            user.setEmailVerified(false);
 
             Response response = keycloak.realm(realm).users().create(user);
             if (response.getStatus() != 201)
@@ -70,7 +71,7 @@ public class KeycloakUserService {
             CredentialRepresentation credential = new CredentialRepresentation();
             credential.setType(CredentialRepresentation.PASSWORD);
             credential.setValue(password);
-            credential.setTemporary(true);
+            credential.setTemporary(false);
             keycloak.realm(realm).users().get(userId).resetPassword(credential);
 
             // Assigner le rôle

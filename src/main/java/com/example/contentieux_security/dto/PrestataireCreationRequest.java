@@ -8,12 +8,13 @@ import lombok.Data;
 
 @Data
 public class PrestataireCreationRequest {
+
     private Long id;
 
     @NotBlank(message = "Le nom d'utilisateur est obligatoire")
     private String username;
 
-    private String motDePasse;   // mot de passe temporaire
+    private String motDePasse;
 
     @NotBlank(message = "Le prénom est obligatoire")
     private String prenom;
@@ -31,13 +32,24 @@ public class PrestataireCreationRequest {
 
     private String numeroCartePro;
 
-    private String adresse;                    // ← champ ajouté correctement
+    private String adresse;
 
     @NotNull(message = "Le type de prestataire est obligatoire")
-    private TypePrestataire typePrestataire;
+    private TypePrestataire typePrestataire; // ✅ TypePrestataire depuis entity
 
-    // Champs pour validateurs (optionnels)
+    // ✅ Agence assignée par l'admin — obligatoire pour les validateurs
+    private Long agenceId;
+
+    // Champs spécifiques aux validateurs (optionnels)
     private String niveauValidation;
     private Double plafondValidation;
 
+    // ✅ Méthode utilitaire — retourne le type (compatibilité avec l'ancien code)
+    public TypePrestataire getType() {
+        return typePrestataire;
+    }
+
+    public void setType(TypePrestataire type) {
+        this.typePrestataire = type;
+    }
 }

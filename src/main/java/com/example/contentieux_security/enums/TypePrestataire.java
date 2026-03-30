@@ -4,9 +4,7 @@ public enum TypePrestataire {
 
     AVOCAT("Avocat"),
     EXPERT("Expert judiciaire"),
-    HUISSIER("Huissier"),
-    VALIDATEUR_FINANCIER("Validateur financier"),
-    VALIDATEUR_JURIDIQUE("Validateur juridique");
+    HUISSIER("Huissier");
 
     private final String libelle;
 
@@ -26,8 +24,7 @@ public enum TypePrestataire {
             case AVOCAT -> "ROLE_AVOCAT";
             case EXPERT -> "ROLE_EXPERT";
             case HUISSIER -> "ROLE_HUISSIER";
-            case VALIDATEUR_FINANCIER -> "ROLE_VALIDATEUR_FINANCIER";
-            case VALIDATEUR_JURIDIQUE -> "ROLE_VALIDATEUR_JURIDIQUE";
+          
         };
     }
 

@@ -77,9 +77,9 @@ public class SecurityConfig {
                     } else if (hasRole(authentication, "ROLE_EXPERT")) {
                         response.sendRedirect("/expert/dashboard");
                     } else if (hasRole(authentication, "ROLE_VALIDATEUR_JURIDIQUE")) {
-                        response.sendRedirect("/validateur/juridique/dashboard");
+                        response.sendRedirect("/validateur/dashboard-juridique");
                     } else if (hasRole(authentication, "ROLE_VALIDATEUR_FINANCIER")) {
-                        response.sendRedirect("/validateur/financier/dashboard");
+                        response.sendRedirect("/validateur/dashboard-financier");
                     } else {
                         response.sendRedirect("/access-denied");
                     }
