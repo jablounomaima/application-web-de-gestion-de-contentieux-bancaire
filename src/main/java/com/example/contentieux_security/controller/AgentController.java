@@ -9,11 +9,15 @@ import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.entity.Client;
 import com.example.contentieux_security.entity.DossierContentieux;
 import com.example.contentieux_security.entity.Prestataire;
+import com.example.contentieux_security.enums.DossierStatus;
 import com.example.contentieux_security.enums.TypePrestataire;
+import com.example.contentieux_security.repository.DossierRepository;
 import com.example.contentieux_security.service.AgentBancaireService;
 import com.example.contentieux_security.service.ClientService;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.PrestataireService;
+
+import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -25,6 +29,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.security.Principal;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
@@ -39,6 +44,7 @@ public class AgentController {
     private final PrestataireService prestataireService;
     private final ClientService clientService;
     private final DossierService dossierService;
+    private final DossierRepository dossierRepository;
 
     // ══════════════════════════════════════════════════════════════
     //  DASHBOARD
@@ -430,6 +436,43 @@ public String ajouterGarantie(
     return "redirect:/agent/dossiers/" + request.getDossierId();
 }
 
+
+
+@PostMapping("/dossiers/{id}/ressoumettre")
+@PreAuthorize("hasRole('AGENT')")
+@Transactional
+public String ressoumettreDossier(@PathVariable Long id,
+                                  RedirectAttributes redirectAttributes,
+                                  Principal principal) {
+    try {
+        DossierContentieux d = dossierRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
+
+        // 🔥 CAS 1 : financier rejeté → reset financier seulement
+        if (Boolean.FALSE.equals(d.getValidationFinanciere())) {
+            d.setValidationFinanciere(null);
+        }
+
+        // 🔥 CAS 2 : juridique rejeté → reset juridique seulement
+        if (Boolean.FALSE.equals(d.getValidationJuridique())) {
+            d.setValidationJuridique(null);
+        }
+
+        // garder statut en traitement
+        d.setStatut(DossierStatus.EN_TRAITEMENT);
+
+        dossierRepository.save(d);
+
+        redirectAttributes.addFlashAttribute("success",
+                "Dossier ressoumis au validateur concerné ✅");
+
+    } catch (Exception e) {
+        e.printStackTrace();
+        redirectAttributes.addFlashAttribute("error", e.getMessage());
+    }
+
+    return "redirect:/agent/dossiers/" + id;
+}
 
 
 }

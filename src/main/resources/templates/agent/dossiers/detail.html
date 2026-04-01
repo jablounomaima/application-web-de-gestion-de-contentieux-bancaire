@@ -396,6 +396,34 @@
     </div>
 </div>
 
+<!-- 🔄 Ressoumission -->
+<div th:if="${dossier.validationFinanciere == false or dossier.validationJuridique == false}"
+     style="margin-top:20px">
+
+    <form th:action="@{/agent/dossiers/{id}/ressoumettre(id=${dossier.id})}"
+          method="post">
+
+        <input type="hidden"
+               th:name="${_csrf.parameterName}"
+               th:value="${_csrf.token}"/>
+
+        <button type="submit"
+                style="background:#f39c12;color:white;padding:10px 18px;
+                       border:none;border-radius:5px;cursor:pointer">
+
+            <span th:if="${dossier.validationFinanciere == false}">
+                🔄 Ressoumettre au validateur financier
+            </span>
+
+            <span th:if="${dossier.validationJuridique == false}">
+                🔄 Ressoumettre au validateur juridique
+            </span>
+
+        </button>
+
+    </form>
+</div>
+
 <!-- ── Actions ── -->
 <div style="max-width:700px">
     <div class="actions">

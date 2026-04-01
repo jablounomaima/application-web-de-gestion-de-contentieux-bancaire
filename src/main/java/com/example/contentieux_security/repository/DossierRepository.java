@@ -72,8 +72,11 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
         LEFT JOIN FETCH d.client
         LEFT JOIN FETCH d.agence
         WHERE d.statut = 'EN_TRAITEMENT'
-        AND d.validationFinanciere IS NULL
         AND d.validateurFinancierChoisi = :username
+        AND (
+            d.validationFinanciere IS NULL
+            OR d.validationFinanciere = false
+        )
     """)
     List<DossierContentieux> findEnAttenteValidationFinanciereParValidateur(
             @Param("username") String username);
@@ -85,8 +88,11 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
         LEFT JOIN FETCH d.client
         LEFT JOIN FETCH d.agence
         WHERE d.statut = 'EN_TRAITEMENT'
-        AND d.validationJuridique IS NULL
         AND d.validateurJuridiqueChoisi = :username
+        AND (
+            d.validationJuridique IS NULL
+            OR d.validationJuridique = false
+        )
     """)
     List<DossierContentieux> findEnAttenteValidationJuridiqueParValidateur(
             @Param("username") String username);

@@ -3,10 +3,14 @@ package com.example.contentieux_security.enums;
 public enum DossierStatus {
     OUVERT,
     EN_TRAITEMENT,
+
+    EN_CORRECTION,   // ✅ AJOUT IMPORTANT
+
     VALIDE,
-    EN_PROCEDURE,      // ← ajouté
-    EN_EXECUTION,      // ← ajouté
-    CLOTURE_PARTIEL,   // ← ajouté
-    REJETE,
+    EN_PROCEDURE,
+    EN_EXECUTION,
+    CLOTURE_PARTIEL,
+
+    REJETE,          // ⚠ rejet total uniquement (rare)
     CLOTURE
 }

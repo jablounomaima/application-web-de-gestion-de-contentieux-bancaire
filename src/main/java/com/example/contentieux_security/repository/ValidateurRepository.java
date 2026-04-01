@@ -1,8 +1,11 @@
 package com.example.contentieux_security.repository;
 
+import com.example.contentieux_security.entity.DossierContentieux;
 import com.example.contentieux_security.entity.Validateur;
 import com.example.contentieux_security.enums.TypeValidateur;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -28,4 +31,13 @@ public interface ValidateurRepository extends JpaRepository<Validateur, Long> {
     List<Validateur> findByTypeValidateur(TypeValidateur typeValidateur);
 
     List<Validateur> findByTypeValidateurAndActifTrue(TypeValidateur typeValidateur);
+
+    @Query("SELECT DISTINCT d FROM DossierContentieux d " +
+       "LEFT JOIN FETCH d.client " +
+       "LEFT JOIN FETCH d.agence " +
+       "LEFT JOIN FETCH d.agentCreateur " +  // ← important
+       "LEFT JOIN FETCH d.risques " +
+       "WHERE d.id = :id")
+Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
+
 }
