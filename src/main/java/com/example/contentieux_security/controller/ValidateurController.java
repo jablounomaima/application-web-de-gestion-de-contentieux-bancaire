@@ -258,6 +258,7 @@ public class ValidateurController {
      */
     @PostMapping("/validateur/juridique/dossiers/{id}/rejeter")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
+    @Transactional
     public String rejeterJuridique(@PathVariable Long id,
                                    @RequestParam String commentaire,
                                    Principal principal,
@@ -292,6 +293,7 @@ public class ValidateurController {
 
     @GetMapping("/validateur/juridique/dossiers")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
+    @Transactional
     public String dossiersJuridique(Model model, Principal principal) {
         String username = principal.getName();
         List<DossierContentieux> dossiers =
