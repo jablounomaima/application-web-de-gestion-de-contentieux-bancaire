@@ -178,11 +178,7 @@
 
 <!-- ═══════════════════════════════════════════════════════════
      FRAGMENT : sidebar(role, username, fullname)
-     - role     : 'ADMIN' | 'AGENT' | 'AVOCAT' | 'HUISSIER' | 'EXPERT'
-     - username : login Keycloak (utilisé pour l'initiale de l'avatar)
-     - fullname : nom complet affiché dans la card (ex: 'Maître Karim Touri')
-                  → si null, on replie sur username
-     Usage : <aside th:replace="~{fragments/layout :: sidebar('AVOCAT', ${username}, ${fullname})}">
+     Usage : <aside th:replace="~{fragments/layout :: sidebar('AGENT', ${username}, ${fullname})}">
 ═══════════════════════════════════════════════════════════ -->
 <aside th:fragment="sidebar(role, username)" class="sidebar">
 
@@ -246,20 +242,54 @@
         </div>
         <div th:if="${role == 'AGENT'}" class="nav-section">
             <div class="nav-section-label">Suivi</div>
+            <a th:href="@{/agent/notifications}" class="nav-item">
+                <span class="nav-ico">🔔</span>
+                <span class="nav-label">Notifications</span>
+                <span th:if="${notifCount != null and notifCount > 0}" 
+                      class="nav-badge" 
+                      th:text="${notifCount}">0</span>
+            </a>
             <a th:href="@{/agent/relances}" class="nav-item">
-                <span class="nav-ico">🔔</span><span class="nav-label">Relances</span>
+                <span class="nav-ico">⏰</span><span class="nav-label">Relances</span>
             </a>
             <a th:href="@{/agent/rapports}" class="nav-item">
                 <span class="nav-ico">📊</span><span class="nav-label">Rapports</span>
             </a>
         </div>
-        <div th:if="${role == 'AGENT'}" class="nav-section">
-            <div class="nav-section-label">Mon compte</div>
-            <a th:href="@{/agent/profile/edit}" class="nav-item">
-                <span class="nav-ico">✏️</span><span class="nav-label">Modifier profil</span>
+
+        <!-- ════ VALIDATEUR FINANCIER ════ -->
+        <div th:if="${role == 'VALIDATEUR_FINANCIER'}" class="nav-section">
+            <div class="nav-section-label">Validation</div>
+            <a th:href="@{/validateur/financier/dashboard}" class="nav-item active">
+                <span class="nav-ico">📊</span><span class="nav-label">Dashboard</span>
             </a>
-            <a th:href="@{/agent/change-password}" class="nav-item">
-                <span class="nav-ico">🔐</span><span class="nav-label">Mot de passe</span>
+            <a th:href="@{/validateur/financier/dossiers}" class="nav-item">
+                <span class="nav-ico">📁</span><span class="nav-label">Dossiers à valider</span>
+            </a>
+            <a th:href="@{/validateur/financier/notifications}" class="nav-item">
+                <span class="nav-ico">🔔</span>
+                <span class="nav-label">Notifications</span>
+                <span th:if="${notifCount != null and notifCount > 0}" 
+                      class="nav-badge" 
+                      th:text="${notifCount}">0</span>
+            </a>
+        </div>
+
+        <!-- ════ VALIDATEUR JURIDIQUE ════ -->
+        <div th:if="${role == 'VALIDATEUR_JURIDIQUE'}" class="nav-section">
+            <div class="nav-section-label">Validation</div>
+            <a th:href="@{/validateur/juridique/dashboard}" class="nav-item active">
+                <span class="nav-ico">📊</span><span class="nav-label">Dashboard</span>
+            </a>
+            <a th:href="@{/validateur/juridique/dossiers}" class="nav-item">
+                <span class="nav-ico">📁</span><span class="nav-label">Dossiers à valider</span>
+            </a>
+            <a th:href="@{/validateur/juridique/notifications}" class="nav-item">
+                <span class="nav-ico">🔔</span>
+                <span class="nav-label">Notifications</span>
+                <span th:if="${notifCount != null and notifCount > 0}" 
+                      class="nav-badge" 
+                      th:text="${notifCount}">0</span>
             </a>
         </div>
 
@@ -275,7 +305,6 @@
             <a th:href="@{/avocat/audiences}" class="nav-item">
                 <span class="nav-ico">🏛</span><span class="nav-label">Audiences</span>
             </a>
-            <a th:href="@{/prestataire/change-password}">🔐 Changer mon mot de passe</a>
         </div>
         <div th:if="${role == 'AVOCAT'}" class="nav-section">
             <div class="nav-section-label">Documents</div>
@@ -299,7 +328,6 @@
             <a th:href="@{/huissier/significations}" class="nav-item">
                 <span class="nav-ico">📮</span><span class="nav-label">Significations</span>
             </a>
-            <a th:href="@{/prestataire/change-password}">🔐 Changer mon mot de passe</a>
         </div>
         <div th:if="${role == 'HUISSIER'}" class="nav-section">
             <div class="nav-section-label">Recouvrement</div>
@@ -323,7 +351,6 @@
             <a th:href="@{/expert/evaluations}" class="nav-item">
                 <span class="nav-ico">📊</span><span class="nav-label">Évaluations</span>
             </a>
-            <a th:href="@{/prestataire/change-password}">🔐 Changer mon mot de passe</a>
         </div>
         <div th:if="${role == 'EXPERT'}" class="nav-section">
             <div class="nav-section-label">Rapports</div>
@@ -339,12 +366,10 @@
 
     <div class="sidebar-footer">
         <div class="user-card">
-            <!-- Initiale basée sur le nom complet si dispo, sinon sur le login -->
             <div class="user-avatar"
                  th:with="displayName=${(fullname != null and !#strings.isEmpty(fullname)) ? fullname : (username ?: 'U')}"
                  th:text="${#strings.substring(displayName, 0, 1)}">U</div>
             <div class="user-info">
-                <!-- Affiche le nom complet en priorité, sinon le login -->
                 <div class="uname"
                      th:text="${(fullname != null and !#strings.isEmpty(fullname)) ? fullname : (username ?: 'Utilisateur')}">
                     Utilisateur
@@ -373,38 +398,35 @@
 
     <div class="topbar-right">
 
-        <!-- ✅ Notifications avec compteur réel -->
+        <!-- ✅ Notifications avec compteur - utilise notifCount du NotificationAdvice -->
         <a th:href="${role == 'VALIDATEUR_FINANCIER'}
                     ? @{/validateur/financier/notifications}
                     : (${role == 'VALIDATEUR_JURIDIQUE'}
                     ? @{/validateur/juridique/notifications}
                     : (${role == 'AGENT'}
                     ? @{/agent/notifications}
-                    : @{/notifications}))"
+                    : (${role == 'ADMIN'}
+                    ? @{/admin/notifications}
+                    : @{/notifications})))"
            class="topbar-notif"
-           title="Notifications"
-           style="position:relative;text-decoration:none;
-                  width:36px;height:36px;border-radius:8px;
-                  background:var(--surface2);border:1px solid var(--border);
-                  display:grid;place-items:center;font-size:16px">
+           title="Notifications">
             🔔
-            <!-- ✅ Badge rouge avec compteur -->
+            <!-- ✅ Badge avec compteur - null safe -->
             <span th:if="${notifCount != null and notifCount > 0}"
-                  style="position:absolute;top:-6px;right:-6px;
-                         background:#dc2626;color:white;
-                         border-radius:10px;padding:1px 6px;
-                         font-size:10px;font-weight:700;
-                         min-width:18px;text-align:center;
-                         border:1.5px solid white;
-                         font-family:'Outfit',sans-serif"
-                  th:text="${notifCount}">
+                  class="notif-dot"
+                  th:text="${notifCount > 9 ? '9+' : notifCount}"
+                  style="position:absolute; top:-4px; right:-4px; 
+                         min-width:18px; height:18px; 
+                         background:#dc2626; color:white;
+                         border-radius:9px; font-size:10px; font-weight:700;
+                         display:flex; align-items:center; justify-content:center;
+                         border:2px solid white;">
             </span>
         </a>
 
         <div class="topbar-user">
             <div class="topbar-avatar"
-                 th:with="displayUser=${(username != null
-                          and !#strings.isEmpty(username)) ? username : 'U'}"
+                 th:with="displayUser=${(username != null and !#strings.isEmpty(username)) ? username : 'U'}"
                  th:text="${#strings.substring(displayUser, 0, 1)}">
                 U
             </div>

@@ -4,7 +4,8 @@
 <head th:replace="~{fragments/layout :: head('Dashboard Validateur Financier')}"></head>
 <body>
 
-<aside th:replace="~{fragments/layout :: sidebar('VALIDATEUR_FINANCIER', ${#authentication.name})}"></aside>
+    <aside th:replace="~{fragments/layout :: sidebar('VALIDATEUR_FINANCIER', ${#authentication.name})}"></aside>
+<!-- ✅ TOPBAR - notifCount est déjà injecté par NotificationAdvice, pas besoin de le passer -->
 <header th:replace="~{fragments/layout :: topbar('Dashboard', ${#authentication.name}, 'VALIDATEUR_FINANCIER')}"></header>
 
 <div class="page-content">
@@ -21,39 +22,34 @@
             </div>
             <div style="display:flex;gap:10px;align-items:center">
 
-               <!-- ✅ Badge notifications -->
-              
+                <!-- ✅ Badge notifications - utilise notifCount du modèle global -->
+                <div class="notif-bar">
+                    <div style="font-size:14px;color:#555">
+                        Dossiers assignés à votre validation financière
+                    </div>
+                    <a class="notif-link" th:href="@{/validateur/financier/notifications}">
+                        🔔 Notifications
+                        <!-- ✅ Vérification null-safe -->
+                        <span th:if="${notifCount != null and notifCount > 0}"
+                              class="notif-badge" 
+                              th:text="${notifCount}">0</span>
+                    </a>
+                </div>
 
+                <style>
+                    .notif-link {
+                        text-decoration: none; font-size: 14px; font-weight: bold;
+                        color: #e74c3c; background: white; padding: 7px 14px;
+                        border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
+                        border: 1px solid #f5c6cb;
+                    }
+                    .notif-link:hover { background: #fff0f0; }
 
-
-               <!-- ✅ Barre notifications — même structure que dossiers-juridique.html -->
-<div class="notif-bar">
-    <div style="font-size:14px;color:#555">
-        Dossiers assignés à votre validation financière
-    </div>
-    <a class="notif-link" th:href="@{/validateur/financier/notifications}">
-        🔔 Notifications
-        <span th:if="${notifCount != null and notifCount > 0}"
-              class="notif-badge" th:text="${notifCount}">
-        </span>
-    </a>
-</div>
-<style>
- .notif-link {
-            text-decoration: none; font-size: 14px; font-weight: bold;
-            color: #e74c3c; background: white; padding: 7px 14px;
-            border-radius: 4px; box-shadow: 0 1px 4px rgba(0,0,0,.08);
-            border: 1px solid #f5c6cb;
-        }
-        .notif-link:hover { background: #fff0f0; }
-
-.notif-badge {
-    display: inline-block; background: #e74c3c; color: white;
-    border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 6px;
-}
-</style>
-
-
+                    .notif-badge {
+                        display: inline-block; background: #e74c3c; color: white;
+                        border-radius: 10px; padding: 1px 7px; font-size: 11px; margin-left: 6px;
+                    }
+                </style>
 
                 <a th:href="@{/validateur/financier/dossiers}"
                    class="btn btn-primary">
@@ -99,9 +95,8 @@
             <div class="stat-card blue fade-in delay-4">
                 <div class="stat-icon">🔔</div>
                 <div class="stat-label">Notifications</div>
-                <!-- ✅ stat-card aussi avec notifCount -->
-                <div class="stat-value"
-                     th:text="${notifCount != null ? notifCount : 0}">0</div>
+                <!-- ✅ Utilisation de l'opérateur Elvis pour valeur par défaut -->
+                <div class="stat-value" th:text="${notifCount ?: 0}">0</div>
                 <div class="stat-delta">Non lues</div>
             </div>
         </div>
@@ -151,7 +146,7 @@
             </div>
         </div>
 
-        <!-- ✅ Tableau dossiers — champs corrigés -->
+        <!-- Tableau dossiers -->
         <div class="table-wrap fade-in delay-3">
             <div class="table-header">
                 <h2>⏳ Dossiers financiers en attente de validation</h2>
@@ -168,8 +163,6 @@
                     </tr>
                 </thead>
                 <tbody>
-
-                    <!-- ✅ Dossiers réels -->
                     <tr th:each="d : ${dossiers}"
                         th:if="${dossiers != null and !#lists.isEmpty(dossiers)}">
                         <td style="font-family:'JetBrains Mono',monospace;font-size:12px"
@@ -191,15 +184,12 @@
                                      : '–'">
                         </td>
                         <td>
-                            <!-- ✅ Lien vers la page de détail pour valider/rejeter -->
                             <a th:href="@{/validateur/financier/dossiers/{id}(id=${d.id})}"
                                class="btn btn-green btn-sm">
                                 👁 Voir / Valider
                             </a>
                         </td>
                     </tr>
-
-                    <!-- ✅ Aucun dossier -->
                     <tr th:if="${dossiers == null or #lists.isEmpty(dossiers)}">
                         <td colspan="6"
                             style="text-align:center;color:#aaa;
@@ -207,7 +197,6 @@
                             Aucun dossier en attente de validation financière.
                         </td>
                     </tr>
-
                 </tbody>
             </table>
         </div>

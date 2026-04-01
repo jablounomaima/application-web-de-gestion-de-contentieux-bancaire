@@ -8,8 +8,7 @@
 <div class="layout-wrapper">
 
     <!-- ═══ SIDEBAR ═══ -->
-    <aside th:replace="~{fragments/layout :: sidebar('AGENT', ${username})}"></aside>
-
+    <aside th:replace="~{fragments/layout :: sidebar('AGENT', ${#authentication.name})}"></aside>
     <!-- ═══ CONTENU PRINCIPAL ═══ -->
     <div class="page-content">
 

@@ -5,98 +5,160 @@ import com.example.contentieux_security.enums.DossierStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+
 import java.util.List;
 import java.util.Optional;
 
 public interface DossierRepository extends JpaRepository<DossierContentieux, Long> {
 
+
+
+    
+
+    // =====================================================
+    // 📌 DOSSIERS PAR AGENT (avec optimisation FETCH)
+    // =====================================================
     @Query("""
         SELECT DISTINCT d FROM DossierContentieux d
         LEFT JOIN FETCH d.client
         LEFT JOIN FETCH d.agence
         WHERE d.agentCreateur.username = :username
     """)
-    List<DossierContentieux> findByAgentCreateur_Username(@Param("username") String username);
+    List<DossierContentieux> findByAgentCreateurUsername(@Param("username") String username);
+   
+     //✔️ Version simple (sans fetch)
+   List<DossierContentieux> findByAgentCreateur_UsernameAndStatut(
+           String username, DossierStatus statut);
 
-    List<DossierContentieux> findByAgentCreateur_UsernameAndStatut(
-            String username, DossierStatus statut);
-
-    // ── Requêtes par agence ───────────────────────────────────────
+    // =====================================================
+    // 📌 PAR AGENCE
+    // =====================================================
     List<DossierContentieux> findByAgence_Id(Long agenceId);
+
     List<DossierContentieux> findByAgence_IdAndStatut(Long agenceId, DossierStatus statut);
 
-    // ── Requêtes par statut ───────────────────────────────────────
+    // =====================================================
+    // 📌 PAR STATUT
+    // =====================================================
     List<DossierContentieux> findByStatut(DossierStatus statut);
+
     long countByStatut(DossierStatus statut);
+
     long countByAgentCreateur_UsernameAndStatut(String username, DossierStatus statut);
 
-    // ── Requêtes par client ───────────────────────────────────────
+    // =====================================================
+    // 📌 PAR CLIENT
+    // =====================================================
     List<DossierContentieux> findByClient_Id(Long clientId);
 
-    // ── Numéro dossier ────────────────────────────────────────────
+    // =====================================================
+    // 📌 NUMÉRO DOSSIER
+    // =====================================================
     Optional<DossierContentieux> findByNumeroDossier(String numeroDossier);
 
-    @Query("SELECT MAX(d.numeroDossier) FROM DossierContentieux d WHERE d.numeroDossier LIKE :prefix%")
+    // ⚠️ CORRIGÉ (LIKE + CONCAT)
+    @Query("""
+        SELECT MAX(d.numeroDossier)
+        FROM DossierContentieux d
+        WHERE d.numeroDossier LIKE CONCAT(:prefix, '%')
+    """)
     Optional<String> findLastNumero(@Param("prefix") String prefix);
 
-    // ── Validation ────────────────────────────────────────────────
-    @Query("SELECT d FROM DossierContentieux d " +
-           "WHERE d.statut = 'EN_TRAITEMENT' AND d.validationFinanciere IS NULL")
+    // =====================================================
+    // 📌 VALIDATION FINANCIÈRE (par validateur)
+    // =====================================================
+    @Query("""
+        SELECT DISTINCT d FROM DossierContentieux d
+        LEFT JOIN FETCH d.client
+        LEFT JOIN FETCH d.agence
+        WHERE d.statut = 'EN_TRAITEMENT'
+        AND d.validationFinanciere IS NULL
+        AND d.validateurFinancierChoisi = :username
+    """)
+    List<DossierContentieux> findEnAttenteValidationFinanciereParValidateur(
+            @Param("username") String username);
+    // =====================================================
+    // 📌 VALIDATION JURIDIQUE (par validateur)
+    // =====================================================
+    @Query("""
+        SELECT DISTINCT d FROM DossierContentieux d
+        LEFT JOIN FETCH d.client
+        LEFT JOIN FETCH d.agence
+        WHERE d.statut = 'EN_TRAITEMENT'
+        AND d.validationJuridique IS NULL
+        AND d.validateurJuridiqueChoisi = :username
+    """)
+    List<DossierContentieux> findEnAttenteValidationJuridiqueParValidateur(
+            @Param("username") String username);
+    // =====================================================
+    // 📌 VALIDATION GLOBALE
+    // =====================================================
+    @Query("""
+        SELECT d FROM DossierContentieux d
+        WHERE d.statut = 'EN_TRAITEMENT'
+        AND d.validationFinanciere IS NULL
+    """)
     List<DossierContentieux> findEnAttenteValidationFinanciere();
 
-    @Query("SELECT d FROM DossierContentieux d " +
-           "WHERE d.statut = 'EN_TRAITEMENT' AND d.validationJuridique IS NULL")
+    @Query("""
+        SELECT d FROM DossierContentieux d
+        WHERE d.statut = 'EN_TRAITEMENT'
+        AND d.validationJuridique IS NULL
+    """)
     List<DossierContentieux> findEnAttenteValidationJuridique();
 
-    @Query("SELECT d FROM DossierContentieux d " +
-           "WHERE d.agence.id = :agenceId " +
-           "AND d.statut = 'EN_TRAITEMENT' AND d.validationFinanciere IS NULL")
-    List<DossierContentieux> findEnAttenteValidationFinanciereParAgence(@Param("agenceId") Long agenceId);
+    // =====================================================
+    // 📌 VALIDATION PAR AGENCE
+    // =====================================================
+    @Query("""
+        SELECT d FROM DossierContentieux d
+        WHERE d.agence.id = :agenceId
+        AND d.statut = 'EN_TRAITEMENT'
+        AND d.validationFinanciere IS NULL
+    """)
+    List<DossierContentieux> findEnAttenteValidationFinanciereParAgence(
+            @Param("agenceId") Long agenceId);
 
-    @Query("SELECT d FROM DossierContentieux d " +
-           "WHERE d.agence.id = :agenceId " +
-           "AND d.statut = 'EN_TRAITEMENT' AND d.validationJuridique IS NULL")
-    List<DossierContentieux> findEnAttenteValidationJuridiqueParAgence(@Param("agenceId") Long agenceId);
+    @Query("""
+        SELECT d FROM DossierContentieux d
+        WHERE d.agence.id = :agenceId
+        AND d.statut = 'EN_TRAITEMENT'
+        AND d.validationJuridique IS NULL
+    """)
+    List<DossierContentieux> findEnAttenteValidationJuridiqueParAgence(
+            @Param("agenceId") Long agenceId);
 
-    // ── Statistiques ──────────────────────────────────────────────
+    // =====================================================
+    // 📊 STATISTIQUES
+    // =====================================================
     @Query("SELECT d.statut, COUNT(d) FROM DossierContentieux d GROUP BY d.statut")
     List<Object[]> countByStatutGrouped();
 
     @Query("SELECT d.agence.nom, COUNT(d) FROM DossierContentieux d GROUP BY d.agence.nom")
     List<Object[]> countByAgenceGrouped();
 
-    // ── Détail dossier — SANS garanties (évite MultipleBagFetchException) ──
-    // ✅ Charge seulement risques — les garanties sont chargées séparément
+    // =====================================================
+    // 📌 DÉTAIL DOSSIER (optimisé)
+    // =====================================================
     @Query("""
         SELECT DISTINCT d FROM DossierContentieux d
         LEFT JOIN FETCH d.client
         LEFT JOIN FETCH d.agence
         LEFT JOIN FETCH d.risques
+        LEFT JOIN FETCH d.agentCreateur
         WHERE d.id = :id
     """)
     Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
-
-
-    // ✅ Financier voit uniquement ses dossiers assignés
-@Query("""
-    SELECT d FROM DossierContentieux d
-    WHERE d.statut = 'EN_TRAITEMENT'
-    AND d.validationFinanciere IS NULL
-    AND d.validateurFinancierChoisi = :username
-""")
-List<DossierContentieux> findEnAttenteValidationFinanciere(
-        @Param("username") String username);
-
-// ✅ Juridique voit uniquement ses dossiers assignés
-@Query("""
-    SELECT d FROM DossierContentieux d
-    WHERE d.statut = 'EN_TRAITEMENT'
-    AND d.validationJuridique IS NULL
-    AND d.validateurJuridiqueChoisi = :username
-""")
-List<DossierContentieux> findEnAttenteValidationJuridique(
-        @Param("username") String username);
-
-
-
+    // =====================================================
+    // 📌 VALIDATION FINANCIÈRE AVEC FETCH
+    // =====================================================
+    @Query("""
+        SELECT d FROM DossierContentieux d
+        LEFT JOIN FETCH d.client
+        LEFT JOIN FETCH d.agence
+        WHERE d.validateurFinancierChoisi = :username
+        AND d.statut = 'EN_TRAITEMENT'
+    """)
+    List<DossierContentieux> findEnAttenteValidationFinanciereAvecRelations(
+            @Param("username") String username);
 }

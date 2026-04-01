@@ -54,7 +54,6 @@
         .btn-success { background:linear-gradient(135deg,#27ae60,#2ecc71); color:white; font-weight:bold; }
         .btn-purple  { background:#8e44ad; color:white; }
 
-        /* ✅ Bouton lancer prestation — mis en valeur */
         .btn-prestation {
             background: linear-gradient(135deg, #1e3a5f, #2563eb);
             color: white; font-weight: bold; font-size: 15px;
@@ -101,7 +100,8 @@
 </div>
 
 <!-- ── 2. Client ── -->
-<div class="card">
+<!-- ✅ CORRIGÉ : Utilisation des propriétés du DTO (clientNom, clientPrenom, etc.) -->
+<div class="card" th:if="${dossier.clientNom != null or dossier.clientPrenom != null}">
     <div class="card-title">Client</div>
     <table>
         <tr><td>Nom / Prénom</td>
@@ -149,20 +149,45 @@
 <div class="card">
     <div class="card-title">
         Crédits / Risques
-        <span th:if="${dossier.montantTotalEngagement != null}"
+        <span th:if="${dossier.risques != null and !dossier.risques.empty}"
               style="float:right;font-weight:normal;color:#777">
             Total impayé :
-            <b th:text="${#numbers.formatDecimal(dossier.montantTotalEngagement,1,'COMMA',2,'POINT')} + ' DT'"></b>
+            <b th:text="${#aggregates.sum(dossier.risques.![montantImpaye != null ? montantImpaye : 0.0])} + ' DT'"></b>
         </span>
     </div>
+    
     <div th:if="${dossier.risques != null and !dossier.risques.empty}">
         <div th:each="risque : ${dossier.risques}"
              class="risque-block"
              th:classappend="${risque.selectionne} ? ' risque-selectionne' : ''">
-            <div class="risque-titre">
-                <span th:text="${risque.type} ?: '–'"></span>
-                <span th:if="${risque.selectionne}" style="font-size:11px;color:#3498db;margin-left:8px">★ Sélectionné</span>
+            
+            <!-- ☑ EN-TÊTE AVEC CASE À COCHER -->
+            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;">
+                <div class="risque-titre">
+                    <span th:text="${risque.type} ?: '–'"></span>
+                    <span th:if="${risque.selectionne}" style="font-size:11px;color:#3498db;margin-left:8px">★ Sélectionné</span>
+                </div>
+                
+                <!-- Formulaire sélection/désélection -->
+                <form th:action="@{/agent/dossiers/{dossierId}/risques/{risqueId}/selectionner(dossierId=${dossier.id}, risqueId=${risque.id})}" 
+                      method="post" 
+                      style="margin:0;">
+                    <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+                    
+                    <label th:class="${risque.selectionne} ? 'checkbox-label selected' : 'checkbox-label'">
+                        <input type="checkbox" 
+                               name="selectionne" 
+                               value="true"
+                               th:checked="${risque.selectionne}"
+                               onchange="this.form.submit()"
+                               style="width:16px; height:16px; cursor:pointer; margin-right:6px;">
+                        
+                        <span th:text="${risque.selectionne} ? '☑ Sélectionné' : '☐ Sélectionner ce crédit'"></span>
+                    </label>
+                </form>
             </div>
+            
+            <!-- Détails du risque -->
             <table style="font-size:13px;margin-bottom:8px;">
                 <tr>
                     <td style="color:#777;width:40%">Montant initial</td>
@@ -175,9 +200,16 @@
                                  ? ${#numbers.formatDecimal(risque.montantImpaye,1,'COMMA',2,'POINT')} + ' DT' : '–'"></td>
                 </tr>
                 <tr th:if="${risque.dateEcheance != null}">
-                    <td style="color:#777">Échéance</td><td th:text="${risque.dateEcheance}"></td>
+                    <td style="color:#777">Échéance</td>
+                    <td th:text="${risque.dateEcheance}"></td>
+                </tr>
+                <tr th:if="${risque.description != null and !#strings.isEmpty(risque.description)}">
+                    <td style="color:#777">Description</td>
+                    <td th:text="${risque.description}"></td>
                 </tr>
             </table>
+            
+            <!-- Garanties -->
             <div th:if="${risque.garanties != null and !risque.garanties.empty}">
                 <div style="font-size:12px;color:#999;margin-bottom:4px">Garanties :</div>
                 <div th:each="g : ${risque.garanties}" class="garantie-item">
@@ -188,6 +220,7 @@
             </div>
         </div>
     </div>
+    
     <p th:unless="${dossier.risques != null and !dossier.risques.empty}"
        style="color:#aaa;font-size:13px">Aucun crédit enregistré.</p>
 </div>
@@ -233,14 +266,14 @@
 </div>
 
 <!-- ══════════════════════════════════════════════════════
-     Choix des validateurs — visible si OUVERT
+     Choix des validateurs — visible si OUVERT ou REJETE
      ══════════════════════════════════════════════════════ -->
-<div class="card" th:if="${dossier.statut == 'OUVERT'}">
+<div class="card" th:if="${dossier.statut == 'OUVERT' or dossier.statut == 'REJETE'}">
     <div class="card-title">
         Assigner les validateurs
-        <span th:if="${dossier.validateurFinancierChoisi != null}"
+        <span th:if="${dossier.validateurFinancierChoisi != null and dossier.validateurJuridiqueChoisi != null}"
               style="float:right;font-weight:normal;font-size:12px;color:green">
-            ✅ Validateurs déjà assignés
+            ✅ Validateurs assignés
         </span>
     </div>
     <form th:action="@{/agent/dossiers/{id}/choisir-validateurs(id=${dossier.id})}" method="post">
@@ -281,6 +314,29 @@
             ✔ Confirmer les validateurs
         </button>
     </form>
+
+    <!-- ✅ NOUVEAU : Bouton Soumettre à validation (visible seulement si validateurs choisis) -->
+    <div th:if="${dossier.validateurFinancierChoisi != null and dossier.validateurJuridiqueChoisi != null}"
+         style="margin-top:20px;padding-top:20px;border-top:2px solid #eee;">
+        
+        <div style="background:#d4edda;color:#155724;padding:10px;border-radius:4px;margin-bottom:15px;font-size:13px;">
+            ✅ <strong>Validateurs assignés :</strong><br>
+            Financier : <span th:text="${dossier.validateurFinancierChoisi}"></span> |
+            Juridique : <span th:text="${dossier.validateurJuridiqueChoisi}"></span>
+        </div>
+
+        <form th:action="@{/agent/dossiers/{id}/soumettre(id=${dossier.id})}" 
+              method="post"
+              onsubmit="return confirm('Confirmer l\'envoi aux validateurs ?');">
+            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
+            <button type="submit" 
+                    style="padding:12px 24px;background:linear-gradient(135deg,#27ae60,#2ecc71);
+                           color:white;border:none;border-radius:4px;font-size:14px;
+                           font-weight:bold;cursor:pointer;box-shadow:0 2px 8px rgba(46,204,113,.3);">
+                🚀 Envoyer aux validateurs pour validation
+            </button>
+        </form>
+    </div>
 </div>
 
 <!-- ── Motif de rejet ── -->
@@ -308,19 +364,6 @@
 <!-- ── Actions ── -->
 <div style="max-width:700px">
     <div class="actions">
-
-        <!-- Soumettre / Re-soumettre -->
-        <form th:if="${dossier.statut == 'OUVERT' or dossier.statut == 'REJETE'}"
-              th:action="@{/agent/dossiers/{id}/soumettre(id=${dossier.id})}"
-              method="post" style="margin:0">
-            <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-            <button class="btn btn-submit" type="submit"
-                    th:disabled="${dossier.validateurFinancierChoisi == null or dossier.validateurJuridiqueChoisi == null}">
-                <span th:if="${dossier.statut == 'OUVERT'}">Soumettre à validation</span>
-                <span th:if="${dossier.statut == 'REJETE'}">🔄 Re-soumettre à validation</span>
-            </button>
-        </form>
-
         <!-- Modifier -->
         <a th:if="${dossier.statut == 'OUVERT' or dossier.statut == 'REJETE'}"
            class="btn btn-edit"

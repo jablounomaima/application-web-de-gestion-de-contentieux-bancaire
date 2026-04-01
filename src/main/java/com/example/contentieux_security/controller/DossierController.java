@@ -1,12 +1,19 @@
 package com.example.contentieux_security.controller;
 
-import com.example.contentieux_security.dto.*;
-import com.example.contentieux_security.entity.*;
-import com.example.contentieux_security.enums.*;
-import com.example.contentieux_security.repository.*;
-import com.example.contentieux_security.service.*;
-
+import com.example.contentieux_security.dto.DossierCreationRequest;
+import com.example.contentieux_security.dto.DossierDetailDTO;
+import com.example.contentieux_security.entity.DossierContentieux;
+import com.example.contentieux_security.entity.Validateur;
+import com.example.contentieux_security.enums.TypeValidateur;
+import com.example.contentieux_security.repository.ClientRepository;
+import com.example.contentieux_security.repository.DossierRepository;
+import com.example.contentieux_security.repository.ValidateurRepository;
+import com.example.contentieux_security.service.DossierService;
+import com.example.contentieux_security.service.HistoriqueService;
+import com.example.contentieux_security.dto.RisqueAjoutRequest;
+import com.example.contentieux_security.dto.GarantieAjoutRequest;
 import lombok.RequiredArgsConstructor;
+
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -20,58 +27,86 @@ import java.util.List;
 @RequiredArgsConstructor
 public class DossierController {
 
-    // =========================
-    // INJECTIONS
-    // =========================
+    // ================== DEPENDANCES ==================
     private final DossierService dossierService;
     private final HistoriqueService historiqueService;
-    private final GarantieRepository garantieRepository;
     private final DossierRepository dossierRepository;
-    private final ValidateurRepository validateurRepository; // ✅ FIX: remplacer PrestataireRepository
-    private final NotificationService notificationService;
+    private final ValidateurRepository validateurRepository;
+    private final ClientRepository clientRepository;
 
     // =====================================================
-    // 📌 LISTE DOSSIERS AGENT
+    // 📌 LISTE DES DOSSIERS (AGENT)
     // =====================================================
     @GetMapping("/agent/dossiers")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String listeDossiers(Model model, Principal principal) {
 
         String username = principal.getName();
-        List<DossierContentieux> dossiers = dossierService.getDossiersAgent(username);
 
-        model.addAttribute("dossiers", dossiers);
-        model.addAttribute("notifCount", notificationService.countNonLues(username));
+        // Récupérer les dossiers de l’agent connecté
+        model.addAttribute("dossiers", dossierService.getDossiersAgent(username));
 
         return "agent/dossiers/list";
     }
 
     // =====================================================
-    // 📌 DETAIL DOSSIER + LISTE VALIDATEURS
+    // 📌 FORMULAIRE CRÉATION
+    // =====================================================
+    @GetMapping("/agent/dossiers/create")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String formulaireCreation(Model model) {
+
+        model.addAttribute("dossierRequest", new DossierCreationRequest());
+        model.addAttribute("clients", clientRepository.findAll());
+
+        return "agent/dossiers/create";
+    }
+
+    // =====================================================
+    // 📌 CRÉATION DOSSIER
+    // =====================================================
+    @PostMapping("/agent/dossiers/creer")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String creerDossier(@ModelAttribute DossierCreationRequest request,
+                               Principal principal,
+                               RedirectAttributes redirectAttributes) {
+
+        try {
+            DossierContentieux dossier =
+                    dossierService.creerDossier(request, principal.getName());
+
+            redirectAttributes.addFlashAttribute("success",
+                    "Dossier créé avec succès");
+
+            return "redirect:/agent/dossiers/" + dossier.getId();
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/agent/dossiers/create";
+        }
+    }
+
+    // =====================================================
+    // 📌 DÉTAIL DOSSIER
     // =====================================================
     @GetMapping("/agent/dossiers/{id}")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-    public String detailDossier(@PathVariable Long id, Model model,
+    public String detailDossier(@PathVariable Long id,
+                                Model model,
                                 RedirectAttributes redirectAttributes) {
-        try {
 
+        try {
+            // DTO avec historique
             DossierDetailDTO dossier = dossierService.getDossierDetail(id);
+
             model.addAttribute("dossier", dossier);
 
-            // =========================
-            // VALIDATEURS FINANCIERS
-            // =========================
-            List<Validateur> vf =
-                    validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_FINANCIER);
+            // Liste validateurs
+            model.addAttribute("validateurs_financiers",
+                    validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_FINANCIER));
 
-            // =========================
-            // VALIDATEURS JURIDIQUES
-            // =========================
-            List<Validateur> vj =
-                    validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_JURIDIQUE);
-
-            model.addAttribute("validateurs_financiers", vf);
-            model.addAttribute("validateurs_juridiques", vj);
+            model.addAttribute("validateurs_juridiques",
+                    validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_JURIDIQUE));
 
             return "agent/dossiers/detail";
 
@@ -85,70 +120,188 @@ public class DossierController {
     // 📌 CHOISIR VALIDATEURS
     // =====================================================
     @PostMapping("/agent/dossiers/{id}/choisir-validateurs")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public String choisirValidateurs(@PathVariable Long id,
                                      @RequestParam String validateurFinancier,
                                      @RequestParam String validateurJuridique,
                                      Principal principal,
                                      RedirectAttributes redirectAttributes) {
 
-        dossierService.choisirValidateurs(id, validateurFinancier, validateurJuridique, principal.getName());
+        try {
+            dossierService.choisirValidateurs(id,
+                    validateurFinancier,
+                    validateurJuridique,
+                    principal.getName());
 
-        redirectAttributes.addFlashAttribute("success", "Validateurs assignés");
+            redirectAttributes.addFlashAttribute("success",
+                    "Validateurs assignés");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+
         return "redirect:/agent/dossiers/" + id;
     }
 
     // =====================================================
-    // 📌 SUPPRESSION DOSSIER
+    // 📌 SOUMETTRE À VALIDATION
+    // =====================================================
+    @PostMapping("/agent/dossiers/{id}/soumettre")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String soumettre(@PathVariable Long id,
+                            Principal principal,
+                            RedirectAttributes redirectAttributes) {
+
+        try {
+            dossierService.soumettreAValidation(id, principal.getName());
+
+            redirectAttributes.addFlashAttribute("success",
+                    "Dossier envoyé aux validateurs");
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+
+        return "redirect:/agent/dossiers/" + id;
+    }
+
+    // =====================================================
+    // 📌 SUPPRESSION
     // =====================================================
     @PostMapping("/agent/dossiers/{id}/supprimer")
-    public String supprimerDossier(@PathVariable Long id,
-                                   Principal principal,
-                                   RedirectAttributes redirectAttributes) {
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String supprimer(@PathVariable Long id,
+                            Principal principal,
+                            RedirectAttributes redirectAttributes) {
 
-        dossierService.supprimerDossier(id, principal.getName());
+        try {
+            dossierService.supprimerDossier(id, principal.getName());
+            redirectAttributes.addFlashAttribute("success", "Dossier supprimé");
 
-        redirectAttributes.addFlashAttribute("success", "Dossier supprimé");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+
         return "redirect:/agent/dossiers";
     }
 
     // =====================================================
-    // 📌 VALIDATION FINANCIERE
+    // 📌 ÉDITION (GET)
     // =====================================================
-    @PostMapping("/validateur/financier/dossiers/{id}/valider")
-    @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
-    public String validerFinancier(@PathVariable Long id,
-                                   @RequestParam(required = false) String commentaire,
-                                   Principal principal,
-                                   RedirectAttributes redirectAttributes) {
+    @GetMapping("/agent/dossiers/{id}/edit")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String editForm(@PathVariable Long id,
+                           Model model,
+                           RedirectAttributes redirectAttributes) {
 
-        DossierContentieux d = dossierService.getDossierById(id);
+        try {
+            DossierContentieux dossier = dossierService.getDossierForEdit(id);
 
-        d.setValidationFinanciere(true);
-        d.setCommentaireFinancier(commentaire);
-        d.setValidateurFinancierUsername(principal.getName());
+            DossierCreationRequest request = new DossierCreationRequest();
 
-        dossierRepository.save(d);
+            // Copier les données
+            request.setLibelle(dossier.getLibelle());
+            request.setDescription(dossier.getDescription());
+            request.setNotes(dossier.getNotes());
 
-        return "redirect:/validateur/financier/dossiers";
+            model.addAttribute("dossierRequest", request);
+            model.addAttribute("dossier", dossier);
+            model.addAttribute("clients", clientRepository.findAll());
+
+            return "agent/dossiers/edit";
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/agent/dossiers";
+        }
     }
 
     // =====================================================
-    // 📌 VALIDATION JURIDIQUE
+    // 📌 ÉDITION (POST)
     // =====================================================
-    @PostMapping("/validateur/juridique/dossiers/{id}/valider")
-    public String validerJuridique(@PathVariable Long id,
-                                   @RequestParam(required = false) String commentaire,
+    @PostMapping("/agent/dossiers/{id}/edit")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String modifier(@PathVariable Long id,
+                           @ModelAttribute DossierCreationRequest request,
+                           Principal principal,
+                           RedirectAttributes redirectAttributes) {
+
+        try {
+            dossierService.modifierDossier(id, request, principal.getName());
+
+            redirectAttributes.addFlashAttribute("success",
+                    "Dossier modifié");
+
+            return "redirect:/agent/dossiers/" + id;
+
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+            return "redirect:/agent/dossiers/" + id + "/edit";
+        }
+    }
+
+    // ════════════════════════════════════════════════════
+    //  SÉLECTIONNER UN RISQUE
+    // ════════════════════════════════════════════════════
+
+    @PostMapping("/agent/dossiers/{dossierId}/risques/{risqueId}/selectionner")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String selectionnerRisque(@PathVariable Long dossierId,
+                                     @PathVariable Long risqueId,
+                                     @RequestParam boolean selectionne,
+                                     Principal principal,
+                                     RedirectAttributes redirectAttributes) {
+        try {
+            dossierService.selectionnerRisque(
+                    dossierId,
+                    risqueId,
+                    selectionne,
+                    principal.getName()
+            );
+            redirectAttributes.addFlashAttribute("success", "Risque mis à jour.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/agent/dossiers/" + dossierId;
+    }
+
+    // ════════════════════════════════════════════════════
+    //  AJOUTER UN RISQUE
+    // ════════════════════════════════════════════════════
+
+    @PostMapping("/agent/dossiers/{dossierId}/risques/ajouter")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String ajouterRisque(@PathVariable Long dossierId,
+                                 @ModelAttribute RisqueAjoutRequest request,
+                                 Principal principal,
+                                 RedirectAttributes redirectAttributes) {
+        try {
+            dossierService.ajouterRisque(dossierId, request, principal.getName());
+            redirectAttributes.addFlashAttribute("success", "Risque ajouté.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/agent/dossiers/" + dossierId;
+    }
+
+    // ════════════════════════════════════════════════════
+    //  AJOUTER UNE GARANTIE
+    // ════════════════════════════════════════════════════
+
+    @PostMapping("/agent/dossiers/{dossierId}/risques/{risqueId}/garanties/ajouter")
+    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    public String ajouterGarantie(@PathVariable Long dossierId,
+                                   @PathVariable Long risqueId,
+                                   @ModelAttribute GarantieAjoutRequest request,
                                    Principal principal,
                                    RedirectAttributes redirectAttributes) {
-
-        DossierContentieux d = dossierService.getDossierById(id);
-
-        d.setValidationJuridique(true);
-        d.setCommentaireJuridique(commentaire);
-        d.setValidateurJuridiqueUsername(principal.getName());
-
-        dossierRepository.save(d);
-
-        return "redirect:/validateur/juridique/dossiers";
+        try {
+            dossierService.ajouterGarantie(risqueId, request, principal.getName());
+            redirectAttributes.addFlashAttribute("success", "Garantie ajoutée.");
+        } catch (Exception e) {
+            redirectAttributes.addFlashAttribute("error", e.getMessage());
+        }
+        return "redirect:/agent/dossiers/" + dossierId;
     }
+
 }

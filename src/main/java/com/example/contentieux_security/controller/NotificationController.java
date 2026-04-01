@@ -3,6 +3,7 @@ package com.example.contentieux_security.controller;
 import com.example.contentieux_security.entity.Notification;
 import com.example.contentieux_security.service.NotificationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -11,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
 import java.util.List;
 
+@Slf4j
 @Controller
 @RequiredArgsConstructor
 public class NotificationController {
@@ -19,51 +21,57 @@ public class NotificationController {
 
     // ── Page notifications validateur financier ────────────
     @GetMapping("/validateur/financier/notifications")
-    public String notificationsFinancier(Model model, Principal principal,
+    public String notificationsFinancier(Model model, 
+                                          Principal principal,
                                           Authentication authentication) {
-        System.out.println("=== ROLES utilisateur : ");
-        authentication.getAuthorities()
-                .forEach(a -> System.out.println("  → " + a.getAuthority()));
-
-        String username = principal.getName();
-        System.out.println("=== Notifications pour username : " + username);
-
-        List<Notification> notifications = notificationService.getNotifications(username);
-        System.out.println("=== Nombre de notifications trouvées : " + notifications.size());
-        notifications.forEach(n -> System.out.println(
-                "  → destinataire=" + n.getDestinataire()
-                + " | titre=" + n.getTitre()
-                + " | lue=" + n.isLue()));
-
-        notificationService.marquerToutesLues(username);
-        model.addAttribute("notifications", notifications);
-        model.addAttribute("titre", "Mes notifications — Validateur Financier");
-        model.addAttribute("retourUrl", "/validateur/financier/dossiers");
-        return "validateur/notifications";
+        logRoles(authentication);
+        return afficherNotifications(model, principal.getName(), 
+                                     "Mes notifications — Validateur Financier",
+                                     "/validateur/financier/dossiers");
     }
 
     // ── Page notifications validateur juridique ────────────
     @GetMapping("/validateur/juridique/notifications")
-    public String notificationsJuridique(Model model, Principal principal,
+    public String notificationsJuridique(Model model, 
+                                          Principal principal,
                                           Authentication authentication) {
-        System.out.println("=== ROLES utilisateur : ");
-        authentication.getAuthorities()
-                .forEach(a -> System.out.println("  → " + a.getAuthority()));
+        logRoles(authentication);
+        return afficherNotifications(model, principal.getName(),
+                                     "Mes notifications — Validateur Juridique", 
+                                     "/validateur/juridique/dossiers");
+    }
 
-        String username = principal.getName();
-        System.out.println("=== Notifications pour username : " + username);
+    // ── Page notifications agent ───────────────────────────
+    @GetMapping("/agent/notifications")
+    public String notificationsAgent(Model model, 
+                                      Principal principal) {
+        return afficherNotifications(model, principal.getName(),
+                                     "Mes notifications — Agent Bancaire",
+                                     "/agent/dossiers");
+    }
+
+    // ── Méthode commune factorisée ─────────────────────────
+    private String afficherNotifications(Model model, 
+                                          String username,
+                                          String titre, 
+                                          String retourUrl) {
+        log.debug("=== Notifications pour username : {}", username);
 
         List<Notification> notifications = notificationService.getNotifications(username);
-        System.out.println("=== Nombre de notifications trouvées : " + notifications.size());
-        notifications.forEach(n -> System.out.println(
-                "  → destinataire=" + n.getDestinataire()
-                + " | titre=" + n.getTitre()
-                + " | lue=" + n.isLue()));
+        log.debug("=== Nombre de notifications trouvées : {}", notifications.size());
+        
+        notifications.forEach(n -> log.debug(
+                "  → destinataire={} | titre={} | lue={}",
+                n.getDestinataire(), n.getTitre(), n.isLue()));
 
         notificationService.marquerToutesLues(username);
+        
         model.addAttribute("notifications", notifications);
-        model.addAttribute("titre", "Mes notifications — Validateur Juridique");
-        model.addAttribute("retourUrl", "/validateur/juridique/dossiers");
+        model.addAttribute("titre", titre);
+        model.addAttribute("retourUrl", retourUrl);
+        
+        // ✅ PAS DE notifCount ICI - il est déjà injecté par NotificationAdvice
+        
         return "validateur/notifications";
     }
 
@@ -75,19 +83,10 @@ public class NotificationController {
         return referer != null ? "redirect:" + referer : "redirect:/";
     }
 
-
-
-
-    // ── Page notifications agent ───────────────────────────
-@GetMapping("/agent/notifications")
-public String notificationsAgent(Model model, Principal principal,
-                                  Authentication authentication) {
-    String username = principal.getName();
-    List<Notification> notifications = notificationService.getNotifications(username);
-    notificationService.marquerToutesLues(username);
-    model.addAttribute("notifications", notifications);
-    model.addAttribute("titre", "Mes notifications — Agent Bancaire");
-    model.addAttribute("retourUrl", "/agent/dossiers");
-    return "validateur/notifications"; // ← réutilise le même template
-}
+    // ── Utilitaire ─────────────────────────────────────────
+    private void logRoles(Authentication authentication) {
+        log.debug("=== ROLES utilisateur : ");
+        authentication.getAuthorities()
+                .forEach(a -> log.debug("  → {}", a.getAuthority()));
+    }
 }
