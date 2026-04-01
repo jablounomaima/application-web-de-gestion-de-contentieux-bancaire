@@ -1,5 +1,4 @@
-package com.example.contentieux_security.controller; 
-
+package com.example.contentieux_security.controller;
 import com.example.contentieux_security.dto.DossierCreationRequest;
 import com.example.contentieux_security.dto.DossierDetailDTO;
 import com.example.contentieux_security.dto.RisqueAjoutRequest;
@@ -508,7 +507,4 @@ public String editRisque(@PathVariable Long risqueId, Model model) {
 
     return "agent/dossiers/edit-garantie";
 }
-
-
-
 }

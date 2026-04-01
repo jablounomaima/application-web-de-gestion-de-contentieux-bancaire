@@ -48,6 +48,7 @@ public class ValidateurController {
      */
     @GetMapping("/validateur/financier/dossiers")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
+    @Transactional
     public String dossiersFinancier(Model model, Principal principal) {
         String username = principal.getName();
         List<DossierContentieux> dossiers =
@@ -67,6 +68,7 @@ public class ValidateurController {
      */
     @GetMapping("/validateur/financier/dossiers/{id}")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
+    @Transactional
     public String detailFinancier(@PathVariable Long id, Model model,
                                    Principal principal) {
         model.addAttribute("dossier",
@@ -139,6 +141,7 @@ public class ValidateurController {
      */
     @PostMapping("/validateur/financier/dossiers/{id}/rejeter")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
+    @Transactional
     public String rejeterFinancier(@PathVariable Long id,
                                    @RequestParam String commentaire,
                                    Principal principal,
@@ -168,8 +171,11 @@ public class ValidateurController {
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
-        return "redirect:/validateur/financier/dossiers-financier";
+        return "redirect:/validateur/financier/dossiers";
     }
+
+
+    
 
     // ══════════════════════════════════════════════════════
     //  VALIDATEUR JURIDIQUE
@@ -180,6 +186,7 @@ public class ValidateurController {
      */
     @GetMapping("/validateur/juridique/dossiers-juridique")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
+    @Transactional
     public String dossiersJuridique(Model model, Principal principal) {
         String username = principal.getName();
         List<DossierContentieux> dossiers =
@@ -199,6 +206,7 @@ public class ValidateurController {
      */
     @GetMapping("/validateur/juridique/dossiers/{id}")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
+    @Transactional
     public String detailJuridique(@PathVariable Long id, Model model,
                                    Principal principal) {
         model.addAttribute("dossier",
@@ -290,25 +298,4 @@ public class ValidateurController {
         }
         return "redirect:/validateur/juridique/dossiers-juridique";
     }
-
-    @GetMapping("/validateur/juridique/dossiers")
-    @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
-    @Transactional
-    public String dossiersJuridique(Model model, Principal principal) {
-        String username = principal.getName();
-        List<DossierContentieux> dossiers =
-                dossierService.getDossiersEnAttenteValidationJuridique(username);
-    
-        model.addAttribute("dossiers",   dossiers);
-        model.addAttribute("givenName",  username);
-        model.addAttribute("enAttente",  dossiers.size());
-        model.addAttribute("notifCount",
-                notificationService.countNonLues(username));
-    
-        return "validateur/juridique/dossiers-juridique";
-    }
-
-
-
-
 }
