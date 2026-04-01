@@ -9,6 +9,7 @@ import com.example.contentieux_security.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -82,6 +83,7 @@ public class ValidateurController {
      */
     @PostMapping("/validateur/financier/dossiers/{id}/valider")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
+    @Transactional 
     public String validerFinancier(@PathVariable Long id,
                                    @RequestParam(required = false) String commentaire,
                                    Principal principal,
@@ -213,6 +215,7 @@ public class ValidateurController {
      */
     @PostMapping("/validateur/juridique/dossiers/{id}/valider")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
+    @Transactional 
     public String validerJuridique(@PathVariable Long id,
                                    @RequestParam(required = false) String commentaire,
                                    Principal principal,
@@ -286,4 +289,24 @@ public class ValidateurController {
         }
         return "redirect:/validateur/juridique/dossiers-juridique";
     }
+
+    @GetMapping("/validateur/juridique/dossiers")
+    @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
+    public String dossiersJuridique(Model model, Principal principal) {
+        String username = principal.getName();
+        List<DossierContentieux> dossiers =
+                dossierService.getDossiersEnAttenteValidationJuridique(username);
+    
+        model.addAttribute("dossiers",   dossiers);
+        model.addAttribute("givenName",  username);
+        model.addAttribute("enAttente",  dossiers.size());
+        model.addAttribute("notifCount",
+                notificationService.countNonLues(username));
+    
+        return "validateur/juridique/dossiers-juridique";
+    }
+
+
+
+
 }

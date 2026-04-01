@@ -141,14 +141,15 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
     // 📌 DÉTAIL DOSSIER (optimisé)
     // =====================================================
     @Query("""
-        SELECT DISTINCT d FROM DossierContentieux d
-        LEFT JOIN FETCH d.client
-        LEFT JOIN FETCH d.agence
-        LEFT JOIN FETCH d.risques
-        LEFT JOIN FETCH d.agentCreateur
-        WHERE d.id = :id
-    """)
-    Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
+    SELECT DISTINCT d FROM DossierContentieux d
+    LEFT JOIN FETCH d.client
+    LEFT JOIN FETCH d.agence
+    LEFT JOIN FETCH d.risques r
+    LEFT JOIN FETCH r.garanties
+    WHERE d.id = :id
+""")
+Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
+   
     // =====================================================
     // 📌 VALIDATION FINANCIÈRE AVEC FETCH
     // =====================================================
@@ -161,4 +162,26 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
     """)
     List<DossierContentieux> findEnAttenteValidationFinanciereAvecRelations(
             @Param("username") String username);
+
+
+
+
+            // ──  la méthode de recherche de dossier dans l'interface agentbancaire ──
+
+    @Query("""
+        SELECT DISTINCT d FROM DossierContentieux d
+        LEFT JOIN FETCH d.client
+        LEFT JOIN FETCH d.agence
+        WHERE d.agentCreateur.username = :username
+        AND (
+            LOWER(d.numeroDossier) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(d.client.cin) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(d.client.nom) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            OR LOWER(d.client.prenom) LIKE LOWER(CONCAT('%', :keyword, '%'))
+        )
+        ORDER BY d.dateCreation DESC
+    """)
+    List<DossierContentieux> rechercherParAgent(
+            @Param("username") String username,
+            @Param("keyword") String keyword);
 }

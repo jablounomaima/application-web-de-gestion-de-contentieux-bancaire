@@ -1,6 +1,7 @@
 package com.example.contentieux_security.controller;
 
 import com.example.contentieux_security.dto.AgentProfileUpdateRequest;
+import com.example.contentieux_security.dto.GarantieAjoutRequest;
 import com.example.contentieux_security.dto.PasswordChangeRequest;
 import com.example.contentieux_security.dto.PrestataireCreationRequest;
 import com.example.contentieux_security.dto.PrestataireDTO;
@@ -404,4 +405,31 @@ public String showCreateForm(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth.getName();
     }
+
+    @PostMapping("/agent/dossiers/risques/{risqueId}/garanties/ajouter")
+public String ajouterGarantie(
+        @PathVariable Long risqueId,
+        @ModelAttribute GarantieAjoutRequest request,
+        Authentication authentication,
+        RedirectAttributes redirectAttributes) {
+
+    try {
+        dossierService.ajouterGarantie(
+                risqueId,
+                request,
+                authentication.getName()
+        );
+
+        redirectAttributes.addFlashAttribute("success", "Garantie ajoutée avec succès");
+
+    } catch (Exception e) {
+        redirectAttributes.addFlashAttribute("error", e.getMessage());
+    }
+
+    // 🔴 IMPORTANT : revenir au dossier
+    return "redirect:/agent/dossiers/" + request.getDossierId();
+}
+
+
+
 }

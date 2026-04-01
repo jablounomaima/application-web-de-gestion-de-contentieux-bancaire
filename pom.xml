@@ -38,6 +38,7 @@
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
         
+        
         <!-- Thymeleaf Extras Spring Security -->
         <dependency>
             <groupId>org.thymeleaf.extras</groupId>

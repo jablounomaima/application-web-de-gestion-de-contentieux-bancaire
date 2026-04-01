@@ -28,7 +28,7 @@ public class Garantie {
 
     // ── Relation ──────────────────────────────────────────────────
     // La relation doit exister avec EAGER ou être dans une @Transactional
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne
     @JoinColumn(name = "risque_id")
     private Risque risque;
 

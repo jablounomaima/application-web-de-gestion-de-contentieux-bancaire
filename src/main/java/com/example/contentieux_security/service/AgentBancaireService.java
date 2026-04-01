@@ -55,6 +55,8 @@ public class AgentBancaireService {
                 .orElse(null);
     }
 
+
+@Transactional
     public AgentBancaire getAgentByUsername(String username) {
         return agentRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Agent non trouvé: " + username));
@@ -68,7 +70,7 @@ public class AgentBancaireService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
-
+@Transactional
     public List<AgentBancaireDTO> getAgentsByAgence(Long agenceId) {
         return agentRepository.findByAgenceId(agenceId).stream()
                 .map(this::convertToDTO)

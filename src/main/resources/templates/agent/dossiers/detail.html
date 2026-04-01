@@ -188,36 +188,71 @@
             </div>
             
             <!-- Détails du risque -->
-            <table style="font-size:13px;margin-bottom:8px;">
-                <tr>
-                    <td style="color:#777;width:40%">Montant initial</td>
-                    <td th:text="${risque.montantInitial != null}
-                                 ? ${#numbers.formatDecimal(risque.montantInitial,1,'COMMA',2,'POINT')} + ' DT' : '–'"></td>
-                </tr>
-                <tr>
-                    <td style="color:#777">Montant impayé</td>
-                    <td th:text="${risque.montantImpaye != null}
-                                 ? ${#numbers.formatDecimal(risque.montantImpaye,1,'COMMA',2,'POINT')} + ' DT' : '–'"></td>
-                </tr>
-                <tr th:if="${risque.dateEcheance != null}">
-                    <td style="color:#777">Échéance</td>
-                    <td th:text="${risque.dateEcheance}"></td>
-                </tr>
-                <tr th:if="${risque.description != null and !#strings.isEmpty(risque.description)}">
-                    <td style="color:#777">Description</td>
-                    <td th:text="${risque.description}"></td>
-                </tr>
-            </table>
-            
-            <!-- Garanties -->
-            <div th:if="${risque.garanties != null and !risque.garanties.empty}">
-                <div style="font-size:12px;color:#999;margin-bottom:4px">Garanties :</div>
-                <div th:each="g : ${risque.garanties}" class="garantie-item">
-                    <span th:text="${g.typeGarantie} ?: '–'"></span>
-                    <span th:if="${g.valeurEstimee != null}"
-                          th:text="' — ' + ${#numbers.formatDecimal(g.valeurEstimee,1,'COMMA',2,'POINT')} + ' DT'"></span>
-                </div>
+           <!-- Détails du risque -->
+<table style="font-size:13px;margin-bottom:8px;">
+    <tr>
+        <td style="color:#777;width:40%">Montant initial</td>
+        <td th:text="${risque.montantInitial != null}
+                     ? ${#numbers.formatDecimal(risque.montantInitial,1,'COMMA',2,'POINT')} + ' DT' : '–'"></td>
+    </tr>
+    <tr>
+        <td style="color:#777">Montant impayé</td>
+        <td th:text="${risque.montantImpaye != null}
+                     ? ${#numbers.formatDecimal(risque.montantImpaye,1,'COMMA',2,'POINT')} + ' DT' : '–'"></td>
+    </tr>
+    <tr th:if="${risque.dateEcheance != null}">
+        <td style="color:#777">Échéance</td>
+        <td th:text="${risque.dateEcheance}"></td>
+    </tr>
+    <tr th:if="${risque.description != null and !#strings.isEmpty(risque.description)}">
+        <td style="color:#777">Description</td>
+        <td th:text="${risque.description}"></td>
+    </tr>
+</table>
+
+<!-- ===================== -->
+<!-- ✅ GARANTIES DU RISQUE -->
+<!-- ===================== -->
+
+<div style="margin-top:10px;">
+
+    <div style="font-weight:bold;font-size:13px;color:#2c3e50;margin-bottom:6px;">
+        Garanties :
+    </div>
+
+    <div th:if="${risque.garanties != null and !risque.garanties.empty}">
+
+        <div th:each="g : ${risque.garanties}"
+             style="background:#fff;border:1px solid #eee;
+                    padding:8px 10px;margin-bottom:6px;
+                    border-left:3px solid #3498db;border-radius:4px;
+                    font-size:13px;">
+
+            <div>
+                <strong>Type de garantie :</strong>
+                <span th:text="${g.typeGarantie}"></span>
+
+                <strong style="margin-left:10px;">Valeur estimée :</strong>
+                <span th:text="${g.valeurEstimee != null ? g.valeurEstimee + ' DT' : 'N/A'}"></span>
             </div>
+
+            <div th:if="${g.description != null}" style="color:#666;font-size:12px;margin-top:4px;">
+                <strong>Description :</strong>
+                <span th:text="${g.description}"></span>
+            </div>
+
+        </div>
+
+    </div>
+
+    <p th:unless="${risque.garanties != null and !risque.garanties.empty}"
+       style="color:#aaa;font-size:12px;">
+        Aucune garantie
+    </p>
+
+</div>
+            
+        
         </div>
     </div>
     

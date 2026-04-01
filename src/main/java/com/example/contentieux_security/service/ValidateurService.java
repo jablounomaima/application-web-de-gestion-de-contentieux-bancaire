@@ -55,6 +55,7 @@ public class ValidateurService {
      *   VALIDATEUR_FINANCIER → ROLE_VALIDATEUR_FINANCIER
      *   VALIDATEUR_JURIDIQUE → ROLE_VALIDATEUR_JURIDIQUE
      */
+   
     public Validateur creerValidateur(ValidateurCreationRequest request) {
 
         // Validations

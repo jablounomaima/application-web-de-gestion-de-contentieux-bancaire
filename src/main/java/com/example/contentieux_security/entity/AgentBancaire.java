@@ -45,7 +45,7 @@ public class AgentBancaire {
     
     private String role;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "agence_id", nullable = false)
     @JsonIgnoreProperties({"agents", "dossiers", "clients"})
     private Agence agence;

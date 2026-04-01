@@ -48,6 +48,80 @@
                     </div>
                 </div>
 
+
+                <!-- ══════════════════════════════════════════════════
+     BARRE DE RECHERCHE — à insérer dans list.html
+     Placez ce bloc AVANT le tableau des dossiers
+     ══════════════════════════════════════════════════ -->
+     <h2>chercher dossier par numéro dossier ou CIN client</h2>
+<!-- Barre de recherche -->
+<div style="margin-bottom:20px;max-width:900px;">
+    <form th:action="@{/agent/dossiers}" method="get"
+          style="display:flex;gap:10px;align-items:center;">
+
+        <div style="flex:1;position:relative;">
+            <span style="position:absolute;left:12px;top:50%;
+                         transform:translateY(-50%);
+                         color:var(--muted);font-size:15px;">🔍</span>
+            <input type="text"
+                   name="recherche"
+                   th:value="${recherche}"
+                   placeholder="Rechercher par numéro dossier ou CIN client..."
+                   style="width:100%;padding:10px 12px 10px 38px;
+                          border:1.5px solid var(--border);
+                          border-radius:8px;
+                          font-size:14px;
+                          font-family:'Outfit',sans-serif;
+                          background:var(--surface);
+                          color:var(--text);
+                          outline:none;"
+                   onfocus="this.style.borderColor='var(--accent)'"
+                   onblur="this.style.borderColor='var(--border)'"/>
+        </div>
+
+        <button type="submit"
+                style="padding:10px 20px;
+                       background:var(--accent);
+                       color:white;border:none;
+                       border-radius:8px;
+                       font-size:14px;
+                       font-family:'Outfit',sans-serif;
+                       cursor:pointer;
+                       white-space:nowrap;">
+            Rechercher
+        </button>
+
+        <!-- Bouton reset si recherche active -->
+        <a th:if="${recherche != null and !recherche.isEmpty()}"
+           th:href="@{/agent/dossiers}"
+           style="padding:10px 16px;
+                  background:transparent;
+                  color:var(--muted);
+                  border:1.5px solid var(--border);
+                  border-radius:8px;
+                  font-size:14px;
+                  text-decoration:none;
+                  white-space:nowrap;">
+            ✕ Effacer
+        </a>
+    </form>
+
+    <!-- Résultat de la recherche -->
+    <div th:if="${recherche != null and !recherche.isEmpty()}"
+         style="margin-top:10px;font-size:13px;color:var(--muted);">
+        <span th:if="${totalDossiers > 0}">
+            <b th:text="${totalDossiers}"></b>
+            résultat(s) pour
+            "<b th:text="${recherche}"></b>"
+        </span>
+        <span th:if="${totalDossiers == 0}"
+              style="color:var(--red);">
+            Aucun dossier trouvé pour
+            "<b th:text="${recherche}"></b>"
+        </span>
+    </div>
+</div>
+
                 <!-- Stats -->
                 <div class="stats-grid">
                     <div class="stat-card blue fade-in delay-1">

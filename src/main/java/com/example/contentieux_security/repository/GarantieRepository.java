@@ -27,4 +27,8 @@ void deleteByRisqueId(@Param("risqueId") Long risqueId);
 @Modifying
 @Query("DELETE FROM Garantie g WHERE g.risque.dossier.id = :dossierId")
 void deleteByDossierId(@Param("dossierId") Long dossierId);
+
+
+
+List<Garantie> findByRisqueId(Long risqueId);
 }

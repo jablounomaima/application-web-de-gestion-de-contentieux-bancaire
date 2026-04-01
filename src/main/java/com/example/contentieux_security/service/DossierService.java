@@ -37,6 +37,7 @@ public class DossierService {
     // ════════════════════════════════════════════════════
     //  LECTURE
     // ════════════════════════════════════════════════════
+    
 
     public List<DossierContentieux> findAll() {
         return dossierRepository.findAll();
@@ -376,10 +377,27 @@ public List<DossierContentieux> getDossiersEnAttenteValidationFinanciere(String 
     }
     return dossiers;
 }
+// ✅ Après — même pattern que la méthode financière
+// ✅ Après — même pattern que la méthode financière
 @Transactional(readOnly = true)
-    public List<DossierContentieux> getDossiersEnAttenteValidationJuridique(String username) {
-        return dossierRepository.findEnAttenteValidationJuridiqueParValidateur(username);
+public List<DossierContentieux> getDossiersEnAttenteValidationJuridique(String username) {
+    List<DossierContentieux> dossiers = 
+            dossierRepository.findEnAttenteValidationJuridiqueParValidateur(username);
+
+    for (DossierContentieux d : dossiers) {
+        if (d.getClient() != null) {
+            d.getClient().getNom();   // force chargement lazy
+        }
+        if (d.getAgence() != null) {
+            d.getAgence().getNom();   // force chargement lazy
+        }
+        if (d.getAgentCreateur() != null) {
+            d.getAgentCreateur().getUsername(); // force chargement lazy
+        }
     }
+    return dossiers;
+}
+
     @Transactional(readOnly = true)
     public List<DossierContentieux> getDossiersByStatut(DossierStatus statut) {
         return dossierRepository.findByStatut(statut);
@@ -417,9 +435,49 @@ public List<DossierContentieux> getDossiersEnAttenteValidationFinanciere(String 
         dossierRepository.deleteById(id);
     }
 
-    public void ajouterRisque(Long id, RisqueAjoutRequest request, String username) {
-        throw new UnsupportedOperationException("Unimplemented method 'ajouterRisque'");
+    /**
+ * Ajouter un nouveau risque à un dossier existant
+ */
+@Transactional
+public void ajouterRisque(Long dossierId, RisqueAjoutRequest request, String username) {
+
+    // 1️⃣ Vérifier que le dossier existe + sécurité (agent propriétaire)
+    DossierContentieux dossier = getDossierByIdAndAgent(dossierId, username);
+
+    // 2️⃣ Vérifier que le dossier est modifiable
+    if (dossier.getStatut() != DossierStatus.OUVERT 
+            && dossier.getStatut() != DossierStatus.REJETE) {
+        throw new RuntimeException("Impossible d'ajouter un risque : dossier en cours de traitement");
     }
+
+    // 3️⃣ Créer un nouvel objet Risque
+    Risque risque = new Risque();
+
+    // 👉 Remplir les champs depuis le formulaire
+    risque.setType(request.getType());
+    risque.setMontantInitial(request.getMontantInitial());
+    risque.setMontantImpaye(request.getMontantImpaye());
+    risque.setDescription(request.getDescription());
+
+    // 👉 Gestion date (si fournie)
+    if (request.getDateEcheance() != null && !request.getDateEcheance().isEmpty()) {
+        risque.setDateEcheance(LocalDate.parse(request.getDateEcheance()));
+    }
+
+    // 4️⃣ Lier le risque au dossier
+    risque.setDossier(dossier);
+
+    // 5️⃣ Sauvegarder en base
+    risqueRepository.save(risque);
+
+    // 6️⃣ Historique (traçabilité)
+    historiqueService.enregistrer(
+            dossier,
+            HistoriqueService.AJOUT_RISQUE,
+            "Ajout d’un crédit : " + request.getType(),
+            username
+    );
+}
 
     // ════════════════════════════════════════════════════
     //  MODIFICATION DOSSIER
@@ -528,5 +586,19 @@ public List<DossierContentieux> getDossiersEnAttenteValidationFinanciere(String 
                 username
         );
     }
+
+
+
+
+            // ──  la méthode de recherche de dossier dans l'interface agentbancaire ──
+
+    public List<DossierContentieux> rechercherDossiers(String username, String keyword) {
+        if (keyword == null || keyword.trim().isEmpty()) {
+            return getDossiersAgent(username);
+        }
+        return dossierRepository.rechercherParAgent(username, keyword.trim());
+    }
+
+    
 
 }
