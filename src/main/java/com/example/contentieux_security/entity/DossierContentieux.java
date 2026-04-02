@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Set;
 
 @Getter
@@ -91,8 +92,15 @@ public class DossierContentieux {
     @JoinColumn(name = "agent_id", nullable = false)
     private AgentBancaire agentCreateur;
 
-    @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, fetch = FetchType.LAZY ,orphanRemoval = true)
     private Set<Risque> risques;
+
+    @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, orphanRemoval = true)
+private List<HistoriqueDossier> historiques;
+
+@OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, orphanRemoval = true)
+private List<Notification> notifications;
+
 
     // ── Méthodes utilitaires ─────────────────────────────
 

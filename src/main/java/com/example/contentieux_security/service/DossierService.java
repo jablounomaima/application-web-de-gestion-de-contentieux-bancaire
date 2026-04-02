@@ -426,13 +426,25 @@ public List<DossierContentieux> getDossiersEnAttenteValidationJuridique(String u
 
     @Transactional
     public void supprimerDossier(Long id, String username) {
-        DossierContentieux d = getDossierByIdAndAgent(id, username);
     
-        garantieRepository.deleteByDossierId(id);
-        risqueRepository.deleteByDossierId(id);
-        historiqueService.supprimerParDossier(id);
-        notificationRepository.deleteByDossierId(id);
-        dossierRepository.deleteById(id);
+        // 1. نجيب dossier مع relations (IMPORTANT)
+        DossierContentieux dossier = dossierRepository
+                .findByIdWithDetails(id) // لازم JOIN FETCH
+                .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
+    
+        // 2. تنظيف garanties
+        for (Risque r : dossier.getRisques()) {
+            for (Garantie g : r.getGaranties()) {
+                g.setRisque(null);
+            }
+            r.getGaranties().clear();
+        }
+    
+        // 3. تنظيف risques
+        dossier.getRisques().clear();
+    
+        // 4. حذف dossier
+        dossierRepository.delete(dossier);
     }
 
     /**

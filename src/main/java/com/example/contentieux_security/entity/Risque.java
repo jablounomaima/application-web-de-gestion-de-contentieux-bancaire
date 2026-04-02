@@ -39,7 +39,7 @@ public class Risque {
     @JoinColumn(name = "dossier_id", nullable = false)
     private DossierContentieux dossier;
 
-    @OneToMany(mappedBy = "risque", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "risque", cascade = CascadeType.ALL, fetch = FetchType.LAZY, orphanRemoval = true)
     private Set<Garantie> garanties;
 
     // ── Méthode ───────────────────────────────────────────────────

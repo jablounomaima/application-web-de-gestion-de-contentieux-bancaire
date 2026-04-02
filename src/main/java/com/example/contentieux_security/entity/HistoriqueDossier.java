@@ -26,7 +26,7 @@ public class HistoriqueDossier {
     private String utilisateur;             // username de l'acteur
 
     // ── Relation ──────────────────────────────────────────────────
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY )
     @JoinColumn(name = "dossier_id", nullable = false)
     private DossierContentieux dossier;
 }
