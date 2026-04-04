@@ -4,6 +4,7 @@ import com.example.contentieux_security.dto.DossierDetailDTO;
 import com.itextpdf.text.*;
 import com.itextpdf.text.pdf.*;
 import org.springframework.stereotype.Service;
+import com.example.contentieux_security.dto.*;
 
 import java.io.ByteArrayOutputStream;
 import java.time.format.DateTimeFormatter;
@@ -127,9 +128,13 @@ public class PdfService {
         doc.add(sectionTitre("2. Informations client"));
 
         PdfPTable client = tableDeuxCol();
+        ajouterLigne(client, "Type client", val(d.getClientType()), false);
+
         ajouterLigne(client, "Nom",       val(d.getClientNom()),       false);
         ajouterLigne(client, "Prénom",    val(d.getClientPrenom()),    true);
-        ajouterLigne(client, "CIN",       val(d.getClientCin()),       false);
+        
+        ajouterLigne(client, "CIN",       val(d.getClientCin()), true);
+        ajouterLigne(client, "RNE", val(d.getClientRne()),   true);
         ajouterLigne(client, "Email",     val(d.getClientEmail()),     true);
         ajouterLigne(client, "Téléphone", val(d.getClientTelephone()), false);
         ajouterLigne(client, "Adresse",   val(d.getClientAdresse()),   true);

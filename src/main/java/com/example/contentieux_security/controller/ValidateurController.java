@@ -310,3 +310,4 @@ public class ValidateurController {
         return "redirect:/validateur/juridique/dossiers-juridique";
     }
 }
+

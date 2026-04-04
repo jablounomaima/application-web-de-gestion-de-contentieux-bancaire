@@ -16,7 +16,7 @@ import com.example.contentieux_security.service.AgentBancaireService;
 import com.example.contentieux_security.service.ClientService;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.PrestataireService;
-
+import com.example.contentieux_security.enums.TypeClient;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -94,34 +94,51 @@ public class AgentController {
         model.addAttribute("username", agentUsername);
         return "agent/clients";
     }
+   @PostMapping("/clients/creer")
+public String creerClient(@ModelAttribute Client nouveauClient,
+                          @AuthenticationPrincipal OidcUser oidcUser,
+                          RedirectAttributes redirectAttrs) {
+    try {
+        String agentUsername = oidcUser.getPreferredUsername();
+        AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
 
-    @PostMapping("/clients/creer")
-    public String creerClient(@ModelAttribute Client nouveauClient,
-                              @AuthenticationPrincipal OidcUser oidcUser,
-                              RedirectAttributes redirectAttrs) {
-        try {
-            String agentUsername = oidcUser.getPreferredUsername();
-            AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
-
-            if (agent == null || agent.getAgence() == null) {
-                redirectAttrs.addFlashAttribute("error", "Agent ou agence non trouvé");
-                return "redirect:/agent/clients";
-            }
-
-            nouveauClient.setAgence(agent.getAgence());
-            nouveauClient.setDateInscription(LocalDate.now());
-
-            clientService.save(nouveauClient);
-
-            redirectAttrs.addFlashAttribute("success", "Client créé avec succès !");
-            return "redirect:/agent/clients";
-
-        } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", "Erreur: " + e.getMessage());
+        if (agent == null || agent.getAgence() == null) {
+            redirectAttrs.addFlashAttribute("error", "Agent ou agence non trouvé");
             return "redirect:/agent/clients";
         }
-    }
 
+        // 🏦 Affectation agence + date
+        nouveauClient.setAgence(agent.getAgence());
+        nouveauClient.setDateInscription(LocalDate.now());
+
+        // 🔥 DEBUG CRITIQUE
+        System.out.println("========================================");
+        System.out.println("🔍 AVANT Service:");
+        System.out.println("  - typeClient = " + nouveauClient.getTypeClient());
+        System.out.println("  - raisonSociale = " + nouveauClient.getRaisonSociale());
+        System.out.println("  - rne = " + nouveauClient.getRne());
+        System.out.println("========================================");
+
+        // 💾 Sauvegarde (le Service fait la déduction et validation)
+        Client saved = clientService.save(nouveauClient);
+
+        System.out.println("✅ APRÈS Service:");
+        System.out.println("  - ID = " + saved.getId());
+        System.out.println("  - typeClient = " + saved.getTypeClient());
+
+        redirectAttrs.addFlashAttribute("success", 
+            "Client " + saved.getTypeClient() + " créé avec succès !");
+        return "redirect:/agent/clients";
+
+    } catch (IllegalArgumentException e) {
+        redirectAttrs.addFlashAttribute("error", e.getMessage());
+        return "redirect:/agent/clients";
+    } catch (Exception e) {
+        e.printStackTrace();
+        redirectAttrs.addFlashAttribute("error", "Erreur: " + e.getMessage());
+        return "redirect:/agent/clients";
+    }
+}
     @GetMapping("/clients/{id}/dossiers")
     public String voirDossiersClient(@PathVariable Long id,
                                      Model model,

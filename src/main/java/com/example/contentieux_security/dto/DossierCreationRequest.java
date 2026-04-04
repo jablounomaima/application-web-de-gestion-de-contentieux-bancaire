@@ -4,6 +4,8 @@ import lombok.Getter;
 import lombok.Setter;
 import java.util.List;
 
+import com.example.contentieux_security.enums.TypeClient;
+
 /**
  * DTO de création d'un dossier contentieux.
  * Utilisé par DossierController (POST /agent/dossiers/creer)
@@ -19,10 +21,11 @@ public class DossierCreationRequest {
     private String clientNom;
     private String clientPrenom;
     private String clientCin;
+    private String clientRne;
     private String clientEmail;
     private String clientTelephone;
     private String clientAdresse;
-    private String clientTypeClient;    // PARTICULIER | ENTREPRISE  (optionnel)
+    private TypeClient  typeClient;    // PARTICULIER | ENTREPRISE  (optionnel)
     private String clientRaisonSociale; // pour les entreprises        (optionnel)
 
     // ── Dossier ───────────────────────────────────────────────────

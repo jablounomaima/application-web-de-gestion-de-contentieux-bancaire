@@ -114,6 +114,7 @@
         <th>N° Dossier</th>
         <th>Client</th>
         <th>CIN</th>
+        <th>RNE</th>
         <th>Statut</th>
         <th>Date création</th>
         <th>Actions</th>
@@ -129,7 +130,9 @@
         <td style="font-weight:bold" th:text="${dossier.numeroDossier} ?: '–'"></td>
         <td th:text="${dossier.client != null ?
                       dossier.client.nom + ' ' + dossier.client.prenom : '–'}"></td>
+                      
         <td th:text="${dossier.client != null ? dossier.client.cin : '–'}"></td>
+        <td th:text="${dossier.client != null ? dossier.client.rne : '–'}"></td>
         <td>
             <!-- ✅ Badge coloré selon statut -->
             <span class="badge"
@@ -161,6 +164,71 @@
 
     </tbody>
 </table>
+
+
+<script>
+    function toggleForm() {
+        const form = document.getElementById("createForm");
+        form.style.display = (form.style.display === "none") ? "block" : "none";
+    }
+    
+    function toggleClientType(value) {
+    const cinDiv = document.getElementById("cinDiv");
+    const rneDiv = document.getElementById("rneDiv");
+    const raisonDiv = document.getElementById("raisonDiv");
+
+    const cinInput = document.querySelector("[name='cin']");
+    const rneInput = document.querySelector("[name='rne']");
+    const raisonInput = document.querySelector("[name='raisonSociale']");
+
+    if (value === "ENTREPRISE") {
+        cinDiv.style.display = "none";
+        rneDiv.style.display = "block";
+        raisonDiv.style.display = "block";
+
+        // 🔥 IMPORTANT
+        cinInput.value = "";          // vider
+        cinInput.readOnly = true;     // bloquer sans supprimer
+
+        rneInput.readOnly = false;
+        raisonInput.readOnly = false;
+
+    } else {
+        cinDiv.style.display = "block";
+        rneDiv.style.display = "none";
+        raisonDiv.style.display = "none";
+
+        // 🔥 IMPORTANT
+        rneInput.value = "";
+        raisonInput.value = "";
+
+        cinInput.readOnly = false;
+        rneInput.readOnly = true;
+        raisonInput.readOnly = true;
+    }
+}
+    function toggleRaisonSociale(val) {
+    const isEntreprise = val === 'ENTREPRISE';
+
+    const raisonDiv = document.getElementById('raisonSocialeDiv');
+    const rneDiv = document.getElementById('rneDiv');
+    const cinDiv = document.getElementById('cinDiv');
+
+    const raisonInput = document.querySelector("[name='clientRaisonSociale']");
+    const rneInput = document.querySelector("[name='clientRne']");
+    const cinInput = document.querySelector("[name='clientCin']");
+
+    // 🎯 Affichage
+    raisonDiv.style.display = isEntreprise ? 'flex' : 'none';
+    rneDiv.style.display = isEntreprise ? 'flex' : 'none';
+    cinDiv.style.display = isEntreprise ? 'none' : 'flex';
+
+    // 🔥 TRÈS IMPORTANT → empêcher envoi
+    raisonInput.disabled = !isEntreprise;
+    rneInput.disabled = !isEntreprise;
+    cinInput.disabled = isEntreprise;
+}
+    </script>
 
 </body>
 </html>

@@ -8,12 +8,12 @@ import com.example.contentieux_security.dto.GarantieAjoutRequest;
 import com.example.contentieux_security.dto.RisqueAjoutRequest;
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.DossierStatus;
+import com.example.contentieux_security.enums.TypeClient;
 import com.example.contentieux_security.enums.TypeValidateur;
 import com.example.contentieux_security.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.contentieux_security.entity.Agence;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -30,14 +30,13 @@ public class DossierService {
     private final RisqueRepository        risqueRepository;
     private final GarantieRepository      garantieRepository;
     private final HistoriqueService       historiqueService;
-    private final NotificationRepository notificationRepository;
+    private final NotificationRepository  notificationRepository;
     private final NotificationService     notificationService;
-    private final ValidateurRepository validateurRepository;
+    private final ValidateurRepository    validateurRepository;
 
     // ════════════════════════════════════════════════════
     //  LECTURE
     // ════════════════════════════════════════════════════
-    
 
     public List<DossierContentieux> findAll() {
         return dossierRepository.findAll();
@@ -49,32 +48,22 @@ public class DossierService {
 
     public DossierContentieux getDossierById(Long id) {
         return dossierRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new RuntimeException(
-                        "Dossier introuvable : " + id));
+                .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
     }
 
-    // ✅ NOUVELLE MÉTHODE : Lecture pour édition avec toutes les relations
     @Transactional(readOnly = true)
     public DossierContentieux getDossierForEdit(Long id) {
         DossierContentieux dossier = dossierRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-        
-        // Forcer le chargement des relations lazy
-        if (dossier.getClient() != null) {
-            dossier.getClient().getNom();
-        }
-        if (dossier.getAgence() != null) {
-            dossier.getAgence().getNom();
-        }
+
+        if (dossier.getClient() != null) dossier.getClient().getNom();
+        if (dossier.getAgence() != null) dossier.getAgence().getNom();
         if (dossier.getRisques() != null) {
             dossier.getRisques().forEach(r -> {
                 r.getType();
-                if (r.getGaranties() != null) {
-                    r.getGaranties().size();
-                }
+                if (r.getGaranties() != null) r.getGaranties().size();
             });
         }
-        
         return dossier;
     }
 
@@ -94,15 +83,14 @@ public class DossierService {
         }
         return d;
     }
-
-    @Transactional(readOnly = true)
-    public DossierDetailDTO getDossierDetail(Long id) {
-        DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-        return DossierDetailDTO.from(d, historiqueService.getHistorique(id));
-    }
-
-    // ════════════════════════════════════════════════════
+// ❌ SUPPRIMER CE BLOC ENTIER (lignes ~88 à ~111)
+@Transactional(readOnly = true)
+public DossierDetailDTO getDossierDetail(Long id) {
+    DossierContentieux d = dossierRepository.findByIdWithDetails(id)
+            .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
+    return DossierDetailDTO.from(d, historiqueService.getHistorique(id));
+}
+// ════════════════════════════════════════════════════
     //  CRÉATION DOSSIER
     // ════════════════════════════════════════════════════
 
@@ -117,14 +105,34 @@ public class DossierService {
                     .orElseThrow(() -> new RuntimeException("Client non trouvé"));
         } else {
             client = new Client();
-            client.setNom(request.getClientNom());
-            client.setPrenom(request.getClientPrenom());
-            client.setCin(request.getClientCin());
-            client.setEmail(request.getClientEmail());
-            client.setTelephone(request.getClientTelephone());
-            client.setAdresse(request.getClientAdresse());
+
+            // 🔥 Type client avec valeur par défaut
+            TypeClient typeClient = request.getTypeClient() != null
+                    ? request.getTypeClient()
+                    : TypeClient.PARTICULIER;
+
+            client.setTypeClient(typeClient);
+            client.setNom(clean(request.getClientNom()));
+            client.setPrenom(clean(request.getClientPrenom()));
+            client.setEmail(clean(request.getClientEmail()));
+            client.setTelephone(clean(request.getClientTelephone()));
+            client.setAdresse(clean(request.getClientAdresse()));
             client.setAgence(agent.getAgence());
             client.setDateInscription(LocalDate.now());
+
+            // 🔥 Cohérence métier selon le type
+            if (typeClient == TypeClient.ENTREPRISE) {
+                client.setCin(null);
+                client.setPrenom(null);
+                client.setRne(clean(request.getClientRne()));
+                client.setRaisonSociale(clean(request.getClientRaisonSociale()));
+            } else {
+                client.setPrenom(clean(request.getClientPrenom()));
+                client.setCin(clean(request.getClientCin()));
+                client.setRne(null);
+                client.setRaisonSociale(null);
+            }
+
             client = clientRepository.save(client);
         }
 
@@ -168,8 +176,8 @@ public class DossierService {
         }
 
         historiqueService.enregistrer(dossier, HistoriqueService.CREATION,
-                "Dossier créé pour " + client.getNom() + " " + client.getPrenom(),
-                agentUsername);
+                "Dossier créé pour " + client.getNom(), agentUsername);
+
         return dossier;
     }
 
@@ -189,109 +197,82 @@ public class DossierService {
     @Transactional
     public void soumettreAValidation(Long id, String username) {
         DossierContentieux dossier = getDossierByIdAndAgent(id, username);
-    
-        // Vérifier qu'il y a des risques
-        if (dossier.getRisques() == null || dossier.getRisques().isEmpty()) {
+         
+    Client client = dossier.getClient();
+    client.getNom();
+    client.getPrenom();
+    client.getCin();
+    client.getRne();
+    client.getRaisonSociale();
+
+        if (dossier.getRisques() == null || dossier.getRisques().isEmpty())
             throw new RuntimeException("Ajoutez au moins un risque avant de soumettre.");
-        }
-    
-        // Vérifier qu'au moins un risque est sélectionné
-        boolean risqueSelectionne = dossier.getRisques().stream()
-                .anyMatch(Risque::isSelectionne);
-        if (!risqueSelectionne) {
+
+        boolean risqueSelectionne = dossier.getRisques().stream().anyMatch(Risque::isSelectionne);
+        if (!risqueSelectionne)
             throw new RuntimeException("Sélectionnez au moins un crédit à traiter avant de soumettre.");
-        }
-    
-        // Vérifier les validateurs assignés
-        if (dossier.getValidateurFinancierChoisi() == null || 
-            dossier.getValidateurFinancierChoisi().isBlank()) {
+
+        if (dossier.getValidateurFinancierChoisi() == null ||
+                dossier.getValidateurFinancierChoisi().isBlank())
             throw new RuntimeException("Veuillez choisir un validateur financier.");
-        }
-        if (dossier.getValidateurJuridiqueChoisi() == null || 
-            dossier.getValidateurJuridiqueChoisi().isBlank()) {
+
+        if (dossier.getValidateurJuridiqueChoisi() == null ||
+                dossier.getValidateurJuridiqueChoisi().isBlank())
             throw new RuntimeException("Veuillez choisir un validateur juridique.");
-        }
-    
-        // Changer le statut
+
         dossier.setStatut(DossierStatus.EN_TRAITEMENT);
         dossier.setValidationFinanciere(null);
         dossier.setValidationJuridique(null);
         dossierRepository.save(dossier);
-    
-        // Envoyer les notifications
+
         String messageBase = "Le dossier " + dossier.getNumeroDossier()
                 + " de " + dossier.getClient().getNom()
-                + " " + dossier.getClient().getPrenom();
-    
-        notificationService.notifier(
-                dossier.getValidateurFinancierChoisi(),
+                + " " + (dossier.getClient().getPrenom() != null ? dossier.getClient().getPrenom() : "");
+
+        notificationService.notifier(dossier.getValidateurFinancierChoisi(),
                 "Nouveau dossier à valider",
                 messageBase + " nécessite votre validation financière.",
-                "VALIDATION_FINANCIERE",
-                dossier
-        );
-    
-        notificationService.notifier(
-                dossier.getValidateurJuridiqueChoisi(),
+                "VALIDATION_FINANCIERE", dossier);
+
+        notificationService.notifier(dossier.getValidateurJuridiqueChoisi(),
                 "Nouveau dossier à valider",
                 messageBase + " nécessite votre validation juridique.",
-                "VALIDATION_JURIDIQUE",
-                dossier
-        );
-    
-        // Historique
-        historiqueService.enregistrer(
-                dossier,
-                HistoriqueService.SOUMISSION,
+                "VALIDATION_JURIDIQUE", dossier);
+
+        historiqueService.enregistrer(dossier, HistoriqueService.SOUMISSION,
                 "Soumis à : " + dossier.getValidateurFinancierChoisi()
-                        + " (financier) et "
-                        + dossier.getValidateurJuridiqueChoisi()
-                        + " (juridique)",
-                username
-        );
+                        + " (financier) et " + dossier.getValidateurJuridiqueChoisi()
+                        + " (juridique)", username);
     }
+
     // ════════════════════════════════════════════════════
-    //  SÉLECTION/DÉSÉLECTION D'UN RISQUE (CHECKBOX)
+    //  SÉLECTION RISQUE
     // ════════════════════════════════════════════════════
 
-    /**
-     * Sélectionne ou désélectionne un risque spécifique (case à cocher).
-     * Permet la sélection multiple (contrairement à l'ancienne méthode).
-     */
     @Transactional
-    public void selectionnerRisque(Long dossierId, Long risqueId, boolean selectionne, String username) {
-        // 1. Vérifier le dossier et les droits
+    public void selectionnerRisque(Long dossierId, Long risqueId,
+                                    boolean selectionne, String username) {
         DossierContentieux dossier = getDossierByIdAndAgent(dossierId, username);
-        
-        // 2. Vérifier que le dossier est modifiable
-        if (dossier.getStatut() != DossierStatus.OUVERT && dossier.getStatut() != DossierStatus.REJETE) {
+
+        if (dossier.getStatut() != DossierStatus.OUVERT
+                && dossier.getStatut() != DossierStatus.REJETE)
             throw new RuntimeException("Impossible de modifier la sélection : dossier en cours de traitement");
-        }
-        
-        // 3. Trouver le risque
+
         Risque risque = risqueRepository.findById(risqueId)
                 .orElseThrow(() -> new RuntimeException("Crédit non trouvé"));
-        
-        // 4. Vérifier que le risque appartient au dossier
-        if (!risque.getDossier().getId().equals(dossierId)) {
+
+        if (!risque.getDossier().getId().equals(dossierId))
             throw new RuntimeException("Ce crédit n'appartient pas au dossier");
-        }
-        
-        // 5. Mettre à jour la sélection
+
         risque.setSelectionne(selectionne);
         risqueRepository.save(risque);
-        
-        // 6. Historique
-        String actionDesc = "Crédit '" + risque.getType() + "' " + 
-                           (selectionne ? "sélectionné" : "désélectionné") +
-                           " pour la procédure";
-        historiqueService.enregistrer(dossier, HistoriqueService.MODIFICATION, actionDesc, username);
+
+        historiqueService.enregistrer(dossier, HistoriqueService.MODIFICATION,
+                "Crédit '" + risque.getType() + "' "
+                        + (selectionne ? "sélectionné" : "désélectionné")
+                        + " pour la procédure", username);
     }
 
-    /**
-     * Ancienne méthode : sélection unique (radio button style).
-     * Garde pour compatibilité si besoin.
-     */
     @Transactional
     public void selectionnerRisqueUnique(Long risqueId, String username) {
         Risque risque = risqueRepository.findById(risqueId)
@@ -300,16 +281,13 @@ public class DossierService {
         DossierContentieux dossier = getDossierByIdAndAgent(
                 risque.getDossier().getId(), username);
 
-        // Désélectionner tous les autres risques du dossier
-        risqueRepository.findByDossier_Id(dossier.getId())
-                .forEach(r -> { 
-                    if (!r.getId().equals(risqueId)) {
-                        r.setSelectionne(false); 
-                        risqueRepository.save(r); 
-                    }
-                });
+        risqueRepository.findByDossier_Id(dossier.getId()).forEach(r -> {
+            if (!r.getId().equals(risqueId)) {
+                r.setSelectionne(false);
+                risqueRepository.save(r);
+            }
+        });
 
-        // Sélectionner celui-ci
         risque.setSelectionne(true);
         risqueRepository.save(risque);
 
@@ -363,40 +341,27 @@ public class DossierService {
     // ════════════════════════════════════════════════════
 
     @Transactional(readOnly = true)
-public List<DossierContentieux> getDossiersEnAttenteValidationFinanciere(String username) {
-    List<DossierContentieux> dossiers = dossierRepository.findEnAttenteValidationFinanciereParValidateur(username);
-    
-    // Forcer le chargement des relations lazy
-    for (DossierContentieux d : dossiers) {
-        if (d.getClient() != null) {
-            d.getClient().getNom(); // Force le chargement
+    public List<DossierContentieux> getDossiersEnAttenteValidationFinanciere(String username) {
+        List<DossierContentieux> dossiers =
+                dossierRepository.findEnAttenteValidationFinanciereParValidateur(username);
+        for (DossierContentieux d : dossiers) {
+            if (d.getClient() != null) d.getClient().getNom();
+            if (d.getAgence() != null) d.getAgence().getNom();
         }
-        if (d.getAgence() != null) {
-            d.getAgence().getNom(); // Force le chargement
-        }
+        return dossiers;
     }
-    return dossiers;
-}
-// ✅ Après — même pattern que la méthode financière
-// ✅ Après — même pattern que la méthode financière
-@Transactional(readOnly = true)
-public List<DossierContentieux> getDossiersEnAttenteValidationJuridique(String username) {
-    List<DossierContentieux> dossiers = 
-            dossierRepository.findEnAttenteValidationJuridiqueParValidateur(username);
 
-    for (DossierContentieux d : dossiers) {
-        if (d.getClient() != null) {
-            d.getClient().getNom();   // force chargement lazy
+    @Transactional(readOnly = true)
+    public List<DossierContentieux> getDossiersEnAttenteValidationJuridique(String username) {
+        List<DossierContentieux> dossiers =
+                dossierRepository.findEnAttenteValidationJuridiqueParValidateur(username);
+        for (DossierContentieux d : dossiers) {
+            if (d.getClient() != null) d.getClient().getNom();
+            if (d.getAgence() != null) d.getAgence().getNom();
+            if (d.getAgentCreateur() != null) d.getAgentCreateur().getUsername();
         }
-        if (d.getAgence() != null) {
-            d.getAgence().getNom();   // force chargement lazy
-        }
-        if (d.getAgentCreateur() != null) {
-            d.getAgentCreateur().getUsername(); // force chargement lazy
-        }
+        return dossiers;
     }
-    return dossiers;
-}
 
     @Transactional(readOnly = true)
     public List<DossierContentieux> getDossiersByStatut(DossierStatus statut) {
@@ -424,72 +389,49 @@ public List<DossierContentieux> getDossiersEnAttenteValidationJuridique(String u
         return String.format("%s-%05d", prefix, sequence);
     }
 
+    // 🔥 Méthode clean centralisée
+    private String clean(String value) {
+        if (value == null) return null;
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
     @Transactional
     public void supprimerDossier(Long id, String username) {
-    
-        // 1. نجيب dossier مع relations (IMPORTANT)
-        DossierContentieux dossier = dossierRepository
-                .findByIdWithDetails(id) // لازم JOIN FETCH
+        DossierContentieux dossier = dossierRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
-    
-        // 2. تنظيف garanties
+
         for (Risque r : dossier.getRisques()) {
-            for (Garantie g : r.getGaranties()) {
-                g.setRisque(null);
-            }
+            for (Garantie g : r.getGaranties()) g.setRisque(null);
             r.getGaranties().clear();
         }
-    
-        // 3. تنظيف risques
         dossier.getRisques().clear();
-    
-        // 4. حذف dossier
         dossierRepository.delete(dossier);
     }
 
-    /**
- * Ajouter un nouveau risque à un dossier existant
- */
-@Transactional
-public void ajouterRisque(Long dossierId, RisqueAjoutRequest request, String username) {
+    @Transactional
+    public void ajouterRisque(Long dossierId, RisqueAjoutRequest request, String username) {
+        DossierContentieux dossier = getDossierByIdAndAgent(dossierId, username);
 
-    // 1️⃣ Vérifier que le dossier existe + sécurité (agent propriétaire)
-    DossierContentieux dossier = getDossierByIdAndAgent(dossierId, username);
+        if (dossier.getStatut() != DossierStatus.OUVERT
+                && dossier.getStatut() != DossierStatus.REJETE)
+            throw new RuntimeException("Impossible d'ajouter un risque : dossier en cours de traitement");
 
-    // 2️⃣ Vérifier que le dossier est modifiable
-    if (dossier.getStatut() != DossierStatus.OUVERT 
-            && dossier.getStatut() != DossierStatus.REJETE) {
-        throw new RuntimeException("Impossible d'ajouter un risque : dossier en cours de traitement");
+        Risque risque = new Risque();
+        risque.setType(request.getType());
+        risque.setMontantInitial(request.getMontantInitial());
+        risque.setMontantImpaye(request.getMontantImpaye());
+        risque.setDescription(request.getDescription());
+
+        if (request.getDateEcheance() != null && !request.getDateEcheance().isEmpty())
+            risque.setDateEcheance(LocalDate.parse(request.getDateEcheance()));
+
+        risque.setDossier(dossier);
+        risqueRepository.save(risque);
+
+        historiqueService.enregistrer(dossier, HistoriqueService.AJOUT_RISQUE,
+                "Ajout d'un crédit : " + request.getType(), username);
     }
-
-    // 3️⃣ Créer un nouvel objet Risque
-    Risque risque = new Risque();
-
-    // 👉 Remplir les champs depuis le formulaire
-    risque.setType(request.getType());
-    risque.setMontantInitial(request.getMontantInitial());
-    risque.setMontantImpaye(request.getMontantImpaye());
-    risque.setDescription(request.getDescription());
-
-    // 👉 Gestion date (si fournie)
-    if (request.getDateEcheance() != null && !request.getDateEcheance().isEmpty()) {
-        risque.setDateEcheance(LocalDate.parse(request.getDateEcheance()));
-    }
-
-    // 4️⃣ Lier le risque au dossier
-    risque.setDossier(dossier);
-
-    // 5️⃣ Sauvegarder en base
-    risqueRepository.save(risque);
-
-    // 6️⃣ Historique (traçabilité)
-    historiqueService.enregistrer(
-            dossier,
-            HistoriqueService.AJOUT_RISQUE,
-            "Ajout d’un crédit : " + request.getType(),
-            username
-    );
-}
 
     // ════════════════════════════════════════════════════
     //  MODIFICATION DOSSIER
@@ -501,14 +443,13 @@ public void ajouterRisque(Long dossierId, RisqueAjoutRequest request, String use
         DossierContentieux dossier = getDossierByIdAndAgent(id, agentUsername);
 
         if (dossier.getStatut() != DossierStatus.OUVERT
-                && dossier.getStatut() != DossierStatus.REJETE) {
+                && dossier.getStatut() != DossierStatus.REJETE)
             throw new RuntimeException(
-                "Ce dossier ne peut plus être modifié (statut : " + dossier.getStatut() + ")");
-        }
+                    "Ce dossier ne peut plus être modifié (statut : " + dossier.getStatut() + ")");
 
         if (request.getLibelle() != null)     dossier.setLibelle(request.getLibelle());
         if (request.getDescription() != null) dossier.setDescription(request.getDescription());
-        if (request.getNotes() != null)        dossier.setNotes(request.getNotes());
+        if (request.getNotes() != null)       dossier.setNotes(request.getNotes());
 
         if (dossier.getStatut() == DossierStatus.REJETE) {
             dossier.setStatut(DossierStatus.OUVERT);
@@ -523,94 +464,65 @@ public void ajouterRisque(Long dossierId, RisqueAjoutRequest request, String use
         }
 
         dossier = dossierRepository.save(dossier);
-
-        historiqueService.enregistrer(dossier, "MODIFICATION",
-                "Dossier modifié", agentUsername);
-
+        historiqueService.enregistrer(dossier, "MODIFICATION", "Dossier modifié", agentUsername);
         return dossier;
     }
 
-
-
     @Transactional
-    public void validerFinancier(Long dossierId, String username, boolean accepte, String commentaire) {
-    
-        // 🔹 Charger le dossier AVEC l’agent (important pour éviter LazyInitializationException)
+    public void validerFinancier(Long dossierId, String username,
+                                  boolean accepte, String commentaire) {
         DossierContentieux dossier = dossierRepository.findByIdWithDetails(dossierId)
-        .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
-        // 🔹 Forcer le chargement de l'agent (solution simple si pas de JOIN FETCH)
-        if (dossier.getAgentCreateur() != null) {
+                .orElseThrow(() -> new RuntimeException("Dossier non trouvé"));
+
+        if (dossier.getAgentCreateur() != null)
             dossier.getAgentCreateur().getUsername();
-        }
-    
-        // 🔹 Vérifier que c'est bien le validateur assigné
-        if (!username.equals(dossier.getValidateurFinancierChoisi())) {
+
+        if (!username.equals(dossier.getValidateurFinancierChoisi()))
             throw new RuntimeException("Vous n'êtes pas le validateur assigné");
-        }
-    
-        // 🔹 Vérifier statut
-        if (dossier.getStatut() != DossierStatus.EN_TRAITEMENT) {
+
+        if (dossier.getStatut() != DossierStatus.EN_TRAITEMENT)
             throw new RuntimeException("Ce dossier n'est pas en attente de validation");
-        }
-    
-        // 🔹 Mise à jour
+
         dossier.setValidationFinanciere(accepte);
         dossier.setCommentaireFinancier(commentaire);
         dossier.setValidateurFinancierUsername(username);
-    
-        // 🔹 Gestion des statuts
+
         if (!accepte) {
             dossier.setStatut(DossierStatus.REJETE);
         } else if (Boolean.TRUE.equals(dossier.getValidationJuridique())) {
             dossier.setStatut(DossierStatus.VALIDE);
         }
-    
+
         dossierRepository.save(dossier);
-    
-        // 🔹 Sécuriser username de l’agent
-        String agentUsername = (dossier.getAgentCreateur() != null)
-                ? dossier.getAgentCreateur().getUsername()
-                : null;
-    
-        // 🔹 Message
+
+        String agentUsername = dossier.getAgentCreateur() != null
+                ? dossier.getAgentCreateur().getUsername() : null;
+
         String message = accepte
                 ? "Votre dossier " + dossier.getNumeroDossier() + " a été validé financièrement"
                 : "Votre dossier " + dossier.getNumeroDossier() + " a été rejeté financièrement";
-    
-        // 🔹 Notification
+
         if (agentUsername != null) {
-            notificationService.notifier(
-                    agentUsername,
+            notificationService.notifier(agentUsername,
                     accepte ? "Validation financière acceptée" : "Validation financière rejetée",
                     message + (commentaire != null ? ". Commentaire: " + commentaire : ""),
-                    accepte ? "VALIDATION_OK" : "VALIDATION_KO",
-                    dossier
-            );
+                    accepte ? "VALIDATION_OK" : "VALIDATION_KO", dossier);
         }
-    
-        // 🔹 Historique
-        historiqueService.enregistrer(
-                dossier,
+
+        historiqueService.enregistrer(dossier,
                 accepte ? HistoriqueService.VALIDATION_FIN : HistoriqueService.REJET_FIN,
-                accepte
-                        ? "Validé par " + username
+                accepte ? "Validé par " + username
                         : "Rejeté par " + username + ". Motif: " + commentaire,
-                username
-        );
+                username);
     }
 
-
-
-
-            // ──  la méthode de recherche de dossier dans l'interface agentbancaire ──
+    // ════════════════════════════════════════════════════
+    //  RECHERCHE
+    // ════════════════════════════════════════════════════
 
     public List<DossierContentieux> rechercherDossiers(String username, String keyword) {
-        if (keyword == null || keyword.trim().isEmpty()) {
+        if (keyword == null || keyword.trim().isEmpty())
             return getDossiersAgent(username);
-        }
         return dossierRepository.rechercherParAgent(username, keyword.trim());
     }
-
-    
-
 }

@@ -174,20 +174,28 @@ Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
 
             // ──  la méthode de recherche de dossier dans l'interface agentbancaire ──
 
-    @Query("""
-        SELECT DISTINCT d FROM DossierContentieux d
-        LEFT JOIN FETCH d.client
-        LEFT JOIN FETCH d.agence
-        WHERE d.agentCreateur.username = :username
-        AND (
-            LOWER(d.numeroDossier) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(d.client.cin) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(d.client.nom) LIKE LOWER(CONCAT('%', :keyword, '%'))
-            OR LOWER(d.client.prenom) LIKE LOWER(CONCAT('%', :keyword, '%'))
-        )
-        ORDER BY d.dateCreation DESC
-    """)
-    List<DossierContentieux> rechercherParAgent(
-            @Param("username") String username,
-            @Param("keyword") String keyword);
+            @Query("""
+                SELECT DISTINCT d FROM DossierContentieux d
+                LEFT JOIN FETCH d.client
+                LEFT JOIN FETCH d.agence
+                WHERE d.agentCreateur.username = :username
+                AND (
+                    LOWER(d.numeroDossier) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    
+                    OR (
+                        d.client IS NOT NULL AND (
+                            LOWER(d.client.cin) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                            OR LOWER(d.client.nom) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                            OR LOWER(d.client.prenom) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                            OR LOWER(d.client.rne) LIKE LOWER(CONCAT('%', :keyword, '%'))  
+                            OR LOWER(d.client.email) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                            OR d.client.telephone LIKE CONCAT('%', :keyword, '%')           
+                        )
+                    )
+                )
+                ORDER BY d.dateCreation DESC
+            """)
+            List<DossierContentieux> rechercherParAgent(
+                    @Param("username") String username,
+                    @Param("keyword") String keyword);
 }

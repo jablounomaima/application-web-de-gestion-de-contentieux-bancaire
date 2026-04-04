@@ -87,50 +87,96 @@
 
 <!-- ── Infos dossier ── -->
 <div class="card">
-    <div class="card-title">📁 Informations du dossier</div>
+    <div class="card-title">📁 Informations dossier</div>
+
     <table>
-        <tr><td>Numéro</td>
-            <td th:text="${dossier.numeroDossier} ?: '–'"></td></tr>
-        <tr><td>Libellé</td>
-            <td th:text="${dossier.libelle} ?: '–'"></td></tr>
-        <tr><td>Statut</td>
+        <tr>
+            <td>Numéro</td>
+            <td th:text="${dossier.numeroDossier}"></td>
+        </tr>
+
+        <tr>
+            <td>Libellé</td>
+            <td th:text="${dossier.libelle}"></td>
+        </tr>
+
+        <tr>
+            <td>Statut</td>
             <td>
                 <span class="badge"
                       th:classappend="'badge-' + ${dossier.statut}"
                       th:text="${dossier.statut}">
                 </span>
-            </td></tr>
-        <tr><td>Date création</td>
-            <td th:text="${dossier.dateCreation != null}
-                         ? ${#temporals.format(dossier.dateCreation,'dd/MM/yyyy HH:mm')}
-                         : '–'">
-            </td></tr>
-        <tr><td>Créé par</td>
-            <td th:text="${dossier.creePar} ?: '–'"></td></tr>
-        <tr><td>Notes</td>
-            <td th:text="${dossier.notes} ?: '–'"></td></tr>
+            </td>
+        </tr>
+
+        <tr>
+            <td>Date</td>
+            <td th:text="${#temporals.format(dossier.dateCreation,'dd/MM/yyyy')}"></td>
+        </tr>
     </table>
 </div>
 
-<!-- ── Infos client ── -->
+<!-- ================= CLIENT ================= -->
 <div class="card">
     <div class="card-title">👤 Client</div>
+
     <table>
-        <tr><td>Nom</td>
-            <td th:text="${dossier.clientNom} ?: '–'"></td></tr>
-        <tr><td>Prénom</td>
-            <td th:text="${dossier.clientPrenom} ?: '–'"></td></tr>
-        <tr><td>CIN</td>
-            <td th:text="${dossier.clientCin} ?: '–'"></td></tr>
-        <tr><td>Email</td>
-            <td th:text="${dossier.clientEmail} ?: '–'"></td></tr>
-        <tr><td>Téléphone</td>
-            <td th:text="${dossier.clientTelephone} ?: '–'"></td></tr>
-        <tr><td>Adresse</td>
-            <td th:text="${dossier.clientAdresse} ?: '–'"></td></tr>
+
+        <!-- TYPE -->
+        <tr>
+            <td>Type</td>
+            <td th:text="${dossier.clientTypeClient}"></td>
+        </tr>
+
+        <!-- ================= PARTICULIER ================= -->
+        <tr th:if="${dossier.clientTypeClient == 'PARTICULIER'}">
+            <td>Nom</td>
+            <td th:text="${dossier.clientNom}"></td>
+        </tr>
+        
+        <tr th:if="${dossier.clientTypeClient == 'PARTICULIER'}">
+            <td>Prénom</td>
+            <td th:text="${dossier.clientPrenom}"></td>
+        </tr>
+        
+        <tr th:if="${dossier.clientTypeClient == 'PARTICULIER'}">
+            <td>CIN</td>
+            <td th:text="${dossier.clientCin}"></td>
+        </tr>
+
+        <!-- ================= ENTREPRISE ================= -->
+        <tr th:if="${dossier.clientTypeClient == 'ENTREPRISE'}">
+            <td>Raison sociale</td>
+            <td th:text="${dossier.clientRaisonSociale}"></td>
+        </tr>
+        
+        <tr th:if="${dossier.clientTypeClient == 'ENTREPRISE'}">
+            <td>RNE</td>
+            <td th:text="${dossier.clientRne}"></td>
+        </tr>
+
+        <!-- ================= COMMUN ================= -->
+        <tr>
+            <td>Email</td>
+            <td th:text="${dossier.clientEmail}"></td>
+        </tr>
+        
+        <tr>
+            <td>Téléphone</td>
+            <td th:text="${dossier.clientTelephone}"></td>
+        </tr>
+        
+        <tr>
+            <td>Adresse</td>
+            <td th:text="${dossier.clientAdresse}"></td>
+        </tr>
+
     </table>
 </div>
 
+<!-- ================= RISQUES ================= -->
+<!-- ── Risques ── --> <div class="card"> <div class="card-title">⚠ Risques / Crédits</div> <div th:if="${dossier.risques == null or dossier.risques.empty}" style="color:#aaa;font-style:italic;font-size:13px"> Aucun risque enregistré. </div> <div th:each="r : ${dossier.risques}" class="risque-card" th:classappend="${r.selectionne} ? ' selectionne' : ''"> <div style="font-weight:bold;font-size:13px;margin-bottom:6px"> <span th:text="${r.type} ?: '–'"></span> <span th:if="${r.selectionne}" style="color:#3498db;font-size:11px;margin-left:8px"> ★ Sélectionné </span> </div> <table style="font-size:12px"> <tr><td style="width:40%;color:#777">Montant initial</td> <td th:text="${r.montantInitial != null} ? ${#numbers.formatDecimal(r.montantInitial,1,'COMMA',2,'POINT')} + ' TND' : '–'"> </td></tr> <tr><td style="color:#777">Montant impayé</td> <td th:text="${r.montantImpaye != null} ? ${#numbers.formatDecimal(r.montantImpaye,1,'COMMA',2,'POINT')} + ' TND' : '–'"> </td></tr> <tr><td style="color:#777">Échéance</td> <td th:text="${r.dateEcheance} ?: '–'"></td></tr> <tr><td style="color:#777">Description</td> <td th:text="${r.description} ?: '–'"></td></tr> </table> <div th:if="${r.garanties != null and !r.garanties.empty}" style="margin-top:8px"> <div style="font-size:12px;color:#777;margin-bottom:4px"> Garanties : </div> <div th:each="g : ${r.garanties}" class="garantie-item"> <b th:text="${g.typeGarantie} ?: '–'"></b> — Valeur : <span th:text="${g.valeurEstimee != null} ? ${#numbers.formatDecimal(g.valeurEstimee,1,'COMMA',2,'POINT')} + ' TND' : '–'"> </span> <span th:if="${g.description}" th:text="' | ' + ${g.description}"> </span> </div> </div> </div> </div>
 <!-- ── Engagement financier ── -->
 <div class="card">
     <div class="card-title">💰 Engagement financier</div>
@@ -144,63 +190,7 @@
 </div>
 
 <!-- ── Risques / Crédits ── -->
-<div class="card">
-    <div class="card-title">⚠ Risques / Crédits</div>
 
-    <div th:if="${dossier.risques == null or dossier.risques.empty}"
-         style="color:#aaa;font-style:italic;font-size:13px">
-        Aucun risque enregistré.
-    </div>
-
-    <div th:each="r : ${dossier.risques}"
-         class="risque-card"
-         th:classappend="${r.selectionne} ? ' selectionne' : ''">
-
-        <div style="font-weight:bold;font-size:13px;margin-bottom:6px">
-            <span th:text="${r.type} ?: '–'"></span>
-            <span th:if="${r.selectionne}"
-                  style="color:#3498db;font-size:11px;margin-left:8px">
-                ★ Sélectionné
-            </span>
-        </div>
-
-        <table style="font-size:12px">
-            <tr><td style="width:40%;color:#777">Montant initial</td>
-                <td th:text="${r.montantInitial != null}
-                             ? ${#numbers.formatDecimal(r.montantInitial,1,'COMMA',2,'POINT')} + ' TND'
-                             : '–'">
-                </td></tr>
-            <tr><td style="color:#777">Montant impayé</td>
-                <td th:text="${r.montantImpaye != null}
-                             ? ${#numbers.formatDecimal(r.montantImpaye,1,'COMMA',2,'POINT')} + ' TND'
-                             : '–'">
-                </td></tr>
-            <tr><td style="color:#777">Échéance</td>
-                <td th:text="${r.dateEcheance} ?: '–'"></td></tr>
-            <tr><td style="color:#777">Description</td>
-                <td th:text="${r.description} ?: '–'"></td></tr>
-        </table>
-
-        <!-- Garanties -->
-        <div th:if="${r.garanties != null and !r.garanties.empty}"
-             style="margin-top:8px">
-            <div style="font-size:12px;color:#777;margin-bottom:4px">
-                Garanties :
-            </div>
-            <div th:each="g : ${r.garanties}" class="garantie-item">
-                <b th:text="${g.typeGarantie} ?: '–'"></b>
-                — Valeur :
-                <span th:text="${g.valeurEstimee != null}
-                               ? ${#numbers.formatDecimal(g.valeurEstimee,1,'COMMA',2,'POINT')} + ' TND'
-                               : '–'">
-                </span>
-                <span th:if="${g.description}"
-                      th:text="' | ' + ${g.description}">
-                </span>
-            </div>
-        </div>
-    </div>
-</div>
 
 <!-- ── Validation juridique ── -->
 <div class="card"

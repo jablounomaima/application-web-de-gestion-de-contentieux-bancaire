@@ -2,6 +2,7 @@ package com.example.contentieux_security.dto;
 
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.DossierStatus;
+import com.example.contentieux_security.enums.TypeClient;
 import com.itextpdf.text.pdf.draw.LineSeparator;
 import lombok.*;
 import java.time.LocalDateTime;
@@ -23,37 +24,44 @@ public class DossierDetailDTO {
     private String creePar;
     private String notes;
 
+    // 🔥 CORRECTION : Ce champ existe mais n'était pas mappé dans la méthode from()
+   private String clientTypeClient;
+
     // ── Client ────────────────────────────────────────────────
     private Long clientId;
+    private String clientType;
+
     private String clientNom;
     private String clientPrenom;
     private String clientCin;
     private String clientEmail;
     private String clientTelephone;
-    private String clientAdresse;    // ← ajouter
+    private String clientAdresse;    // ← ajouté (existe dans l'entité mais pas mappé)
+    
+    // 🔥 CORRECTION : Ajout des champs manquants pour les entreprises
+    private String clientRaisonSociale;  // ← AJOUTÉ : Raison sociale pour les entreprises
+    private String clientRne;            // ← AJOUTÉ : Registre national des entreprises
+
     // ── Agence ────────────────────────────────────────────────
     private String agenceNom;
     private String agenceVille;
 
     // ── Validation ────────────────────────────────────────────
-  // ── Validation ────────────────────────────────────────────
-private Boolean validationFinanciere;
-private Boolean validationJuridique;
-private String commentaireFinancier;
-private String commentaireJuridique;
-private String validateurFinancierUsername;
-private String validateurJuridiqueUsername;
-private String validateurFinancierChoisi;    // ← ajouter
-private String validateurJuridiqueChoisi;    // ← ajouter
+    private Boolean validationFinanciere;
+    private Boolean validationJuridique;
+    private String commentaireFinancier;
+    private String commentaireJuridique;
+    private String validateurFinancierUsername;
+    private String validateurJuridiqueUsername;
+    private String validateurFinancierChoisi;    // ← ajouter
+    private String validateurJuridiqueChoisi;    // ← ajouter
+    
     // ── Risques ───────────────────────────────────────────────
     private List<RisqueDTO> risques;
     private Double montantTotalEngagement;
 
     // ── Historique ────────────────────────────────────────────
     private List<HistoriqueEntryDTO> historique;
-
-
-   
 
     // ── Sous-DTO Risque ───────────────────────────────────────
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -88,10 +96,6 @@ private String validateurJuridiqueChoisi;    // ← ajouter
         private String utilisateur;
     }
 
-    
-
-    
-
     // ── Factory method depuis l'entité ────────────────────────
     public static DossierDetailDTO from(DossierContentieux d,
                                         List<HistoriqueDossier> historique) {
@@ -113,17 +117,50 @@ private String validateurJuridiqueChoisi;    // ← ajouter
                 .validateurFinancierChoisi(d.getValidateurFinancierChoisi())   
                 .validateurJuridiqueChoisi(d.getValidateurJuridiqueChoisi());   
 
+        // 🔥 CORRECTION COMPLÈTE DU MAPPING CLIENT
+       // Dans DossierDetailDTO.from(), remplace le bloc client par :
+// Dans DossierDetailDTO.from(), remplace le bloc client par :
 
+if (d.getClient() != null) {
+    // 🔥 DEBUG
+    System.out.println("🔍 DTO - Client from DB:");
+    System.out.println("  - ID: " + d.getClient().getId());
+    System.out.println("  - typeClient enum: " + d.getClient().getTypeClient());
+    System.out.println("  - raisonSociale: " + d.getClient().getRaisonSociale());
+    
+    // Détermination du type avec fallback
+    String typeClientStr;
+    TypeClient typeClient = d.getClient().getTypeClient();
+    
+    if (typeClient != null) {
+        typeClientStr = typeClient.name();
+        System.out.println("  - Utilisation typeClient DB: " + typeClientStr);
+    } else if (d.getClient().getRaisonSociale() != null 
+               && !d.getClient().getRaisonSociale().trim().isEmpty()) {
+        typeClientStr = "ENTREPRISE";
+        System.out.println("  - FALLBACK ENTREPRISE (raison sociale)");
+    } else {
+        typeClientStr = "PARTICULIER";
+        System.out.println("  - FALLBACK PARTICULIER");
+    }
+    
+    System.out.println("  - FINAL typeClientStr: " + typeClientStr);
+    
+    b.clientId(d.getClient().getId())
+     .clientNom(d.getClient().getNom())
+     .clientPrenom(d.getClient().getPrenom())
+     .clientCin(d.getClient().getCin())
+     .clientEmail(d.getClient().getEmail())
+     .clientTelephone(d.getClient().getTelephone())
+     .clientAdresse(d.getClient().getAdresse())
+    .clientTypeClient(typeClientStr)  // ✅ déjà rempli
 
-        if (d.getClient() != null) {
-            b.clientId(d.getClient().getId())
-             .clientNom(d.getClient().getNom())
-             .clientPrenom(d.getClient().getPrenom())
-             .clientCin(d.getClient().getCin())
-             .clientEmail(d.getClient().getEmail())
-             .clientTelephone(d.getClient().getTelephone());
-        }
-
+    .clientType(typeClientStr)
+     .clientRaisonSociale(d.getClient().getRaisonSociale())
+     .clientRne(d.getClient().getRne());
+}
+   
+        
         if (d.getAgence() != null) {
             b.agenceNom(d.getAgence().getNom())
              .agenceVille(d.getAgence().getVille());

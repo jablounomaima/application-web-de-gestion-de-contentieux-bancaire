@@ -1,4 +1,3 @@
-<!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
@@ -88,8 +87,7 @@
         </tr>
         <tr>
             <td>Date création</td>
-            <td th:text="${dossier.dateCreation != null}
-                         ? ${#temporals.format(dossier.dateCreation,'dd/MM/yyyy HH:mm')} : '–'"></td>
+            <td th:text="${dossier.dateCreation != null ? #temporals.format(dossier.dateCreation,'dd/MM/yyyy HH:mm') : '–'}"></td>
         </tr>
         <tr><td>Créé par</td><td th:text="${dossier.creePar} ?: '–'"></td></tr>
         <tr><td>Description</td><td th:text="${dossier.description} ?: '–'"></td></tr>
@@ -101,18 +99,50 @@
 
 <!-- ── 2. Client ── -->
 <!-- ✅ CORRIGÉ : Utilisation des propriétés du DTO (clientNom, clientPrenom, etc.) -->
-<div class="card" th:if="${dossier.clientNom != null or dossier.clientPrenom != null}">
+<div class="card" th:if="${dossier.clientEmail != null or dossier.clientNom != null}">
     <div class="card-title">Client</div>
+
     <table>
-        <tr><td>Nom / Prénom</td>
-            <td th:text="${(dossier.clientNom ?: '') + ' ' + (dossier.clientPrenom ?: '')}"></td></tr>
-        <tr><td>CIN</td><td th:text="${dossier.clientCin} ?: '–'"></td></tr>
-        <tr><td>Email</td><td th:text="${dossier.clientEmail} ?: '–'"></td></tr>
-        <tr><td>Téléphone</td><td th:text="${dossier.clientTelephone} ?: '–'"></td></tr>
-        <tr th:if="${dossier.agenceNom != null}">
-            <td>Agence</td>
-            <td th:text="${dossier.agenceNom + (dossier.agenceVille != null ? ' — ' + dossier.agenceVille : '')}"></td>
+
+        <!-- TYPE CLIENT -->
+        <tr>
+            <td>Type client</td>
+            <td th:text="${dossier.clientTypeClient != null ? dossier.clientTypeClient : 'Non défini'}"></td>
         </tr>
+
+        <!-- PARTICULIER -->
+        <tr th:if="${dossier.clientTypeClient == 'PARTICULIER'}">
+            <td>Nom / Prénom</td>
+            <td th:text="${(dossier.clientNom != null ? dossier.clientNom : '') + ' ' + (dossier.clientPrenom != null ? dossier.clientPrenom : '')}"></td>
+        </tr>
+
+        <tr th:if="${dossier.clientTypeClient == 'PARTICULIER'}">
+            <td>CIN</td>
+            <td th:text="${dossier.clientCin != null ? dossier.clientCin : '–'}"></td>
+        </tr>
+
+        <!-- ENTREPRISE -->
+        <tr th:if="${dossier.clientTypeClient == 'ENTREPRISE'}">
+            <td>Raison sociale</td>
+            <td th:text="${dossier.clientRaisonSociale != null ? dossier.clientRaisonSociale : '–'}"></td>
+        </tr>
+
+        <tr th:if="${dossier.clientTypeClient == 'ENTREPRISE'}">
+            <td>RNE</td>
+            <td th:text="${dossier.clientRne != null ? dossier.clientRne : '–'}"></td>
+        </tr>
+
+        <!-- COMMUN -->
+        <tr>
+            <td>Email</td>
+            <td th:text="${dossier.clientEmail != null ? dossier.clientEmail : '–'}"></td>
+        </tr>
+
+        <tr>
+            <td>Téléphone</td>
+            <td th:text="${dossier.clientTelephone != null ? dossier.clientTelephone : '–'}"></td>
+        </tr>
+
     </table>
 </div>
 
@@ -192,14 +222,14 @@
 <table style="font-size:13px;margin-bottom:8px;">
     <tr>
         <td style="color:#777;width:40%">Montant initial</td>
-        <td th:text="${risque.montantInitial != null}
-                     ? ${#numbers.formatDecimal(risque.montantInitial,1,'COMMA',2,'POINT')} + ' DT' : '–'"></td>
-    </tr>
+        <td th:text="${risque.montantInitial != null ? #numbers.formatDecimal(risque.montantInitial,1,'COMMA',2,'POINT') + ' DT' : '–'}"></td>
+   
+                    </tr>
     <tr>
         <td style="color:#777">Montant impayé</td>
-        <td th:text="${risque.montantImpaye != null}
-                     ? ${#numbers.formatDecimal(risque.montantImpaye,1,'COMMA',2,'POINT')} + ' DT' : '–'"></td>
-    </tr>
+        <td th:text="${risque.montantImpaye != null ? #numbers.formatDecimal(risque.montantImpaye,1,'COMMA',2,'POINT') + ' DT' : '–'}"></td>
+    
+                    </tr>
     <tr th:if="${risque.dateEcheance != null}">
         <td style="color:#777">Échéance</td>
         <td th:text="${risque.dateEcheance}"></td>

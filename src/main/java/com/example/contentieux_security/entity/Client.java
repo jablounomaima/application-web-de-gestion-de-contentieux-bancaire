@@ -1,10 +1,11 @@
 package com.example.contentieux_security.entity;
+
 import com.example.contentieux_security.entity.DossierContentieux;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
 import java.util.List;
-
+import com.example.contentieux_security.enums.*;
 @Entity
 @Table(name = "clients")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -20,8 +21,14 @@ public class Client {
     @Column(nullable = false)
     private String prenom;
 
-    @Column(unique = true, nullable = false)
+    // ✅ NULL autorisé - soit CIN soit RNE selon le type
+    @Column(unique = true, nullable = true)
     private String cin;
+
+    @Column(unique = true, nullable = true)
+    private String rne;
+
+    private String raisonSociale;
 
     @Column(unique = true)
     private String email;
@@ -34,15 +41,19 @@ public class Client {
 
     private boolean actif = true;
 
-    // ── Relations ─────────────────────────────────────────────────
+    @Enumerated(EnumType.STRING)
+    @Column(name = "type_client")
+    private TypeClient typeClient;
+
+    // Relations...
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agence_id")
-    private Agence agence;                  // rattaché à une agence
+    private Agence agence;
 
     @OneToMany(mappedBy = "client", fetch = FetchType.LAZY)
     private List<DossierContentieux> dossiers;
 
-    // ── Utilitaire ────────────────────────────────────────────────
+    // Méthode utilitaire
     public String getNomComplet() {
         return prenom + " " + nom;
     }

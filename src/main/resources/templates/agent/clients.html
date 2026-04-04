@@ -36,49 +36,75 @@
 <main>
     <h2 th:text="${pageTitle} ?: 'Gestion des Clients'">Gestion des Clients</h2>
     
-    <!-- Bouton création -->
-    <button onclick="toggleForm()">+ Nouveau Client</button>
-    
-    <!-- Formulaire de création (caché par défaut) -->
-    <div id="createForm" style="display: none;">
-        <h3>Créer un nouveau client</h3>
-        <form th:action="@{/agent/clients/creer}" method="post" th:object="${nouveauClient}">
-            <div>
-                <label for="nom">Nom :</label>
-                <input type="text" id="nom" th:field="*{nom}" required>
-            </div>
-            
-            <div>
-                <label for="prenom">Prénom :</label>
-                <input type="text" id="prenom" th:field="*{prenom}" required>
-            </div>
-            
-            <div>
-                <label for="cin">CIN :</label>
-                <input type="text" id="cin" th:field="*{cin}" required>
-            </div>
-            
-            <div>
-                <label for="email">Email :</label>
-                <input type="email" id="email" th:field="*{email}">
-            </div>
-            
-            <div>
-                <label for="telephone">Téléphone :</label>
-                <input type="tel" id="telephone" th:field="*{telephone}">
-            </div>
-            
-            <div>
-                <label for="adresse">Adresse :</label>
-                <textarea id="adresse" th:field="*{adresse}" rows="3"></textarea>
-            </div>
-            
-            <div>
-                <button type="submit">Enregistrer</button>
-                <button type="button" onclick="toggleForm()">Annuler</button>
-            </div>
-        </form>
-    </div>
+   <!-- Bouton création -->
+<button type="button" onclick="toggleForm()">+ Nouveau Client</button>
+
+<div id="createForm" style="display: none;">
+    <h3>Créer un nouveau client</h3>
+
+    <form th:action="@{/agent/clients/creer}" method="post" th:object="${nouveauClient}">
+
+        <!-- TYPE CLIENT -->
+        <div>
+            <label>Type Client :</label>
+            <select th:field="*{typeClient}" onchange="toggleClientType(this.value)">
+                <option th:each="t : ${T(com.example.contentieux_security.enums.TypeClient).values()}"
+                        th:value="${t}"
+                        th:text="${t}">
+                </option>
+            </select>
+        </div>
+
+        <!-- RAISON SOCIALE -->
+        <div id="raisonDiv" style="display:none;">
+            <label>Raison sociale :</label>
+            <input type="text" th:field="*{raisonSociale}">
+        </div>
+
+        <div>
+            <label>Nom :</label>
+            <input type="text" th:field="*{nom}" required>
+        </div>
+
+        <div>
+            <label>Prénom :</label>
+            <input type="text" th:field="*{prenom}">
+        </div>
+
+        <!-- CIN -->
+        <div id="cinDiv">
+            <label>CIN :</label>
+            <input type="text" th:field="*{cin}">
+        </div>
+
+        <!-- RNE -->
+        <div id="rneDiv" style="display:none;">
+            <label>RNE :</label>
+            <input type="text" th:field="*{rne}">
+        </div>
+
+        <div>
+            <label>Email :</label>
+            <input type="email" th:field="*{email}">
+        </div>
+
+        <div>
+            <label>Téléphone :</label>
+            <input type="tel" th:field="*{telephone}">
+        </div>
+
+        <div>
+            <label>Adresse :</label>
+            <textarea th:field="*{adresse}"></textarea>
+        </div>
+
+        <div>
+            <button type="submit">Enregistrer</button>
+            <button type="button" onclick="toggleForm()">Annuler</button>
+        </div>
+
+    </form>
+</div>
     
     <!-- Liste des clients -->
     <section>
@@ -95,6 +121,7 @@
                     <th>Nom</th>
                     <th>Prénom</th>
                     <th>CIN</th>
+                    <th>RNE</th>
                     <th>Email</th>
                     <th>Téléphone</th>
                     <th>Date inscription</th>
@@ -107,6 +134,7 @@
                     <td th:text="${client.nom}"></td>
                     <td th:text="${client.prenom}"></td>
                     <td th:text="${client.cin}"></td>
+                    <td th:text="${client.rne}"></td>
                     <td th:text="${client.email}"></td>
                     <td th:text="${client.telephone}"></td>
                     <td th:text="${#temporals.format(client.dateInscription, 'dd/MM/yyyy')}"></td>
@@ -127,8 +155,7 @@
     <section>
         <h3>Rechercher un client</h3>
         <form th:action="@{/agent/clients/rechercher}" method="get">
-            <input type="text" name="keyword" placeholder="Nom, CIN, email...">
-            <button type="submit">Rechercher</button>
+            <input type="text" name="keyword" placeholder="Nom, CIN, RNE, email...">            <button type="submit">Rechercher</button>
         </form>
     </section>
 </main>
@@ -141,10 +168,67 @@
 <!-- Script minimal -->
 <script>
     function toggleForm() {
-        var form = document.getElementById('createForm');
-        form.style.display = form.style.display === 'none' ? 'block' : 'none';
+        const form = document.getElementById("createForm");
+        form.style.display = (form.style.display === "none") ? "block" : "none";
     }
-</script>
+    
+    function toggleClientType(value) {
+    const cinDiv = document.getElementById("cinDiv");
+    const rneDiv = document.getElementById("rneDiv");
+    const raisonDiv = document.getElementById("raisonDiv");
+
+    const cinInput = document.querySelector("[name='cin']");
+    const rneInput = document.querySelector("[name='rne']");
+    const raisonInput = document.querySelector("[name='raisonSociale']");
+
+    if (value === "ENTREPRISE") {
+        cinDiv.style.display = "none";
+        rneDiv.style.display = "block";
+        raisonDiv.style.display = "block";
+
+        // 🔥 IMPORTANT
+        cinInput.value = "";          // vider
+        cinInput.readOnly = true;     // bloquer sans supprimer
+
+        rneInput.readOnly = false;
+        raisonInput.readOnly = false;
+
+    } else {
+        cinDiv.style.display = "block";
+        rneDiv.style.display = "none";
+        raisonDiv.style.display = "none";
+
+        // 🔥 IMPORTANT
+        rneInput.value = "";
+        raisonInput.value = "";
+
+        cinInput.readOnly = false;
+        rneInput.readOnly = true;
+        raisonInput.readOnly = true;
+    }
+}
+    function toggleRaisonSociale(val) {
+    const isEntreprise = val === 'ENTREPRISE';
+
+    const raisonDiv = document.getElementById('raisonSocialeDiv');
+    const rneDiv = document.getElementById('rneDiv');
+    const cinDiv = document.getElementById('cinDiv');
+
+    const raisonInput = document.querySelector("[name='clientRaisonSociale']");
+    const rneInput = document.querySelector("[name='clientRne']");
+    const cinInput = document.querySelector("[name='clientCin']");
+
+    // 🎯 Affichage
+    raisonDiv.style.display = isEntreprise ? 'flex' : 'none';
+    rneDiv.style.display = isEntreprise ? 'flex' : 'none';
+    cinDiv.style.display = isEntreprise ? 'none' : 'flex';
+
+    // 🔥 TRÈS IMPORTANT → empêcher envoi
+    raisonInput.disabled = !isEntreprise;
+    rneInput.disabled = !isEntreprise;
+    cinInput.disabled = isEntreprise;
+}
+    </script>
 
 </body>
 </html>

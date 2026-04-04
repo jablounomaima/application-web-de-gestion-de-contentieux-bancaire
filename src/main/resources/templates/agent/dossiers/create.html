@@ -249,13 +249,13 @@
                             <div class="form-grid">
                                 <div class="form-group">
                                     <label>Type de client</label>
-                                    <select th:field="*{clientTypeClient}" id="typeClientSelect"
+                                    <select th:field="*{typeClient}" id="typeClientSelect"
                                             onchange="toggleRaisonSociale(this.value)">
                                         <option value="PARTICULIER">👤 Particulier</option>
                                         <option value="ENTREPRISE">🏭 Entreprise</option>
                                     </select>
                                 </div>
-                                <div class="form-group" id="raisonSocialeDiv" style="display:none;">
+                                <div class="form-group" id="raisonSocialeDiv" style="display:none;flex-direction:column;">
                                     <label>Raison sociale</label>
                                     <input type="text" th:field="*{clientRaisonSociale}"
                                            placeholder="Nom de l'entreprise"/>
@@ -268,11 +268,17 @@
                                     <label>Prénom</label>
                                     <input type="text" th:field="*{clientPrenom}" placeholder="Ahmed"/>
                                 </div>
-                                <div class="form-group">
-                                    <label>CIN <span class="req">*</span></label>
-                                    <input type="text" th:field="*{clientCin}"
-                                           placeholder="12345678" maxlength="8"/>
-                                </div>
+                               <!-- CIN (Particulier) -->
+<div class="form-group" id="cinDiv">
+    <label>CIN <span class="req">*</span></label>
+    <input type="text" th:field="*{clientCin}" placeholder="12345678" maxlength="8"/>
+</div>
+
+<!-- RNE (Entreprise) -->
+<div class="form-group" id="rneDiv" style="display:none;">
+    <label>RNE <span class="req">*</span></label>
+    <input type="text" th:field="*{clientRne}" placeholder="1234567A"/>
+</div>
                                 <div class="form-group">
                                     <label>Téléphone</label>
                                     <input type="tel" th:field="*{clientTelephone}"
@@ -395,8 +401,16 @@ function switchClient(type) {
 }
 
 function toggleRaisonSociale(val) {
+    const isEntreprise = val === 'ENTREPRISE';
+
     document.getElementById('raisonSocialeDiv').style.display =
-        val === 'ENTREPRISE' ? 'flex' : 'none';
+        isEntreprise ? 'flex' : 'none';
+
+    document.getElementById('rneDiv').style.display =
+        isEntreprise ? 'flex' : 'none';
+
+    document.getElementById('cinDiv').style.display =
+        isEntreprise ? 'none' : 'flex';
 }
 
 // ═══════════════════════════════════════════════
