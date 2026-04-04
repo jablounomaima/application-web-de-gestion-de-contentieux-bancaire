@@ -51,11 +51,25 @@ public class ValidateurController {
     @GetMapping("/validateur/financier/dossiers")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
     @Transactional(readOnly = true)
-    public String dossiersFinancier(Model model, Principal principal) {
+
+    
+    public String dossiersFinancier(Model model, Principal principal, String recherche) {
         String username = principal.getName();
         List<DossierContentieux> dossiers =
                 dossierService.getDossiersEnAttenteValidationFinanciere(username);
-        model.addAttribute("dossiers",   dossiers);
+        
+           // 🔥 Filtrer si recherche cbara de recherche)
+      if (recherche != null && !recherche.trim().isEmpty()) {
+        String kw = recherche.trim().toLowerCase();
+        dossiers = dossiers.stream()
+                .filter(d -> (d.getNumeroDossier() != null &&
+                              d.getNumeroDossier().toLowerCase().contains(kw))
+                          || (d.getClient() != null && d.getClient().getNom() != null &&
+                              d.getClient().getNom().toLowerCase().contains(kw)))
+                .toList();
+    }
+        
+                model.addAttribute("dossiers",   dossiers);
         model.addAttribute("givenName",  username);
         model.addAttribute("enAttente",  dossiers.size());
         model.addAttribute("notifCount", notificationService.countNonLues(username));
@@ -186,10 +200,27 @@ public class ValidateurController {
     @GetMapping("/validateur/juridique/dossiers-juridique")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
     @Transactional(readOnly = true)
-    public String dossiersJuridique(Model model, Principal principal) {
+    public String dossiersJuridique(Model model, Principal principal, String recherche) {
         String username = principal.getName();
         List<DossierContentieux> dossiers =
                 dossierService.getDossiersEnAttenteValidationJuridique(username);
+        
+
+                           // 🔥 Filtrer si recherche cbara de recherche)
+      if (recherche != null && !recherche.trim().isEmpty()) {
+        String kw = recherche.trim().toLowerCase();
+        dossiers = dossiers.stream()
+                .filter(d -> (d.getNumeroDossier() != null &&
+                              d.getNumeroDossier().toLowerCase().contains(kw))
+                          || (d.getClient() != null && d.getClient().getNom() != null &&
+                              d.getClient().getNom().toLowerCase().contains(kw)))
+                .toList();
+    }
+
+                
+                
+        
+        
         model.addAttribute("dossiers",   dossiers);
         model.addAttribute("givenName",  username);
         model.addAttribute("enAttente",  dossiers.size());

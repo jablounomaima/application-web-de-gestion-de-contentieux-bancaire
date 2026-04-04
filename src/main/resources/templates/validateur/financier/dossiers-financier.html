@@ -89,6 +89,28 @@
     </a>
 </div>
 
+
+<!-- ── Barre de recherche ── -->
+<form th:action="@{/validateur/financier/dossiers}" method="get" class="search-bar">
+    <input type="text" name="recherche"
+           th:value="${recherche}"
+           placeholder="Rechercher par numéro dossier ou CIN client..."/>
+    <button type="submit" class="btn-search">Rechercher</button>
+    <a th:if="${recherche != null and !recherche.isEmpty()}"
+       th:href="@{/validateur/financier/dossiers}" class="btn-reset">Effacer</a>
+</form>
+
+<!-- ── Résultat recherche ── -->
+<div th:if="${recherche != null and !recherche.isEmpty()}" class="search-result">
+    <span th:if="${totalDossiers > 0}">
+        <b th:text="${totalDossiers}"></b> résultat(s) pour
+        "<b th:text="${recherche}"></b>"
+    </span>
+    <span th:if="${totalDossiers == 0}" style="color:#e74c3c;">
+        Aucun dossier trouvé pour "<b th:text="${recherche}"></b>"
+    </span>
+</div>
+
 <!-- Stats -->
 <div class="stats">
     <div class="card">
