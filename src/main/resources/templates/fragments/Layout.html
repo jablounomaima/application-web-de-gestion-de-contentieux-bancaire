@@ -236,7 +236,7 @@
             <a th:href="@{/agent/prestataires}" class="nav-item">
                 <span class="nav-ico">🤝</span><span class="nav-label">Prestataires</span>
             </a>
-            <a th:href="@{/agent/missions}" class="nav-item">
+            <a th:href="@{/prestataire/missions}" class="nav-item">
                 <span class="nav-ico">📋</span><span class="nav-label">Missions</span>
             </a>
         </div>
@@ -296,23 +296,37 @@
         <!-- ════ AVOCAT ════ -->
         <div th:if="${role == 'AVOCAT'}" class="nav-section">
             <div class="nav-section-label">Mon espace</div>
+        
             <a th:href="@{/avocat/dashboard}" class="nav-item active">
-                <span class="nav-ico">📊</span><span class="nav-label">Dashboard</span>
+                <span class="nav-ico">📊</span>
+                <span class="nav-label">Dashboard</span>
             </a>
-            <a th:href="@{/avocat/dossiers}" class="nav-item">
-                <span class="nav-ico">⚖</span><span class="nav-label">Affaires</span>
+        
+            <!-- ✅ corrigé -->
+            <a th:href="@{/avocat/affaires}" class="nav-item">
+                <span class="nav-ico">⚖</span>
+                <span class="nav-label">Affaires</span>
             </a>
-            <a th:href="@{/avocat/audiences}" class="nav-item">
-                <span class="nav-ico">🏛</span><span class="nav-label">Audiences</span>
+        
+            <!-- حسب controller -->
+            <a th:href="@{/audiences}" class="nav-item">
+                <span class="nav-ico">🏛</span>
+                <span class="nav-label">Audiences</span>
             </a>
         </div>
+        
         <div th:if="${role == 'AVOCAT'}" class="nav-section">
             <div class="nav-section-label">Documents</div>
-            <a th:href="@{/avocat/conclusions}" class="nav-item">
-                <span class="nav-ico">📝</span><span class="nav-label">Conclusions</span>
+        
+            <!-- حسب mapping -->
+            <a th:href="@{/conclusions}" class="nav-item">
+                <span class="nav-ico">📝</span>
+                <span class="nav-label">Conclusions</span>
             </a>
-            <a th:href="@{/avocat/jugements}" class="nav-item">
-                <span class="nav-ico">📜</span><span class="nav-label">Jugements</span>
+        
+            <a th:href="@{/jugements}" class="nav-item">
+                <span class="nav-ico">📜</span>
+                <span class="nav-label">Jugements</span>
             </a>
         </div>
 

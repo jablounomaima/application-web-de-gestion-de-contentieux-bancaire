@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Dashboard')}"></head>
 
 <body>
@@ -8,8 +8,135 @@
 
 <header th:replace="~{fragments/layout :: topbar('Dashboard', ${#authentication.name}, 'AVOCAT')}"></header>
 
-<main>
+<main style="margin-left: 250px; margin-top: 60px; min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center;">
     <!-- contenu dashboard avocat -->
+
+    <div class="container">
+        <div class="d-flex align-items-center mb-4">
+            <div class="bg-primary text-white rounded-circle d-flex align-items-center
+                        justify-content-center me-3" style="width:50px;height:50px;">
+                <i class="bi bi-person-badge fs-4"></i>
+            </div>
+            <div>
+                <h4 class="mb-0">Tableau de bord — Avocat</h4>
+                <small class="text-muted" sec:authentication="name">username</small>
+            </div>
+        </div>
+    
+        <!-- Statistiques -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card text-center border-0 bg-primary bg-opacity-10">
+                    <div class="card-body">
+                        <i class="bi bi-clipboard-check display-6 text-primary"></i>
+                        <h3 class="mt-2 text-primary" th:text="${totalMissions ?: 0}"></h3>
+                        <small class="text-muted">Total missions</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-0 bg-warning bg-opacity-10">
+                    <div class="card-body">
+                        <i class="bi bi-hourglass-split display-6 text-warning"></i>
+                        <h3 class="mt-2 text-warning" th:text="${missionsEnCours ?: 0}"></h3>
+                        <small class="text-muted">En cours</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-0 bg-info bg-opacity-10">
+                    <div class="card-body">
+                        <i class="bi bi-file-earmark-text display-6 text-info"></i>
+                        <h3 class="mt-2 text-info" th:text="${pvSoumis ?: 0}"></h3>
+                        <small class="text-muted">PV soumis</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card text-center border-0 bg-success bg-opacity-10">
+                    <div class="card-body">
+                        <i class="bi bi-check-circle display-6 text-success"></i>
+                        <h3 class="mt-2 text-success" th:text="${missionsTerminees ?: 0}"></h3>
+                        <small class="text-muted">Terminées</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+        <!-- Missions récentes -->
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Missions récentes</h6>
+                <a th:href="@{/prestataire/missions}" class="btn btn-sm btn-outline-primary">
+                    Voir tout
+                </a>
+            </div>
+            <div class="card-body p-0">
+                <div th:if="${#lists.isEmpty(dernieresMissions)}"
+                     class="text-center py-4 text-muted">
+                    Aucune mission pour le moment.
+                </div>
+                <div class="list-group list-group-flush" th:unless="${#lists.isEmpty(dernieresMissions)}">
+                    <a th:each="m : ${dernieresMissions}"
+                       th:href="@{/prestataire/missions/{id}(id=${m.id})}"
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <strong th:text="${m.numeroMission}"></strong>
+                                <span class="text-muted ms-2 small"
+                                      th:text="${m.prestation.dossier.numeroDossier}"></span>
+                                <p class="mb-0 small text-muted"
+                                   th:text="${m.description}"></p>
+                            </div>
+                            <span th:if="${m.statut.name() == 'ASSIGNEE'}" class="badge bg-secondary align-self-center">ASSIGNÉE</span>
+                            <span th:if="${m.statut.name() == 'EN_COURS'}" class="badge bg-primary align-self-center">EN COURS</span>
+                            <span th:if="${m.statut.name() == 'PV_SOUMIS'}" class="badge bg-info text-dark align-self-center">PV SOUMIS</span>
+                            <span th:if="${m.statut.name() == 'FACTURE_SOUMISE'}" class="badge bg-warning text-dark align-self-center">FACTURE</span>
+                            <span th:if="${m.statut.name() == 'TERMINEE'}" class="badge bg-success align-self-center">TERMINÉE</span>
+                        </div>
+                    </a>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- Remplacer le list-group-item dans avocat/dashboard.html -->
+<a th:each="m : ${dernieresMissions}"
+th:href="@{/prestataire/missions/{id}(id=${m.id})}"
+class="list-group-item list-group-item-action">
+ <div class="d-flex justify-content-between align-items-start">
+     <div>
+         <strong th:text="${m.numeroMission}"></strong>
+         <span class="text-muted ms-2 small"
+               th:text="${m.prestation?.dossier?.numeroDossier ?: '—'}"></span>
+         <div class="small text-muted mt-1">
+             <i class="bi bi-person me-1"></i>
+             <span th:text="${(m.prestation?.dossier?.client?.nom ?: '') + ' ' +
+                              (m.prestation?.dossier?.client?.prenom ?: '')}"></span>
+         </div>
+         <p class="mb-0 small text-muted"
+            th:text="${m.description}"></p>
+         <small th:if="${m.dateFinPrevue}"
+                th:text="'Échéance : ' + ${#temporals.format(m.dateFinPrevue,'dd/MM/yyyy')}"
+                th:class="${m.dateFinPrevue.isBefore(T(java.time.LocalDate).now())} ?
+                           'text-danger' : 'text-muted'">
+         </small>
+     </div>
+     <div class="ms-2">
+         <span th:if="${m.statut.name() == 'ASSIGNEE'}"
+               class="badge bg-secondary">ASSIGNÉE</span>
+         <span th:if="${m.statut.name() == 'EN_COURS'}"
+               class="badge bg-primary">EN COURS</span>
+         <span th:if="${m.statut.name() == 'PV_SOUMIS'}"
+               class="badge bg-info text-dark">PV SOUMIS</span>
+         <span th:if="${m.statut.name() == 'FACTURE_SOUMISE'}"
+               class="badge bg-warning text-dark">FACTURE</span>
+         <span th:if="${m.statut.name() == 'TERMINEE'}"
+               class="badge bg-success">TERMINÉE</span>
+     </div>
+ </div>
+</a>
+    </div>
 </main>
 
 <a th:href="@{/logout}">Déconnexion</a>

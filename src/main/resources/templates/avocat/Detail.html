@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6">
+<head>
+    <meta charset="UTF-8"/>
+    <title th:text="${affaire.numeroAffaire} + ' — Affaire judiciaire'">Affaire</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <style>
+        body { background: #f5f6fa; }
+        .card { border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+        .badge-EN_COURS      { background: #e3f0ff; color: #0a58ca; }
+        .badge-JUGEMENT_RENDU{ background: #e6f9f0; color: #0d6832; }
+        .badge-EXECUTION_FORCEE{ background: #fff3cd; color: #664d03; }
+        .badge-CLOSE         { background: #d3d3d3; color: #333; }
+        .badge-PLANIFIEE     { background: #cff4fc; color: #055160; }
+        .badge-TENUE         { background: #d1e7dd; color: #0a3622; }
+        .badge-RENVOYEE      { background: #fff3cd; color: #664d03; }
+        .badge-ANNULEE       { background: #f8d7da; color: #58151c; }
+        .section-title { font-size: .75rem; font-weight: 600; text-transform: uppercase;
+                         letter-spacing: .06em; color: #6c757d; margin-bottom: .75rem; }
+        .doc-row:hover { background: #f8f9ff; }
+        .upload-zone { border: 2px dashed #c0c7d4; border-radius: 10px;
+                       padding: 1.5rem; text-align: center; cursor: pointer;
+                       transition: border-color .2s; }
+        .upload-zone:hover { border-color: #0d6efd; }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4">
+    <span class="navbar-brand fw-bold">Contentieux — Avocat</span>
+    <div class="ms-auto d-flex align-items-center gap-3">
+        <a href="/avocat/affaires" class="text-white text-decoration-none">
+            <i class="bi bi-arrow-left"></i> Mes affaires
+        </a>
+        <span class="badge bg-secondary" th:if="${notifCount > 0}" th:text="${notifCount}"></span>
+        <a href="/logout" class="btn btn-outline-light btn-sm">Déconnexion</a>
+    </div>
+</nav>
+
+<div class="container-fluid py-4 px-4">
+
+    <!-- ALERTES -->
+    <div th:if="${successMsg}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${successMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMsg}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${errorMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- EN-TÊTE -->
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <div>
+            <h4 class="mb-0 fw-bold" th:text="${affaire.numeroAffaire}">AFF-2026-00001</h4>
+            <small class="text-muted" th:text="'Dossier : ' + ${affaire.dossier.numeroDossier}"></small>
+        </div>
+        <span class="badge rounded-pill px-3 py-2"
+              th:classappend="'badge-' + ${affaire.statut}"
+              th:text="${affaire.statut}"></span>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- ══════════════════════════════════════
+             COLONNE GAUCHE — Infos + Audiences + Jugement
+        ══════════════════════════════════════ -->
+        <div class="col-lg-7">
+
+            <!-- INFOS TRIBUNAL -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="section-title">Informations tribunal</div>
+                    <div class="row g-3">
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">Tribunal</label>
+                            <div class="fw-semibold" th:text="${affaire.tribunal ?: '—'}"></div>
+                        </div>
+                        <div class="col-sm-3">
+                            <label class="form-label text-muted small">N° de rôle</label>
+                            <div class="fw-semibold" th:text="${affaire.numeroRole ?: '—'}"></div>
+                        </div>
+                        <div class="col-sm-3">
+                            <label class="form-label text-muted small">Chambre</label>
+                            <div class="fw-semibold" th:text="${affaire.chambre ?: '—'}"></div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">Date lancement</label>
+                            <div th:text="${#temporals.format(affaire.dateLancement,'dd/MM/yyyy')}"></div>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label text-muted small">Prochaine audience</label>
+                            <div th:if="${affaire.dateProchainAudience}"
+                                 th:text="${#temporals.format(affaire.dateProchainAudience,'dd/MM/yyyy')}"
+                                 class="text-primary fw-semibold"></div>
+                            <div th:unless="${affaire.dateProchainAudience}" class="text-muted">—</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ AUDIENCES ══ -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="section-title mb-0">Audiences</div>
+                        <button class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                                data-bs-target="#modalAjouterAudience"
+                                th:if="${affaire.statut.name() == 'EN_COURS'}">
+                            <i class="bi bi-plus-lg me-1"></i>Planifier une audience
+                        </button>
+                    </div>
+
+                    <div th:if="${affaire.audiences.empty}" class="text-muted text-center py-3">
+                        <i class="bi bi-calendar-x d-block fs-3 mb-1"></i>
+                        Aucune audience planifiée
+                    </div>
+
+                    <div th:each="audience : ${affaire.audiences}" class="border rounded-3 p-3 mb-3">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <div class="fw-semibold"
+                                     th:text="${#temporals.format(audience.dateAudience,'dd MMMM yyyy')}"></div>
+                                <small class="text-muted"
+                                       th:text="${audience.heure != null ? audience.heure : ''} +
+                                                ${audience.salle != null ? ' — Salle ' + audience.salle : ''}"></small>
+                                <div class="mt-1 text-muted small" th:if="${audience.motif}"
+                                     th:text="'Objet : ' + ${audience.motif}"></div>
+                                <div class="mt-2" th:if="${audience.resultat}">
+                                    <span class="text-muted small">Résultat :</span>
+                                    <span class="small" th:text="${audience.resultat}"></span>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-column align-items-end gap-2">
+                                <span class="badge rounded-pill"
+                                      th:classappend="'badge-' + ${audience.statut}"
+                                      th:text="${audience.statut}"></span>
+                                <button th:if="${audience.statut.name() == 'PLANIFIEE'}"
+                                        class="btn btn-sm btn-outline-secondary"
+                                        data-bs-toggle="modal"
+                                        th:data-bs-target="'#modalResultat' + ${audience.id}">
+                                    Enregistrer résultat
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Modal résultat par audience -->
+                        <div class="modal fade" th:id="'modalResultat' + ${audience.id}"
+                             tabindex="-1">
+                            <div class="modal-dialog">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <h5 class="modal-title">Résultat de l'audience du
+                                            <span th:text="${#temporals.format(audience.dateAudience,'dd/MM/yyyy')}"></span>
+                                        </h5>
+                                        <button type="button" class="btn-close"
+                                                data-bs-dismiss="modal"></button>
+                                    </div>
+                                    <form th:action="@{/avocat/affaires/{aId}/audiences/{auId}/resultat(aId=${affaire.id},auId=${audience.id})}"
+                                          method="post">
+                                        <div class="modal-body">
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Statut</label>
+                                                <select name="statut" class="form-select" required>
+                                                    <option value="TENUE">Tenue</option>
+                                                    <option value="RENVOYEE">Renvoyée</option>
+                                                    <option value="ANNULEE">Annulée</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">Résultat / Compte-rendu</label>
+                                                <textarea name="resultat" class="form-control"
+                                                          rows="3" required
+                                                          placeholder="Décrivez ce qui s'est passé..."></textarea>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label fw-semibold">
+                                                    Prochaine audience (si renvoyée)
+                                                </label>
+                                                <input type="date" name="prochaineAudience"
+                                                       class="form-control"/>
+                                            </div>
+                                        </div>
+                                        <div class="modal-footer">
+                                            <button type="button" class="btn btn-secondary"
+                                                    data-bs-dismiss="modal">Annuler</button>
+                                            <button type="submit" class="btn btn-primary">
+                                                Enregistrer
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ══ JUGEMENT ══ -->
+            <div class="card mb-4">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="section-title mb-0">Jugement</div>
+                        <button class="btn btn-sm btn-success" data-bs-toggle="modal"
+                                data-bs-target="#modalJugement"
+                                th:if="${affaire.statut.name() == 'EN_COURS' and affaire.typeJugement == null}">
+                            <i class="bi bi-hammer me-1"></i>Saisir le jugement
+                        </button>
+                    </div>
+
+                    <div th:if="${affaire.typeJugement == null}" class="text-muted text-center py-3">
+                        <i class="bi bi-hourglass-split d-block fs-3 mb-1"></i>
+                        Jugement en attente
+                    </div>
+
+                    <div th:if="${affaire.typeJugement != null}">
+                        <div class="row g-3">
+                            <div class="col-sm-4">
+                                <label class="form-label text-muted small">Type</label>
+                                <div>
+                                    <span class="badge"
+                                          th:classappend="${affaire.typeJugement.name() == 'FAVORABLE'} ? 'bg-success' :
+                                                          (${affaire.typeJugement.name() == 'DEFAVORABLE'} ? 'bg-danger' : 'bg-warning text-dark')"
+                                          th:text="${affaire.typeJugement}"></span>
+                                </div>
+                            </div>
+                            <div class="col-sm-4">
+                                <label class="form-label text-muted small">Date jugement</label>
+                                <div class="fw-semibold"
+                                     th:text="${#temporals.format(affaire.dateJugement,'dd/MM/yyyy')}"></div>
+                            </div>
+                            <div class="col-sm-4">
+                                <label class="form-label text-muted small">Montant jugé</label>
+                                <div class="fw-semibold text-success"
+                                     th:text="${affaire.montantJuge ?: '—'}"></div>
+                            </div>
+                            <div class="col-12" th:if="${affaire.delaiPaiementJuge}">
+                                <label class="form-label text-muted small">Délai de paiement accordé</label>
+                                <div th:text="${affaire.delaiPaiementJuge}"></div>
+                            </div>
+                            <div class="col-12" th:if="${affaire.descriptionJugement}">
+                                <label class="form-label text-muted small">Description</label>
+                                <div class="p-2 bg-light rounded small"
+                                     th:text="${affaire.descriptionJugement}"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /col gauche -->
+
+        <!-- ══════════════════════════════════════
+             COLONNE DROITE — Documents / Upload
+        ══════════════════════════════════════ -->
+        <div class="col-lg-5">
+            <div class="card">
+                <div class="card-body">
+                    <div class="section-title">Documents &amp; Fichiers</div>
+
+                    <!-- ZONE D'UPLOAD -->
+                    <div class="upload-zone mb-4" onclick="document.getElementById('inputFichier').click()">
+                        <i class="bi bi-cloud-upload fs-2 text-primary d-block mb-2"></i>
+                        <div class="fw-semibold text-primary">Cliquez pour uploader un fichier</div>
+                        <div class="text-muted small">PDF, Images, Word, Excel — max 20 MB</div>
+                    </div>
+
+                    <!-- FORMULAIRE D'UPLOAD (caché, déclenché par la zone) -->
+                    <form th:action="@{/avocat/affaires/{id}/documents/upload(id=${affaire.id})}"
+                          method="post" enctype="multipart/form-data" id="formUpload">
+                        <input type="file" id="inputFichier" name="fichier"
+                               class="d-none"
+                               onchange="document.getElementById('nomFichierChoisi').textContent = this.files[0]?.name ?? '';
+                                         document.getElementById('panneauUpload').classList.remove('d-none');"
+                               accept="*/*"/>
+
+                        <div id="panneauUpload" class="d-none border rounded-3 p-3 mb-4 bg-light">
+                            <div class="mb-2">
+                                <i class="bi bi-file-earmark me-1 text-primary"></i>
+                                <span id="nomFichierChoisi" class="fw-semibold small"></span>
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-semibold">Type de document</label>
+                                <select name="typeDocument" class="form-select form-select-sm" required>
+                                    <option value="">-- Choisir --</option>
+                                    <option value="ASSIGNATION">Assignation</option>
+                                    <option value="JUGEMENT">Jugement / Décision</option>
+                                    <option value="PV_AUDIENCE">PV d'audience</option>
+                                    <option value="TITRE_FONCIER">Titre foncier</option>
+                                    <option value="CONTRAT">Contrat</option>
+                                    <option value="RAPPORT_EXPERTISE">Rapport d'expertise</option>
+                                    <option value="PV_SAISIE">PV de saisie</option>
+                                    <option value="FACTURE_HONORAIRES">Facture honoraires</option>
+                                    <option value="PHOTO_BIEN">Photo du bien</option>
+                                    <option value="AUTRE">Autre</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-semibold">Description (optionnel)</label>
+                                <input type="text" name="description" class="form-control form-control-sm"
+                                       placeholder="Ex: Jugement rendu le 12/03/2026"/>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary btn-sm">
+                                    <i class="bi bi-upload me-1"></i>Uploader
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary btn-sm"
+                                        onclick="document.getElementById('panneauUpload').classList.add('d-none');
+                                                 document.getElementById('inputFichier').value=''">
+                                    Annuler
+                                </button>
+                            </div>
+                        </div>
+                    </form>
+
+                    <!-- LISTE DES DOCUMENTS -->
+                    <div th:if="${affaire.documents.empty}" class="text-muted text-center py-3">
+                        <i class="bi bi-folder2-open d-block fs-3 mb-1"></i>
+                        Aucun document uploadé
+                    </div>
+
+                    <div th:each="doc : ${affaire.documents}"
+                         class="d-flex align-items-center gap-3 p-2 rounded doc-row mb-1">
+                        <i class="bi fs-4 text-primary" th:classappend="${doc.iconeType}"></i>
+                        <div class="flex-grow-1 overflow-hidden">
+                            <div class="fw-semibold small text-truncate"
+                                 th:text="${doc.nomFichierOriginal}"
+                                 th:title="${doc.nomFichierOriginal}"></div>
+                            <div class="text-muted" style="font-size:.7rem">
+                                <span class="badge bg-light text-dark border me-1"
+                                      th:text="${doc.typeDocument}"></span>
+                                <span th:text="${doc.tailleFormatee}"></span>
+                                <span class="ms-1" th:text="'· ' + ${#temporals.format(doc.dateUpload,'dd/MM/yy HH:mm')}"></span>
+                            </div>
+                        </div>
+                        <div class="d-flex gap-1 flex-shrink-0">
+                            <!-- Télécharger -->
+                            <a th:href="@{/avocat/affaires/{aId}/documents/{dId}/download(aId=${affaire.id},dId=${doc.id})}"
+                               class="btn btn-sm btn-outline-primary"
+                               title="Télécharger">
+                                <i class="bi bi-download"></i>
+                            </a>
+                            <!-- Supprimer (seulement si c'est lui qui a uploadé) -->
+                            <form th:action="@{/avocat/affaires/{aId}/documents/{dId}/supprimer(aId=${affaire.id},dId=${doc.id})}"
+                                  method="post"
+                                  onsubmit="return confirm('Supprimer ce document ?')">
+                                <button type="submit" class="btn btn-sm btn-outline-danger"
+                                        title="Supprimer">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                </div>
+            </div><!-- /card documents -->
+        </div><!-- /col droite -->
+
+    </div><!-- /row -->
+</div><!-- /container -->
+
+<!-- MODAL : Planifier audience -->
+<div class="modal fade" id="modalAjouterAudience" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-calendar-plus me-2"></i>Planifier une audience</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/avocat/affaires/{id}/audiences/ajouter(id=${affaire.id})}"
+                  method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Date de l'audience <span class="text-danger">*</span></label>
+                        <input type="date" name="dateAudience" class="form-control" required/>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Heure</label>
+                            <input type="time" name="heure" class="form-control"/>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label fw-semibold">Salle</label>
+                            <input type="text" name="salle" class="form-control" placeholder="Ex: Salle 3"/>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Objet / Motif</label>
+                        <textarea name="motif" class="form-control" rows="2"
+                                  placeholder="Ex: Première comparution, Plaidoiries..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-calendar-check me-1"></i>Planifier
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL : Enregistrer le jugement -->
+<div class="modal fade" id="modalJugement" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-hammer me-2"></i>Enregistrer le jugement</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/avocat/affaires/{id}/jugement(id=${affaire.id})}" method="post">
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Type de jugement <span class="text-danger">*</span></label>
+                            <select name="typeJugement" class="form-select" required>
+                                <option value="FAVORABLE">Favorable</option>
+                                <option value="DEFAVORABLE">Défavorable</option>
+                                <option value="EN_APPEL">En appel</option>
+                                <option value="TRANSACTION">Transaction</option>
+                                <option value="EN_ATTENTE">En attente</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Date du jugement <span class="text-danger">*</span></label>
+                            <input type="date" name="dateJugement" class="form-control" required/>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Montant jugé</label>
+                            <input type="text" name="montantJuge" class="form-control"
+                                   placeholder="Ex: 45 000 TND"/>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Délai de paiement accordé</label>
+                            <input type="text" name="delaiPaiement" class="form-control"
+                                   placeholder="Ex: 30 jours à compter du jugement"/>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Description / Résumé</label>
+                            <textarea name="description" class="form-control" rows="3"
+                                      placeholder="Résumé du jugement rendu..."></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check2-circle me-1"></i>Enregistrer le jugement
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

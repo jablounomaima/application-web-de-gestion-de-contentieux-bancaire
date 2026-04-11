@@ -20,4 +20,9 @@ List<AgenceDTO> findAllWithAgentCount();
 
 Optional<Agence> findByCode(String code);
     boolean existsByCode(String code);  // ← must be present
+
+    static boolean existsByUsername(String username) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'existsByUsername'");
+    }
 }

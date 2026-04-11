@@ -46,10 +46,11 @@ public class DossierService {
         return dossierRepository.findById(id).orElse(null);
     }
 
-    public DossierContentieux getDossierById(Long id) {
-        return dossierRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-    }
+   // DossierService.java
+public DossierContentieux getDossierById(Long id) {
+    return dossierRepository.findByIdWithDetails(id)
+            .orElseThrow(() -> new IllegalArgumentException("Dossier introuvable : id=" + id));
+}
 
     @Transactional(readOnly = true)
     public DossierContentieux getDossierForEdit(Long id) {
@@ -525,4 +526,7 @@ public DossierDetailDTO getDossierDetail(Long id) {
             return getDossiersAgent(username);
         return dossierRepository.rechercherParAgent(username, keyword.trim());
     }
+
+
+
 }

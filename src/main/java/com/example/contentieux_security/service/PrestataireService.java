@@ -23,48 +23,48 @@ public class PrestataireService {
     private final PrestataireRepository prestataireRepository;
     private final AgentBancaireRepository agentRepository;
     private final KeycloakUserService keycloakUserService;
-
-    // ══════════════════════════════════════════════════════════════
-    //  CRÉATION — Keycloak + base locale
-    // ══════════════════════════════════════════════════════════════
+    
+    // ════════════════════════════════════════
+    // ✅ CRÉATION
+    // ════════════════════════════════════════
 
     @Transactional
-    public Prestataire creerPrestataire(PrestataireCreationRequest request,
-                                        String agentUsername) {
+    public Prestataire creerPrestataire(PrestataireCreationRequest request, String agentUsername) {
 
         if (prestataireRepository.existsByUsername(request.getUsername())) {
-            throw new RuntimeException(
-                "Le nom d'utilisateur '" + request.getUsername() + "' est déjà utilisé.");
+            throw new RuntimeException("Username déjà utilisé");
         }
+
         if (prestataireRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException(
-                "L'email '" + request.getEmail() + "' est déjà utilisé.");
+            throw new RuntimeException("Email déjà utilisé");
         }
 
         String motDePasse = (request.getMotDePasse() != null && !request.getMotDePasse().isBlank())
                 ? request.getMotDePasse()
                 : genererMotDePasseTemporaire();
 
-        // 1 — Créer dans Keycloak
-        String roleKeycloak = request.getTypePrestataire().toKeycloakRole();
+        // 🔹 Keycloak
         keycloakUserService.createUser(
-                request.getUsername(), request.getEmail(),
-                request.getPrenom(), request.getNom(),
-                motDePasse, roleKeycloak);
+                request.getUsername(),
+                request.getEmail(),
+                request.getPrenom(),
+                request.getNom(),
+                motDePasse,
+                request.getTypePrestataire().toKeycloakRole()
+        );
 
-        // 2 — Envoyer email (non bloquant)
         try {
             keycloakUserService.sendVerificationEmail(request.getUsername());
         } catch (Exception e) {
-            System.out.println("⚠️ Email non envoyé: " + e.getMessage());
+            System.out.println("Email non envoyé: " + e.getMessage());
         }
 
-        // 3 — Trouver l'agent
+        // 🔹 Agent
         AgentBancaire agent = agentRepository.findByUsername(agentUsername)
                 .stream().findFirst()
-                .orElseThrow(() -> new RuntimeException("Agent non trouvé: " + agentUsername));
+                .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
 
-        // 4 — Sauvegarder en base
+        // 🔹 Save DB
         Prestataire prestataire = Prestataire.builder()
                 .username(request.getUsername())
                 .prenom(request.getPrenom())
@@ -86,16 +86,13 @@ public class PrestataireService {
         return prestataireRepository.save(prestataire);
     }
 
-    // Alias pour AgentPrestataireController existant
-    @Transactional
-    public Prestataire createPrestataire(PrestataireCreationRequest request,
-                                         String agentUsername) {
+    public Prestataire createPrestataire(PrestataireCreationRequest request, String agentUsername) {
         return creerPrestataire(request, agentUsername);
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  LECTURE
-    // ══════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════
+    // ✅ LECTURE
+    // ════════════════════════════════════════
 
     public List<Prestataire> getAllPrestataires() {
         return prestataireRepository.findAll();
@@ -105,49 +102,43 @@ public class PrestataireService {
         return prestataireRepository.findByAgentResponsable_Username(agentUsername);
     }
 
-    // Alias pour AgentPrestataireController existant (par ID agent)
-    public List<Prestataire> getPrestatairesByAgent(Long agentId) {
-        return prestataireRepository.findByAgentResponsable_Id(agentId);
-    }
-
-    // Alias pour AgentPrestataireController existant (par type + agent)
-    public List<Prestataire> getPrestatairesByTypeAndAgent(String type, Long agentId) {
-        TypePrestataire typeEnum = TypePrestataire.valueOf(type.toUpperCase());
-        return prestataireRepository.findByTypeAndAgentResponsable_Id(typeEnum, agentId);
-    }
-
     public Prestataire findById(Long id) {
         return prestataireRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé: " + id));
+                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
     }
 
-    // Pour AgentController — retourne un DTO vérifiant que l'agent est propriétaire
     public PrestataireDTO getPrestataireByIdAndAgent(Long id, String agentUsername) {
         Prestataire p = findById(id);
+
         if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
-            throw new RuntimeException("Accès refusé à ce prestataire.");
+            throw new RuntimeException("Accès refusé");
         }
+
         return toDTO(p);
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  MISE À JOUR
-    // ══════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════
+    // ✅ UPDATE
+    // ════════════════════════════════════════
 
     @Transactional
-    public Prestataire updatePrestataire(Long id, PrestataireCreationRequest request,
-                                          String agentUsername) {
+    public Prestataire updatePrestataire(Long id, PrestataireCreationRequest request, String agentUsername) {
+
         Prestataire p = findById(id);
+
         if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
-            throw new RuntimeException("Accès refusé.");
+            throw new RuntimeException("Accès refusé");
         }
 
-        // Mise à jour Keycloak
+        // Keycloak update
         keycloakUserService.updateUser(
-                p.getUsername(), request.getEmail(),
-                request.getPrenom(), request.getNom());
+                p.getUsername(),
+                request.getEmail(),
+                request.getPrenom(),
+                request.getNom()
+        );
 
-        // Mise à jour base locale
+        // DB update
         p.setPrenom(request.getPrenom());
         p.setNom(request.getNom());
         p.setEmail(request.getEmail());
@@ -161,57 +152,47 @@ public class PrestataireService {
         return prestataireRepository.save(p);
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  TOGGLE ACTIF/INACTIF
-    // ══════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════
+    // ✅ ACTIF / INACTIF
+    // ════════════════════════════════════════
 
     @Transactional
-    public void toggleStatut(Long id) {
-        Prestataire p = findById(id);
-        p.setActif(!p.isActif());
-        keycloakUserService.toggleUserStatus(p.getUsername(), p.isActif());
-        prestataireRepository.save(p);
-    }
+    public Prestataire toggleActif(Long id, String agentUsername) {
 
-    // Alias avec vérification agent
-    @Transactional
-    public void togglePrestataireStatus(Long id, String agentUsername) {
         Prestataire p = findById(id);
+
         if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
-            throw new RuntimeException("Accès refusé.");
+            throw new RuntimeException("Accès refusé");
         }
-        toggleStatut(id);
+
+        p.setActif(!p.isActif());
+
+        // sync Keycloak
+        keycloakUserService.toggleUserStatus(p.getUsername(), p.isActif());
+
+        return prestataireRepository.save(p);
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  SUPPRESSION
-    // ══════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════
+    // ✅ DELETE
+    // ════════════════════════════════════════
 
     @Transactional
-    public void supprimerPrestataire(Long id) {
+    public void supprimerPrestataire(Long id, String agentUsername) {
+
         Prestataire p = findById(id);
+
+        if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
+            throw new RuntimeException("Accès refusé");
+        }
+
         keycloakUserService.deleteUser(p.getUsername());
         prestataireRepository.delete(p);
     }
 
-    // Alias avec vérification agent (pour AgentController)
-    @Transactional
-    public boolean deletePrestataire(Long id, String agentUsername) {
-        Prestataire prestataire = prestataireRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
-
-        // Vérification de sécurité : seul l'agent responsable peut supprimer
-        if (!prestataire.getAgentResponsable().getUsername().equals(agentUsername)) {
-            throw new RuntimeException("Vous n'êtes pas autorisé à supprimer ce prestataire");
-        }
-
-        prestataireRepository.deleteById(id);
-        return true;
-    }
-
-    // ══════════════════════════════════════════════════════════════
-    //  UTILITAIRES
-    // ══════════════════════════════════════════════════════════════
+    // ════════════════════════════════════════
+    // ✅ UTIL
+    // ════════════════════════════════════════
 
     private String genererMotDePasseTemporaire() {
         return "Prest@" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
@@ -219,6 +200,7 @@ public class PrestataireService {
 
     private PrestataireDTO toDTO(Prestataire p) {
         PrestataireDTO dto = new PrestataireDTO();
+
         dto.setId(p.getId());
         dto.setUsername(p.getUsername());
         dto.setPrenom(p.getPrenom());
@@ -232,23 +214,21 @@ public class PrestataireService {
         dto.setNiveauValidation(p.getNiveauValidation());
         dto.setPlafondValidation(p.getPlafondValidation());
         dto.setActif(p.isActif());
+
         return dto;
     }
 
 
-        /**
-     * Active ou désactive un prestataire (toggle)
-     */
-        public Prestataire toggleActif(Long id, String agentUsername) {
-            Prestataire p = prestataireRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
-    
-            // Sécurité : seul l'agent responsable peut modifier
-            if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
-                throw new RuntimeException("Vous n'êtes pas autorisé à modifier ce prestataire");
-            }
-    
-            p.setActif(!p.isActif());        // toggle true <-> false
-            return prestataireRepository.save(p);
+    public boolean deletePrestataire(Long id, String username) {
+        Prestataire prestataire = prestataireRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
+
+        // (optionnel) vérification utilisateur
+        if (!prestataire.getAgentResponsable().getUsername().equals(username)) {
+            throw new RuntimeException("Accès refusé");
         }
+
+        prestataireRepository.delete(prestataire);
+        return true;
+    }
 }

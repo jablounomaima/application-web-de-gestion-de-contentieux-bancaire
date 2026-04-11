@@ -1,5 +1,6 @@
 package com.example.contentieux_security.config;
 
+import com.example.contentieux_security.entity.DossierContentieux;
 import com.example.contentieux_security.service.NotificationService;
 import jakarta.servlet.http.HttpServletRequest;  // ✅ JAKARTA (pas javax)
 import lombok.RequiredArgsConstructor;
@@ -47,5 +48,11 @@ public class NotificationAdvice {
             log.error("Erreur comptage notifications pour {}", username, e);
             model.addAttribute("notifCount", 0L);
         }
+    }
+
+    public void notifier(String username, String string, String messageNotification, String string2,
+            DossierContentieux dossier) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'notifier'");
     }
 }

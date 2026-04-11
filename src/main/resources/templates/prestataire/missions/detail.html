@@ -1,0 +1,533 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title th:text="'Mission - ' + ${mission.numeroMission}"></title>
+
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/bootstrap-icons.css}" rel="stylesheet"/>
+
+<style>/* Amélioration globale */
+    body {
+        background-color: #f8f9fa;
+        color: #333;
+    }
+    
+    /* Style des cartes pour un look "Dashboard" */
+    .card {
+        border: none;
+        border-radius: 12px;
+        transition: transform 0.2s ease;
+    }
+    
+    .card-header {
+        border-top-left-radius: 12px !important;
+        border-top-right-radius: 12px !important;
+        font-weight: 600;
+        text-transform: uppercase;
+        font-size: 0.85rem;
+        letter-spacing: 0.5px;
+    }
+    
+    /* Style des listes de définition (dt, dd) */
+    dt {
+        font-weight: 500;
+        color: #6c757d;
+    }
+    
+    dd {
+        margin-bottom: 0.8rem;
+        color: #212529;
+    }
+    
+    /* Zone de texte du PV */
+    pre {
+        background-color: #f1f3f5;
+        padding: 15px;
+        border-radius: 8px;
+        white-space: pre-wrap; /* Pour garder les retours à la ligne */
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        border-left: 4px solid #198754;
+    }
+    
+    /* Formulaires */
+    .form-control {
+        border-radius: 8px;
+        border: 1px solid #dee2e6;
+        padding: 0.75rem;
+    }
+    
+    .form-control:focus {
+        box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.15);
+        border-color: #0d6efd;
+    }
+    
+    /* Badges personnalisés */
+    .badge {
+        padding: 0.5em 0.8em;
+        font-weight: 500;
+        border-radius: 6px;
+    }
+    
+    /* Fil d'Ariane (Breadcrumb) */
+    .breadcrumb {
+        background: transparent;
+        padding: 0;
+    }
+    
+    .breadcrumb-item a {
+        text-decoration: none;
+        color: #6c757d;
+    }
+    
+    .breadcrumb-item.active {
+        color: #0d6efd;
+        font-weight: 600;
+    }</style>
+
+
+</head>
+
+<body>
+
+<div class="container mt-4">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a th:href="@{/prestataire/missions}">Mes missions</a>
+            </li>
+            <li class="breadcrumb-item active"
+                th:text="${mission.numeroMission}">
+            </li>
+                  <!-- ⬇️ PLACEZ LE CODE ICI, juste après le numéro de mission ⬇️ -->
+        <li class="breadcrumb-item">
+            <span class="text-muted ms-2 small"
+                  th:text="${mission.prestation?.dossier?.numeroDossier ?: '—'}"></span>
+        </li>
+        </ol>
+    </nav>
+    <!-- Ajouter après le breadcrumb, visible seulement pour l'agent -->
+<div th:if="${isAgent and mission.statut.name() == 'ASSIGNEE'}"
+class="d-flex justify-content-end mb-3">
+<a th:href="@{/prestataire/missions/{id}/modifier(id=${mission.id})}"
+  class="btn btn-warning btn-sm">
+   <i class="bi bi-pencil me-1"></i>Modifier / Supprimer
+</a>
+</div>
+
+    <!-- Alertes -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- ================= LEFT ================= -->
+        <div class="col-md-5">
+
+            <!-- Mission -->
+            <div class="card shadow-sm mb-3">
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-briefcase me-2"></i>
+                    <strong th:text="${mission.numeroMission}"></strong>
+                </div>
+
+                <div class="card-body">
+                    <dl class="row mb-0">
+
+                        <dt class="col-5 text-muted small">Statut</dt>
+                        <dd class="col-7">
+
+                            <span th:if="${mission.statut.name() == 'ASSIGNEE'}"
+                                  class="badge bg-secondary">ASSIGNÉE</span>
+
+                            <span th:if="${mission.statut.name() == 'EN_COURS'}"
+                                  class="badge bg-primary">EN COURS</span>
+
+                            <span th:if="${mission.statut.name() == 'PV_SOUMIS'}"
+                                  class="badge bg-info text-dark">PV SOUMIS</span>
+
+                            <span th:if="${mission.statut.name() == 'FACTURE_SOUMISE'}"
+                                  class="badge bg-warning text-dark">FACTURE SOUMISE</span>
+
+                            <span th:if="${mission.statut.name() == 'TERMINEE'}"
+                                  class="badge bg-success">TERMINÉE</span>
+
+                        </dd>
+
+                        <dt class="col-5 text-muted small">Type</dt>
+                        <dd class="col-7">
+
+                            <span th:if="${mission.prestation?.type?.name() == 'PROCEDURE_JUDICIAIRE'}"
+                                  class="badge bg-primary">
+                                Procédure Judiciaire
+                            </span>
+
+                            <span th:if="${mission.prestation?.type?.name() == 'EXECUTION_FORCEE'}"
+                                  class="badge bg-danger">
+                                Exécution Forcée
+                            </span>
+
+                        </dd>
+
+                        <dt class="col-5 text-muted small">Assignée le</dt>
+                        <dd class="col-7 small"
+                            th:text="${#temporals.format(mission.dateAssignation, 'dd/MM/yyyy HH:mm')}">
+                        </dd>
+
+                        <dt class="col-5 text-muted small"
+                            th:if="${mission.dateFinPrevue}">
+                            Échéance
+                        </dt>
+
+                        <dd class="col-7 small"
+                            th:if="${mission.dateFinPrevue}"
+                            th:text="${#temporals.format(mission.dateFinPrevue, 'dd/MM/yyyy')}"
+                            th:classappend="${mission.dateFinPrevue.isBefore(#temporals.createToday())} ? 'text-danger fw-bold' : ''">
+                        </dd>
+
+                        <dt class="col-5 text-muted small">Description</dt>
+                        <dd class="col-7 small"
+                            th:text="${mission.description ?: '—'}">
+                        </dd>
+
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Dossier -->
+           <!-- Dossier associé — informations complètes -->
+<div class="card shadow-sm">
+    <div class="card-header bg-light">
+        <i class="bi bi-folder me-2"></i>Dossier associé
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+
+            <dt class="col-5 text-muted small">N° Dossier</dt>
+            <dd class="col-7 small fw-bold text-primary"
+                th:text="${mission.prestation?.dossier?.numeroDossier ?: '—'}">
+            </dd>
+
+            <dt class="col-5 text-muted small">Client</dt>
+            <dd class="col-7 small"
+                th:text="${(mission.prestation?.dossier?.client?.nom ?: '') + ' ' +
+                           (mission.prestation?.dossier?.client?.prenom ?: '')}">
+            </dd>
+
+            <dt class="col-5 text-muted small">Téléphone</dt>
+            <dd class="col-7 small"
+                th:text="${mission.prestation?.dossier?.client?.telephone ?: '—'}">
+            </dd>
+
+            <dt class="col-5 text-muted small">Email client</dt>
+            <dd class="col-7 small"
+                th:text="${mission.prestation?.dossier?.client?.email ?: '—'}">
+            </dd>
+
+            <dt class="col-5 text-muted small">Libellé</dt>
+            <dd class="col-7 small"
+                th:text="${mission.prestation?.dossier?.libelle ?: '—'}">
+            </dd>
+
+            <dt class="col-5 text-muted small">Type prestation</dt>
+            <dd class="col-7 small">
+                <span th:if="${mission.prestation?.type?.name() == 'PROCEDURE_JUDICIAIRE'}"
+                      class="badge bg-primary">Procédure Judiciaire</span>
+                <span th:if="${mission.prestation?.type?.name() == 'EXECUTION_FORCEE'}"
+                      class="badge bg-danger">Exécution Forcée</span>
+            </dd>
+
+            <dt class="col-5 text-muted small">Statut dossier</dt>
+            <dd class="col-7 small"
+                th:text="${mission.prestation?.dossier?.statut ?: '—'}">
+            </dd>
+
+            <dt class="col-5 text-muted small">Date création</dt>
+            <dd class="col-7 small"
+                th:if="${mission.prestation?.dossier?.dateCreation != null}"
+                th:text="${#temporals.format(mission.prestation.dossier.dateCreation, 'dd/MM/yyyy')}">
+            </dd>
+
+        </dl>
+    </div>
+</div>
+
+<!-- Informations prestataire assigné -->
+<div class="card shadow-sm mt-3">
+    <div class="card-header bg-light">
+        <i class="bi bi-person-badge me-2"></i>Votre profil prestataire
+    </div>
+    <div class="card-body">
+        <dl class="row mb-0">
+
+            <dt class="col-5 text-muted small">Nom</dt>
+            <dd class="col-7 small fw-semibold"
+                th:text="${mission.prestataire?.nom + ' ' + (mission.prestataire?.prenom ?: '')}">
+            </dd>
+
+            <dt class="col-5 text-muted small">Type</dt>
+            <dd class="col-7 small">
+                <span class="badge bg-secondary"
+                      th:text="${mission.prestataire?.type}"></span>
+            </dd>
+
+            <dt class="col-5 text-muted small">Spécialité</dt>
+            <dd class="col-7 small"
+                th:text="${mission.prestataire?.specialite ?: '—'}">
+            </dd>
+
+            <dt class="col-5 text-muted small">N° Carte pro</dt>
+            <dd class="col-7 small"
+                th:text="${mission.prestataire?.numeroCartePro ?: '—'}">
+            </dd>
+
+        </dl>
+    </div>
+</div>
+
+        </div>
+
+        <!-- ================= RIGHT ================= -->
+        <div class="col-md-7">
+
+            <!-- PV -->
+            <div th:if="${mission.statut.name() == 'ASSIGNEE' or mission.statut.name() == 'EN_COURS'}"
+                 class="card shadow-sm mb-4 border-primary">
+
+                <div class="card-header bg-primary text-white">
+                    <i class="bi bi-file-earmark-text me-2"></i>
+                    Étape 1 — Soumettre le PV
+                </div>
+
+                <div class="card-body">
+
+                    <form th:action="@{/prestataire/missions/{id}/pv(id=${mission.id})}"
+                          method="post">
+
+                        <textarea name="pvTexte"
+                                  class="form-control"
+                                  rows="7"
+                                  required
+                                  placeholder="Rédigez votre PV..."></textarea>
+
+                        <button type="submit"
+                                class="btn btn-primary w-100 mt-3">
+                            Soumettre le PV
+                        </button>
+
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- FACTURE -->
+            <div th:if="${mission.statut.name() == 'PV_SOUMIS'}"
+                 class="card shadow-sm mb-4 border-warning">
+
+                <div class="card-header bg-warning text-dark">
+                    <i class="bi bi-receipt me-2"></i>
+                    Étape 2 — Facture
+                </div>
+
+                <div class="card-body">
+
+                    <form th:action="@{/prestataire/missions/{id}/facture(id=${mission.id})}"
+                          method="post">
+
+                        <input type="number"
+                               name="montant"
+                               class="form-control mb-2"
+                               step="0.001"
+                               min="0.001"
+                               required
+                               placeholder="Montant">
+
+                        <input type="text"
+                               name="factureRef"
+                               class="form-control"
+                               required
+                               placeholder="Référence facture">
+
+                        <button type="submit"
+                                class="btn btn-warning w-100 mt-3">
+                            Soumettre la facture
+                        </button>
+
+                    </form>
+
+                </div>
+            </div>
+
+            <!-- PV affiché -->
+            <div th:if="${mission.pvMission != null}"
+                 class="card shadow-sm mb-3 border-success">
+
+                <div class="card-header bg-success text-white">
+                    PV soumis
+                </div>
+
+                <div class="card-body">
+                    <pre class="mb-0" th:text="${mission.pvMission}"></pre>
+                </div>
+            </div>
+
+            <!-- FACTURE affichée -->
+            <div th:if="${mission.montantFacture != null}"
+                 class="card shadow-sm border-warning">
+
+                <div class="card-header bg-warning text-dark">
+                    Facture
+                </div>
+
+                <div class="card-body">
+
+                    <p class="fw-bold text-success"
+                       th:text="${mission.montantFacture + ' TND'}">
+                    </p>
+
+                    <p th:text="${mission.factureRef}"></p>
+
+                </div>
+            </div>
+
+            <!-- ═══════════════════════════════════════════ -->
+<!-- FICHIERS ET COMMENTAIRES                     -->
+<!-- ═══════════════════════════════════════════ -->
+
+<!-- Formulaire upload/commentaire — seulement pour le prestataire -->
+<div th:if="${isPrestataire and mission.statut.name() != 'TERMINEE'}"
+class="card shadow-sm mb-4 border-0 bg-white">
+
+<div class="card-header" style="background:#f0f4ff;">
+   <i class="bi bi-paperclip me-2 text-primary"></i>
+   <span class="text-primary fw-semibold">Ajouter un fichier / commentaire</span>
+</div>
+
+<div class="card-body">
+   <form th:action="@{/prestataire/missions/{id}/resultat(id=${mission.id})}"
+         method="post"
+         enctype="multipart/form-data">
+
+       <div class="mb-3">
+           <label class="form-label small fw-semibold text-muted">
+               Commentaire
+           </label>
+           <textarea name="commentaire"
+                     class="form-control"
+                     rows="3"
+                     placeholder="Ajoutez un commentaire ou une note..."></textarea>
+       </div>
+
+       <div class="mb-3">
+           <label class="form-label small fw-semibold text-muted">
+               Fichier joint <span class="text-muted">(PDF, Word, Image...)</span>
+           </label>
+           <input type="file"
+                  name="fichier"
+                  class="form-control"
+                  accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"/>
+       </div>
+
+       <button type="submit" class="btn btn-primary w-100">
+           <i class="bi bi-send me-1"></i>Envoyer
+       </button>
+
+   </form>
+</div>
+</div>
+
+<!-- Liste des résultats soumis -->
+<div th:if="${!#lists.isEmpty(resultats)}"
+class="card shadow-sm border-0">
+
+<div class="card-header bg-light">
+   <i class="bi bi-chat-left-text me-2"></i>
+   Historique
+   <span class="badge bg-secondary ms-1"
+         th:text="${#lists.size(resultats)}"></span>
+</div>
+
+<div class="card-body p-0">
+   <div th:each="r : ${resultats}"
+        class="p-3 border-bottom">
+
+       <!-- En-tête du message -->
+       <div class="d-flex justify-content-between align-items-center mb-1">
+           <span class="fw-semibold small">
+               <i class="bi bi-person-circle me-1 text-primary"></i>
+               <span th:text="${r.soumisePar}"></span>
+           </span>
+           <span class="text-muted small"
+                 th:text="${#temporals.format(r.dateSoumission, 'dd/MM/yyyy HH:mm')}">
+           </span>
+       </div>
+
+       <!-- Commentaire -->
+       <p th:if="${r.commentaire != null and !#strings.isEmpty(r.commentaire)}"
+          class="mb-2 small"
+          th:text="${r.commentaire}">
+       </p>
+
+       <!-- Fichier joint -->
+       <div th:if="${r.nomFichierServeur != null}"
+            class="d-flex align-items-center gap-2 mt-1">
+           <i th:class="${'bi ' + r.iconeType + ' text-danger fs-5'}"></i>
+           <div>
+               <div class="small fw-semibold"
+                    th:text="${r.nomFichierOriginal}"></div>
+               <div class="text-muted"
+                    style="font-size:0.75rem"
+                    th:text="${r.tailleFormatee}"></div>
+           </div>
+           <a th:href="@{/prestataire/missions/fichier/{nom}(nom=${r.nomFichierServeur})}"
+              class="btn btn-sm btn-outline-secondary ms-auto"
+              download>
+               <i class="bi bi-download me-1"></i>Télécharger
+           </a>
+       </div>
+
+   </div>
+</div>
+</div>
+
+<!-- Aucun résultat -->
+<div th:if="${#lists.isEmpty(resultats)}"
+class="text-center text-muted py-3 small">
+<i class="bi bi-inbox me-1"></i>
+Aucun fichier ou commentaire pour l'instant.
+</div>
+
+            <!-- TERMINÉE -->
+            <div th:if="${mission.statut.name() == 'TERMINEE'}"
+                 class="card shadow-sm border-success text-center p-4">
+
+                <i class="bi bi-check-circle-fill text-success display-4"></i>
+                <h5 class="text-success mt-3">Mission terminée</h5>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <a th:href="@{/prestataire/missions}"
+       class="btn btn-outline-secondary mt-3">
+        Retour
+    </a>
+
+</div>
+
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

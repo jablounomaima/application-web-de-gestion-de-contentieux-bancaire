@@ -33,4 +33,6 @@ public interface PrestataireRepository extends JpaRepository<Prestataire, Long> 
 
     List<Prestataire> findByTypeInAndActifTrue(List<TypePrestataire> types);
 
+    
+
 }

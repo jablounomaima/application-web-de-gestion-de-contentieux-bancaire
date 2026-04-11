@@ -291,20 +291,92 @@
 </div>
 
 <!-- ── 5. Historique ── -->
-<div class="card" th:if="${dossier.historique != null and !dossier.historique.empty}">
-    <div class="card-title">Historique</div>
-    <table>
-        <tr th:each="h : ${dossier.historique}" class="histo-row">
-            <td style="width:36%">
-                <span th:text="${h.typeAction} ?: '–'"></span><br>
-                <span class="histo-date" th:text="${h.dateAction} ?: ''"></span>
-            </td>
-            <td>
-                <span th:text="${h.description} ?: '–'"></span><br>
-                <span style="font-size:12px;color:#aaa" th:text="${h.utilisateur} ?: ''"></span>
-            </td>
-        </tr>
-    </table>
+<!-- ═══════════════════════════════════════════ -->
+<!-- HISTORIQUE DU DOSSIER                        -->
+<!-- ═══════════════════════════════════════════ -->
+<div class="card shadow-sm border-0 mt-4">
+
+    <div class="card-header bg-light d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-clock-history me-2 text-secondary"></i>
+            <span class="fw-semibold">Historique du dossier</span>
+        </span>
+        <span class="badge bg-secondary"
+              th:text="${#lists.size(historique)}"></span>
+    </div>
+
+    <!-- Aucun historique -->
+    <div th:if="${#lists.isEmpty(historique)}"
+         class="text-center text-muted py-3 small">
+        <i class="bi bi-clock me-1"></i>Aucune action enregistrée.
+    </div>
+
+    <!-- Timeline -->
+    <div class="card-body p-0" th:unless="${#lists.isEmpty(historique)}">
+        <div th:each="h, iterStat : ${historique}"
+             th:classappend="${iterStat.last} ? '' : 'border-bottom'"
+             class="p-3 d-flex gap-3">
+
+            <!-- Icône selon le type d'action -->
+            <div class="flex-shrink-0 mt-1">
+                <span th:if="${h.typeAction == 'CREATION'}"
+                      class="badge rounded-pill bg-primary">
+                    <i class="bi bi-plus-lg"></i>
+                </span>
+                <span th:if="${h.typeAction == 'MISSION_ASSIGNEE'}"
+                      class="badge rounded-pill bg-info text-dark">
+                    <i class="bi bi-person-check"></i>
+                </span>
+                <span th:if="${h.typeAction == 'PV_SOUMIS'}"
+                      class="badge rounded-pill bg-success">
+                    <i class="bi bi-file-earmark-check"></i>
+                </span>
+                <span th:if="${h.typeAction == 'FACTURE_SOUMISE'}"
+                      class="badge rounded-pill bg-warning text-dark">
+                    <i class="bi bi-receipt"></i>
+                </span>
+                <span th:if="${h.typeAction == 'VALIDATION_FIN'}"
+                      class="badge rounded-pill bg-success">
+                    <i class="bi bi-check2-circle"></i>
+                </span>
+                <span th:if="${h.typeAction == 'REJET_FIN'}"
+                      class="badge rounded-pill bg-danger">
+                    <i class="bi bi-x-circle"></i>
+                </span>
+                <span th:if="${h.typeAction == 'PRESTATION_LANCEE'}"
+                      class="badge rounded-pill bg-primary">
+                    <i class="bi bi-play-circle"></i>
+                </span>
+                <span th:if="${h.typeAction != 'CREATION'
+                               and h.typeAction != 'MISSION_ASSIGNEE'
+                               and h.typeAction != 'PV_SOUMIS'
+                               and h.typeAction != 'FACTURE_SOUMISE'
+                               and h.typeAction != 'VALIDATION_FIN'
+                               and h.typeAction != 'REJET_FIN'
+                               and h.typeAction != 'PRESTATION_LANCEE'}"
+                      class="badge rounded-pill bg-secondary">
+                    <i class="bi bi-arrow-right"></i>
+                </span>
+            </div>
+
+            <!-- Contenu -->
+            <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-start">
+                    <span class="fw-semibold small"
+                          th:text="${h.typeAction}"></span>
+                    <span class="text-muted small ms-2 flex-shrink-0"
+                          th:text="${#temporals.format(h.dateAction, 'dd/MM/yyyy HH:mm')}">
+                    </span>
+                </div>
+                <p class="mb-0 small text-muted mt-1"
+                   th:text="${h.description}"></p>
+                <span class="small text-muted">
+                    <i class="bi bi-person me-1"></i>
+                    <span th:text="${h.utilisateur}"></span>
+                </span>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- ══════════════════════════════════════════════════════
@@ -468,9 +540,54 @@
            th:href="@{/agent/dossiers/{id}/pdf(id=${dossier.id})}"
            class="btn btn-success">📄 Télécharger PDF</a>
 
+
+
+           <a th:href="@{/agent/dossiers/{id}/missions(id=${dossier.id})}"
+           class="btn btn-submit">
+            📋 Missions
+        </a>
+
         <a class="btn btn-back" th:href="@{/agent/dossiers}">← Retour</a>
     </div>
 </div>
 
+<!-- Dans votre template agent/dossiers/detail.html ou vue.html
+
+<div class="card mb-4">
+    <div class="card-header">
+        <h5>⚖️ Affaire Judiciaire</h5>
+    </div>
+    <div class="card-body">
+        
+        <!-- CAS 1 : Aucune affaire n'existe 
+        <div th:if="${affaire == null}">
+            <div class="alert alert-warning">
+                <i class="fas fa-exclamation-triangle"></i>
+                Aucune affaire judiciaire n'a été créée pour ce dossier.
+            </div>
+            
+            <!-- BOUTON CRÉER AFFAIRE 
+            <a th:href="@{/agent/dossiers/{id}/affaire/lancer(id=${dossier.id})}" 
+               class="btn btn-primary btn-lg">
+                <i class="fas fa-gavel"></i> Lancer une affaire
+            </a>
+        </div>
+
+        <!-- CAS 2 : Une affaire existe déjà 
+        <div th:if="${affaire != null}">
+            <div class="alert alert-success">
+                <i class="fas fa-check-circle"></i>
+                Affaire <strong th:text="${affaire.numeroAffaire}">AFF-2024-00001</strong> en cours
+            </div>
+            
+            <a th:href="@{/agent/dossiers/{id}/affaire(id=${dossier.id})}" 
+               class="btn btn-info">
+                <i class="fas fa-eye"></i> Voir l'affaire
+            </a>
+        </div>
+
+    </div>
+</div>
+-->
 </body>
 </html>

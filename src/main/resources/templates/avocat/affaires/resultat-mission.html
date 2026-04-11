@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6"
+      lang="fr">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Résultat de mission</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <style>
+        body { background: #f0f2f8; font-family: 'Segoe UI', sans-serif; }
+
+        .card { border: 0.5px solid #e0e4ef; border-radius: 14px; box-shadow: none; background: #fff; }
+
+        .affaire-banner {
+            background: linear-gradient(135deg, #1a3a5c 0%, #1565c0 100%);
+            border-radius: 14px; color: #fff; padding: 1.2rem 1.5rem;
+        }
+        .affaire-banner .lbl { font-size:.68rem; opacity:.7; text-transform:uppercase; letter-spacing:.07em; }
+        .affaire-banner .val { font-size:.92rem; font-weight:600; margin-top:2px; }
+
+        .badge-EN_COURS  { background:#e3f0ff; color:#0a58ca; }
+        .badge-REALISEE  { background:#d1e7dd; color:#0a3622; }
+        .badge-TERMINEE  { background:#dee2e6; color:#444;    }
+
+        .upload-zone {
+            border: 2.5px dashed #b8c4d8; border-radius: 12px;
+            padding: 2.25rem 1.5rem; text-align: center; cursor: pointer;
+            transition: all .2s; background: #f8faff; user-select: none;
+        }
+        .upload-zone:hover, .upload-zone.drag-over { border-color:#0d6efd; background:#eef3ff; }
+        .upload-zone.has-file { border-color:#198754; background:#f0faf5; }
+
+        .file-preview {
+            display:flex; align-items:center; gap:.75rem;
+            background:#fff; border:1.5px solid #c3e6cb;
+            border-radius:10px; padding:.7rem 1rem;
+        }
+
+        .resultat-existant {
+            border: 1.5px solid #a8d5b5; border-radius: 12px;
+            background: #f0faf5; padding: 1.1rem 1.25rem;
+        }
+
+        .step-item {
+            display:flex; align-items:flex-start; gap:.75rem;
+            padding:.55rem 0; border-bottom:0.5px solid #f0f0f0;
+        }
+        .step-item:last-child { border-bottom:none; }
+        .step-icon {
+            width:30px; height:30px; border-radius:50%;
+            display:flex; align-items:center; justify-content:center;
+            flex-shrink:0; font-size:.82rem;
+        }
+
+        .char-counter { font-size:.72rem; color:#adb5bd; transition:color .2s; }
+        .char-counter.warn { color:#fd7e14; }
+        .char-counter.over { color:#dc3545; }
+
+        .btn-soumettre {
+            border-radius:10px; padding:.75rem 2rem;
+            font-size:.95rem; font-weight:600;
+            transition: opacity .2s, transform .15s;
+        }
+        .btn-soumettre:hover  { opacity:.9; transform:translateY(-1px); }
+        .btn-soumettre:active { transform:translateY(0); }
+    </style>
+</head>
+<body>
+
+<!-- NAVBAR -->
+<nav class="navbar navbar-dark bg-dark px-4 py-2">
+    <a class="navbar-brand fw-bold" href="/avocat/dashboard">
+        <i class="bi bi-briefcase me-2"></i>Contentieux — Avocat
+    </a>
+    <div class="ms-auto d-flex align-items-center gap-3">
+        <a th:href="@{/affaires/{id}(id=${affaire.id})}"
+           class="text-white-50 text-decoration-none small">
+            <i class="bi bi-arrow-left me-1"></i>Retour à l'affaire
+        </a>
+        <span class="text-white small" sec:authentication="name">avocat</span>
+        <a href="/logout" class="btn btn-outline-light btn-sm">
+            <i class="bi bi-box-arrow-right me-1"></i>Déconnexion
+        </a>
+    </div>
+</nav>
+
+<div class="container py-4" style="max-width:720px;">
+
+    <!-- Fil d'ariane -->
+    <nav aria-label="breadcrumb" class="mb-3">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a href="/avocat/dashboard">Dashboard</a></li>
+            <li class="breadcrumb-item"><a href="/affaires">Mes affaires</a></li>
+            <li class="breadcrumb-item">
+                <a th:href="@{/affaires/{id}(id=${affaire.id})}"
+                   th:text="${affaire.numeroAffaire}">AFF-2026-00001</a>
+            </li>
+            <li class="breadcrumb-item active">Résultat de mission</li>
+        </ol>
+    </nav>
+
+    <!-- Alertes -->
+    <div th:if="${successMsg}"
+         class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2">
+        <i class="bi bi-check-circle-fill"></i>
+        <span th:text="${successMsg}"></span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMsg}"
+         class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2">
+        <i class="bi bi-exclamation-triangle-fill"></i>
+        <span th:text="${errorMsg}"></span>
+        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Bandeau affaire -->
+    <div class="affaire-banner mb-4">
+        <div class="row g-3 align-items-center">
+            <div class="col-sm-3">
+                <div class="lbl">Affaire</div>
+                <div class="val" th:text="${affaire.numeroAffaire}">AFF-2026-00001</div>
+            </div>
+            <div class="col-sm-4">
+                <div class="lbl">Dossier</div>
+                <div class="val" th:text="${affaire.dossier.numeroDossier}">DOS-NAB-2026-00001</div>
+            </div>
+            <div class="col-sm-3">
+                <div class="lbl">Tribunal</div>
+                <div class="val" th:text="${affaire.tribunal ?: '—'}">TPI Tunis</div>
+            </div>
+            <div class="col-sm-2 text-sm-end">
+                <span class="badge rounded-pill px-3 py-2"
+                      th:classappend="'badge-' + ${affaire.mission.statut}"
+                      th:text="${affaire.mission.statut}">EN_COURS</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ── RÉSULTAT DÉJÀ SOUMIS ── -->
+    <div th:if="${resultatExistant}" class="resultat-existant mb-4">
+        <div class="d-flex align-items-center gap-2 mb-3">
+            <div class="step-icon bg-success text-white">
+                <i class="bi bi-check-lg"></i>
+            </div>
+            <div>
+                <div class="fw-bold text-success small">Résultat déjà soumis</div>
+                <div class="text-muted" style="font-size:.75rem"
+                     th:text="'Le ' + ${#temporals.format(resultatExistant.dateSoumission,'dd/MM/yyyy à HH:mm')}"></div>
+            </div>
+            <span class="badge bg-success ms-auto">RÉALISÉE</span>
+        </div>
+
+        <div class="mb-3">
+            <div class="text-muted small fw-semibold mb-1">Commentaire soumis :</div>
+            <div class="p-3 bg-white rounded border small lh-lg"
+                 th:text="${resultatExistant.commentaire}"></div>
+        </div>
+
+        <div th:if="${resultatExistant.nomFichierOriginal}"
+             class="file-preview">
+            <i class="bi flex-shrink-0 text-success"
+               style="font-size:1.6rem"
+               th:classappend="${resultatExistant.iconeType}"></i>
+            <div class="flex-grow-1 overflow-hidden">
+                <div class="small fw-semibold text-truncate"
+                     th:text="${resultatExistant.nomFichierOriginal}"></div>
+                <div class="text-muted" style="font-size:.72rem"
+                     th:text="${resultatExistant.tailleFormatee}"></div>
+            </div>
+            <a th:href="@{/affaires/{aId}/missions/{mId}/resultat/download
+                         (aId=${affaire.id},mId=${missionId})}"
+               class="btn btn-sm btn-outline-success flex-shrink-0">
+                <i class="bi bi-download me-1"></i>Télécharger
+            </a>
+        </div>
+        <div th:unless="${resultatExistant.nomFichierOriginal}"
+             class="small text-muted fst-italic">
+            <i class="bi bi-paperclip me-1"></i>Aucun fichier joint
+        </div>
+
+        <hr class="my-3"/>
+        <p class="small text-muted mb-0">
+            <i class="bi bi-pencil-square me-1"></i>
+            Vous pouvez soumettre une version mise à jour ci-dessous.
+        </p>
+    </div>
+
+    <!-- ── FORMULAIRE DE SOUMISSION ── -->
+    <div class="card mb-4">
+        <div class="card-body p-4">
+
+            <div class="d-flex align-items-center gap-2 mb-4 pb-2 border-bottom">
+                <div class="step-icon bg-primary text-white">
+                    <i class="bi bi-send"></i>
+                </div>
+                <div>
+                    <div class="fw-bold"
+                         th:text="${resultatExistant != null}
+                                   ? 'Mettre à jour le résultat'
+                                   : 'Soumettre le résultat de mission'">
+                        Soumettre le résultat de mission
+                    </div>
+                    <div class="small text-muted">Commentaire obligatoire — fichier optionnel</div>
+                </div>
+            </div>
+
+            <form th:action="@{/affaires/{aId}/missions/{mId}/resultat
+                              (aId=${affaire.id},mId=${missionId})}"
+                  method="post"
+                  enctype="multipart/form-data"
+                  id="formResultat"
+                  novalidate>
+
+                <!-- COMMENTAIRE -->
+                <div class="mb-4">
+                    <label for="commentaire" class="form-label fw-semibold small">
+                        <i class="bi bi-chat-left-text me-1 text-primary"></i>
+                        Commentaire <span class="text-danger">*</span>
+                    </label>
+                    <textarea name="commentaire"
+                              id="commentaire"
+                              class="form-control"
+                              rows="5"
+                              required
+                              maxlength="1000"
+                              placeholder="Ex : Assignation déposée au greffe du tribunal le 12/03/2026. Numéro de rôle : 456/2026. Prochaine audience fixée au 15/04/2026 à 9h30."
+                              oninput="updateCounter(this)"
+                              th:text="${resultatExistant != null ? resultatExistant.commentaire : ''}"></textarea>
+                    <div class="d-flex justify-content-between mt-1">
+                        <small class="text-muted fst-italic">
+                            Décrivez l'action réalisée, documents déposés, dates importantes...
+                        </small>
+                        <small id="charCounter" class="char-counter">0 / 1000</small>
+                    </div>
+                </div>
+
+                <!-- UPLOAD FICHIER -->
+                <div class="mb-4">
+                    <label class="form-label fw-semibold small">
+                        <i class="bi bi-paperclip me-1 text-primary"></i>
+                        Fichier justificatif
+                        <span class="badge bg-light text-dark border ms-1" style="font-size:.68rem">
+                            Optionnel
+                        </span>
+                    </label>
+
+                    <div class="upload-zone"
+                         id="uploadZone"
+                         onclick="document.getElementById('inputFichier').click()"
+                         ondragover="onDragOver(event)"
+                         ondragleave="onDragLeave(event)"
+                         ondrop="onDrop(event)">
+
+                        <!-- Vide -->
+                        <div id="etatVide">
+                            <i class="bi bi-cloud-arrow-up-fill d-block mb-2"
+                               style="font-size:2.2rem;color:#0d6efd;"></i>
+                            <div class="fw-semibold text-primary small mb-1">
+                                Glissez votre fichier ici
+                            </div>
+                            <div class="text-muted" style="font-size:.78rem">ou</div>
+                            <span class="btn btn-outline-primary btn-sm px-3 mt-1">
+                                <i class="bi bi-folder2-open me-1"></i>Parcourir
+                            </span>
+                            <div class="text-muted mt-2" style="font-size:.75rem">
+                                PDF, Image, Word, Excel — max 20 MB
+                            </div>
+                        </div>
+
+                        <!-- Fichier choisi -->
+                        <div id="etatFichier" class="d-none">
+                            <div class="file-preview mx-auto" style="max-width:400px;">
+                                <i id="iconeFichier"
+                                   class="bi bi-file-earmark-check flex-shrink-0 text-success"
+                                   style="font-size:2rem;"></i>
+                                <div class="flex-grow-1 text-start overflow-hidden">
+                                    <div class="small fw-semibold text-truncate" id="nomFichier">—</div>
+                                    <div class="text-muted" style="font-size:.72rem" id="tailleFichier">—</div>
+                                </div>
+                                <button type="button"
+                                        class="btn btn-sm btn-outline-danger flex-shrink-0"
+                                        onclick="effacerFichier(event)">
+                                    <i class="bi bi-x-lg"></i>
+                                </button>
+                            </div>
+                            <div class="text-muted mt-1" style="font-size:.75rem">
+                                Cliquez pour changer
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="file" id="inputFichier" name="fichier"
+                           class="d-none" accept="*/*"
+                           onchange="onFichierChoisi(this)"/>
+
+                    <!-- Exemples -->
+                    <div class="mt-2 d-flex flex-wrap gap-1">
+                        <span class="badge bg-light text-dark border" style="font-size:.7rem">
+                            <i class="bi bi-file-earmark-pdf text-danger me-1"></i>assignation.pdf
+                        </span>
+                        <span class="badge bg-light text-dark border" style="font-size:.7rem">
+                            <i class="bi bi-file-earmark-pdf text-danger me-1"></i>jugement.pdf
+                        </span>
+                        <span class="badge bg-light text-dark border" style="font-size:.7rem">
+                            <i class="bi bi-file-earmark-image text-info me-1"></i>photo.jpg
+                        </span>
+                        <span class="badge bg-light text-dark border" style="font-size:.7rem">
+                            <i class="bi bi-file-earmark-word text-primary me-1"></i>rapport.docx
+                        </span>
+                    </div>
+                </div>
+
+                <!-- BOUTONS -->
+                <div class="d-grid gap-2">
+                    <button type="submit"
+                            class="btn btn-success btn-soumettre text-white"
+                            id="btnSoumettre">
+                        <i class="bi bi-send-check me-2"></i>
+                        <span th:text="${resultatExistant != null}
+                                       ? 'Mettre à jour le résultat'
+                                       : 'Soumettre le résultat de mission'">
+                            Soumettre le résultat de mission
+                        </span>
+                    </button>
+                    <a th:href="@{/affaires/{id}(id=${affaire.id})}"
+                       class="btn btn-outline-secondary">
+                        <i class="bi bi-x me-1"></i>Annuler
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- ── CE QUI SE PASSE APRÈS ── -->
+    <div class="card">
+        <div class="card-body p-4">
+            <div class="text-muted small fw-semibold text-uppercase mb-3"
+                 style="letter-spacing:.06em">
+                Ce qui se passe après la soumission
+            </div>
+            <div class="step-item">
+                <div class="step-icon bg-success bg-opacity-10 text-success">
+                    <i class="bi bi-check2-circle"></i>
+                </div>
+                <div>
+                    <div class="fw-semibold small">Mission marquée RÉALISÉE</div>
+                    <div class="text-muted small">
+                        Le statut passe immédiatement à <strong>RÉALISÉE</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="step-item">
+                <div class="step-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-bell"></i>
+                </div>
+                <div>
+                    <div class="fw-semibold small">Notification à l'agent bancaire</div>
+                    <div class="text-muted small">
+                        L'agent reçoit <em>"Mission avocat terminée"</em> avec votre commentaire
+                    </div>
+                </div>
+            </div>
+            <div class="step-item">
+                <div class="step-icon bg-info bg-opacity-10 text-info">
+                    <i class="bi bi-file-earmark-check"></i>
+                </div>
+                <div>
+                    <div class="fw-semibold small">Fichier consultable par l'agent</div>
+                    <div class="text-muted small">
+                        Le document sera accessible depuis le dossier contentieux
+                    </div>
+                </div>
+            </div>
+            <div class="step-item">
+                <div class="step-icon bg-warning bg-opacity-10 text-warning">
+                    <i class="bi bi-pencil"></i>
+                </div>
+                <div>
+                    <div class="fw-semibold small">Modification possible</div>
+                    <div class="text-muted small">
+                        Vous pouvez mettre à jour tant que la mission n'est pas clôturée
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- MODAL CONFIRMATION -->
+<div class="modal fade" id="modalConfirm" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-sm">
+        <div class="modal-content" style="border-radius:14px;border:none;">
+            <div class="modal-body text-center p-4">
+                <i class="bi bi-send-check text-success d-block mb-2"
+                   style="font-size:2.5rem;"></i>
+                <h6 class="fw-bold mb-1">Confirmer la soumission ?</h6>
+                <p class="text-muted small mb-0">
+                    La mission sera <strong>RÉALISÉE</strong> et l'agent sera notifié.
+                </p>
+            </div>
+            <div class="modal-footer border-0 pt-0 justify-content-center gap-2 pb-4">
+                <button type="button" class="btn btn-secondary btn-sm px-4"
+                        data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn btn-success btn-sm px-4"
+                        id="btnConfirmer">
+                    <i class="bi bi-check2 me-1"></i>Confirmer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    const MAX = 1000, WARN = 850;
+
+    function updateCounter(ta) {
+        const n = ta.value.length;
+        const el = document.getElementById('charCounter');
+        el.textContent = n + ' / ' + MAX;
+        el.classList.remove('warn','over');
+        if (n >= MAX) el.classList.add('over');
+        else if (n >= WARN) el.classList.add('warn');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const ta = document.getElementById('commentaire');
+        if (ta && ta.value.trim()) updateCounter(ta);
+    });
+
+    function onDragOver(e) {
+        e.preventDefault();
+        document.getElementById('uploadZone').classList.add('drag-over');
+    }
+    function onDragLeave(e) {
+        document.getElementById('uploadZone').classList.remove('drag-over');
+    }
+    function onDrop(e) {
+        e.preventDefault();
+        document.getElementById('uploadZone').classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (!file) return;
+        const input = document.getElementById('inputFichier');
+        const dt = new DataTransfer();
+        dt.items.add(file);
+        input.files = dt.files;
+        afficherFichier(file);
+    }
+
+    function onFichierChoisi(input) {
+        const file = input.files[0];
+        if (file) afficherFichier(file);
+    }
+
+    function afficherFichier(file) {
+        if (file.size > 20 * 1024 * 1024) {
+            alert('Fichier trop volumineux (max 20 MB)\n' + file.name);
+            document.getElementById('inputFichier').value = '';
+            return;
+        }
+        document.getElementById('etatVide').classList.add('d-none');
+        document.getElementById('etatFichier').classList.remove('d-none');
+        document.getElementById('uploadZone').classList.add('has-file');
+        document.getElementById('nomFichier').textContent    = file.name;
+        document.getElementById('tailleFichier').textContent = formatTaille(file.size);
+
+        const ic = document.getElementById('iconeFichier');
+        ic.className = 'bi flex-shrink-0 ';
+        const t = file.type;
+        if (t === 'application/pdf')     ic.className += 'bi-file-earmark-pdf text-danger';
+        else if (t.startsWith('image/')) ic.className += 'bi-file-earmark-image text-info';
+        else if (t.includes('word'))     ic.className += 'bi-file-earmark-word text-primary';
+        else if (t.includes('excel'))    ic.className += 'bi-file-earmark-excel text-success';
+        else                             ic.className += 'bi-file-earmark-check text-success';
+        ic.style.fontSize = '2rem';
+    }
+
+    function effacerFichier(e) {
+        e.stopPropagation();
+        document.getElementById('inputFichier').value = '';
+        document.getElementById('etatVide').classList.remove('d-none');
+        document.getElementById('etatFichier').classList.add('d-none');
+        document.getElementById('uploadZone').classList.remove('has-file');
+    }
+
+    function formatTaille(b) {
+        if (b < 1024)    return b + ' B';
+        if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+        return (b/1048576).toFixed(1) + ' MB';
+    }
+
+    // Confirmation avant soumission
+    const modal  = new bootstrap.Modal(document.getElementById('modalConfirm'));
+    const btnSub = document.getElementById('btnSoumettre');
+    const btnOk  = document.getElementById('btnConfirmer');
+
+    btnSub.addEventListener('click', function(e) {
+        e.preventDefault();
+        const c = document.getElementById('commentaire').value.trim();
+        if (!c) {
+            document.getElementById('commentaire').classList.add('is-invalid');
+            document.getElementById('commentaire').focus();
+            return;
+        }
+        document.getElementById('commentaire').classList.remove('is-invalid');
+        modal.show();
+    });
+
+    btnOk.addEventListener('click', function() {
+        modal.hide();
+        btnSub.disabled = true;
+        btnSub.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Envoi...';
+        document.getElementById('formResultat').submit();
+    });
+</script>
+</body>
+</html>
+

@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Mes Missions</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/bootstrap-icons.css}" rel="stylesheet"/>
+</head>
+<body>
+
+
+<div class="container mt-4">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4><i class="bi bi-clipboard-check me-2"></i>Mes Missions</h4>
+        <span class="badge bg-primary fs-6" th:text="${#lists.size(missions)} + ' mission(s)'"></span>
+    </div>
+
+    <!-- Alertes -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i><span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i><span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- Aucune mission -->
+    <div th:if="${#lists.isEmpty(missions)}" class="text-center py-5">
+        <i class="bi bi-inbox display-1 text-muted"></i>
+        <p class="text-muted mt-3 fs-5">Aucune mission assignée pour le moment.</p>
+    </div>
+
+    <!-- Liste missions -->
+    <div th:each="m : ${missions}" class="card mb-3 shadow-sm border-0">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-start">
+                <div>
+                    <h6 class="mb-1">
+                        <i class="bi bi-hash"></i>
+                        <strong th:text="${m.numeroMission}"></strong>
+                        <span class="text-muted ms-2 small"
+                              th:text="${m.prestation.dossier.numeroDossier}"></span>
+                    </h6>
+                    <p class="mb-1 text-muted small"
+                       th:text="${m.description ?: 'Aucune description'}"></p>
+                    <small class="text-muted">
+                        <i class="bi bi-calendar me-1"></i>
+                        Assignée le
+                        <span th:text="${#temporals.format(m.dateAssignation, 'dd/MM/yyyy')}"></span>
+                        <span th:if="${m.dateFinPrevue}">
+                            — Échéance :
+                            <span th:text="${#temporals.format(m.dateFinPrevue, 'dd/MM/yyyy')}"
+                                  th:classappend="${m.dateFinPrevue.isBefore(#temporals.createToday())} ? 'text-danger fw-bold' : ''">
+                            </span>
+                        </span>
+                    </small>
+                </div>
+                <div class="text-end">
+                    <!-- Badge statut -->
+                    <span th:if="${m.statut.name() == 'ASSIGNEE'}"
+                          class="badge bg-secondary mb-2">ASSIGNÉE</span>
+                    <span th:if="${m.statut.name() == 'EN_COURS'}"
+                          class="badge bg-primary mb-2">EN COURS</span>
+                    <span th:if="${m.statut.name() == 'PV_SOUMIS'}"
+                          class="badge bg-info text-dark mb-2">PV SOUMIS</span>
+                    <span th:if="${m.statut.name() == 'FACTURE_SOUMISE'}"
+                          class="badge bg-warning text-dark mb-2">FACTURE SOUMISE</span>
+                    <span th:if="${m.statut.name() == 'TERMINEE'}"
+                          class="badge bg-success mb-2">TERMINÉE</span>
+                    <br/>
+                    <a th:href="@{/prestataire/missions/{id}(id=${m.id})}"
+                       class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-eye me-1"></i>Voir
+                    </a>
+                </div>
+            </div>
+
+            <!-- Barre de progression -->
+            <div class="mt-2">
+                <div class="progress" style="height: 4px;">
+                    <div class="progress-bar"
+                         th:classappend="${m.statut.name() == 'ASSIGNEE'} ? 'bg-secondary' :
+                                         (${m.statut.name() == 'EN_COURS'} ? 'bg-primary' :
+                                         (${m.statut.name() == 'PV_SOUMIS'} ? 'bg-info' :
+                                         (${m.statut.name() == 'FACTURE_SOUMISE'} ? 'bg-warning' : 'bg-success')))"
+                         th:style="'width: ' +
+                             (${m.statut.name() == 'ASSIGNEE'} ? '20' :
+                             (${m.statut.name() == 'EN_COURS'} ? '40' :
+                             (${m.statut.name() == 'PV_SOUMIS'} ? '65' :
+                             (${m.statut.name() == 'FACTURE_SOUMISE'} ? '85' : '100')))) + '%'">
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

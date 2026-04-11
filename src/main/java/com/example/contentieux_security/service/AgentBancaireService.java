@@ -85,7 +85,7 @@ public class AgentBancaireService {
 
     @Transactional
     public AgentBancaireDTO createAgent(AgentCreationRequest request) {
-        if (agentRepository.existsByUsername(request.getUsername()))
+        if (AgentBancaireRepository.existsByUsername(request.getUsername()))
             throw new RuntimeException("Nom d'utilisateur déjà existant");
 
         Agence agence = agenceRepository.findById(request.getAgenceId())

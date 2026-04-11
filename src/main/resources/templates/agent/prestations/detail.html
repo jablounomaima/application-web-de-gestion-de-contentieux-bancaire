@@ -1,171 +1,219 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Détail prestation</title>
-    <style>
-        * { box-sizing: border-box; }
-        body { font-family: Arial, sans-serif; margin: 40px;
-               background: #f5f5f5; color: #333; }
-        h2 { color: #1e3a5f; }
-        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
-        .card { background: white; border-radius: 8px; padding: 24px;
-                box-shadow: 0 2px 8px rgba(0,0,0,.1); }
-        .badge { display:inline-block; padding:3px 10px; border-radius:12px;
-                 font-size:12px; font-weight:bold; }
-        .badge-EN_COURS   { background:#dbeafe; color:#1e40af; }
-        .badge-TERMINEE   { background:#d1fae5; color:#065f46; }
-        .badge-ASSIGNEE   { background:#fef3c7; color:#92400e; }
-        .badge-PV_SOUMIS  { background:#e0e7ff; color:#3730a3; }
-        label { display:block; font-weight:bold; margin-bottom:6px;
-                font-size:14px; color:#444; }
-        select, input, textarea { width:100%; padding:9px; border:1px solid #ddd;
-                                  border-radius:6px; font-size:14px; margin-bottom:14px; }
-        textarea { height:80px; }
-        .btn { padding:9px 18px; border:none; border-radius:6px;
-               cursor:pointer; font-size:14px; color:white; }
-        .btn-blue   { background:#2563eb; }
-        .btn-gray   { background:#6b7280; text-decoration:none;
-                      display:inline-block; }
-        table { width:100%; border-collapse:collapse; }
-        th,td { padding:10px 12px; border-bottom:1px solid #eee;
-                text-align:left; font-size:13px; }
-        th { background:#f1f5f9; font-weight:600; color:#374151; }
-        .alert { padding:12px; border-radius:4px; margin-bottom:16px; }
-        .alert-success { background:#d1fae5; color:#065f46; }
-        .alert-error   { background:#fee2e2; color:#991b1b; }
-        .section-title { font-size:16px; font-weight:bold; color:#1e3a5f;
-                         margin:0 0 16px; padding-bottom:8px;
-                         border-bottom:2px solid #e5e7eb; }
-    </style>
+    <title>Détail Prestation</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/bootstrap-icons.css}" rel="stylesheet"/>
 </head>
 <body>
 
-<h2>⚙ Prestation — <span th:text="${prestation.numeroPrestation}"></span></h2>
 
-<div th:if="${success}" class="alert alert-success" th:text="${success}"></div>
-<div th:if="${error}"   class="alert alert-error"   th:text="${error}"></div>
+<div class="container mt-4">
 
-<div class="grid">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a th:href="@{/agent/dossiers}">Mes dossiers</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a th:href="@{/agent/dossiers/{id}(id=${dossier.id})}"
+                   th:text="${dossier.numeroDossier}">DOS-XXX</a>
+            </li>
+            <li class="breadcrumb-item active"
+                th:text="${prestation.numeroPrestation}">PREST-XXX</li>
+        </ol>
+    </nav>
 
-    <!-- ── Infos prestation ── -->
-    <div class="card">
-        <p class="section-title">📋 Informations</p>
-        <table>
-            <tr><td><b>Type</b></td>
-                <td th:text="${prestation.type.getLibelle()}"></td></tr>
-            <tr><td><b>Statut</b></td>
-                <td>
-                    <span class="badge"
-                          th:classappend="'badge-' + ${prestation.statut}"
-                          th:text="${prestation.statut.getLibelle()}"></span>
-                </td></tr>
-            <tr><td><b>Dossier</b></td>
-                <td th:text="${prestation.dossier.numeroDossier}"></td></tr>
-            <tr><td><b>Client</b></td>
-                <td th:text="${prestation.dossier.client.nom + ' ' + prestation.dossier.client.prenom}"></td></tr>
-            <tr><td><b>Lancé par</b></td>
-                <td th:text="${prestation.agentCreateur.nom + ' ' + prestation.agentCreateur.prenom}"></td>
-</tr>
-            <tr><td><b>Date</b></td>
-                <td th:text="${#temporals.format(prestation.dateCreation, 'dd/MM/yyyy HH:mm')}"></td></tr>
-        </table>
-
-        <br>
-        <a th:href="@{/agent/dossiers/{id}(id=${dossierId})}"
-           class="btn btn-gray">← Retour au dossier</a>
+    <!-- Alertes -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- ── Désigner un prestataire ── -->
-    <div class="card">
-        <p class="section-title">👤 Désigner un prestataire</p>
-
-        <form th:action="@{/agent/dossiers/{did}/prestations/{pid}/designer
-                          (did=${dossierId},pid=${prestation.id})}"
-              method="post">
-           
-
-            <label>Prestataire *</label>
-            <select name="prestataireId" required>
-                <option value="">-- Choisir --</option>
-                <option th:each="p : ${prestataires}"
-                        th:value="${p.id}"
-                        th:text="${p.nom + ' ' + p.prenom
-                                  + ' (' + p.type.name() + ')'
-                                  + (p.specialite != null ? ' — ' + p.specialite : '')}">
-                </option>
-            </select>
-
-            <label>Description de la mission</label>
-            <textarea name="description"
-                      placeholder="Ex: Préparer le dossier, déposer la plainte..."></textarea>
-
-            <label>Date de fin prévue</label>
-            <input type="date" name="dateFinPrevue"/>
-
-            <button type="submit" class="btn btn-blue">✅ Assigner la mission</button>
-        </form>
+    <!-- En-tête prestation -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-briefcase me-2"></i>
+                <span th:text="${prestation.numeroPrestation}"></span>
+            </h5>
+            <div>
+                <!-- ✅ Comparaison par .name() — pas de T(...) -->
+                <span th:if="${prestation.type.name() == 'PROCEDURE_JUDICIAIRE'}"
+                      class="badge bg-primary me-2">
+                    <i class="bi bi-gavel me-1"></i>Procédure Judiciaire
+                </span>
+                <span th:if="${prestation.type.name() == 'EXECUTION_FORCEE'}"
+                      class="badge bg-danger me-2">
+                    <i class="bi bi-hammer me-1"></i>Exécution Forcée
+                </span>
+                <span th:if="${prestation.statut.name() == 'EN_COURS'}"
+                      class="badge bg-warning text-dark">EN COURS</span>
+                <span th:if="${prestation.statut.name() == 'TERMINEE'}"
+                      class="badge bg-success">TERMINÉE</span>
+                <span th:if="${prestation.statut.name() == 'ANNULEE'}"
+                      class="badge bg-secondary">ANNULÉE</span>
+            </div>
+        </div>
+        <div class="card-body row g-3">
+            <div class="col-md-6">
+                <small class="text-muted d-block">Dossier</small>
+                <strong th:text="${dossier.numeroDossier}"></strong>
+                — <span th:text="${dossier.client.nom + ' ' + (dossier.client.prenom ?: '')}"></span>
+            </div>
+            <div class="col-md-6">
+                <small class="text-muted d-block">Description</small>
+                <span th:text="${prestation.description ?: '—'}"></span>
+            </div>
+        </div>
     </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Missions existantes                        -->
+    <!-- ══════════════════════════════════════════ -->
+    <h5 class="mb-3">
+        <i class="bi bi-person-badge me-2"></i>Missions assignées
+    </h5>
+
+    <div th:if="${#lists.isEmpty(missions)}" class="alert alert-info">
+        <i class="bi bi-info-circle me-2"></i>Aucune mission pour le moment.
+    </div>
+
+    <div th:each="m : ${missions}" class="card mb-3 shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-clipboard me-1"></i>
+                <strong th:text="${m.numeroMission}"></strong>
+                — <span th:text="${m.prestataire.nom + ' ' + m.prestataire.prenom}"></span>
+                <span class="badge bg-secondary ms-2" th:text="${m.prestataire.type}"></span>
+            </span>
+            <!-- ✅ Comparaison par .name() -->
+            <span th:if="${m.statut.name() == 'ASSIGNEE'}"    class="badge bg-secondary">ASSIGNÉE</span>
+            <span th:if="${m.statut.name() == 'EN_COURS'}"    class="badge bg-primary">EN COURS</span>
+            <span th:if="${m.statut.name() == 'PV_SOUMIS'}"   class="badge bg-info text-dark">PV SOUMIS</span>
+            <span th:if="${m.statut.name() == 'FACTURE_SOUMISE'}" class="badge bg-warning text-dark">FACTURE SOUMISE</span>
+            <span th:if="${m.statut.name() == 'TERMINEE'}"    class="badge bg-success">TERMINÉE</span>
+        </div>
+        <div class="card-body">
+            <p th:if="${m.description}">
+                <strong>Description :</strong>
+                <span th:text="${m.description}"></span>
+            </p>
+            <p th:if="${m.dateFinPrevue}">
+                <strong>Échéance :</strong>
+                <span th:text="${#temporals.format(m.dateFinPrevue, 'dd/MM/yyyy')}"></span>
+            </p>
+
+            <!-- PV soumis -->
+            <div th:if="${m.pvMission}" class="alert alert-light border mt-2">
+                <strong><i class="bi bi-file-text me-1"></i>PV de mission :</strong>
+                <p class="mb-0 mt-1" th:text="${m.pvMission}"></p>
+            </div>
+
+            <!-- Facture soumise -->
+            <div th:if="${m.montantFacture}" class="alert alert-warning mt-2">
+                <strong><i class="bi bi-receipt me-1"></i>Facture :</strong>
+                <span th:text="${#numbers.formatDecimal(m.montantFacture, 1, 'COMMA', 2, 'POINT') + ' TND'}"></span>
+                — Réf : <span th:text="${m.factureRef}"></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════ -->
+    <!-- Désigner un prestataire supplémentaire     -->
+    <!-- ══════════════════════════════════════════ -->
+    <div th:if="${prestation.statut.name() == 'EN_COURS'}" class="card mt-4 shadow-sm">
+        <div class="card-header bg-white">
+            <h6 class="mb-0">
+                <i class="bi bi-person-plus me-2"></i>Désigner un prestataire
+            </h6>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/agent/dossiers/{dId}/prestations/{pId}/designer(dId=${dossier.id},pId=${prestation.id})}"
+                  method="post">
+
+                <div class="row g-3">
+
+                    <!-- Liste prestataires selon type -->
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">
+                            Prestataire <span class="text-danger">*</span>
+                        </label>
+                        <select name="prestataireId" class="form-select" required>
+                            <option value="">— Choisir —</option>
+
+                            <!-- ✅ Comparaison par .name() -->
+                            <th:block th:if="${prestation.type.name() == 'PROCEDURE_JUDICIAIRE'}">
+                                <option th:each="p : ${prestataires}"
+                                        th:value="${p.id}"
+                                        th:text="${p.nom + ' ' + p.prenom + ' (Avocat)'}">
+                                </option>
+                            </th:block>
+
+                            <th:block th:if="${prestation.type.name() == 'EXECUTION_FORCEE'}">
+                                <optgroup label="Experts">
+                                    <option th:each="p : ${prestataires}"
+                                            th:if="${p.type.name() == 'EXPERT'}"
+                                            th:value="${p.id}"
+                                            th:text="${p.nom + ' ' + p.prenom}">
+                                    </option>
+                                </optgroup>
+                                <optgroup label="Huissiers">
+                                    <option th:each="p : ${prestataires}"
+                                            th:if="${p.type.name() == 'HUISSIER'}"
+                                            th:value="${p.id}"
+                                            th:text="${p.nom + ' ' + p.prenom}">
+                                    </option>
+                                </optgroup>
+                            </th:block>
+                        </select>
+
+                        <div th:if="${#lists.isEmpty(prestataires)}"
+                             class="text-danger small mt-1">
+                            Aucun prestataire disponible.
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Description</label>
+                        <input type="text" name="description" class="form-control"
+                               placeholder="Ex: Expertise immobilière..." required/>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label fw-bold">Date fin prévue</label>
+                        <input type="date" name="dateFinPrevue" class="form-control"
+                               th:min="${#dates.format(#dates.createNow(), 'yyyy-MM-dd')}"/>
+                    </div>
+                </div>
+
+                <button type="submit"
+                        class="btn btn-primary mt-3"
+                        th:disabled="${#lists.isEmpty(prestataires)}">
+                    <i class="bi bi-person-check me-1"></i>Désigner
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Bouton retour -->
+    <div class="mt-4">
+        <a th:href="@{/agent/dossiers/{id}(id=${dossier.id})}"
+           class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left me-1"></i>Retour au dossier
+        </a>
+    </div>
+
 </div>
 
-<!-- ── Liste des missions ── -->
-<div class="card" style="margin-top:24px;">
-    <p class="section-title">📌 Missions assignées</p>
-
-    <p th:if="${missions == null or missions.empty}"
-       style="color:#aaa; font-style:italic;">
-        Aucune mission assignée pour l'instant.
-    </p>
-
-    <table th:if="${missions != null and !missions.empty}">
-        <thead>
-        <tr>
-            <th>N° Mission</th>
-            <th>Prestataire</th>
-            <th>Type</th>
-            <th>Statut</th>
-            <th>Date fin prévue</th>
-            <th>PV</th>
-            <th>Facture</th>
-        </tr>
-        </thead>
-        <tbody>
-        <tr th:each="m : ${missions}">
-            <td th:text="${m.numeroMission}"></td>
-            <td th:text="${m.prestataire.nom + ' ' + m.prestataire.prenom}"></td>
-            <td th:text="${m.prestataire.type.name()}"></td>
-            <td>
-                <span class="badge"
-                      th:classappend="'badge-' + ${m.statut}"
-                      th:text="${m.statut.getLibelle()}"></span>
-            </td>
-            <td th:text="${m.dateFinPrevue != null
-                          ? #temporals.format(m.dateFinPrevue,'dd/MM/yyyy')
-                          : '–'}"></td>
-            <td>
-                <span th:if="${m.pvValide == null and m.pvMission != null}"
-                      style="color:#92400e;">⏳ En attente</span>
-                <span th:if="${Boolean.TRUE.equals(m.pvValide)}"
-                      style="color:#065f46;">✅ Validé</span>
-                <span th:if="${Boolean.FALSE.equals(m.pvValide)}"
-                      style="color:#991b1b;">❌ Rejeté</span>
-                <span th:if="${m.pvMission == null}"
-                      style="color:#aaa;">–</span>
-            </td>
-            <td>
-                <span th:if="${m.factureValidee == null and m.montantFacture != null}"
-                      style="color:#92400e;">⏳ En attente</span>
-                <span th:if="${Boolean.TRUE.equals(m.factureValidee)}"
-                      style="color:#065f46;">✅ Validée</span>
-                <span th:if="${Boolean.FALSE.equals(m.factureValidee)}"
-                      style="color:#991b1b;">❌ Rejetée</span>
-                <span th:if="${m.montantFacture == null}"
-                      style="color:#aaa;">–</span>
-            </td>
-        </tr>
-        </tbody>
-    </table>
-</div>
-
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
 </body>
 </html>

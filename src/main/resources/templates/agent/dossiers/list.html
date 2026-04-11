@@ -41,6 +41,9 @@
         .btn-create { background:#2ecc71; color:white; }
         .btn-detail { background:#3498db; color:white; }
         .btn-delete { background:#e74c3c; color:white; }
+        /* ✅ NOUVEAU : Bouton lancer affaire */
+        .btn-affaire { background:#9b59b6; color:white; }
+        .btn-affaire-voir { background:#1abc9c; color:white; }
 
         /* ── Table ── */
         table { width:100%; border-collapse:collapse; background:white;
@@ -64,7 +67,7 @@
         .badge-CLOTURE         { background:#e2e3e5; color:#383d41; }
         .badge-CLOTURE_PARTIEL { background:#fef3c7; color:#92400e; }
 
-        .action-cell { display:flex; gap:6px; justify-content:center; }
+        .action-cell { display:flex; gap:6px; justify-content:center; flex-wrap:wrap; }
         .empty-row td { color:#aaa; font-style:italic; padding:30px; }
     </style>
 </head>
@@ -123,7 +126,7 @@
     <tbody>
 
     <tr th:if="${dossiers == null or #lists.isEmpty(dossiers)}" class="empty-row">
-        <td colspan="6">Aucun dossier trouvé.</td>
+        <td colspan="7">Aucun dossier trouvé.</td>
     </tr>
 
     <tr th:each="dossier : ${dossiers}">
@@ -144,27 +147,45 @@
                      #temporals.format(dossier.dateCreation, 'dd/MM/yyyy') : '–'}"></td>
         <td>
             <div class="action-cell">
+                <!-- Voir dossier -->
                 <a class="btn btn-detail"
                    th:href="@{/agent/dossiers/{id}(id=${dossier.id})}">
                     Voir
                 </a>
+                
+                <!-- ✅ NOUVEAU : Lancer affaire (si pas encore d'affaire) -->
+              <!-- Version plus permissive pour tester -->
+<a class="btn btn-affaire"
+th:href="@{/agent/dossiers/{id}/affaire/lancer(id=${dossier.id})}"
+th:if="${dossier.statut == null or dossier.statut.name() == 'EN_ATTENTE' or dossier.statut.name() == 'OUVERT'}"
+title="Lancer une affaire judiciaire">
+ ⚖️ Lancer affaire
+</a>
+                
+                <!-- ✅ NOUVEAU : Voir affaire (si affaire existe) -->
+                <a class="btn btn-affaire-voir"
+                   th:href="@{/agent/dossiers/{id}/affaire(id=${dossier.id})}"
+                   th:if="${dossier.statut != null and (dossier.statut.name() == 'EN_PROCEDURE' or dossier.statut.name() == 'EN_EXECUTION')}"
+                   title="Voir l'affaire judiciaire">
+                    📁 Voir affaire
+                </a>
+                
+                <!-- Supprimer (si statut OUVERT) -->
                 <form th:action="@{/agent/dossiers/{id}/supprimer(id=${dossier.id})}"
                       method="post"
-                      th:if="${dossier.statut.name() == 'OUVERT'}"
+                      th:if="${dossier.statut != null and dossier.statut.name() == 'OUVERT'}"
                       onsubmit="return confirm('Supprimer ce dossier ?')">
                     <input type="hidden"
                            th:name="${_csrf.parameterName}"
                            th:value="${_csrf.token}"/>
                     <button type="submit" class="btn btn-delete">Supprimer</button>
                 </form>
-                <form th:action="@{/agent/dossiers/{id}/supprimer(id=${dossier.id})}" method="post" onsubmit="return confirm('Supprimer ce dossier ?')"> <button type="submit" class="btn btn-delete"> 🗑 </button> </form>
             </div>
         </td>
     </tr>
 
     </tbody>
 </table>
-
 
 <script>
     function toggleForm() {
@@ -173,62 +194,59 @@
     }
     
     function toggleClientType(value) {
-    const cinDiv = document.getElementById("cinDiv");
-    const rneDiv = document.getElementById("rneDiv");
-    const raisonDiv = document.getElementById("raisonDiv");
+        const cinDiv = document.getElementById("cinDiv");
+        const rneDiv = document.getElementById("rneDiv");
+        const raisonDiv = document.getElementById("raisonDiv");
 
-    const cinInput = document.querySelector("[name='cin']");
-    const rneInput = document.querySelector("[name='rne']");
-    const raisonInput = document.querySelector("[name='raisonSociale']");
+        const cinInput = document.querySelector("[name='cin']");
+        const rneInput = document.querySelector("[name='rne']");
+        const raisonInput = document.querySelector("[name='raisonSociale']");
 
-    if (value === "ENTREPRISE") {
-        cinDiv.style.display = "none";
-        rneDiv.style.display = "block";
-        raisonDiv.style.display = "block";
+        if (value === "ENTREPRISE") {
+            cinDiv.style.display = "none";
+            rneDiv.style.display = "block";
+            raisonDiv.style.display = "block";
 
-        // 🔥 IMPORTANT
-        cinInput.value = "";          // vider
-        cinInput.readOnly = true;     // bloquer sans supprimer
+            cinInput.value = "";
+            cinInput.readOnly = true;
 
-        rneInput.readOnly = false;
-        raisonInput.readOnly = false;
+            rneInput.readOnly = false;
+            raisonInput.readOnly = false;
 
-    } else {
-        cinDiv.style.display = "block";
-        rneDiv.style.display = "none";
-        raisonDiv.style.display = "none";
+        } else {
+            cinDiv.style.display = "block";
+            rneDiv.style.display = "none";
+            raisonDiv.style.display = "none";
 
-        // 🔥 IMPORTANT
-        rneInput.value = "";
-        raisonInput.value = "";
+            rneInput.value = "";
+            raisonInput.value = "";
 
-        cinInput.readOnly = false;
-        rneInput.readOnly = true;
-        raisonInput.readOnly = true;
+            cinInput.readOnly = false;
+            rneInput.readOnly = true;
+            raisonInput.readOnly = true;
+        }
     }
-}
+    
     function toggleRaisonSociale(val) {
-    const isEntreprise = val === 'ENTREPRISE';
+        const isEntreprise = val === 'ENTREPRISE';
 
-    const raisonDiv = document.getElementById('raisonSocialeDiv');
-    const rneDiv = document.getElementById('rneDiv');
-    const cinDiv = document.getElementById('cinDiv');
+        const raisonDiv = document.getElementById('raisonSocialeDiv');
+        const rneDiv = document.getElementById('rneDiv');
+        const cinDiv = document.getElementById('cinDiv');
 
-    const raisonInput = document.querySelector("[name='clientRaisonSociale']");
-    const rneInput = document.querySelector("[name='clientRne']");
-    const cinInput = document.querySelector("[name='clientCin']");
+        const raisonInput = document.querySelector("[name='clientRaisonSociale']");
+        const rneInput = document.querySelector("[name='clientRne']");
+        const cinInput = document.querySelector("[name='clientCin']");
 
-    // 🎯 Affichage
-    raisonDiv.style.display = isEntreprise ? 'flex' : 'none';
-    rneDiv.style.display = isEntreprise ? 'flex' : 'none';
-    cinDiv.style.display = isEntreprise ? 'none' : 'flex';
+        raisonDiv.style.display = isEntreprise ? 'flex' : 'none';
+        rneDiv.style.display = isEntreprise ? 'flex' : 'none';
+        cinDiv.style.display = isEntreprise ? 'none' : 'flex';
 
-    // 🔥 TRÈS IMPORTANT → empêcher envoi
-    raisonInput.disabled = !isEntreprise;
-    rneInput.disabled = !isEntreprise;
-    cinInput.disabled = isEntreprise;
-}
-    </script>
+        raisonInput.disabled = !isEntreprise;
+        rneInput.disabled = !isEntreprise;
+        cinInput.disabled = isEntreprise;
+    }
+</script>
 
 </body>
 </html>

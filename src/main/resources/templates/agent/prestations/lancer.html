@@ -1,57 +1,189 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6"
+      lang="fr">
 <head>
     <meta charset="UTF-8">
-    <title>Lancer une prestation</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Lancer une procédure</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/bootstrap-icons.css}" rel="stylesheet"/>
 </head>
 <body>
 
-<h2>⚙ Lancer une prestation</h2>
+<!-- ✅ REMPLACEZ cette ligne par le bon chemin de votre navbar -->
+<!-- Exemples possibles selon votre projet :                    -->
+<!--   th:replace="~{fragments/navbar :: navbar}"              -->
+<!--   th:replace="~{agent/fragments/navbar :: navbar}"        -->
+<!--   th:replace="~{layout :: navbar}"                        -->
 
-<div th:if="${error}" class="alert-error" th:text="${error}"></div>
 
-<div class="card">
-    <!-- Info dossier -->
-    <div class="info-box">
-        <strong>Dossier :</strong>
-        <span th:text="${dossier.numeroDossier}"></span> —
-        <span th:text="${dossier.client.nom + ' ' + dossier.client.prenom}"></span>
-        <br>
-        <strong>Statut :</strong>
-        <span th:text="${dossier.statut}"></span>
+<div class="container mt-4">
+
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a th:href="@{/agent/dossiers}">Mes dossiers</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a th:href="@{/agent/dossiers/{id}(id=${dossier.id})}"
+                   th:text="${dossier.numeroDossier}">DOS-XXX</a>
+            </li>
+            <li class="breadcrumb-item active">Lancer une procédure</li>
+        </ol>
+    </nav>
+
+    <!-- Alertes flash -->
+    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${success}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${error}" class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${error}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <form th:action="@{/agent/dossiers/{id}/prestations/lancer(id=${dossier.id})}"
-          method="post">
-
-       
-
-        <label>Type de prestation *</label>
-        <select name="type" required>
-            <option value="">-- Choisir --</option>
-
-            <option th:each="t : ${typesPrestations}"
-        th:value="${t.name()}"
-        th:text="${t}">
-</option>
-        </select>
-
-        <label>Description</label>
-        <textarea name="description"
-                  placeholder="Décrivez l'objectif de cette prestation..."></textarea>
-
-        <div style="display:flex; gap:12px;">
-            <button type="submit" class="btn-primary">
-                🚀 Lancer la prestation
-            </button>
-
-            <a th:href="@{/agent/dossiers/{id}(id=${dossier.id})}"
-               class="btn-secondary">
-               ✖ Annuler
-            </a>
+    <!-- Résumé dossier -->
+    <div class="card border-success mb-4 shadow-sm">
+        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-folder-check me-2"></i>
+                Dossier validé — <strong th:text="${dossier.numeroDossier}"></strong>
+            </span>
+            <span class="badge bg-light text-success fw-bold">VALIDE</span>
         </div>
-    </form>
+        <div class="card-body row g-3">
+            <div class="col-md-4">
+                <small class="text-muted d-block">Client</small>
+                <strong th:text="${dossier.client.nom + ' ' +
+                    (dossier.client.prenom != null ? dossier.client.prenom : '')}">
+                </strong>
+            </div>
+            <div class="col-md-4">
+                <small class="text-muted d-block">Crédit sélectionné</small>
+                <span th:each="r : ${dossier.risques}" th:if="${r.selectionne}">
+                    <strong th:text="${r.type}"></strong>
+                    — <span th:text="${#numbers.formatDecimal(r.montantImpaye, 1, 'COMMA', 2, 'POINT') + ' TND'}"></span>
+                </span>
+            </div>
+            <div class="col-md-4">
+                <small class="text-muted d-block">Agent créateur</small>
+                <strong th:text="${dossier.agentCreateur.nom + ' ' + dossier.agentCreateur.prenom}">
+                </strong>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulaire -->
+    <div class="card shadow-sm">
+        <div class="card-header bg-white">
+            <h5 class="mb-0">
+                <i class="bi bi-gavel me-2 text-danger"></i>
+                Lancer la procédure judiciaire
+            </h5>
+        </div>
+        <div class="card-body">
+            <form th:action="@{/agent/dossiers/{id}/prestations/lancer(id=${dossier.id})}"
+                  method="post">
+
+                <!-- Type de procédure -->
+                <div class="mb-4">
+                    <label class="form-label fw-bold">
+                        Type de procédure <span class="text-danger">*</span>
+                    </label>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <div th:each="type : ${typesPrestations}"
+                             class="form-check form-check-inline border rounded px-3 py-2">
+                            <input class="form-check-input" type="radio"
+                                   name="type"
+                                   th:id="${'type_' + type.name()}"
+                                   th:value="${type.name()}"
+                                   th:checked="${typeStat == null ? type.name() == 'PROCEDURE_JUDICIAIRE' : false}"
+                                   required/>
+                            <label class="form-check-label ms-1"
+                                   th:for="${'type_' + type.name()}"
+                                   th:text="${type.getLibelle()}">
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Description -->
+                <div class="mb-4">
+                    <label for="description" class="form-label fw-bold">
+                        Description de la procédure
+                    </label>
+                    <textarea id="description"
+                              name="description"
+                              class="form-control"
+                              rows="4"
+                              placeholder="Ex : Procédure de recouvrement judiciaire suite à défaillance de paiement depuis le 01/01/2025...">
+                    </textarea>
+                </div>
+
+                <!-- Avocat (affiché si PROCEDURE_JUDICIAIRE) -->
+                <div class="mb-4" id="sectionAvocat">
+                    <label class="form-label fw-bold">
+                        Avocat désigné <span class="text-danger">*</span>
+                    </label>
+
+                    <!-- Cas : aucun avocat disponible -->
+                    <div th:if="${#lists.isEmpty(avocats)}"
+                         class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        Aucun avocat disponible. Contactez l'administrateur pour en ajouter.
+                    </div>
+
+                    <!-- Liste avocats -->
+                    <div th:unless="${#lists.isEmpty(avocats)}" class="row g-3">
+                        <div th:each="avocat : ${avocats}" class="col-md-6">
+                            <div class="form-check border rounded p-3 h-100">
+                                <input class="form-check-input mt-1"
+                                       type="radio"
+                                       name="prestataireId"
+                                       th:id="${'avocat_' + avocat.id}"
+                                       th:value="${avocat.id}"
+                                       required/>
+                                <label class="form-check-label w-100"
+                                       th:for="${'avocat_' + avocat.id}">
+                                    <div class="fw-bold"
+                                         th:text="${avocat.nom + ' ' + avocat.prenom}">
+                                    </div>
+                                    <small class="text-muted"
+                                           th:text="${avocat.specialite != null ? avocat.specialite : 'Généraliste'}">
+                                    </small>
+                                    <br/>
+                                    <small class="text-muted">
+                                        N° <span th:text="${avocat.numeroCartePro}"></span>
+                                    </small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Boutons -->
+                <div class="d-flex gap-2 mt-4">
+                    <button type="submit"
+                            class="btn btn-danger px-4"
+                            th:disabled="${#lists.isEmpty(avocats)}">
+                        <i class="bi bi-gavel me-2"></i>Lancer la procédure
+                    </button>
+                    <a th:href="@{/agent/dossiers/{id}(id=${dossier.id})}"
+                       class="btn btn-outline-secondary px-4">
+                        <i class="bi bi-arrow-left me-1"></i>Annuler
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
 </div>
 
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
 </body>
 </html>

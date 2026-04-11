@@ -27,11 +27,11 @@ public class Mission {
     @Column(name = "statut", nullable = false, length = 50)
     private StatutMission statut;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "prestation_id", nullable = false)
     private Prestation prestation;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "prestataire_id", nullable = false)
     private Prestataire prestataire;
 
@@ -62,6 +62,9 @@ public class Mission {
     @Column(name = "date_creation", nullable = false)
     private LocalDateTime dateCreation;
 
+    // ✅ CORRECT
+    @OneToOne(mappedBy = "mission", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private ResultatMission resultatMission;
     // ✅ CORRECTION: initialisation propre
     @PrePersist
     public void prePersist() {
@@ -74,5 +77,10 @@ public class Mission {
         if (this.statut == null) {
             this.statut = StatutMission.ASSIGNEE;
         }
+    }
+
+    public Mission getMissionAvocatDuDossier(Long dossierId) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getMissionAvocatDuDossier'");
     }
 }

@@ -17,7 +17,10 @@ public interface AgentBancaireRepository extends JpaRepository<AgentBancaire, Lo
     
     List<AgentBancaire> findByAgenceId(Long agenceId);
     
-    boolean existsByUsername(String username);
+    static boolean existsByUsername(String username) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'existsByUsername'");
+    }
     Optional<AgentBancaire> findByEmail(String email);
 
    

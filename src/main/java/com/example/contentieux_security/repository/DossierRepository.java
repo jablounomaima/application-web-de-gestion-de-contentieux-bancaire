@@ -5,6 +5,11 @@ import com.example.contentieux_security.enums.DossierStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+
+import com.example.contentieux_security.service.MissionService;  // CORRECT
+
 
 import java.util.List;
 import java.util.Optional;
@@ -146,27 +151,25 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
     // =====================================================
     // 📌 DÉTAIL DOSSIER (optimisé)
     // =====================================================
-    @Query("""
-    SELECT DISTINCT d FROM DossierContentieux d
-    LEFT JOIN FETCH d.client
-    LEFT JOIN FETCH d.agence
-    LEFT JOIN FETCH d.risques r
-    LEFT JOIN FETCH r.garanties
-    WHERE d.id = :id
-""")
+  // DossierRepository.java
+@Query("SELECT DISTINCT d FROM DossierContentieux d " +
+"LEFT JOIN FETCH d.client " +
+"LEFT JOIN FETCH d.agentCreateur " +
+"LEFT JOIN FETCH d.risques r " +
+"LEFT JOIN FETCH r.garanties " +
+"WHERE d.id = :id")
 Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
-   
     // =====================================================
     // 📌 VALIDATION FINANCIÈRE AVEC FETCH
     // =====================================================
-    @Query("""
+@Query("""
         SELECT d FROM DossierContentieux d
         LEFT JOIN FETCH d.client
         LEFT JOIN FETCH d.agence
         WHERE d.validateurFinancierChoisi = :username
         AND d.statut = 'EN_TRAITEMENT'
     """)
-    List<DossierContentieux> findEnAttenteValidationFinanciereAvecRelations(
+List<DossierContentieux> findEnAttenteValidationFinanciereAvecRelations(
             @Param("username") String username);
 
 

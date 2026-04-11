@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Modifier Mission</title>
+    <link th:href="@{/css/bootstrap.min.css}" rel="stylesheet"/>
+    <link th:href="@{/css/bootstrap-icons.css}" rel="stylesheet"/>
+</head>
+<body>
+<div class="container mt-4" style="max-width: 600px;">
+
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item">
+                <a th:href="@{/prestataire/missions}">Mes missions</a>
+            </li>
+            <li class="breadcrumb-item">
+                <a th:href="@{/prestataire/missions/{id}(id=${mission.id})}"
+                   th:text="${mission.numeroMission}"></a>
+            </li>
+            <li class="breadcrumb-item active">Modifier</li>
+        </ol>
+    </nav>
+
+    <div class="card shadow-sm">
+        <div class="card-header bg-warning text-dark">
+            <i class="bi bi-pencil me-2"></i>
+            Modifier la mission <strong th:text="${mission.numeroMission}"></strong>
+        </div>
+        <div class="card-body">
+
+            <form th:action="@{/prestataire/missions/{id}/modifier(id=${mission.id})}"
+                  method="post">
+
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Description</label>
+                    <textarea name="description"
+                              class="form-control"
+                              rows="4"
+                              th:text="${mission.description}"></textarea>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Date d'échéance</label>
+                    <input type="date"
+                           name="dateFinPrevue"
+                           class="form-control"
+                           th:value="${mission.dateFinPrevue}"/>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-warning flex-grow-1">
+                        <i class="bi bi-check-lg me-1"></i>Enregistrer
+                    </button>
+                    <a th:href="@{/prestataire/missions/{id}(id=${mission.id})}"
+                       class="btn btn-outline-secondary flex-grow-1">
+                        Annuler
+                    </a>
+                </div>
+
+            </form>
+        </div>
+    </div>
+
+    <!-- Suppression -->
+    <div class="card shadow-sm mt-3 border-danger">
+        <div class="card-body text-center">
+            <p class="text-danger mb-2">
+                <i class="bi bi-exclamation-triangle me-1"></i>
+                Supprimer définitivement cette mission ?
+            </p>
+            <form th:action="@{/prestataire/missions/{id}/supprimer(id=${mission.id})}"
+                  method="post"
+                  onsubmit="return confirm('Confirmer la suppression ?')">
+                <button type="submit" class="btn btn-danger">
+                    <i class="bi bi-trash me-1"></i>Supprimer la mission
+                </button>
+            </form>
+        </div>
+    </div>
+
+</div>
+<script th:src="@{/js/bootstrap.bundle.min.js}"></script>
+</body>
+</html>

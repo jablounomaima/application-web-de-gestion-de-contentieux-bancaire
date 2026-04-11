@@ -28,6 +28,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+import com.example.contentieux_security.service.PrestataireService;
 
 import java.security.Principal;
 import java.time.LocalDate;
@@ -196,11 +197,11 @@ public String creerClient(@ModelAttribute Client nouveauClient,
         }
     }
 
-    @GetMapping("/missions")
-    public String suivreMissions(Model model) {
-        model.addAttribute("pageTitle", "Suivre les Missions");
-        return "agent/missions";
-    }
+  //  @GetMapping("/missions")
+    //public String suivreMissions(Model model) {
+      //  model.addAttribute("pageTitle", "Suivre les Missions");
+        //return "agent/missions";
+    //}
 
     // ══════════════════════════════════════════════════════════════
     //  MOT DE PASSE
