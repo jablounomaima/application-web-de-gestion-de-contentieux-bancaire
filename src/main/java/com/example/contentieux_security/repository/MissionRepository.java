@@ -23,19 +23,18 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
 
     List<Mission> findByPrestataire_UsernameOrderByDateAssignationDesc(String username);
 
+
     List<Mission> findByPrestation_Dossier_IdOrderByDateAssignationDesc(Long dossierId);
 
     // ─────────────────────────────────────────────
     // 🔹 Charger missions avec détails (prestataire + dossier)
     // ─────────────────────────────────────────────
-    @Query("""
-        SELECT m FROM Mission m
-        JOIN FETCH m.prestation p
-        JOIN FETCH p.dossier d
-        JOIN FETCH m.prestataire pr
-        WHERE d.id = :dossierId
-        ORDER BY m.dateAssignation DESC
-    """)
+    @Query("SELECT m FROM Mission m " +
+    "LEFT JOIN FETCH m.prestataire " +
+    "LEFT JOIN FETCH m.prestation p " +
+    "LEFT JOIN FETCH p.dossier " +
+    "WHERE p.dossier.id = :dossierId " +
+    "ORDER BY m.dateAssignation DESC")
     List<Mission> findByDossierIdWithPrestataire(@Param("dossierId") Long dossierId);
 
     // ─────────────────────────────────────────────
@@ -43,26 +42,28 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
     // ─────────────────────────────────────────────
     @Query("""
         SELECT m FROM Mission m
-        JOIN FETCH m.prestation p
-        JOIN FETCH p.dossier d
-        WHERE m.prestataire.username = :username
+        LEFT JOIN FETCH m.prestation p
+        LEFT JOIN FETCH p.dossier d
+        LEFT JOIN FETCH d.client
+        LEFT JOIN FETCH m.prestataire pr
+        WHERE pr.username = :username
         ORDER BY m.dateAssignation DESC
     """)
-    List<Mission> findMissionsWithDetails(@Param("username") String username);
-
+    List<Mission> findMissionsAvecDetailsParPrestataire(@Param("username") String username);
     // ─────────────────────────────────────────────
     // 🔹 Trouver mission par ID avec détails complets
     // ─────────────────────────────────────────────
-    @Query("""
-        SELECT m FROM Mission m
-        JOIN FETCH m.prestation p
-        JOIN FETCH p.dossier d
-        LEFT JOIN FETCH d.client
-        JOIN FETCH m.prestataire pr
-        WHERE m.id = :id
-    """)
-    Optional<Mission> findByIdWithDetails(@Param("id") Long id);
-
+    @Query("SELECT DISTINCT m FROM Mission m " +
+    "LEFT JOIN FETCH m.prestation p " +
+    "LEFT JOIN FETCH p.dossier d " +
+    "LEFT JOIN FETCH d.client " +
+    "LEFT JOIN FETCH d.agence " +
+    "LEFT JOIN FETCH d.agentCreateur " +
+    "LEFT JOIN FETCH d.risques r " +
+    "LEFT JOIN FETCH r.garanties " +
+    "LEFT JOIN FETCH m.prestataire " +
+    "WHERE m.id = :id")
+Optional<Mission> findByIdWithDetails(@Param("id") Long id);
     // ─────────────────────────────────────────────
     // 🔹 Missions créées par agent
     // ─────────────────────────────────────────────
@@ -113,4 +114,16 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
         LIMIT 1
     """, nativeQuery = true)
     Optional<String> findLastNumero(@Param("prefix") String prefix);
+
+
+
+    @Query("SELECT m FROM Mission m " +
+       "LEFT JOIN FETCH m.prestataire " +
+       "LEFT JOIN FETCH m.prestation p " +
+       "LEFT JOIN FETCH p.dossier d " +
+       "LEFT JOIN FETCH d.client " +
+       "ORDER BY m.dateAssignation DESC")
+List<Mission> findAllWithDetails();
+    
+
 }

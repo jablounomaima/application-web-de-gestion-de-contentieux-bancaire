@@ -1,231 +1,155 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6"
-      lang="fr">
-<head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Mes affaires</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
-    <style>
-        body { background: #f0f2f8; font-family: 'Segoe UI', sans-serif; }
-
-        .navbar-brand { font-weight: 700; font-size: 1.05rem; }
-
-        .stat-card {
-            background: #fff;
-            border: 0.5px solid #e0e4ef;
-            border-radius: 14px;
-            padding: 1.1rem 1.3rem;
-        }
-        .stat-card .stat-value { font-size: 1.8rem; font-weight: 700; line-height: 1; }
-        .stat-card .stat-label { font-size: .75rem; color: #8a94a6; text-transform: uppercase;
-                                  letter-spacing: .06em; margin-top: 4px; }
-
-        .affaire-card {
-            background: #fff;
-            border: 0.5px solid #e0e4ef;
-            border-radius: 14px;
-            padding: 1.1rem 1.25rem;
-            transition: box-shadow .2s, transform .15s;
-            text-decoration: none;
-            color: inherit;
-            display: block;
-        }
-        .affaire-card:hover {
-            box-shadow: 0 4px 18px rgba(13,110,253,.13);
-            transform: translateY(-2px);
-            border-color: #b0c8f8;
-        }
-        .affaire-card .numero { font-weight: 700; font-size: .95rem; color: #1a3a5c; }
-        .affaire-card .dossier { font-size: .78rem; color: #8a94a6; margin-top: 2px; }
-        .affaire-card .info-row { font-size: .82rem; color: #495057; margin-top: 8px; }
-
-        /* badges statut */
-        .badge-EN_COURS        { background:#e3f0ff; color:#0a58ca; }
-        .badge-JUGEMENT_RENDU  { background:#d1e7dd; color:#0a3622; }
-        .badge-EXECUTION_FORCEE{ background:#fff3cd; color:#664d03; }
-        .badge-TRANSACTION     { background:#e2d9f3; color:#432874; }
-        .badge-CLOSE           { background:#dee2e6; color:#444;    }
-
-        /* filtre */
-        .filter-btn { border-radius: 20px; padding: .35rem 1rem; font-size: .82rem;
-                      border: 1px solid #dee2e6; background: #fff; color: #495057;
-                      cursor: pointer; transition: all .15s; }
-        .filter-btn.active, .filter-btn:hover { background: #0d6efd; color: #fff;
-                                                 border-color: #0d6efd; }
-
-        .empty-state { text-align: center; padding: 4rem 1rem; color: #adb5bd; }
-        .empty-state i { font-size: 3rem; display: block; margin-bottom: .75rem; }
-    </style>
-</head>
+<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{fragments/layout :: head('Mes affaires')}"></head>
 <body>
 
-<!-- NAVBAR -->
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark px-4 py-2">
-    <a class="navbar-brand" href="/avocat/dashboard">
-        <i class="bi bi-briefcase me-2"></i>Contentieux — Avocat
-    </a>
-    <div class="ms-auto d-flex align-items-center gap-3">
-        <a href="/avocat/dashboard" class="text-white-50 text-decoration-none small">
-            <i class="bi bi-house me-1"></i>Dashboard
-        </a>
-        <span class="text-white-50">|</span>
-        <span class="text-white small" sec:authentication="name">avocat</span>
-        <a href="/logout" class="btn btn-outline-light btn-sm">
-            <i class="bi bi-box-arrow-right me-1"></i>Déconnexion
-        </a>
-    </div>
-</nav>
+<aside th:replace="~{fragments/layout :: sidebar('AVOCAT', ${#authentication.name})}"></aside>
 
-<div class="container-fluid py-4 px-4">
+<header th:replace="~{fragments/layout :: topbar('Mes affaires', ${#authentication.name}, 'AVOCAT')}"></header>
 
-    <!-- EN-TÊTE + stats -->
-    <div class="d-flex align-items-center justify-content-between mb-4">
-        <div>
-            <h5 class="fw-bold mb-0">Mes affaires judiciaires</h5>
-            <small class="text-muted">
-                <span th:text="${affaires.size()}">0</span> affaire(s) au total
-            </small>
-        </div>
-    </div>
+<main style="margin-left: 250px; margin-top: 60px; min-height: calc(100vh - 60px);">
 
-    <!-- STATS RAPIDES -->
- <!-- STATS RAPIDES -->
-<div class="row g-3 mb-4">
+    <div class="container py-4">
 
-    <!-- TOTAL -->
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-value text-primary"
-                 th:text="${total}">0</div>
-            <div class="stat-label">Total affaires</div>
-        </div>
-    </div>
-
-    <!-- EN COURS -->
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-value text-warning"
-                 th:text="${enCours}">0</div>
-            <div class="stat-label">En cours</div>
-        </div>
-    </div>
-
-    <!-- JUGEMENT RENDU -->
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-value text-success"
-                 th:text="${jugementRendu}">0</div>
-            <div class="stat-label">Jugement rendu</div>
-        </div>
-    </div>
-
-    <!-- CLOTUREES -->
-    <div class="col-6 col-md-3">
-        <div class="stat-card">
-            <div class="stat-value text-secondary"
-                 th:text="${cloturees}">0</div>
-            <div class="stat-label">Clôturées</div>
-        </div>
-    </div>
-
-</div>
-
-    <!-- FILTRES -->
-    <div class="d-flex flex-wrap gap-2 mb-4">
-        <button class="filter-btn active" onclick="filtrer('TOUT', this)">Tout</button>
-        <button class="filter-btn" onclick="filtrer('EN_COURS', this)">En cours</button>
-        <button class="filter-btn" onclick="filtrer('JUGEMENT_RENDU', this)">Jugement rendu</button>
-        <button class="filter-btn" onclick="filtrer('EXECUTION_FORCEE', this)">Exécution forcée</button>
-        <button class="filter-btn" onclick="filtrer('CLOSE', this)">Clôturées</button>
-    </div>
-
-    <!-- LISTE AFFAIRES -->
-    <div th:if="${affaires.empty}" class="empty-state">
-        <i class="bi bi-briefcase"></i>
-        <div class="fw-semibold mb-1">Aucune affaire assignée</div>
-        <div class="small">Vous serez notifié dès qu'une affaire vous est confiée.</div>
-    </div>
-
-    <div class="row g-3" id="listeAffaires">
-        <div th:each="affaire : ${affaires}"
-             class="col-md-6 col-xl-4 affaire-item"
-             th:data-statut="${affaire.statut}">
-            <a th:href="@{/affaires/{id}(id=${affaire.id})}" class="affaire-card">
-
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                        <div class="numero" th:text="${affaire.numeroAffaire}">AFF-2026-00001</div>
-                        <div class="dossier"
-                             th:text="'Dossier : ' + ${affaire.dossier.numeroDossier}">DOS-NAB-2026-00001</div>
-                    </div>
-                    <span class="badge rounded-pill px-3 py-1"
-                          th:classappend="'badge-' + ${affaire.statut}"
-                          th:text="${affaire.statut}">EN_COURS</span>
-                </div>
-
-                <div class="info-row">
-                    <i class="bi bi-building me-1 text-muted"></i>
-                    <span th:text="${affaire.tribunal ?: 'Tribunal non renseigné'}"></span>
-                </div>
-
-                <div th:if="${affaire.numeroRole}" class="info-row">
-                    <i class="bi bi-hash me-1 text-muted"></i>
-                    Rôle : <span th:text="${affaire.numeroRole}"></span>
-                </div>
-
-                <div class="info-row" th:if="${affaire.dateProchainAudience}">
-                    <i class="bi bi-calendar-event me-1 text-primary"></i>
-                    <span class="text-primary fw-semibold">
-                        Prochaine audience :
-                        <span th:text="${#temporals.format(affaire.dateProchainAudience,'dd/MM/yyyy')}"></span>
-                    </span>
-                </div>
-
-                <div th:if="${affaire.typeJugement != null}" class="info-row">
-                    <i class="bi bi-hammer me-1 text-success"></i>
-                    Jugement :
-                    <span class="fw-semibold"
-                          th:classappend="${affaire.typeJugement.name() == 'FAVORABLE'} ? 'text-success' : 'text-danger'"
-                          th:text="${affaire.typeJugement}"></span>
-                </div>
-
-                <div class="d-flex gap-2 mt-3 pt-2 border-top">
-                    <span class="badge bg-light text-dark border" style="font-size:.7rem">
-                        <i class="bi bi-calendar3 me-1"></i>
-                        <span th:text="${affaire.audiences.size()}"></span> audience(s)
-                    </span>
-                    <span class="badge bg-light text-dark border" style="font-size:.7rem">
-                        <i class="bi bi-file-earmark me-1"></i>
-                        <span th:text="${affaire.documents.size()}"></span> doc(s)
-                    </span>
-                    <span class="badge ms-auto"
-                          style="font-size:.7rem"
-                          th:classappend="${affaire.mission.statut.name() == 'REALISEE'} ? 'bg-success' : 'bg-warning text-dark'"
-                          th:text="'Mission : ' + ${affaire.mission.statut}"></span>
-                </div>
-
+        <!-- Titre -->
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <div>
+                <h4 class="mb-0">Mes affaires judiciaires</h4>
+                <small class="text-muted">Suivi des dossiers qui vous sont confiés</small>
+            </div>
+            <a th:href="@{/avocat/dashboard}" class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left"></i> Retour au dashboard
             </a>
         </div>
+
+        <!-- Statistiques -->
+        <div class="row g-3 mb-4">
+            <div class="col-md-3">
+                <div class="card border-0 bg-primary bg-opacity-10 text-center">
+                    <div class="card-body">
+                        <div class="text-primary mb-1">
+                            <i class="bi bi-folder2-open fs-3"></i>
+                        </div>
+                        <h3 class="text-primary" th:text="${total ?: 0}"></h3>
+                        <small class="text-muted">Total affaires</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card border-0 bg-warning bg-opacity-10 text-center">
+                    <div class="card-body">
+                        <div class="text-warning mb-1">
+                            <i class="bi bi-hourglass-split fs-3"></i>
+                        </div>
+                        <h3 class="text-warning" th:text="${enCours ?: 0}"></h3>
+                        <small class="text-muted">En cours</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card border-0 bg-info bg-opacity-10 text-center">
+                    <div class="card-body">
+                        <div class="text-info mb-1">
+                            <i class="bi bi-file-earmark-text fs-3"></i>
+                        </div>
+                        <h3 class="text-info" th:text="${jugementRendu ?: 0}"></h3>
+                        <small class="text-muted">Jugement rendu</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-3">
+                <div class="card border-0 bg-success bg-opacity-10 text-center">
+                    <div class="card-body">
+                        <div class="text-success mb-1">
+                            <i class="bi bi-check-circle fs-3"></i>
+                        </div>
+                        <h3 class="text-success" th:text="${cloturees ?: 0}"></h3>
+                        <small class="text-muted">Clôturées / exécutées</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tableau des affaires -->
+        <div class="card shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-list-ul me-2"></i>Liste des affaires
+                </h6>
+            </div>
+
+            <div class="card-body p-0">
+                <div th:if="${#lists.isEmpty(affaires)}" class="text-center py-4 text-muted">
+                    Aucune affaire pour le moment.
+                </div>
+
+                <div th:unless="${#lists.isEmpty(affaires)}" class="table-responsive">
+                    <table class="table table-hover mb-0 align-middle">
+                        <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Référence</th>
+                            <th>Client</th>
+                            <th>Objet</th>
+                            <th>Statut</th>
+                            <th>Dernière mise à jour</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="a, stat : ${affaires}">
+                            <td th:text="${stat.index + 1}">1</td>
+
+                            <!-- adapte ces champs à ton entité AffaireJudiciaire -->
+                            <td th:text="${a.reference ?: a.id}">REF-001</td>
+
+                            <td>
+                                <span th:text="${(a.client?.nom ?: '') + ' ' + (a.client?.prenom ?: '')}">
+                                    Nom Prénom
+                                </span>
+                            </td>
+
+                            <td th:text="${a.objet ?: a.description}">Objet</td>
+
+                            <td>
+                                <span th:switch="${a.statut?.name()}">
+                                    <span th:case="'EN_COURS'" class="badge bg-primary">EN COURS</span>
+                                    <span th:case="'JUGEMENT_RENDU'" class="badge bg-info text-dark">JUGEMENT RENDU</span>
+                                    <span th:case="'CLOSE'" class="badge bg-success">CLOTURÉE</span>
+                                    <span th:case="'EXECUTION_FORCEE'" class="badge bg-warning text-dark">EXÉCUTION FORCÉE</span>
+                                    <span th:case="*"
+                                          class="badge bg-secondary"
+                                          th:text="${a.statut}">STATUT</span>
+                                </span>
+                            </td>
+
+                            <td th:text="${a.dateMiseAJour != null ?
+                                          #temporals.format(a.dateMiseAJour,'dd/MM/yyyy') :
+                                          ''}">
+                                01/01/2024
+                            </td>
+
+                            <td class="text-end">
+                                <a class="btn btn-sm btn-outline-primary"
+                                   th:href="@{/avocat/affaires/{id}(id=${a.id})}">
+                                    <i class="bi bi-eye"></i> Détail
+                                </a>
+                            </td>
+                        </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+
     </div>
 
-</div>
+</main>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    function filtrer(statut, btn) {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('.affaire-item').forEach(item => {
-            if (statut === 'TOUT' || item.dataset.statut === statut) {
-                item.style.display = '';
-            } else {
-                item.style.display = 'none';
-            }
-        });
-    }
-</script>
+<a th:href="@{/logout}" class="d-none">Déconnexion</a>
 </body>
 </html>

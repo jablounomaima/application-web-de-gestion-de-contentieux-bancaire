@@ -1,23 +1,26 @@
 package com.example.contentieux_security.entity;
 
-import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
 import com.example.contentieux_security.enums.TypePrestataire;
+import jakarta.persistence.*;
+import lombok.*;
 
 import java.time.LocalDate;
-@Getter
-@Setter
+
+/**
+ * Entité Prestataire.
+ *
+ * ✅ FIX : @Data supprimé — il était en conflit avec @Getter @Setter
+ *          (@Data génère aussi equals/hashCode/toString sur entités JPA
+ *           ce qui cause des boucles infinies sur les relations lazy).
+ *          @Getter + @Setter seuls suffisent.
+ */
 @Entity
 @Table(name = "prestataires")
-@Data  // Génère getters, setters, toString, equals, hashCode
-@Builder
+@Getter
+@Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 public class Prestataire {
 
     @Id
@@ -40,23 +43,17 @@ public class Prestataire {
     private String specialite;
     private String numeroCartePro;
     private LocalDate dateDebutCollaboration;
-    
+
     private boolean actif = true;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agent_id")
     private AgentBancaire agentResponsable;
 
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agence_id")
     private Agence agence;
 
     private String niveauValidation;
     private Double plafondValidation;
-
-
-  
-   
-
-
 }

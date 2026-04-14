@@ -1,13 +1,11 @@
 package com.example.contentieux_security.controller;
 
-import com.example.contentieux_security.entity.AffaireJudiciaire;
-import com.example.contentieux_security.entity.Audience;
-import com.example.contentieux_security.entity.DocumentAffaire;
-import com.example.contentieux_security.entity.Mission;
-import com.example.contentieux_security.entity.ResultatMission;
+import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.service.*;
 
+import lombok.Builder;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
@@ -25,344 +23,285 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Path;
 import java.security.Principal;
 import java.time.LocalDate;
-import java.util.List;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/avocat")
 @RequiredArgsConstructor
 @Slf4j
+
 public class AvocatController {
 
     private final PrestationService prestationService;
     private final AffaireJudiciaireService affaireService;
     private final FileStorageService fileStorageService;
-    private final ResultatMissionService resultatMissionService; // ← AJOUTÉ
+    private final ResultatMissionService resultatMissionService;
+    private final FactureService factureService;
+    private final NotificationService notificationService;
 
-    // ─────────────────────────────────────────────
-    //  DASHBOARD
-    // ─────────────────────────────────────────────
-
-    @GetMapping("/dashboard")
-    @PreAuthorize("hasRole('AVOCAT')")
-    public String dashboard(Model model, Authentication authentication) {
-        String username = authentication.getName();
-
-        List<Mission> missions =
-                prestationService.getMissionsPrestataire(authentication.getName());
-
-        long enCours   = missions.stream()
-                .filter(m -> m.getStatut() == StatutMission.ASSIGNEE
-                          || m.getStatut() == StatutMission.EN_COURS)
-                .count();
-        long pvSoumis  = missions.stream()
-                .filter(m -> m.getStatut() == StatutMission.PV_SOUMIS)
-                .count();
-        long terminees = missions.stream()
-                .filter(m -> m.getStatut() == StatutMission.TERMINEE
-                          || m.getStatut() == StatutMission.REALISEE) // ← AJOUTÉ
-                .count();
-
-        List<Mission> dernieres = missions.stream().limit(5).toList();
-        
-        
-        
-
-        model.addAttribute("totalMissions",     missions.size());
-        model.addAttribute("missionsEnCours",   enCours);
-        model.addAttribute("pvSoumis",          pvSoumis);
-        model.addAttribute("missionsTerminees", terminees);
-        model.addAttribute("dernieresMissions", dernieres);
-
-        return "avocat/dashboard";
-    }
-
-    // ─────────────────────────────────────────────
-    //  LISTE DES AFFAIRES
-    // ─────────────────────────────────────────────
-
+    // ============================
+    // 📋 LISTE AFFAIRES
+    // ============================
     @GetMapping("/affaires")
+    @PreAuthorize("hasRole('AVOCAT')")
     public String mesAffaires(Principal principal, Model model) {
-        model.addAttribute("affaires",
-                affaireService.getAffairesParAvocat(principal.getName()));
+
+        List<AffaireJudiciaire> affaires =
+                affaireService.getAffairesParAvocat(principal.getName());
+
+        long total = affaires.size();
+
+        long enCours = affaires.stream()
+        .filter(a -> "EN_COURS".equals(a.getStatut().name()))
+
+                .count();
+
+        long jugementRendu = affaires.stream()
+                .filter(a -> "JUGEMENT_RENDU".equals(a.getStatut().name()))
+                .count();
+
+        long cloturees = affaires.stream()
+                .filter(a -> "CLOSE".equals(a.getStatut().name())
+                        || "EXECUTION_FORCEE".equals(a.getStatut().name()))
+                .count();
+
+        model.addAttribute("affaires", affaires);
+        model.addAttribute("total", total);
+        model.addAttribute("enCours", enCours);
+        model.addAttribute("jugementRendu", jugementRendu);
+        model.addAttribute("cloturees", cloturees);
+
         return "avocat/affaires/liste";
     }
 
-    // ─────────────────────────────────────────────
-    //  DÉTAIL AFFAIRE
-    // ─────────────────────────────────────────────
-
+    // ============================
+    // 📄 DETAIL AFFAIRE
+    // ============================
     @GetMapping("/affaires/{id}")
+    @PreAuthorize("hasRole('AVOCAT')")
     public String detailAffaire(@PathVariable Long id, Model model) {
-        AffaireJudiciaire affaire = affaireService.getAffaireById(id);
-        model.addAttribute("affaire", affaire);
-        model.addAttribute("typesDocument",    DocumentAffaire.TypeDocument.values());
-        model.addAttribute("statutsAudience",  Audience.StatutAudience.values());
-        model.addAttribute("typesJugement",    AffaireJudiciaire.TypeJugement.values());
 
-        // Résultat de mission existant (null si pas encore soumis)
-        ResultatMission resultat =
-                resultatMissionService.getResultat(affaire.getMission().getId());
-        model.addAttribute("resultatMission", resultat); // ← AJOUTÉ
+        AffaireJudiciaire affaire = affaireService.getAffaireById(id);
+
+        if (affaire == null) {
+            return "redirect:/avocat/affaires?error=Affaire introuvable";
+        }
+
+        model.addAttribute("affaire", affaire);
+
+        model.addAttribute("typesDocument",
+                List.of("ACTE", "CONCLUSION", "JUGEMENT", "AUTRE"));
+
+        model.addAttribute("statutsAudience",
+                Arrays.stream(Audience.StatutAudience.values())
+                        .map(Enum::name)
+                        .collect(Collectors.toList()));
+
+        model.addAttribute("typesJugement",
+                List.of("CONTRADICTOIRE", "REPUTE_CONTRA", "AFFAIRE_EN_DELIBERE"));
 
         return "avocat/affaires/detail";
     }
 
-    // ─────────────────────────────────────────────
-    //  AUDIENCES
-    // ─────────────────────────────────────────────
-
-    @PostMapping("/avocat/affaires/{id}/audiences/ajouter")
+    // ============================
+    // ⚖️ AJOUT AUDIENCE
+    // ============================
+    @PostMapping("/affaires/{id}/audiences/ajouter")
+    @PreAuthorize("hasRole('AVOCAT')")
     public String ajouterAudience(@PathVariable Long id,
-                                   @RequestParam String dateAudience,
-                                   @RequestParam(required = false) String heure,
-                                   @RequestParam(required = false) String salle,
-                                   @RequestParam(required = false) String motif,
-                                   RedirectAttributes ra) {
+                                 @RequestParam String dateAudience,
+                                 @RequestParam(required = false) String heure,
+                                 @RequestParam(required = false) String salle,
+                                 @RequestParam(required = false) String motif,
+                                 RedirectAttributes ra) {
+
         try {
+            AffaireJudiciaire affaire = affaireService.getAffaireById(id);
+
             affaireService.ajouterAudience(
-                id,
-                LocalDate.parse(dateAudience),
-                heure, salle, motif
+                    id,
+                    LocalDate.parse(dateAudience),
+                    heure,
+                    salle,
+                    motif
             );
-            ra.addFlashAttribute("successMsg", "Audience planifiée avec succès");
+
+            String agentUsername = affaire.getDossier().getAgentCreateur().getUsername();
+
+            notificationService.notifierNouvelleAudience(
+                    id, dateAudience, affaire.getTribunal(), agentUsername
+            );
+
+            ra.addFlashAttribute("successMsg", "Audience ajoutée.");
+
         } catch (Exception e) {
             log.error("Erreur ajout audience", e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+            ra.addFlashAttribute("errorMsg", e.getMessage());
         }
+
         return "redirect:/avocat/affaires/" + id;
     }
 
-    @PostMapping("/avocat/affaires/{affaireId}/audiences/{audienceId}/resultat")
-    public String enregistrerResultat(@PathVariable Long affaireId,
-                                       @PathVariable Long audienceId,
-                                       @RequestParam String resultat,
-                                       @RequestParam String statut,
-                                       @RequestParam(required = false) String prochaineAudience,
-                                       RedirectAttributes ra) {
+    // ============================
+    // ⚖️ RESULTAT AUDIENCE
+    // ============================
+    @PostMapping("/affaires/{affaireId}/audiences/{audienceId}/resultat")
+    @PreAuthorize("hasRole('AVOCAT')")
+    public String enregistrerResultatAudience(
+            @PathVariable Long affaireId,
+            @PathVariable Long audienceId,
+            @RequestParam String resultat,
+            @RequestParam String statut,
+            @RequestParam(required = false) String prochaineAudience,
+            RedirectAttributes ra) {
+
         try {
             LocalDate prochaine = (prochaineAudience != null && !prochaineAudience.isBlank())
-                ? LocalDate.parse(prochaineAudience) : null;
+                    ? LocalDate.parse(prochaineAudience)
+                    : null;
 
             affaireService.enregistrerResultatAudience(
-                audienceId,
-                resultat,
-                Audience.StatutAudience.valueOf(statut),
-                prochaine
+                    audienceId,
+                    resultat,
+                    Audience.StatutAudience.valueOf(statut),
+                    prochaine
             );
-            ra.addFlashAttribute("successMsg", "Résultat d'audience enregistré");
+
+            ra.addFlashAttribute("successMsg", "Résultat enregistré.");
+
         } catch (Exception e) {
             log.error("Erreur résultat audience", e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+            ra.addFlashAttribute("errorMsg", e.getMessage());
         }
+
         return "redirect:/avocat/affaires/" + affaireId;
     }
 
-    // ─────────────────────────────────────────────
-    //  JUGEMENT
-    // ─────────────────────────────────────────────
+    // ============================
+    // 📜 JUGEMENT
+    // ============================
+    @PostMapping("/affaires/{id}/jugement")
+    @PreAuthorize("hasRole('AVOCAT')")
+    public String enregistrerJugement(
+            @PathVariable Long id,
+            @RequestParam String typeJugement,
+            @RequestParam String dateJugement,
+            @RequestParam(required = false) String montantJuge,
+            @RequestParam(required = false) String delaiPaiement,
+            @RequestParam(required = false) String description,
+            RedirectAttributes ra) {
 
-    @PostMapping("/avocat/affaires/{id}/jugement")
-    public String enregistrerJugement(@PathVariable Long id,
-                                       @RequestParam String typeJugement,
-                                       @RequestParam String dateJugement,
-                                       @RequestParam(required = false) String montantJuge,
-                                       @RequestParam(required = false) String delaiPaiement,
-                                       @RequestParam(required = false) String description,
-                                       RedirectAttributes ra) {
         try {
+            AffaireJudiciaire affaire = affaireService.getAffaireById(id);
+
             affaireService.enregistrerJugement(
-                id,
-                AffaireJudiciaire.TypeJugement.valueOf(typeJugement),
-                LocalDate.parse(dateJugement),
-                montantJuge,
-                delaiPaiement,
-                description
+                    id,
+                    typeJugement,
+                    LocalDate.parse(dateJugement),
+                    montantJuge,
+                    delaiPaiement,
+                    description
             );
-            ra.addFlashAttribute("successMsg", "Jugement enregistré avec succès");
+
+            String agentUsername = affaire.getDossier().getAgentCreateur().getUsername();
+
+            notificationService.notifierJugementRendu(
+                    id, typeJugement, montantJuge, agentUsername
+            );
+
+            ra.addFlashAttribute("successMsg", "Jugement enregistré.");
+
         } catch (Exception e) {
-            log.error("Erreur enregistrement jugement", e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+            log.error("Erreur jugement", e);
+            ra.addFlashAttribute("errorMsg", e.getMessage());
         }
+
         return "redirect:/avocat/affaires/" + id;
     }
 
-    // ─────────────────────────────────────────────
-    //  UPLOAD DOCUMENTS
-    // ─────────────────────────────────────────────
+    // ============================
+    // 💰 FACTURE
+    // ============================
+    @PostMapping("/affaires/{affaireId}/missions/{missionId}/facture")
+    @PreAuthorize("hasRole('AVOCAT')")
+    public String soumettreFacture(
+            @PathVariable Long affaireId,
+            @PathVariable Long missionId,
+            @RequestParam BigDecimal montantHT,
+            @RequestParam BigDecimal tauxTva,
+            @RequestParam(required = false) String numeroFacture,
+            @RequestParam(required = false) String dateFacture,
+            @RequestParam(required = false) String description,
+            @RequestParam(required = false) MultipartFile fichier,
+            Principal principal,
+            RedirectAttributes ra) {
 
-    @PostMapping("/avocat/affaires/{id}/documents/upload")
-    public String uploadDocument(@PathVariable Long id,
-                                  @RequestParam("fichier") MultipartFile fichier,
-                                  @RequestParam String typeDocument,
-                                  @RequestParam(required = false) String description,
-                                  Principal principal,
-                                  RedirectAttributes ra) {
         try {
-            if (fichier.isEmpty()) {
-                ra.addFlashAttribute("errorMsg", "Veuillez sélectionner un fichier");
-                return "redirect:/avocat/affaires/" + id;
-            }
-            if (fichier.getSize() > 20 * 1024 * 1024) {
-                ra.addFlashAttribute("errorMsg", "Fichier trop volumineux (max 20 MB)");
-                return "redirect:/avocat/affaires/" + id;
-            }
-            affaireService.uploadDocument(
-                id,
-                fichier,
-                DocumentAffaire.TypeDocument.valueOf(typeDocument),
-                description,
-                principal.getName()
+            LocalDate date = (dateFacture != null && !dateFacture.isBlank())
+                    ? LocalDate.parse(dateFacture)
+                    : LocalDate.now();
+
+            factureService.soumettreFacture(
+                    missionId, montantHT, tauxTva,
+                    numeroFacture, date, description,
+                    fichier, principal.getName()
             );
-            ra.addFlashAttribute("successMsg",
-                "Document \"" + fichier.getOriginalFilename() + "\" uploadé avec succès");
 
-        } catch (IOException e) {
-            log.error("Erreur upload document", e);
-            ra.addFlashAttribute("errorMsg", "Erreur lors de l'upload : " + e.getMessage());
-        } catch (Exception e) {
-            log.error("Erreur upload document", e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
-        }
-        return "redirect:/avocat/affaires/" + id;
-    }
+            prestationService.changerStatutMission(
+                    missionId, StatutMission.FACTURE_SOUMISE
+            );
 
-    // ─────────────────────────────────────────────
-    //  TÉLÉCHARGEMENT DOCUMENT
-    // ─────────────────────────────────────────────
-
-    @GetMapping("/avocat/affaires/{affaireId}/documents/{documentId}/download")
-    public ResponseEntity<Resource> downloadDocument(@PathVariable Long affaireId,
-                                                      @PathVariable Long documentId) {
-        try {
-            DocumentAffaire doc = affaireService.getDocumentById(documentId);
-            Path filePath = fileStorageService.getCheminFichier(
-                "affaires", doc.getNomFichierServeur());
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (!resource.exists() || !resource.isReadable()) {
-                return ResponseEntity.notFound().build();
-            }
-            String contentType = doc.getTypeMime() != null
-                ? doc.getTypeMime() : "application/octet-stream";
-
-            return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename=\"" + doc.getNomFichierOriginal() + "\"")
-                .body(resource);
+            ra.addFlashAttribute("successMsg", "Facture envoyée.");
 
         } catch (Exception e) {
-            log.error("Erreur téléchargement document {}", documentId, e);
-            return ResponseEntity.internalServerError().build();
+            log.error("Erreur facture", e);
+            ra.addFlashAttribute("errorMsg", e.getMessage());
         }
-    }
 
-    // ─────────────────────────────────────────────
-    //  SUPPRESSION DOCUMENT
-    // ─────────────────────────────────────────────
-
-    @PostMapping("/avocat/affaires/{affaireId}/documents/{documentId}/supprimer")
-    public String supprimerDocument(@PathVariable Long affaireId,
-                                     @PathVariable Long documentId,
-                                     Principal principal,
-                                     RedirectAttributes ra) {
-        try {
-            affaireService.supprimerDocument(documentId, principal.getName());
-            ra.addFlashAttribute("successMsg", "Document supprimé");
-        } catch (Exception e) {
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
-        }
         return "redirect:/avocat/affaires/" + affaireId;
     }
 
-    // ═════════════════════════════════════════════
-    //  RÉSULTAT DE MISSION  ← SECTION AJOUTÉE
-    // ═════════════════════════════════════════════
+    // ============================
+    // 📊 DASHBOARD
+    // ============================
+    @GetMapping("/dashboard")
+    @PreAuthorize("hasRole('AVOCAT')")
+    public String dashboard(Model model, Authentication auth) {
+    
+        List<Mission> missions = prestationService.getMissionsPrestataire(auth.getName());
+        log.info(">>> USERNAME: {} | MISSIONS COUNT: {}", auth.getName(), missions.size());    
+        long enCours = missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.EN_COURS
+                          || m.getStatut() == StatutMission.ASSIGNEE)
+                .count();
+    
+        long pvSoumis = missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.PV_SOUMIS)
+                .count();
+    
+        long factureSoumise = missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.FACTURE_SOUMISE)
+                .count();
+    
+        long terminees = missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.TERMINEE
+                          || m.getStatut() == StatutMission.REALISEE)
+                .count();
+    
+        model.addAttribute("missions",          missions);
+        model.addAttribute("totalMissions",     missions.size());
+        model.addAttribute("missionsEnCours",   enCours);
+        model.addAttribute("pvSoumis",          pvSoumis);
+        model.addAttribute("factureSoumise",    factureSoumise);
+        model.addAttribute("missionsTerminees", terminees);
+        model.addAttribute("dernieresMissions", missions); // ← ICI
 
-    /**
-     * Page dédiée à la soumission du résultat de mission.
-     * URL : GET /affaires/{affaireId}/missions/{missionId}/resultat
-     */
-    @GetMapping("/avocat/affaires/{affaireId}/missions/{missionId}/resultat")
-    public String pageResultatMission(@PathVariable Long affaireId,
-                                       @PathVariable Long missionId,
-                                       Model model) {
-        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-        ResultatMission existant  = resultatMissionService.getResultat(missionId);
-
-        model.addAttribute("affaire",          affaire);
-        model.addAttribute("missionId",        missionId);
-        model.addAttribute("resultatExistant", existant); // null = première soumission
-        return "avocat/affaires/resultat-mission";
-    }
-
-    /**
-     * Traite la soumission du résultat (fichier + commentaire).
-     * ➡ statut mission → REALISEE
-     * ➡ notification agent "Mission avocat terminée"
-     * URL : POST /affaires/{affaireId}/missions/{missionId}/resultat
-     */
-    @PostMapping("/avocat/affaires/{affaireId}/missions/{missionId}/resultat")
-    public String soumettreResultat(@PathVariable Long affaireId,
-                                     @PathVariable Long missionId,
-                                     @RequestParam String commentaire,
-                                     @RequestParam(value = "fichier", required = false)
-                                         MultipartFile fichier,
-                                     Principal principal,
-                                     RedirectAttributes ra) {
-        try {
-            resultatMissionService.soumettre(
-                missionId, commentaire, fichier, principal.getName());
-
-            ra.addFlashAttribute("successMsg",
-                "Résultat soumis avec succès. L'agent a été notifié.");
-
-        } catch (IOException e) {
-            log.error("Erreur upload résultat mission", e);
-            ra.addFlashAttribute("errorMsg", "Erreur upload : " + e.getMessage());
-        } catch (Exception e) {
-            log.error("Erreur soumission résultat mission", e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
-        }
-        return "redirect:/affaires/" + affaireId;
-    }
-
-    /**
-     * Télécharge le fichier attaché au résultat de mission.
-     * URL : GET /affaires/{affaireId}/missions/{missionId}/resultat/download
-     */
-    @GetMapping("/avocat/affaires/{affaireId}/missions/{missionId}/resultat/download")
-    public ResponseEntity<Resource> downloadResultat(@PathVariable Long affaireId,
-                                                      @PathVariable Long missionId) {
-        try {
-            ResultatMission resultat = resultatMissionService.getResultat(missionId);
-            if (resultat == null || resultat.getNomFichierServeur() == null) {
-                return ResponseEntity.notFound().build();
-            }
-
-            Path filePath = fileStorageService.getCheminFichier(
-                "missions", resultat.getNomFichierServeur());
-            Resource resource = new UrlResource(filePath.toUri());
-
-            if (!resource.exists() || !resource.isReadable()) {
-                return ResponseEntity.notFound().build();
-            }
-
-            String contentType = resultat.getTypeMime() != null
-                ? resultat.getTypeMime() : "application/octet-stream";
-
-            return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(contentType))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                    "attachment; filename=\"" + resultat.getNomFichierOriginal() + "\"")
-                .body(resource);
-
-        } catch (Exception e) {
-            log.error("Erreur téléchargement résultat mission {}", missionId, e);
-            return ResponseEntity.internalServerError().build();
-        }
+    
+        return "avocat/dashboard";
     }
 }

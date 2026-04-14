@@ -10,59 +10,45 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
     <style>
         body { background: #f0f2f8; font-family: 'Segoe UI', sans-serif; }
-
         .navbar { background: #1a1f2e !important; }
-
         .dossier-banner {
             background: linear-gradient(135deg, #1a3a5c 0%, #1565c0 100%);
-            border-radius: 14px; color: #fff;
-            padding: 1.2rem 1.5rem;
+            border-radius: 14px; color: #fff; padding: 1.2rem 1.5rem;
         }
         .dossier-banner .lbl { font-size:.68rem; opacity:.7; text-transform:uppercase; letter-spacing:.07em; }
         .dossier-banner .val { font-size:.95rem; font-weight:600; margin-top:2px; }
-
         .card { border: 0.5px solid #e0e4ef; border-radius: 14px; box-shadow: none; background: #fff; }
         .section-label { font-size:.7rem; font-weight:600; text-transform:uppercase;
                          letter-spacing:.07em; color:#8a94a6; margin-bottom:.75rem; }
-
         .badge-ASSIGNEE        { background:#e9ecef; color:#444; }
         .badge-EN_COURS        { background:#e3f0ff; color:#0a58ca; }
         .badge-PV_SOUMIS       { background:#cff4fc; color:#055160; }
         .badge-FACTURE_SOUMISE { background:#fff3cd; color:#664d03; }
         .badge-TERMINEE        { background:#d1e7dd; color:#0a3622; }
-
         .table th { font-size:.72rem; text-transform:uppercase; letter-spacing:.05em;
                     color:#8a94a6; font-weight:600; border-bottom:1.5px solid #e0e4ef; }
         .table td { font-size:.88rem; vertical-align:middle; border-bottom:.5px solid #f0f2f8; }
         .table tbody tr:hover td { background: #f8f9ff; }
         .table tbody tr:last-child td { border-bottom: none; }
-
         .create-panel {
-            background: #f8faff;
-            border: 1.5px dashed #b0c8f8;
-            border-radius: 14px;
-            padding: 1.25rem 1.5rem;
-            transition: border-color .2s;
+            background: #f8faff; border: 1.5px dashed #b0c8f8;
+            border-radius: 14px; padding: 1.25rem 1.5rem; transition: border-color .2s;
         }
         .create-panel:focus-within { border-color: #0d6efd; border-style: solid; background:#fff; }
-
         .overdue { background: #fff5f5 !important; }
         .overdue td { color: #c0392b; }
-
         .statut-pill {
             display:inline-block; padding:.3em .75em; border-radius:20px;
             font-size:.72rem; font-weight:600; letter-spacing:.02em;
         }
-
         .empty-state { padding: 2.5rem 1rem; text-align:center; color:#aab4c8; }
         .empty-state i { font-size:2.5rem; margin-bottom:.5rem; display:block; }
-
         .action-btn { border-radius:8px; font-size:.8rem; padding:.3rem .7rem; }
     </style>
 </head>
 <body>
 
-<!-- ══ NAVBAR ══ -->
+<!-- NAVBAR -->
 <nav class="navbar navbar-dark px-4 py-2">
     <a class="navbar-brand fw-bold" href="/agent/dashboard">
         <i class="bi bi-briefcase me-2"></i>Contentieux — Agent
@@ -81,7 +67,7 @@
 
 <div class="container-fluid py-4 px-4">
 
-    <!-- ── ALERTES ── -->
+    <!-- ALERTES -->
     <div th:if="${success}"
          class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2 mb-3">
         <i class="bi bi-check-circle-fill"></i>
@@ -95,7 +81,7 @@
         <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- ── BANDEAU DOSSIER ── -->
+    <!-- BANDEAU DOSSIER -->
     <div class="dossier-banner mb-4">
         <div class="row g-3 align-items-center">
             <div class="col-sm-3">
@@ -104,7 +90,6 @@
             </div>
             <div class="col-sm-3">
                 <div class="lbl">Client</div>
-                <!-- ✅ String simple passé depuis le controller — pas de lazy loading -->
                 <div class="val" th:text="${clientNom}">Client</div>
             </div>
             <div class="col-sm-3">
@@ -122,9 +107,7 @@
 
     <div class="row g-4">
 
-        <!-- ════════════════════════
-             COLONNE GAUCHE — LISTE
-        ════════════════════════ -->
+        <!-- COLONNE GAUCHE -->
         <div class="col-lg-8">
             <div class="card p-0">
                 <div class="d-flex justify-content-between align-items-center p-3 pb-2">
@@ -138,7 +121,7 @@
                     </button>
                 </div>
 
-                <!-- ── Panneau création ── -->
+                <!-- Panneau création -->
                 <div class="collapse px-3 pb-3" id="panneauCreation">
                     <div class="create-panel">
                         <div class="section-label">
@@ -148,8 +131,6 @@
                         <form th:action="@{/agent/dossiers/{id}/missions/creer(id=${dossier.id})}"
                               method="post">
                             <div class="row g-2">
-
-                                <!-- Prestation -->
                                 <div class="col-md-6">
                                     <label class="form-label small fw-semibold">
                                         Prestation liée <span class="text-danger">*</span>
@@ -162,44 +143,32 @@
                                         </option>
                                     </select>
                                 </div>
-
-                                <!-- Prestataire -->
                                 <div class="col-md-6">
                                     <label class="form-label small fw-semibold">
                                         Prestataire assigné <span class="text-danger">*</span>
                                     </label>
                                     <select name="prestataireId" class="form-select form-select-sm" required>
                                         <option value="">— Choisir —</option>
-                                        <!-- ✅ u.type au lieu de u.role -->
                                         <option th:each="u : ${prestataires}"
                                                 th:value="${u.id}"
-                                                th:text="${u.nom + ' ' + u.prenom + ' (' + u.type + ')'}">
+                                                th:text="${u.nom + ' ' + (u.prenom ?: '') + ' (' + u.type + ')'}">
                                         </option>
                                     </select>
                                 </div>
-
-                                <!-- Description -->
                                 <div class="col-12">
                                     <label class="form-label small fw-semibold">
                                         Description <span class="text-danger">*</span>
                                     </label>
                                     <textarea name="description"
                                               class="form-control form-control-sm"
-                                              rows="2"
-                                              required
+                                              rows="2" required
                                               placeholder="Décrivez la mission à réaliser..."></textarea>
                                 </div>
-
-                                <!-- Date fin prévue -->
                                 <div class="col-md-6">
-                                    <label class="form-label small fw-semibold">
-                                        Échéance prévue
-                                    </label>
+                                    <label class="form-label small fw-semibold">Échéance prévue</label>
                                     <input type="date" name="dateFinPrevue"
                                            class="form-control form-control-sm"/>
                                 </div>
-
-                                <!-- Boutons -->
                                 <div class="col-md-6 d-flex align-items-end gap-2">
                                     <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
                                         <i class="bi bi-check2 me-1"></i>Créer la mission
@@ -210,13 +179,12 @@
                                         Annuler
                                     </button>
                                 </div>
-
                             </div>
                         </form>
                     </div>
                 </div>
 
-                <!-- ── Table missions ── -->
+                <!-- Table missions -->
                 <div th:if="${missions.empty}" class="empty-state">
                     <i class="bi bi-inbox"></i>
                     Aucune mission pour ce dossier
@@ -236,10 +204,12 @@
                             </tr>
                         </thead>
                         <tbody>
+                            <!-- ✅ FIX: utiliser m.statut.name() pour toutes les comparaisons -->
                             <tr th:each="m : ${missions}"
-                            th:classappend="${m.dateFinPrevue != null
-                                             and m.dateFinPrevue.isBefore(T(java.time.LocalDate).now())
-                                             and m.statut.name() != 'TERMINEE'} ? 'overdue' : ''">
+                                th:classappend="${m.dateFinPrevue != null
+                                    and m.dateFinPrevue.isBefore(T(java.time.LocalDate).now())
+                                    and m.statut.name() != 'TERMINEE'} ? 'overdue' : ''">
+
                                 <!-- N° mission -->
                                 <td>
                                     <a th:href="@{/prestataire/missions/{id}(id=${m.id})}"
@@ -250,57 +220,54 @@
                                 <!-- Prestataire -->
                                 <td>
                                     <div class="small fw-semibold"
-                                         th:text="${m.prestataire?.nom + ' ' + (m.prestataire?.prenom ?: '')}">—</div>
-                                    <!-- ✅ type au lieu de role -->
+                                         th:text="${(m.prestataire?.nom ?: '') + ' ' + (m.prestataire?.prenom ?: '')}">—</div>
                                     <div class="text-muted" style="font-size:.72rem"
-                                         th:text="${m.prestataire?.type ?: ''}"></div>
+                                         th:text="${m.prestataire?.type?.name() ?: ''}"></div>
                                 </td>
 
-                                <!-- Description tronquée -->
+                                <!-- Description -->
                                 <td>
                                     <span class="small"
-                                          th:text="${#strings.length(m.description) > 50 ?
+                                          th:text="${m.description != null and #strings.length(m.description) > 50 ?
                                                     #strings.substring(m.description,0,50) + '…' :
-                                                    m.description}"
+                                                    (m.description ?: '—')}"
                                           th:title="${m.description}">—</span>
                                 </td>
 
                                 <!-- Échéance -->
                                 <td>
-                                    <span th:if="${m.dateFinPrevue}"
+                                    <span th:if="${m.dateFinPrevue != null}"
                                           class="small"
                                           th:text="${#temporals.format(m.dateFinPrevue,'dd/MM/yyyy')}"></span>
-                                    <span th:unless="${m.dateFinPrevue}" class="text-muted small">—</span>
-                                    <!-- Remplacer aussi cette ligne dans la table -->
-<i th:if="${m.dateFinPrevue != null
-    and m.dateFinPrevue.isBefore(T(java.time.LocalDate).now())
-    and m.statut.name() != 'TERMINEE'}"
-class="bi bi-exclamation-circle-fill text-danger ms-1"
-title="Échéance dépassée"></i>
+                                    <span th:if="${m.dateFinPrevue == null}"
+                                          class="text-muted small">—</span>
+                                    <i th:if="${m.dateFinPrevue != null
+                                               and m.dateFinPrevue.isBefore(T(java.time.LocalDate).now())
+                                               and m.statut.name() != 'TERMINEE'}"
+                                       class="bi bi-exclamation-circle-fill text-danger ms-1"
+                                       title="Échéance dépassée"></i>
                                 </td>
 
-                                <!-- Statut -->
+                                <!-- ✅ FIX statut: utiliser m.statut.name() pour la classe CSS -->
                                 <td>
                                     <span class="statut-pill"
-                                          th:classappend="'badge-' + ${m.statut}"
-                                          th:text="${m.statut}">ASSIGNÉE</span>
+                                          th:classappend="'badge-' + ${m.statut.name()}"
+                                          th:text="${m.statut.name()}">ASSIGNEE</span>
                                 </td>
 
                                 <!-- Actions -->
                                 <td>
                                     <div class="d-flex gap-1 flex-wrap">
 
-                                        <!-- Voir détail -->
                                         <a th:href="@{/prestataire/missions/{id}(id=${m.id})}"
                                            class="btn btn-outline-primary action-btn"
                                            title="Voir le détail">
                                             <i class="bi bi-eye"></i>
                                         </a>
 
-                                        <!-- Valider (FACTURE_SOUMISE → TERMINEE) -->
+                                        <!-- ✅ FIX: utiliser m.statut.name() -->
                                         <form th:if="${m.statut.name() == 'FACTURE_SOUMISE'}"
-                                              th:action="@{/agent/dossiers/{dId}/missions/{mId}/statut
-                                                          (dId=${dossier.id},mId=${m.id})}"
+                                              th:action="@{/agent/dossiers/{dId}/missions/{mId}/statut(dId=${dossier.id},mId=${m.id})}"
                                               method="post"
                                               onsubmit="return confirm('Terminer cette mission ?')">
                                             <input type="hidden" name="statut" value="TERMINEE"/>
@@ -311,7 +278,6 @@ title="Échéance dépassée"></i>
                                             </button>
                                         </form>
 
-                                        <!-- Modifier (ASSIGNEE seulement) -->
                                         <a th:if="${m.statut.name() == 'ASSIGNEE'}"
                                            th:href="@{/prestataire/missions/{id}/modifier(id=${m.id})}"
                                            class="btn btn-outline-warning action-btn"
@@ -319,10 +285,8 @@ title="Échéance dépassée"></i>
                                             <i class="bi bi-pencil"></i>
                                         </a>
 
-                                        <!-- Supprimer (ASSIGNEE seulement) -->
                                         <form th:if="${m.statut.name() == 'ASSIGNEE'}"
-                                              th:action="@{/agent/dossiers/{dId}/missions/{mId}/supprimer
-                                                          (dId=${dossier.id},mId=${m.id})}"
+                                              th:action="@{/agent/dossiers/{dId}/missions/{mId}/supprimer(dId=${dossier.id},mId=${m.id})}"
                                               method="post"
                                               onsubmit="return confirm('Supprimer cette mission ?')">
                                             <button type="submit"
@@ -338,56 +302,46 @@ title="Échéance dépassée"></i>
                         </tbody>
                     </table>
                 </div>
-
-            </div><!-- /card liste -->
+            </div>
         </div>
 
-        <!-- ════════════════════════
-             COLONNE DROITE — STATS
-        ════════════════════════ -->
+        <!-- COLONNE DROITE -->
         <div class="col-lg-4">
 
-            <!-- Récap statuts -->
-<!-- Récap statuts -->
-<div class="card p-3 mb-4">
-    <div class="section-label">Récapitulatif</div>
+            <div class="card p-3 mb-4">
+                <div class="section-label">Récapitulatif</div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="statut-pill badge-ASSIGNEE">ASSIGNÉE</span>
+                    <span class="fw-bold small" th:text="${nbAssignee}">0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="statut-pill badge-EN_COURS">EN COURS</span>
+                    <span class="fw-bold small" th:text="${nbEnCours}">0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="statut-pill badge-PV_SOUMIS">PV SOUMIS</span>
+                    <span class="fw-bold small" th:text="${nbPvSoumis}">0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="statut-pill badge-FACTURE_SOUMISE">FACTURE</span>
+                    <span class="fw-bold small" th:text="${nbFactureSoumise}">0</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="statut-pill badge-TERMINEE">TERMINÉE</span>
+                    <span class="fw-bold small" th:text="${nbTerminee}">0</span>
+                </div>
+                <hr class="my-2"/>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="small text-danger fw-semibold">
+                        <i class="bi bi-exclamation-circle me-1"></i>En retard
+                    </span>
+                    <span class="fw-bold text-danger small" th:text="${nbRetard}">0</span>
+                </div>
+            </div>
 
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="statut-pill badge-ASSIGNEE">ASSIGNÉE</span>
-        <span class="fw-bold small" th:text="${nbAssignee}">0</span>
-    </div>
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="statut-pill badge-EN_COURS">EN COURS</span>
-        <span class="fw-bold small" th:text="${nbEnCours}">0</span>
-    </div>
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="statut-pill badge-PV_SOUMIS">PV SOUMIS</span>
-        <span class="fw-bold small" th:text="${nbPvSoumis}">0</span>
-    </div>
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="statut-pill badge-FACTURE_SOUMISE">FACTURE</span>
-        <span class="fw-bold small" th:text="${nbFactureSoumise}">0</span>
-    </div>
-    <div class="d-flex justify-content-between align-items-center mb-2">
-        <span class="statut-pill badge-TERMINEE">TERMINÉE</span>
-        <span class="fw-bold small" th:text="${nbTerminee}">0</span>
-    </div>
-
-    <hr class="my-2"/>
-
-    <div class="d-flex justify-content-between align-items-center">
-        <span class="small text-danger fw-semibold">
-            <i class="bi bi-exclamation-circle me-1"></i>En retard
-        </span>
-        <span class="fw-bold text-danger small" th:text="${nbRetard}">0</span>
-    </div>
-</div>
-
-            <!-- Guide des statuts -->
             <div class="card p-3">
                 <div class="section-label">Cycle de vie d'une mission</div>
                 <div class="d-flex flex-column gap-2 small">
-
                     <div class="d-flex align-items-start gap-2">
                         <span class="statut-pill badge-ASSIGNEE flex-shrink-0">ASSIGNÉE</span>
                         <span class="text-muted">Mission créée et assignée au prestataire</span>
@@ -396,7 +350,6 @@ title="Échéance dépassée"></i>
                         <i class="bi bi-arrow-down-short"></i>
                         <span style="font-size:.7rem">Dès le premier fichier / commentaire</span>
                     </div>
-
                     <div class="d-flex align-items-start gap-2">
                         <span class="statut-pill badge-EN_COURS flex-shrink-0">EN COURS</span>
                         <span class="text-muted">Le prestataire travaille sur la mission</span>
@@ -405,7 +358,6 @@ title="Échéance dépassée"></i>
                         <i class="bi bi-arrow-down-short"></i>
                         <span style="font-size:.7rem">À la soumission du PV</span>
                     </div>
-
                     <div class="d-flex align-items-start gap-2">
                         <span class="statut-pill badge-PV_SOUMIS flex-shrink-0">PV SOUMIS</span>
                         <span class="text-muted">PV transmis, en attente de la facture</span>
@@ -414,7 +366,6 @@ title="Échéance dépassée"></i>
                         <i class="bi bi-arrow-down-short"></i>
                         <span style="font-size:.7rem">À la soumission de la facture</span>
                     </div>
-
                     <div class="d-flex align-items-start gap-2">
                         <span class="statut-pill badge-FACTURE_SOUMISE flex-shrink-0" style="font-size:.68rem">FACTURE</span>
                         <span class="text-muted">Facture reçue, en attente de validation agent</span>
@@ -423,7 +374,6 @@ title="Échéance dépassée"></i>
                         <i class="bi bi-arrow-down-short"></i>
                         <span style="font-size:.7rem">Validation par l'agent (bouton ✓)</span>
                     </div>
-
                     <div class="d-flex align-items-start gap-2">
                         <span class="statut-pill badge-TERMINEE flex-shrink-0">TERMINÉE</span>
                         <span class="text-muted">Mission clôturée</span>
@@ -432,9 +382,8 @@ title="Échéance dépassée"></i>
             </div>
 
         </div>
-
-    </div><!-- /row -->
-</div><!-- /container -->
+    </div>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>

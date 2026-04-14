@@ -162,14 +162,14 @@ title="Lancer une affaire judiciaire">
  ⚖️ Lancer affaire
 </a>
                 
-                <!-- ✅ NOUVEAU : Voir affaire (si affaire existe) -->
+                <!-- ✅ NOUVEAU : Voir affaire (si affaire existe) 
                 <a class="btn btn-affaire-voir"
                    th:href="@{/agent/dossiers/{id}/affaire(id=${dossier.id})}"
                    th:if="${dossier.statut != null and (dossier.statut.name() == 'EN_PROCEDURE' or dossier.statut.name() == 'EN_EXECUTION')}"
                    title="Voir l'affaire judiciaire">
                     📁 Voir affaire
                 </a>
-                
+            -->
                 <!-- Supprimer (si statut OUVERT) -->
                 <form th:action="@{/agent/dossiers/{id}/supprimer(id=${dossier.id})}"
                       method="post"

@@ -1,16 +1,34 @@
-
-
 package com.example.contentieux_security.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import java.time.LocalDate;
-import java.time.LocalDateTime;
 
+import java.time.LocalDate;
+
+/**
+ * Entité Audience.
+ *
+ * ✅ @Getter + @Setter → corrige toutes les erreurs
+ *    "cannot find symbol: method setDateAudience / setHeure / setSalle /
+ *     setMotif / setAffaire / setResultat / setStatut / setProchaineAudience /
+ *     getAffaire() ..."
+ *    dans AffaireJudiciaireService.
+ */
 @Entity
-@Table(name = "audiences")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "audience")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Audience {
+
+    public enum StatutAudience {
+        PLANIFIEE,
+        TENUE,
+        RENVOYEE,
+        ANNULEE
+    }
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -19,29 +37,32 @@ public class Audience {
     @Column(nullable = false)
     private LocalDate dateAudience;
 
-    private String heure;          // ex: "09:30"
+    @Column(length = 10)
+    private String heure;
+
+    @Column(length = 50)
     private String salle;
 
+    @Column(columnDefinition = "TEXT")
+    private String motif;
+
+    @Column(columnDefinition = "TEXT")
+    private String resultat;
+
+    private LocalDate prochaineAudience;
+
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
     private StatutAudience statut = StatutAudience.PLANIFIEE;
 
-    @Column(columnDefinition = "TEXT")
-    private String motif;          // objet de l'audience
+    // ── Relation ───────────────────────────────────────────
 
-    @Column(columnDefinition = "TEXT")
-    private String resultat;       // ce qui s'est passé pendant l'audience
-
-    private LocalDate prochaineAudience; // si renvoyée
-
-    @Column(nullable = false)
-    private LocalDateTime dateCreation = LocalDateTime.now();
-
+    /**
+     * Affaire judiciaire parente.
+     * ✅ getAffaire() requis par AffaireJudiciaireService (ligne 110).
+     */
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "affaire_id", nullable = false)
     private AffaireJudiciaire affaire;
-
-    public enum StatutAudience {
-        PLANIFIEE, TENUE, RENVOYEE, ANNULEE
-    }
 }

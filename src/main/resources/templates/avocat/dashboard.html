@@ -1,17 +1,15 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head th:replace="~{fragments/layout :: head('Dashboard')}"></head>
-
 <body>
 
 <aside th:replace="~{fragments/layout :: sidebar('AVOCAT', ${#authentication.name})}"></aside>
-
 <header th:replace="~{fragments/layout :: topbar('Dashboard', ${#authentication.name}, 'AVOCAT')}"></header>
 
-<main style="margin-left: 250px; margin-top: 60px; min-height: calc(100vh - 60px); display: flex; align-items: center; justify-content: center;">
-    <!-- contenu dashboard avocat -->
-
+<main style="margin-left:250px; margin-top:60px; min-height:calc(100vh - 60px); padding: 2rem;">
     <div class="container">
+
+        <!-- En-tête -->
         <div class="d-flex align-items-center mb-4">
             <div class="bg-primary text-white rounded-circle d-flex align-items-center
                         justify-content-center me-3" style="width:50px;height:50px;">
@@ -22,7 +20,7 @@
                 <small class="text-muted" sec:authentication="name">username</small>
             </div>
         </div>
-    
+
         <!-- Statistiques -->
         <div class="row g-3 mb-4">
             <div class="col-md-3">
@@ -62,83 +60,58 @@
                 </div>
             </div>
         </div>
-    
+
         <!-- Missions récentes -->
         <div class="card shadow-sm">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Missions récentes</h6>
-                <a th:href="@{/prestataire/missions}" class="btn btn-sm btn-outline-primary">
-                    Voir tout
-                </a>
+                <a th:href="@{/prestataire/missions}" class="btn btn-sm btn-outline-primary">Voir tout</a>
             </div>
             <div class="card-body p-0">
+
+                <!-- Aucune mission -->
                 <div th:if="${#lists.isEmpty(dernieresMissions)}"
                      class="text-center py-4 text-muted">
                     Aucune mission pour le moment.
                 </div>
-                <div class="list-group list-group-flush" th:unless="${#lists.isEmpty(dernieresMissions)}">
+
+                <!-- Liste missions -->
+                <div class="list-group list-group-flush"
+                     th:unless="${#lists.isEmpty(dernieresMissions)}">
                     <a th:each="m : ${dernieresMissions}"
                        th:href="@{/prestataire/missions/{id}(id=${m.id})}"
                        class="list-group-item list-group-item-action">
-                        <div class="d-flex justify-content-between">
+                        <div class="d-flex justify-content-between align-items-start">
                             <div>
                                 <strong th:text="${m.numeroMission}"></strong>
                                 <span class="text-muted ms-2 small"
-                                      th:text="${m.prestation.dossier.numeroDossier}"></span>
-                                <p class="mb-0 small text-muted"
-                                   th:text="${m.description}"></p>
+                                      th:text="${m.prestation?.dossier?.numeroDossier ?: '—'}"></span>
+                                <div class="small text-muted mt-1">
+                                    <i class="bi bi-person me-1"></i>
+                                    <span th:text="${(m.prestation?.dossier?.client?.nom ?: '') + ' ' +
+                                                    (m.prestation?.dossier?.client?.prenom ?: '')}"></span>
+                                </div>
+                                <p class="mb-0 small text-muted" th:text="${m.description}"></p>
+                                <small th:if="${m.dateFinPrevue}"
+                                       th:text="'Échéance : ' + ${#temporals.format(m.dateFinPrevue,'dd/MM/yyyy')}"
+                                       th:class="${m.dateFinPrevue.isBefore(T(java.time.LocalDate).now())} ? 'text-danger' : 'text-muted'">
+                                </small>
                             </div>
-                            <span th:if="${m.statut.name() == 'ASSIGNEE'}" class="badge bg-secondary align-self-center">ASSIGNÉE</span>
-                            <span th:if="${m.statut.name() == 'EN_COURS'}" class="badge bg-primary align-self-center">EN COURS</span>
-                            <span th:if="${m.statut.name() == 'PV_SOUMIS'}" class="badge bg-info text-dark align-self-center">PV SOUMIS</span>
-                            <span th:if="${m.statut.name() == 'FACTURE_SOUMISE'}" class="badge bg-warning text-dark align-self-center">FACTURE</span>
-                            <span th:if="${m.statut.name() == 'TERMINEE'}" class="badge bg-success align-self-center">TERMINÉE</span>
+                            <div class="ms-2">
+                                <span th:if="${m.statut.name() == 'ASSIGNEE'}"   class="badge bg-secondary">ASSIGNÉE</span>
+                                <span th:if="${m.statut.name() == 'EN_COURS'}"   class="badge bg-primary">EN COURS</span>
+                                <span th:if="${m.statut.name() == 'PV_SOUMIS'}"  class="badge bg-info text-dark">PV SOUMIS</span>
+                                <span th:if="${m.statut.name() == 'FACTURE_SOUMISE'}" class="badge bg-warning text-dark">FACTURE</span>
+                                <span th:if="${m.statut.name() == 'TERMINEE'}"   class="badge bg-success">TERMINÉE</span>
+                            </div>
                         </div>
                     </a>
                 </div>
+
             </div>
         </div>
-
-
-        <!-- Remplacer le list-group-item dans avocat/dashboard.html -->
-<a th:each="m : ${dernieresMissions}"
-th:href="@{/prestataire/missions/{id}(id=${m.id})}"
-class="list-group-item list-group-item-action">
- <div class="d-flex justify-content-between align-items-start">
-     <div>
-         <strong th:text="${m.numeroMission}"></strong>
-         <span class="text-muted ms-2 small"
-               th:text="${m.prestation?.dossier?.numeroDossier ?: '—'}"></span>
-         <div class="small text-muted mt-1">
-             <i class="bi bi-person me-1"></i>
-             <span th:text="${(m.prestation?.dossier?.client?.nom ?: '') + ' ' +
-                              (m.prestation?.dossier?.client?.prenom ?: '')}"></span>
-         </div>
-         <p class="mb-0 small text-muted"
-            th:text="${m.description}"></p>
-         <small th:if="${m.dateFinPrevue}"
-                th:text="'Échéance : ' + ${#temporals.format(m.dateFinPrevue,'dd/MM/yyyy')}"
-                th:class="${m.dateFinPrevue.isBefore(T(java.time.LocalDate).now())} ?
-                           'text-danger' : 'text-muted'">
-         </small>
-     </div>
-     <div class="ms-2">
-         <span th:if="${m.statut.name() == 'ASSIGNEE'}"
-               class="badge bg-secondary">ASSIGNÉE</span>
-         <span th:if="${m.statut.name() == 'EN_COURS'}"
-               class="badge bg-primary">EN COURS</span>
-         <span th:if="${m.statut.name() == 'PV_SOUMIS'}"
-               class="badge bg-info text-dark">PV SOUMIS</span>
-         <span th:if="${m.statut.name() == 'FACTURE_SOUMISE'}"
-               class="badge bg-warning text-dark">FACTURE</span>
-         <span th:if="${m.statut.name() == 'TERMINEE'}"
-               class="badge bg-success">TERMINÉE</span>
-     </div>
- </div>
-</a>
     </div>
 </main>
 
-<a th:href="@{/logout}">Déconnexion</a>
 </body>
 </html>

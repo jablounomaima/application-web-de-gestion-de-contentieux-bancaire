@@ -8,7 +8,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;  // ← AJOUTER CET IMPORT
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -16,6 +19,15 @@ import java.util.List;
 public class MissionService {
 
     private final MissionRepository missionRepo;
+
+    /**
+     * Récupère une mission par son ID (retourne Optional)
+     * ← AJOUTER CETTE MÉTHODE
+     */
+    @Transactional(readOnly = true)
+    public Optional<Mission> findById(Long id) {
+        return missionRepo.findById(id);
+    }
 
     /**
      * Récupère la mission avocat active d'un dossier
@@ -39,7 +51,7 @@ public class MissionService {
     // ── Modification ──────────────────────────────────────────────────────
     @Transactional
     public Mission modifierMission(Long missionId, String description,
-                                    java.time.LocalDate dateFinPrevue,
+                                    LocalDate dateFinPrevue,  // ← Utiliser l'import directement
                                     String agentUsername) {
 
         Mission mission = missionRepo.findById(missionId)
@@ -79,12 +91,16 @@ public class MissionService {
         missionRepo.delete(mission);
     }
 
-
     @Transactional
-public void changerStatut(Long missionId, StatutMission nouveauStatut) {
-    Mission mission = missionRepo.findById(missionId)
-        .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-    mission.setStatut(nouveauStatut);
-    missionRepo.save(mission);
-}
+    public void changerStatut(Long missionId, StatutMission nouveauStatut) {
+        Mission mission = missionRepo.findById(missionId)
+            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+        mission.setStatut(nouveauStatut);
+        missionRepo.save(mission);
+    }
+
+    public List<Mission> getMissionsByPrestataireUsername(String username) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'getMissionsByPrestataireUsername'");
+    }
 }

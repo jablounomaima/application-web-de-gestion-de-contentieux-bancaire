@@ -12,6 +12,7 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -29,12 +30,13 @@ public class DossierMissionController {
     private final NotificationAdvice notificationService; // ← ajouter
 
     @GetMapping
+    @Transactional(readOnly = true)  // ← AJOUTER CETTE LIGNE
+
     public String listeMissions(@PathVariable Long dossierId,
                                 Model model,
                                 Authentication auth,
                                 RedirectAttributes ra) {
     
-        // ✅ Utiliser findByIdWithDetails qui fait FETCH JOIN sur client
         DossierContentieux dossier = dossierRepository.findByIdWithDetails(dossierId).orElse(null);
         if (dossier == null) {
             ra.addFlashAttribute("error", "Dossier introuvable");
@@ -46,51 +48,62 @@ public class DossierMissionController {
             return "redirect:/agent/dossiers";
         }
     
+        // ✅ Utiliser getMissionByIdWithDetails via le service qui fait FETCH JOIN
         List<Mission> missions = missionRepository
-            .findByPrestation_Dossier_IdOrderByDateAssignationDesc(dossierId);
-
-            // ✅ Statistiques des missions
-model.addAttribute("nbAssignee", missions.stream()
-.filter(m -> m.getStatut() == StatutMission.ASSIGNEE)
-.count());
-
-model.addAttribute("nbEnCours", missions.stream()
-.filter(m -> m.getStatut() == StatutMission.EN_COURS)
-.count());
-
-model.addAttribute("nbPvSoumis", missions.stream()
-.filter(m -> m.getStatut() == StatutMission.PV_SOUMIS)
-.count());
-
-model.addAttribute("nbFactureSoumise", missions.stream()
-.filter(m -> m.getStatut() == StatutMission.FACTURE_SOUMISE)
-.count());
-
-model.addAttribute("nbTerminee", missions.stream()
-.filter(m -> m.getStatut() == StatutMission.TERMINEE)
-.count());
-
-model.addAttribute("nbRetard", missions.stream()
-.filter(m -> m.getDateFinPrevue() != null
-          && m.getDateFinPrevue().isBefore(LocalDate.now())
-          && m.getStatut() != StatutMission.TERMINEE)
-.count());
+        .findByDossierIdWithPrestataire(dossierId);
+        // ✅ Forcer le chargement des relations lazy dans la session JPA ouverte
+        missions.forEach(m -> {
+            try {
+                if (m.getPrestataire() != null) {
+                    m.getPrestataire().getNom(); // force init
+                    m.getPrestataire().getPrenom();
+                    m.getPrestataire().getUsername();
+                    m.getPrestataire().getType();
+                }
+                if (m.getPrestation() != null) {
+                    m.getPrestation().getNumeroPrestation();
+                    m.getPrestation().getType();
+                    if (m.getPrestation().getDossier() != null) {
+                        m.getPrestation().getDossier().getNumeroDossier();
+                    }
+                }
+            } catch (Exception ignored) {}
+        });
     
-        List<?> prestataires = prestataireRepository.findAll();
+        // Statistiques
+        model.addAttribute("nbAssignee", missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.ASSIGNEE).count());
+        model.addAttribute("nbEnCours", missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.EN_COURS).count());
+        model.addAttribute("nbPvSoumis", missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.PV_SOUMIS).count());
+        model.addAttribute("nbFactureSoumise", missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.FACTURE_SOUMISE).count());
+        model.addAttribute("nbTerminee", missions.stream()
+                .filter(m -> m.getStatut() == StatutMission.TERMINEE).count());
+        model.addAttribute("nbRetard", missions.stream()
+                .filter(m -> m.getDateFinPrevue() != null
+                          && m.getDateFinPrevue().isBefore(LocalDate.now())
+                          && m.getStatut() != StatutMission.TERMINEE).count());
+    
+        List<Prestataire> prestataires = prestataireRepository.findAll();
         List<Prestation> prestations = prestationRepository.findByDossier_Id(dossierId);
     
-        // ✅ Passer le nom client comme String pour éviter tout lazy loading dans la vue
         String clientNom = dossier.getClient() != null
-            ? dossier.getClient().getNom() + " " + (dossier.getClient().getPrenom() != null ? dossier.getClient().getPrenom() : "")
-            : "—";
+                ? dossier.getClient().getNom() + " "
+                  + (dossier.getClient().getPrenom() != null
+                     ? dossier.getClient().getPrenom() : "")
+                : "—";
     
-        model.addAttribute("dossier", dossier);
-        model.addAttribute("clientNom", clientNom);  // ✅ String simple
-        model.addAttribute("missions", missions);
+        model.addAttribute("dossier",      dossier);
+        model.addAttribute("clientNom",    clientNom);
+        model.addAttribute("missions",     missions);
         model.addAttribute("prestataires", prestataires);
-        model.addAttribute("prestations", prestations);
+        model.addAttribute("prestations",  prestations);
+    
         return "agent/dossiers/missions";
     }
+    
     @PostMapping("/creer")
 public String creerMission(@PathVariable Long dossierId,
                             @RequestParam Long prestationId,
@@ -121,8 +134,7 @@ public String creerMission(@PathVariable Long dossierId,
         mission.setPrestataire(prestataire);
         mission.setDescription(description);
         mission.setDateFinPrevue(dateFinPrevue);
-        mission.setDateAssignation(java.time.LocalDateTime.now());
-        mission.setStatut(StatutMission.ASSIGNEE);
+        mission.setDateAssignation(prestation.getDateCreation().toLocalDate());        mission.setStatut(StatutMission.ASSIGNEE);
 
         // Numéro mission basé sur l'année
         String prefix = "MISS-" + LocalDate.now().getYear();

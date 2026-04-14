@@ -1,19 +1,36 @@
 package com.example.contentieux_security.repository;
 
+import com.example.contentieux_security.entity.Mission;
 import com.example.contentieux_security.entity.ResultatMission;
 import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository; // ✅ import manquant
-import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
 
-import java.util.List;      // ✅ import manquant
+import java.util.List;
 import java.util.Optional;
 
+/**
+ * Repository ResultatMission.
+ *
+ * ✅ FIX erreur 3 : findByMissionOrderByDateSoumissionDesc(Mission)
+ * ✅ FIX erreur 4 : findTopByMissionIdOrderByDateSoumissionDesc(Long)
+ */
 @Repository
 public interface ResultatMissionRepository extends JpaRepository<ResultatMission, Long> {
- 
-    @Query("SELECT r FROM ResultatMission r WHERE r.mission.id = :missionId")
-    Optional<ResultatMission> findByMissionId(@Param("missionId") Long missionId);
 
-    List<ResultatMission> findByMissionIdOrderByDateSoumissionDesc(Long missionId);
+    /**
+     * Tous les résultats d'une mission, du plus récent au plus ancien.
+     * Requis par ResultatMissionService ligne 141.
+     */
+    List<ResultatMission> findByMission_IdOrderByDateSoumissionDesc(Long missionId);
+
+    /**
+     * Le résultat le plus récent pour un missionId donné.
+     * Requis par ResultatMissionService ligne 146.
+     */
+    Optional<ResultatMission> findTopByMissionIdOrderByDateSoumissionDesc(Long missionId);
+
+    /**
+     * Recherche par missionId simple (utilisé dans getResultat()).
+     */
+    Optional<ResultatMission> findByMission_Id(Long missionId);
 }

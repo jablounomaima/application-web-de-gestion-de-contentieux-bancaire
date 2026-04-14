@@ -294,41 +294,50 @@
         </div>
 
         <!-- ════ AVOCAT ════ -->
-        <div th:if="${role == 'AVOCAT'}" class="nav-section">
-            <div class="nav-section-label">Mon espace</div>
-        
-            <a th:href="@{/avocat/dashboard}" class="nav-item active">
-                <span class="nav-ico">📊</span>
-                <span class="nav-label">Dashboard</span>
-            </a>
-        
-            <!-- ✅ corrigé -->
-            <a th:href="@{/avocat/affaires}" class="nav-item">
-                <span class="nav-ico">⚖</span>
-                <span class="nav-label">Affaires</span>
-            </a>
-        
-            <!-- حسب controller -->
-            <a th:href="@{/audiences}" class="nav-item">
-                <span class="nav-ico">🏛</span>
-                <span class="nav-label">Audiences</span>
-            </a>
-        </div>
-        
-        <div th:if="${role == 'AVOCAT'}" class="nav-section">
-            <div class="nav-section-label">Documents</div>
-        
-            <!-- حسب mapping -->
-            <a th:href="@{/conclusions}" class="nav-item">
-                <span class="nav-ico">📝</span>
-                <span class="nav-label">Conclusions</span>
-            </a>
-        
-            <a th:href="@{/jugements}" class="nav-item">
-                <span class="nav-ico">📜</span>
-                <span class="nav-label">Jugements</span>
-            </a>
-        </div>
+        <!-- ════ AVOCAT ════ -->
+<div th:if="${role == 'AVOCAT'}" class="nav-section">
+    <div class="nav-section-label">Mon espace</div>
+
+    <a th:href="@{/avocat/dashboard}" class="nav-item"
+       th:classappend="${currentPage == 'dashboard'} ? 'active' : ''">
+        <span class="nav-ico">📊</span>
+        <span class="nav-label">Dashboard</span>
+    </a>
+
+    <a th:href="@{/avocat/affaires}" class="nav-item"
+       th:classappend="${currentPage == 'affaires'} ? 'active' : ''">
+        <span class="nav-ico">⚖️</span>
+        <span class="nav-label">Mes affaires</span>
+    </a>
+</div>
+
+<div th:if="${role == 'AVOCAT'}" class="nav-section">
+    <div class="nav-section-label">Dans chaque affaire</div>
+
+    <span class="nav-item nav-item-info">
+        <span class="nav-ico">🏛️</span>
+        <span class="nav-label">Audiences</span>
+        <span class="nav-badge">onglet affaire</span>
+    </span>
+
+    <span class="nav-item nav-item-info">
+        <span class="nav-ico">📜</span>
+        <span class="nav-label">Jugements</span>
+        <span class="nav-badge">onglet affaire</span>
+    </span>
+
+    <span class="nav-item nav-item-info">
+        <span class="nav-ico">📄</span>
+        <span class="nav-label">Documents</span>
+        <span class="nav-badge">onglet affaire</span>
+    </span>
+
+    <span class="nav-item nav-item-info">
+        <span class="nav-ico">💰</span>
+        <span class="nav-label">Factures</span>
+        <span class="nav-badge">onglet affaire</span>
+    </span>
+</div>
 
         <!-- ════ HUISSIER ════ -->
         <div th:if="${role == 'HUISSIER'}" class="nav-section">

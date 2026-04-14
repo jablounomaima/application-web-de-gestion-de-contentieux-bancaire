@@ -1,48 +1,26 @@
 package com.example.contentieux_security.entity;
 
-
-
 import jakarta.persistence.*;
 import lombok.*;
+
 import java.time.LocalDateTime;
 
+/**
+ * Entité DocumentAffaire.
+ *
+ * ✅ @Getter + @Setter → corrige les erreurs
+ *    "cannot find symbol: method setNomFichierOriginal / setNomFichierServeur /
+ *     setCheminFichier / setTypeMime / setTailleFichier / setTypeDocument ..."
+ *    dans AffaireJudiciaireService.
+ */
 @Entity
-@Table(name = "documents_affaire")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "document_affaire")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class DocumentAffaire {
-
-    @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
-    @Column(nullable = false)
-    private String nomFichierOriginal;  // nom affiché à l'utilisateur
-
-    @Column(nullable = false)
-    private String nomFichierServeur;   // UUID_nomoriginal.pdf stocké sur disque
-
-    @Column(nullable = false)
-    private String cheminFichier;       // chemin complet sur disque
-
-    private String typeMime;            // application/pdf, image/jpeg...
-    private Long tailleFichier;         // en octets
-
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 40)
-    private TypeDocument typeDocument;
-
-    @Column(columnDefinition = "TEXT")
-    private String description;
-
-    @Column(nullable = false)
-    private String uploadeePar;         // username du prestataire
-
-    @Column(nullable = false)
-    private LocalDateTime dateUpload = LocalDateTime.now();
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "affaire_id", nullable = false)
-    private AffaireJudiciaire affaire;
 
     public enum TypeDocument {
         ASSIGNATION,
@@ -57,21 +35,59 @@ public class DocumentAffaire {
         AUTRE
     }
 
-    // Taille lisible ex: "2.3 MB"
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(length = 255)
+    private String nomFichierOriginal;
+
+    @Column(length = 255)
+    private String nomFichierServeur;
+
+    @Column(length = 500)
+    private String cheminFichier;
+
+    @Column(length = 100)
+    private String typeMime;
+
+    private long tailleFichier;
+
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private TypeDocument typeDocument;
+
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
+    @Column(length = 100)
+    private String uploadeePar;
+
+    private LocalDateTime dateUpload;
+
+    // ── Helpers pour Thymeleaf ──────────────────────────────
+
+    /** Taille formatée (ex : "1.2 MB") utilisée dans les templates. */
     public String getTailleFormatee() {
-        if (tailleFichier == null) return "-";
-        if (tailleFichier < 1024) return tailleFichier + " B";
-        if (tailleFichier < 1024 * 1024) return String.format("%.1f KB", tailleFichier / 1024.0);
-        return String.format("%.1f MB", tailleFichier / (1024.0 * 1024));
+        if (tailleFichier < 1024)          return tailleFichier + " B";
+        if (tailleFichier < 1_048_576)     return (tailleFichier / 1024) + " KB";
+        return String.format("%.1f MB", tailleFichier / 1_048_576.0);
     }
 
-    // Pour afficher une icône selon le type MIME
+    /** Icône Bootstrap Icons selon le type MIME. */
     public String getIconeType() {
         if (typeMime == null) return "bi-file-earmark";
-        if (typeMime.startsWith("image/")) return "bi-file-earmark-image";
-        if (typeMime.equals("application/pdf")) return "bi-file-earmark-pdf";
-        if (typeMime.contains("word")) return "bi-file-earmark-word";
-        if (typeMime.contains("excel") || typeMime.contains("spreadsheet")) return "bi-file-earmark-excel";
+        if (typeMime.equals("application/pdf"))  return "bi-file-earmark-pdf";
+        if (typeMime.startsWith("image/"))       return "bi-file-earmark-image";
+        if (typeMime.contains("word"))           return "bi-file-earmark-word";
+        if (typeMime.contains("excel")
+         || typeMime.contains("spreadsheet"))   return "bi-file-earmark-excel";
         return "bi-file-earmark";
     }
+
+    // ── Relation ───────────────────────────────────────────
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "affaire_id", nullable = false)
+    private AffaireJudiciaire affaire;
 }

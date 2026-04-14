@@ -114,28 +114,29 @@ public class DossierController {
     public String detailDossier(@PathVariable Long id,
                                 Model model,
                                 RedirectAttributes redirectAttributes) {
-
+    
         try {
-            // DTO avec historique
             DossierDetailDTO dossier = dossierService.getDossierDetail(id);
-
+    
             model.addAttribute("dossier", dossier);
-
-            // Liste validateurs
+    
             model.addAttribute("validateurs_financiers",
-                    validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_FINANCIER));
-
+                validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_FINANCIER));
+    
             model.addAttribute("validateurs_juridiques",
-                    validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_JURIDIQUE));
-
+                validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_JURIDIQUE));
+    
+            // ── Historique ────────────────────────────────────────────
+            model.addAttribute("historique",
+                historiqueService.getHistorique(id));
+    
             return "agent/dossiers/detail";
-
+    
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
             return "redirect:/agent/dossiers";
         }
     }
-
     // =====================================================
     // 📌 CHOISIR VALIDATEURS
     // =====================================================
@@ -266,25 +267,32 @@ public class DossierController {
 
     @PostMapping("/agent/dossiers/{dossierId}/risques/{risqueId}/selectionner")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-    public String selectionnerRisque(@PathVariable Long dossierId,
-                                     @PathVariable Long risqueId,
-                                     @RequestParam boolean selectionne,
-                                     Principal principal,
-                                     RedirectAttributes redirectAttributes) {
+    public String selectionnerRisque(
+            @PathVariable Long dossierId,
+            @PathVariable Long risqueId,
+            @RequestParam(value = "selectionne", required = false) Boolean selectionne,
+            Principal principal,
+            RedirectAttributes redirectAttributes
+    ) {
         try {
+    
+            boolean value = Boolean.TRUE.equals(selectionne);
+    
             dossierService.selectionnerRisque(
                     dossierId,
                     risqueId,
-                    selectionne,
+                    value,
                     principal.getName()
             );
+    
             redirectAttributes.addFlashAttribute("success", "Risque mis à jour.");
+    
         } catch (Exception e) {
             redirectAttributes.addFlashAttribute("error", e.getMessage());
         }
+    
         return "redirect:/agent/dossiers/" + dossierId;
     }
-
     // ════════════════════════════════════════════════════
     //  AJOUTER UN RISQUE
     // ════════════════════════════════════════════════════
@@ -372,6 +380,10 @@ public class DossierController {
     }
 
 
+//afficher la liste des dossier
+   
+
+
 
 
     
@@ -412,24 +424,37 @@ public String selectionnerRisque(@PathVariable Long risqueId,
 @GetMapping("/agent/dossiers/garanties/{gId}/edit")
 @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
 public String formulaireEditGarantie(@PathVariable Long gId,
-                                      Model model,
-                                      Principal principal) {
-    try {
-        Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
-                .orElseThrow(() -> new RuntimeException(
-                        "Garantie introuvable : " + gId));
-        model.addAttribute("garantie", g);
-        model.addAttribute("dossierId", g.getRisque().getDossier().getId());
-        model.addAttribute("risqueId", g.getRisque().getId()); // ✅ Ajouter cette ligne
+                                     Model model,
+                                     Principal principal) {
 
-        return "agent/dossiers/edit-garantie";
-    } catch (Exception e) {
-        System.err.println("=== ERREUR editGarantie : " + e.getMessage());
-        e.printStackTrace();
+    Garantie g = garantieRepository.findByIdWithRisqueAndDossier(gId)
+            .orElse(null);
+
+    // ❌ Si garantie n'existe pas
+    if (g == null) {
+        System.err.println("❌ Garantie introuvable ID = " + gId);
         return "redirect:/agent/dossiers";
     }
-}
 
+    // ❌ Vérification risque
+    if (g.getRisque() == null) {
+        System.err.println("❌ Risque null pour garantie ID = " + gId);
+        return "redirect:/agent/dossiers";
+    }
+
+    // ❌ Vérification dossier
+    if (g.getRisque().getDossier() == null) {
+        System.err.println("❌ Dossier null pour garantie ID = " + gId);
+        return "redirect:/agent/dossiers";
+    }
+
+    // ✅ OK
+    model.addAttribute("garantie", g);
+    model.addAttribute("dossierId", g.getRisque().getDossier().getId());
+    model.addAttribute("risqueId", g.getRisque().getId());
+
+    return "agent/dossiers/edit-garantie";
+}
 
 
 /**

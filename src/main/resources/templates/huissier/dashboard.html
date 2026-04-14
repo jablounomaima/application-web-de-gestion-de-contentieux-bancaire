@@ -1,59 +1,62 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
 <head th:replace="~{fragments/layout :: head('Dashboard Huissier')}"></head>
 
 <body>
 
 <nav th:replace="~{fragments/layout :: sidebar('HUISSIER', ${#authentication != null ? #authentication.name : 'Utilisateur'})}"></nav>
 
-<!-- ✅ MAIN corrigé -->
 <main class="main" style="
-    margin-left: 260px;   /* largeur sidebar */
+    margin-left: 260px;
     padding: 20px;
     max-width: 1200px;
     margin-right: auto;
 ">
 
+    <!-- HEADER -->
     <div class="page-header">
         <h1>Dashboard Huissier</h1>
-        <p>Bienvenue, <strong th:text="${#authentication.name}">Huissier</strong></p>
+        <p>
+            Bienvenue,
+            <strong th:text="${#authentication != null ? #authentication.name : 'Huissier'}"></strong>
+        </p>
     </div>
 
-    <!-- Statistiques -->
+    <!-- STATISTIQUES (corrigées) -->
     <div class="cards cards-4" style="margin-top:20px;">
         <div class="card stat-card blue">
-            <div class="label">Mandats actifs</div>
-            <div class="value" th:text="${mandatsActifs != null ? mandatsActifs : 16}">16</div>
+            <div class="label">Missions actives</div>
+            <div class="value" th:text="${missionsActives ?: 0}">0</div>
         </div>
 
         <div class="card stat-card warn">
-            <div class="label">Significations</div>
-            <div class="value" th:text="${significations != null ? significations : 8}">8</div>
+            <div class="label">PV soumis</div>
+            <div class="value" th:text="${rapportsAttente ?: 0}">0</div>
         </div>
 
         <div class="card stat-card red">
-            <div class="label">Saisies en cours</div>
-            <div class="value" th:text="${saisiesEnCours != null ? saisiesEnCours : 5}">5</div>
+            <div class="label">En retard</div>
+            <div class="value" th:text="${contreExpertises ?: 0}">0</div>
         </div>
 
         <div class="card stat-card green">
-            <div class="label">Recouvrés</div>
-            <div class="value" th:text="${montantRecouvre != null ? montantRecouvre : '4,2M'}">4,2M</div>
+            <div class="label">Terminées</div>
+            <div class="value" th:text="${evaluationsFinalisees ?: 0}">0</div>
         </div>
     </div>
 
     <!-- TABLE -->
-    <!-- TABLE MISSIONS RÉELLES -->
-<div class="table-wrap" style="margin-top:24px;">
-    <div class="table-head">
-        <h2>Mes missions assignées</h2>
-        <a th:href="@{/prestataire/missions}" class="btn btn-outline"
-           style="font-size:12px;">Toutes les missions</a>
-    </div>
+    <div class="table-wrap" style="margin-top:24px;">
+        <div class="table-head">
+            <h2>Mes missions assignées</h2>
+            <a th:href="@{/prestataire/missions}" class="btn btn-outline"
+               style="font-size:12px;">Toutes les missions</a>
+        </div>
 
-    <table>
-        <thead>
+        <table>
+            <thead>
             <tr>
                 <th>N° Mission</th>
                 <th>Dossier</th>
@@ -63,20 +66,26 @@
                 <th>Statut</th>
                 <th>Actions</th>
             </tr>
-        </thead>
-        <tbody>
-            <!-- Missions réelles -->
+            </thead>
+
+            <tbody>
             <tr th:each="m : ${dernieresMissions}">
-                <td style="font-family:'DM Mono',monospace;"
-                    th:text="${m.numeroMission}"></td>
-                <td style="font-family:'DM Mono',monospace;"
-                    th:text="${m.numeroDossier}"></td>
-                <td th:text="${m.clientNom}"></td>
-                <td th:text="${#strings.length(m.description ?: '') > 40 ?
-                               #strings.substring(m.description,0,40) + '…' :
-                               (m.description ?: '—')}"></td>
-                <td th:text="${m.dateFinPrevue}"
-                    th:style="${m.enRetard} ? 'color:var(--danger)' : ''"></td>
+
+                <td th:text="${m.numeroMission}"></td>
+
+                <!-- sécurisé -->
+                <td th:text="${m.prestation != null and m.prestation.dossier != null 
+                               ? m.prestation.dossier.numeroDossier : '—'}"></td>
+
+                <td th:text="${m.prestation != null and m.prestation.dossier != null and m.prestation.dossier.client != null 
+                               ? m.prestation.dossier.client.nom : '—'}"></td>
+
+                <td th:text="${m.description != null ? m.description : '—'}"></td>
+
+                <td th:text="${m.dateFinPrevue != null 
+                               ? #temporals.format(m.dateFinPrevue,'dd/MM/yyyy') : '—'}">
+                </td>
+
                 <td>
                     <span th:text="${m.statut}"
                           th:classappend="${m.statut.name() == 'ASSIGNEE'} ? 'badge badge-muted' :
@@ -86,21 +95,27 @@
                                            'badge badge-warn')))">
                     </span>
                 </td>
+
                 <td>
                     <a th:href="@{/prestataire/missions/{id}(id=${m.id})}"
-                       class="btn btn-outline" style="padding:5px 12px; font-size:12px;">
+                       class="btn btn-outline"
+                       style="padding:5px 12px; font-size:12px;">
                         Voir
                     </a>
                 </td>
+
             </tr>
+
             <tr th:if="${#lists.isEmpty(dernieresMissions)}">
-                <td colspan="7" style="text-align:center; color:var(--muted); padding:20px;">
+                <td colspan="7" style="text-align:center;">
                     Aucune mission assignée.
                 </td>
             </tr>
-        </tbody>
-    </table>
-</div>
+
+            </tbody>
+        </table>
+    </div>
+
 </main>
 
 </body>

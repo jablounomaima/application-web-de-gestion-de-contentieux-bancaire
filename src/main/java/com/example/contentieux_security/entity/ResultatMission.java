@@ -2,49 +2,46 @@ package com.example.contentieux_security.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
-@Table(name = "resultats_mission")
-@Getter @Setter @NoArgsConstructor
+@Table(name = "resultat_mission")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class ResultatMission {
-
+    
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    // Fichier uploadé (assignation.pdf, jugement.pdf, PV...)
-    private String nomFichierOriginal;
-    private String nomFichierServeur;   // UUID_assignation.pdf
-    private String typeMime;
-    private Long tailleFichier;
-
-    // Commentaire libre du prestataire
-    @Column(columnDefinition = "TEXT", nullable = false)
+    
+    @Column(length = 2000)
     private String commentaire;
+    
+    private LocalDateTime dateSoumission;
+    private String soumisePar;
 
-    @Column(nullable = false)
-    private LocalDateTime dateSoumission = LocalDateTime.now();
-
-    private String soumisePar;  // username du prestataire
-
-    // ✅ CORRECT : @JoinColumn = propriétaire de la relation
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mission_id", nullable = false)
+    
+    
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)  // ✅ mission obligatoire
+    @JoinColumn(name = "mission_id", nullable = false , foreignKey = @ForeignKey(name = "FK_resultat_mission_mission"))  // ✅ force le nom de la FK
     private Mission mission;
-
-    public String getTailleFormatee() {
-        if (tailleFichier == null) return "-";
-        if (tailleFichier < 1024) return tailleFichier + " B";
-        if (tailleFichier < 1024 * 1024) return String.format("%.1f KB", tailleFichier / 1024.0);
-        return String.format("%.1f MB", tailleFichier / (1024.0 * 1024));
-    }
-
-    public String getIconeType() {
-        if (typeMime == null) return "bi-file-earmark";
-        if (typeMime.startsWith("image/")) return "bi-file-earmark-image";
-        if (typeMime.equals("application/pdf")) return "bi-file-earmark-pdf";
-        if (typeMime.contains("word")) return "bi-file-earmark-word";
-        return "bi-file-earmark";
+    
+    @OneToMany(mappedBy = "resultat", cascade = CascadeType.ALL, fetch = FetchType.EAGER, orphanRemoval = true)
+    // ← SUPPRIMER @Builder.Default et initialiser dans le constructeur ou utiliser cette syntaxe :
+    private List<FichierResultat> fichiers = new ArrayList<>();
+    
+    // Méthode helper
+    public void addFichier(FichierResultat fichier) {
+        if (this.fichiers == null) {
+            this.fichiers = new ArrayList<>();
+        }
+        this.fichiers.add(fichier);
+        fichier.setResultat(this);
     }
 }

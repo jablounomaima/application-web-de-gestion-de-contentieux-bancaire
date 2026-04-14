@@ -529,4 +529,7 @@ public DossierDetailDTO getDossierDetail(Long id) {
 
 
 
+
+
+
 }

@@ -6,9 +6,6 @@ import com.example.contentieux_security.enums.TypePrestation;
 import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.service.PrestationService;
 import com.example.contentieux_security.service.DossierService;
-
-import jakarta.transaction.Transactional;
-
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -36,7 +33,7 @@ public class PrestationController {
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/agent/dossiers/{dossierId}/prestations/lancer")
     @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')") // Sécurité : seuls AGENT et ADMIN
-    @Transactional
+    
     public String formLancer(@PathVariable Long dossierId, Model model) {
 
         // Récupération du dossier
@@ -66,7 +63,6 @@ public class PrestationController {
     // ─────────────────────────────────────────────────────────────────────────
     @PostMapping("/agent/dossiers/{dossierId}/prestations/lancer")
     @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
-    @Transactional
     public String lancerPrestation(@PathVariable Long dossierId,
                                   @RequestParam TypePrestation type,
                                   @RequestParam(required = false) String description,
@@ -75,8 +71,7 @@ public class PrestationController {
         try {
             // Appel au service métier
             Prestation p = prestationService.lancerPrestation(
-                    dossierId, type, description, authentication.getName());
-
+                dossierId, type, description, authentication.getName());
             // Message succès
             ra.addFlashAttribute("success",
                     "Prestation " + p.getNumeroPrestation() + " lancée avec succès.");
@@ -101,7 +96,6 @@ public class PrestationController {
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/agent/dossiers/{dossierId}/prestations/{prestationId}")
     @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
-    @Transactional
     public String detailPrestation(@PathVariable Long dossierId,
                                   @PathVariable Long prestationId,
                                   Model model) {
@@ -120,16 +114,9 @@ public class PrestationController {
         // Sélection des prestataires selon le type de prestation
         List<Prestataire> prestataires;
 
-        if (prestation.getType() == TypePrestation.PROCEDURE_JUDICIAIRE) {
-            // Cas judiciaire → uniquement avocats
-            prestataires = prestataireRepository
-                    .findByTypeAndActifTrue(TypePrestataire.AVOCAT);
-        } else {
-            // Cas autres → experts + huissiers
-            prestataires = prestataireRepository
-                    .findByTypeInAndActifTrue(
-                            List.of(TypePrestataire.EXPERT, TypePrestataire.HUISSIER));
-        }
+        prestataires = prestataireRepository.findByTypeInAndActifTrue(
+            List.of(TypePrestataire.AVOCAT, TypePrestataire.EXPERT, TypePrestataire.HUISSIER)
+        );
 
         // Ajouter les données à la vue
         model.addAttribute("dossier", dossier);
@@ -145,7 +132,7 @@ public class PrestationController {
     // ─────────────────────────────────────────────────────────────────────────
     @PostMapping("/agent/dossiers/{dossierId}/prestations/{prestationId}/designer")
     @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
-    @Transactional
+    
     public String designerPrestataire(@PathVariable Long dossierId,
                                       @PathVariable Long prestationId,
                                       @RequestParam Long prestataireId,

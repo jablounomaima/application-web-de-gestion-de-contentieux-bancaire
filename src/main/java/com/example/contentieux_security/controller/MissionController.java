@@ -1,14 +1,15 @@
 package com.example.contentieux_security.controller;
 
-import com.example.contentieux_security.entity.HistoriqueDossier;
-import com.example.contentieux_security.entity.Mission;
-import com.example.contentieux_security.entity.ResultatMission;
+import com.example.contentieux_security.entity.*;
+import com.example.contentieux_security.repository.FichierResultatRepository;
+import com.example.contentieux_security.repository.MissionRepository;
 import com.example.contentieux_security.repository.ResultatMissionRepository;
 import com.example.contentieux_security.service.FileStorageService;
 import com.example.contentieux_security.service.HistoriqueService;
 import com.example.contentieux_security.service.MissionService;
 import com.example.contentieux_security.service.PrestationService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -20,30 +21,87 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.example.contentieux_security.enums.StatutMission;
+
+
 import java.nio.file.Path;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
+
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 @Controller
 @RequestMapping("/prestataire/missions")
 @RequiredArgsConstructor
+@Slf4j
 public class MissionController {
 
     private final PrestationService prestationService;
     private final MissionService missionService;
     private final FileStorageService fileStorageService;
     private final ResultatMissionRepository resultatMissionRepository;
+    private final FichierResultatRepository fichierResultatRepository;
     private final HistoriqueService historiqueService;
+    private final MissionRepository missionRepository;
 
     // ── LISTE ─────────────────────────────────────────────────────
-    @GetMapping
-    public String mesMissions(Model model, Authentication authentication) {
+  // =========================================================
+    //  LISTE DES MISSIONS DU PRESTATAIRE CONNECTÉ
+    // =========================================================
+   @GetMapping
+public String mesMissions(Authentication auth, Model model, 
+                           @RequestParam(required = false) String recherche) {
 
-        String username = authentication.getName();
-        List<Mission> missions = prestationService.getMissionsPrestataire(username);
-        model.addAttribute("missions", missions != null ? missions : List.of());
-        return "prestataire/missions/liste";
+    String username = auth.getName();
+    if (auth.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser oidcUser) {
+        username = oidcUser.getPreferredUsername();
+    } else if (auth.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User oauth2User) {
+        Object preferred = oauth2User.getAttribute("preferred_username");
+        if (preferred != null) username = preferred.toString();
     }
 
+    // ✅ Récupérer TOUTES les missions (tous prestataires, tous dossiers)
+    List<Mission> missions = missionRepository.findAllWithDetails();
+
+    // Filtrage recherche
+    if (recherche != null && !recherche.isBlank()) {
+        String kw = recherche.toLowerCase();
+        missions = missions.stream()
+            .filter(m -> m.getPrestation() != null &&
+                         m.getPrestation().getDossier() != null && (
+                (m.getPrestation().getDossier().getNumeroDossier() != null &&
+                 m.getPrestation().getDossier().getNumeroDossier().toLowerCase().contains(kw))
+                ||
+                (m.getPrestation().getDossier().getClient() != null &&
+                 m.getPrestation().getDossier().getClient().getNom().toLowerCase().contains(kw))
+            ))
+            .toList();
+    }
+
+    Map<String, List<Mission>> missionsParDossier = missions.stream()
+            .filter(m -> m.getPrestation() != null
+                      && m.getPrestation().getDossier() != null)
+            .collect(java.util.stream.Collectors.groupingBy(
+                    m -> m.getPrestation().getDossier().getNumeroDossier(),
+                    java.util.LinkedHashMap::new,
+                    java.util.stream.Collectors.toList()
+            ));
+
+    model.addAttribute("missions",           missions);
+    model.addAttribute("missionsParDossier", missionsParDossier);
+    model.addAttribute("recherche",          recherche != null ? recherche : "");
+    model.addAttribute("totalMissions",      missions.size());
+
+    return "prestataire/missions/liste";
+}
+   
+   
+   
+   
     // ── DETAIL ────────────────────────────────────────────────────
     @GetMapping("/{id}")
     public String detailMission(@PathVariable Long id,
@@ -74,7 +132,7 @@ public class MissionController {
         }
 
         List<ResultatMission> resultats = resultatMissionRepository
-            .findByMissionIdOrderByDateSoumissionDesc(id);
+            .findByMission_IdOrderByDateSoumissionDesc(id);
 
         // ── Historique du dossier ─────────────────────────────────
         List<HistoriqueDossier> historique = List.of();
@@ -197,79 +255,129 @@ public class MissionController {
         return "redirect:/prestataire/missions";
     }
 
-    // ── UPLOAD FICHIER + COMMENTAIRE ──────────────────────────────
+    // ── UPLOAD FICHIERS MULTIPLES + COMMENTAIRE ──────────────────────────────
+   
     @PostMapping("/{id}/resultat")
     public String soumettreResultat(@PathVariable Long id,
                                     @RequestParam(required = false) String commentaire,
-                                    @RequestParam(required = false) MultipartFile fichier,
+                                    @RequestParam(value = "fichiers", required = false) List<MultipartFile> fichiers,
                                     Authentication authentication,
                                     RedirectAttributes ra) {
-
+    
         String username = authentication.getName();
         Mission mission = prestationService.getMissionByIdWithDetails(id);
-
+    
         if (mission == null) {
             ra.addFlashAttribute("error", "Mission introuvable");
             return "redirect:/prestataire/missions";
         }
-
+    
         if (mission.getPrestataire() == null ||
             !username.equals(mission.getPrestataire().getUsername())) {
             ra.addFlashAttribute("error", "Accès non autorisé");
             return "redirect:/prestataire/missions";
         }
-
-        if ((commentaire == null || commentaire.isBlank()) &&
-            (fichier == null || fichier.isEmpty())) {
-            ra.addFlashAttribute("error", "Ajoutez un commentaire ou un fichier");
+    
+        boolean hasCommentaire = commentaire != null && !commentaire.isBlank();
+        boolean hasFichiers = fichiers != null && !fichiers.isEmpty() &&
+                              fichiers.stream().anyMatch(f -> f != null && !f.isEmpty());
+    
+        if (!hasCommentaire && !hasFichiers) {
+            ra.addFlashAttribute("error", "Ajoutez un commentaire ou au moins un fichier");
             return "redirect:/prestataire/missions/" + id;
         }
-
+    
         try {
-            ResultatMission resultat = new ResultatMission();
-            resultat.setMission(mission);
-            resultat.setCommentaire(commentaire != null ? commentaire : "");
-            resultat.setSoumisePar(username);
-            resultat.setDateSoumission(java.time.LocalDateTime.now());
-
-            if (fichier != null && !fichier.isEmpty()) {
-                String nomServeur = fileStorageService.stocker(fichier, "missions");
-                resultat.setNomFichierOriginal(fichier.getOriginalFilename());
-                resultat.setNomFichierServeur(nomServeur);
-                resultat.setTypeMime(fichier.getContentType());
-                resultat.setTailleFichier(fichier.getSize());
+            // ✅ CORRECTION : recharger la mission depuis le repository pour avoir une entité managée
+            Mission missionManagee = missionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Mission introuvable en base : " + id));
+    
+            Optional<ResultatMission> existingOpt = resultatMissionRepository.findByMission_Id(id);
+            ResultatMission resultat;
+    
+            if (existingOpt.isPresent()) {
+                resultat = existingOpt.get();
+                if (hasCommentaire) {
+                    resultat.setCommentaire(commentaire);
+                }
+                resultat.setSoumisePar(username);
+                resultat.setDateSoumission(LocalDateTime.now());
+            } else {
+                resultat = ResultatMission.builder()
+                    .mission(missionManagee)   // ✅ entité managée
+                    .commentaire(commentaire != null ? commentaire : "")
+                    .soumisePar(username)
+                    .dateSoumission(LocalDateTime.now())
+                    .fichiers(new ArrayList<>())
+                    .build();
+            }
+    
+            if (hasFichiers) {
+                for (MultipartFile fichier : fichiers) {
+                    if (fichier == null || fichier.isEmpty()) continue;
+    
+                    if (fichier.getSize() > 20 * 1024 * 1024) {
+                        ra.addFlashAttribute("error", "Fichier \"" + fichier.getOriginalFilename() + "\" trop volumineux (max 20 MB)");
+                        return "redirect:/prestataire/missions/" + id;
+                    }
+    
+                    String nomServeur = fileStorageService.stocker(fichier, "missions");
+    
+                    FichierResultat fichierResultat = FichierResultat.builder()
+                        .nomFichierOriginal(fichier.getOriginalFilename())
+                        .nomFichierServeur(nomServeur)
+                        .typeMime(fichier.getContentType())
+                        .tailleFichier(fichier.getSize())
+                        .dateUpload(LocalDateTime.now())
+                        .resultat(resultat)
+                        .build();
+    
+                    resultat.addFichier(fichierResultat);
+                }
             }
 
+            // Juste avant resultatMissionRepository.save(resultat);
+log.info("=== DEBUG FK ===");
+log.info("Mission ID utilisé : {}", missionManagee.getId());
+log.info("Mission existe en base : {}", missionRepository.existsById(missionManagee.getId()));
+log.info("Resultat mission : {}", resultat);
+log.info("================");
+    
             resultatMissionRepository.save(resultat);
-
-            // Mettre EN_COURS si ASSIGNEE
-            if (mission.getStatut() == StatutMission.ASSIGNEE) {
+    
+            if (missionManagee.getStatut() == StatutMission.ASSIGNEE) {
                 missionService.changerStatut(id, StatutMission.EN_COURS);
             }
-
-            // ── Enregistrer dans l'historique ─────────────────────
+    
             try {
-                Long dossierId = mission.getPrestation().getDossier().getId();
-                String desc = (fichier != null && !fichier.isEmpty())
-                    ? "Fichier soumis : " + fichier.getOriginalFilename()
-                    : "Commentaire soumis";
-                if (commentaire != null && !commentaire.isBlank()) {
-                    desc += " — " + commentaire.substring(0,
-                        Math.min(50, commentaire.length()));
+                Long dossierId = null;
+                if (missionManagee.getPrestation() != null && missionManagee.getPrestation().getDossier() != null) {
+                    dossierId = missionManagee.getPrestation().getDossier().getId();
                 }
-                historiqueService.enregistrerParId(
-                    dossierId, "RESULTAT_SOUMIS", desc, username);
+                int nbFichiers = resultat.getFichiers() != null ? resultat.getFichiers().size() : 0;
+                String desc = nbFichiers > 0 ? nbFichiers + " fichier(s) soumis" : "Commentaire soumis";
+                if (hasCommentaire && commentaire.length() > 50) {
+                    desc += " — " + commentaire.substring(0, 50) + "...";
+                } else if (hasCommentaire) {
+                    desc += " — " + commentaire;
+                }
+                historiqueService.enregistrerParId(dossierId, "RESULTAT_SOUMIS", desc, username);
             } catch (Exception ignored) {}
-
-            ra.addFlashAttribute("success", "Résultat soumis avec succès");
-
+    
+            int nbFichiers = resultat.getFichiers() != null ? resultat.getFichiers().size() : 0;
+            String message = "Résultat soumis avec succès";
+            if (nbFichiers > 0) {
+                message += " (" + nbFichiers + " fichier" + (nbFichiers > 1 ? "s" : "") + ")";
+            }
+            ra.addFlashAttribute("success", message);
+    
         } catch (Exception e) {
+            log.error("Erreur lors de la soumission du résultat", e);
             ra.addFlashAttribute("error", "Erreur : " + e.getMessage());
         }
-
+    
         return "redirect:/prestataire/missions/" + id;
     }
-
     // ── TÉLÉCHARGER UN FICHIER ────────────────────────────────────
     @GetMapping("/fichier/{nomServeur}")
     public ResponseEntity<Resource> telechargerFichier(
@@ -290,6 +398,36 @@ public class MissionController {
                 .body(resource);
 
         } catch (Exception e) {
+            log.error("Erreur téléchargement fichier: {}", nomServeur, e);
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+    
+    // ── TÉLÉCHARGER UN FICHIER PAR ID (pour les fichiers multiples) ──
+    @GetMapping("/fichier/id/{fichierId}")
+    public ResponseEntity<Resource> telechargerFichierParId(@PathVariable Long fichierId) {
+        try {
+            Optional<FichierResultat> fichierOpt = fichierResultatRepository.findById(fichierId);
+            if (fichierOpt.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            
+            FichierResultat fichier = fichierOpt.get();
+            Path chemin = fileStorageService.getCheminFichier("missions", fichier.getNomFichierServeur());
+            Resource resource = new UrlResource(chemin.toUri());
+
+            if (!resource.exists()) {
+                return ResponseEntity.notFound().build();
+            }
+
+            return ResponseEntity.ok()
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + fichier.getNomFichierOriginal() + "\"")
+                .header(HttpHeaders.CONTENT_TYPE, fichier.getTypeMime() != null ? fichier.getTypeMime() : "application/octet-stream")
+                .body(resource);
+
+        } catch (Exception e) {
+            log.error("Erreur téléchargement fichier id: {}", fichierId, e);
             return ResponseEntity.internalServerError().build();
         }
     }

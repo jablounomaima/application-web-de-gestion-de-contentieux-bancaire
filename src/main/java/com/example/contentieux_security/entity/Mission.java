@@ -7,80 +7,73 @@ import lombok.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+/**
+ * Entité Mission.
+ *
+ * ✅ @Getter + @Setter → corrige toutes les erreurs
+ *    "cannot find symbol: method getStatut() / getPrestataire() /
+ *     getPrestation() / getNumeroMission() / setPvMission() / setStatut() / ..."
+ *    dans PrestationService et AvocatController.
+ */
 @Entity
-@Table(name = "missions")
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Table(name = "mission")
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Mission {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "numero_mission", unique = true, nullable = false, length = 100)
+    @Column(unique = true, nullable = false, length = 50)
     private String numeroMission;
 
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    // ✅ CORRECTION IMPORTANTE
     @Enumerated(EnumType.STRING)
-    @Column(name = "statut", nullable = false, length = 50)
+    @Column(nullable = false, length = 30)
     private StatutMission statut;
 
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "prestation_id", nullable = false)
-    private Prestation prestation;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "prestataire_id", nullable = false)
-    private Prestataire prestataire;
-
-    @Column(name = "date_assignation", nullable = false)
-    private LocalDateTime dateAssignation;
-
-    @Column(name = "date_debut")
-    private LocalDate dateDebut;
-
-    @Column(name = "date_fin_prevue")
+    private LocalDate dateAssignation;
     private LocalDate dateFinPrevue;
+    private LocalDate dateRealisation;
 
-    @Column(name = "date_fin_reelle")
-    private LocalDate dateFinReelle;
-
-    @Column(name = "pv_mission", columnDefinition = "TEXT")
+    // PV de mission (commentaire texte)
+    @Column(columnDefinition = "TEXT")
     private String pvMission;
 
-    @Column(name = "montant_facture")
-    private Double montantFacture;
+    // Facture (champs legacy conservés pour compatibilité PrestationService)
+    private Double  montantFacture;
 
-    @Column(name = "facture_ref", length = 100)
-    private String factureRef;
+    @Column(length = 100)
+    private String  factureRef;
 
-    @Column(columnDefinition = "TEXT")
-    private String notes;
+    // ── Relations ──────────────────────────────────────────
 
-    @Column(name = "date_creation", nullable = false)
-    private LocalDateTime dateCreation;
+    /**
+     * Prestation parente.
+     * ✅ getPrestation() requis par PrestationService.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prestation_id")
+    private Prestation prestation;
 
-    // ✅ CORRECT
-    @OneToOne(mappedBy = "mission", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
-    private ResultatMission resultatMission;
-    // ✅ CORRECTION: initialisation propre
-    @PrePersist
-    public void prePersist() {
-        if (this.dateCreation == null) {
-            this.dateCreation = LocalDateTime.now();
-        }
-        if (this.dateAssignation == null) {
-            this.dateAssignation = LocalDateTime.now();
-        }
-        if (this.statut == null) {
-            this.statut = StatutMission.ASSIGNEE;
-        }
-    }
+    /**
+     * Prestataire assigné (avocat, huissier, expert...).
+     * ✅ getPrestataire() requis par PrestationService.
+     */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "prestataire_id")
+    private Prestataire prestataire;
 
-    public Mission getMissionAvocatDuDossier(Long dossierId) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'getMissionAvocatDuDossier'");
-    }
+    /**
+     * Affaire judiciaire liée (si mission de type judiciaire).
+     * ✅ getAffaire() utilisé dans les templates.
+     */
+    @OneToOne(mappedBy = "mission", fetch = FetchType.LAZY)
+    private AffaireJudiciaire affaire;
 }

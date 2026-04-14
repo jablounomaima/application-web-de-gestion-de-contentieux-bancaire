@@ -14,7 +14,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import com.example.contentieux_security.entity.Mission;
 import java.security.Principal;
 
-
 @Controller
 @RequestMapping("/agent/dossiers")
 @PreAuthorize("hasAnyRole('AGENT','ADMIN')")

@@ -9,7 +9,7 @@ import com.example.contentieux_security.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.contentieux_security.repository.AgentBancaireRepository;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,36 +27,38 @@ public class PrestationService {
     private final NotificationService     notificationService;
     private final AgentBancaireRepository agentBancaireRepository;
 
-    // ════════════════════════════════════════════════════
-    //  PRESTATION
-    // ════════════════════════════════════════════════════
+    // ═════════ PRESTATION ═════════
+    @Transactional(readOnly = true)
+    public Prestation getPrestationById(Long id) {
+        return prestationRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Prestation introuvable : id=" + id));
+    }
 
     @Transactional
-    public Prestation lancerPrestation(Long dossierId, TypePrestation type,
-                                       String description, String agentUsername) {
+    public Prestation lancerPrestation(Long dossierId,
+                                       TypePrestation type,
+                                       String description,
+                                       String agentUsername) {
 
+        // 🔍 1. Récupération dossier
         DossierContentieux dossier = dossierRepository.findById(dossierId)
                 .orElseThrow(() -> new IllegalArgumentException("Dossier introuvable : id=" + dossierId));
 
-                AgentBancaire agent = agentBancaireRepository.findByUsername(agentUsername)
+        // 🔍 2. Récupération agent
+        AgentBancaire agent = agentBancaireRepository.findByUsername(agentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("Agent introuvable : " + agentUsername));
 
-        // ── Vérifications métier ──────────────────────────────────────────────
+        // 🔍 3. Vérification métier
         if (type == TypePrestation.PROCEDURE_JUDICIAIRE
                 && dossier.getStatut() != DossierStatus.VALIDE) {
+            // L'exception est levée ici, ce qui marquera la transaction pour rollback.
+            // Elle sera ensuite interceptée par un @ControllerAdvice pour une réponse HTTP appropriée.
             throw new IllegalStateException(
-                "Le dossier doit être au statut VALIDE pour lancer une procédure judiciaire. "
-                + "Statut actuel : " + dossier.getStatut());
+                    "Le dossier doit être au statut VALIDE pour lancer une procédure judiciaire. "
+                            + "Statut actuel : " + dossier.getStatut());
         }
 
-        if (type == TypePrestation.EXECUTION_FORCEE
-                && dossier.getStatut() != DossierStatus.EN_PROCEDURE) {
-            throw new IllegalStateException(
-                "L'exécution forcée nécessite que le dossier soit EN_PROCEDURE. "
-                + "Statut actuel : " + dossier.getStatut());
-        }
-
-        // ── Création prestation ───────────────────────────────────────────────
+        // 🔥 4. Création prestation
         Prestation prestation = Prestation.builder()
                 .numeroPrestation(genererNumeroPrestation())
                 .type(type)
@@ -69,72 +71,69 @@ public class PrestationService {
 
         prestation = prestationRepository.save(prestation);
 
-        // ── Mise à jour statut dossier ────────────────────────────────────────
+        // 🔥 5. Mise à jour dossier
         if (type == TypePrestation.PROCEDURE_JUDICIAIRE) {
             dossier.setStatut(DossierStatus.EN_PROCEDURE);
-        } else if (type == TypePrestation.EXECUTION_FORCEE) {
-            dossier.setStatut(DossierStatus.EN_EXECUTION);
         }
         dossierRepository.save(dossier);
 
-        historiqueService.enregistrer(dossier, "PRESTATION_LANCEE",
-                "Prestation lancée : " + type.getLibelle(), agentUsername);
+        // 🔥 6. Historique (protégé)
+        try {
+            historiqueService.enregistrer(
+                    dossier,
+                    "PRESTATION_LANCEE",
+                    "Prestation lancée : " + type.getLibelle(),
+                    agentUsername
+            );
+        } catch (Exception e) {
+            // ❗ ne casse pas la transaction principale, mais log l'erreur d'historique
+            System.err.println("Erreur lors de l'enregistrement de l'historique : " + e.getMessage());
+            // Optionnel: loguer la stack trace complète pour le débogage
+            // e.printStackTrace();
+        }
 
         return prestation;
     }
 
-    public List<Prestation> getPrestationsDossier(Long dossierId) {
-        return prestationRepository.findByDossierIdOrderByDateDesc(dossierId);
-    }
-
-    public Prestation getPrestationById(Long id) {
-        return prestationRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Prestation introuvable : id=" + id));
-    }
-
-    // ════════════════════════════════════════════════════
-    //  MISSION
-    // ════════════════════════════════════════════════════
+    // ═════════ MISSION ═════════
 
     @Transactional
-    public Mission designerPrestataire(Long prestationId, Long prestataireId,
-                                        String description, LocalDate dateFinPrevue,
-                                        String agentUsername) {
+    public Mission designerPrestataire(Long prestationId,
+                                       Long prestataireId,
+                                       String description,
+                                       LocalDate dateFinPrevue,
+                                       String agentUsername) {
 
         Prestation prestation = getPrestationById(prestationId);
 
         Prestataire prestataire = prestataireRepository.findById(prestataireId)
                 .orElseThrow(() -> new IllegalArgumentException("Prestataire introuvable : id=" + prestataireId));
 
-        // ── Vérification prestataire actif ────────────────────────────────────
         if (!prestataire.isActif()) {
             throw new IllegalStateException(
-                "Le prestataire " + prestataire.getNom() + " n'est plus actif.");
+                    "Le prestataire " + prestataire.getNom() + " n'est plus actif.");
         }
 
-        // ── Vérification cohérence type prestataire / type prestation ─────────
         validerCompatibiliteTypePrestataire(prestation.getType(), prestataire);
 
-        // ── Création mission ──────────────────────────────────────────────────
         Mission mission = Mission.builder()
                 .numeroMission(genererNumeroMission())
                 .description(description)
                 .statut(StatutMission.ASSIGNEE)
                 .prestation(prestation)
                 .prestataire(prestataire)
-                .dateAssignation(LocalDateTime.now())
+                .dateAssignation(LocalDate.now())
                 .dateFinPrevue(dateFinPrevue)
                 .build();
 
         mission = missionRepository.save(mission);
 
-        // ── Notification prestataire ──────────────────────────────────────────
         notificationService.notifier(
                 prestataire.getUsername(),
                 "Nouvelle mission assignée",
                 "Une mission vous a été assignée pour le dossier "
-                + prestation.getDossier().getNumeroDossier()
-                + " — Mission : " + mission.getNumeroMission(),
+                        + prestation.getDossier().getNumeroDossier()
+                        + " — Mission : " + mission.getNumeroMission(),
                 "MISSION",
                 prestation.getDossier()
         );
@@ -143,32 +142,34 @@ public class PrestationService {
                 prestation.getDossier(),
                 "MISSION_ASSIGNEE",
                 prestataire.getType().name() + " désigné : "
-                + prestataire.getNom() + " " + prestataire.getPrenom(),
-                agentUsername);
+                        + prestataire.getNom() + " " + prestataire.getPrenom(),
+                agentUsername
+        );
 
         return mission;
     }
 
     public List<Mission> getMissionsByPrestation(Long prestationId) {
-        // Vérifier que la prestation existe
         getPrestationById(prestationId);
         return missionRepository.findByPrestation_Id(prestationId);
     }
 
+    @Transactional(readOnly = true)
     public List<Mission> getMissionsPrestataire(String username) {
+        List<Mission> missions = missionRepository.findByPrestataire_Username(username);
 
-        // Si c'est un prestataire (avocat, huissier, expert)
-        if (prestataireRepository.findByUsername(username).isPresent()) {
-            return missionRepository.findMissionsWithDetails(username);
-        }
-    
-        // Si c'est un agent bancaire
-        if (agentBancaireRepository.findByUsername(username).isPresent()) {
-            return missionRepository.findMissionsByAgentUsername(username);
-        }
-    
-        return List.of();
+        missions.forEach(m -> {
+            if (m.getPrestation() != null &&
+                    m.getPrestation().getDossier() != null &&
+                    m.getPrestation().getDossier().getClient() != null) {
+                m.getPrestation().getDossier().getClient().getNom();
+                m.getPrestation().getDossier().getClient().getPrenom();
+            }
+        });
+
+        return missions;
     }
+
     public Mission getMissionById(Long id) {
         return missionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Mission introuvable : id=" + id));
@@ -179,7 +180,6 @@ public class PrestationService {
 
         Mission mission = getMissionById(missionId);
 
-        // ── Vérifications ─────────────────────────────────────────────────────
         if (!mission.getPrestataire().getUsername().equals(username)) {
             throw new IllegalStateException("Vous n'êtes pas autorisé à soumettre le PV de cette mission.");
         }
@@ -187,7 +187,7 @@ public class PrestationService {
         if (mission.getStatut() != StatutMission.ASSIGNEE
                 && mission.getStatut() != StatutMission.EN_COURS) {
             throw new IllegalStateException(
-                "Impossible de soumettre un PV pour une mission au statut : " + mission.getStatut());
+                    "Impossible de soumettre un PV pour une mission au statut : " + mission.getStatut());
         }
 
         if (pvTexte == null || pvTexte.isBlank()) {
@@ -198,13 +198,12 @@ public class PrestationService {
         mission.setStatut(StatutMission.PV_SOUMIS);
         missionRepository.save(mission);
 
-        // ── Notification agent ────────────────────────────────────────────────
         notificationService.notifier(
                 mission.getPrestation().getDossier().getAgentCreateur().getUsername(),
                 "PV de mission soumis — " + mission.getNumeroMission(),
                 "Le prestataire " + mission.getPrestataire().getNom()
-                + " a soumis un PV pour le dossier "
-                + mission.getPrestation().getDossier().getNumeroDossier(),
+                        + " a soumis un PV pour le dossier "
+                        + mission.getPrestation().getDossier().getNumeroDossier(),
                 "PV_MISSION",
                 mission.getPrestation().getDossier()
         );
@@ -213,23 +212,25 @@ public class PrestationService {
                 mission.getPrestation().getDossier(),
                 "PV_SOUMIS",
                 "PV soumis par " + username + " — mission " + mission.getNumeroMission(),
-                username);
+                username
+        );
     }
 
     @Transactional
-    public void soumettreFacture(Long missionId, Double montant,
-                                  String factureRef, String username) {
+    public void soumettreFacture(Long missionId,
+                                 Double montant,
+                                 String factureRef,
+                                 String username) {
 
         Mission mission = getMissionById(missionId);
 
-        // ── Vérifications ─────────────────────────────────────────────────────
         if (!mission.getPrestataire().getUsername().equals(username)) {
             throw new IllegalStateException("Vous n'êtes pas autorisé à soumettre la facture de cette mission.");
         }
 
         if (mission.getStatut() != StatutMission.PV_SOUMIS) {
             throw new IllegalStateException(
-                "La facture ne peut être soumise qu'après le PV. Statut actuel : " + mission.getStatut());
+                    "La facture ne peut être soumise qu'après le PV. Statut actuel : " + mission.getStatut());
         }
 
         if (montant == null || montant <= 0) {
@@ -245,14 +246,13 @@ public class PrestationService {
         mission.setStatut(StatutMission.FACTURE_SOUMISE);
         missionRepository.save(mission);
 
-        // ── Notification agent ────────────────────────────────────────────────
         notificationService.notifier(
                 mission.getPrestation().getDossier().getAgentCreateur().getUsername(),
                 "Facture soumise — " + mission.getNumeroMission(),
                 "Le prestataire " + mission.getPrestataire().getNom()
-                + " a soumis une facture de " + montant + " TND"
-                + " pour le dossier "
-                + mission.getPrestation().getDossier().getNumeroDossier(),
+                        + " a soumis une facture de " + montant + " TND"
+                        + " pour le dossier "
+                        + mission.getPrestation().getDossier().getNumeroDossier(),
                 "FACTURE",
                 mission.getPrestation().getDossier()
         );
@@ -261,36 +261,21 @@ public class PrestationService {
                 mission.getPrestation().getDossier(),
                 "FACTURE_SOUMISE",
                 "Facture soumise : " + montant + " TND — réf : " + factureRef
-                + " — mission " + mission.getNumeroMission(),
-                username);
+                        + " — mission " + mission.getNumeroMission(),
+                username
+        );
     }
 
-    // ════════════════════════════════════════════════════
-    //  UTILITAIRES PRIVÉS
-    // ════════════════════════════════════════════════════
+    // ═════════ UTILITAIRES PRIVÉS ═════════
 
-    /**
-     * Vérifie que le type de prestataire est cohérent avec le type de prestation.
-     * PROCEDURE_JUDICIAIRE → AVOCAT uniquement
-     * EXECUTION_FORCEE     → EXPERT ou HUISSIER
-     */
     private void validerCompatibiliteTypePrestataire(TypePrestation typePrestation,
-                                                      Prestataire prestataire) {
+                                                     Prestataire prestataire) {
         switch (typePrestation) {
             case PROCEDURE_JUDICIAIRE -> {
                 if (prestataire.getType() != com.example.contentieux_security.enums.TypePrestataire.AVOCAT) {
                     throw new IllegalStateException(
-                        "Une procédure judiciaire requiert un AVOCAT. "
-                        + "Type sélectionné : " + prestataire.getType());
-                }
-            }
-            case EXECUTION_FORCEE -> {
-                var type = prestataire.getType();
-                if (type != com.example.contentieux_security.enums.TypePrestataire.EXPERT
-                        && type != com.example.contentieux_security.enums.TypePrestataire.HUISSIER) {
-                    throw new IllegalStateException(
-                        "Une exécution forcée requiert un EXPERT ou un HUISSIER. "
-                        + "Type sélectionné : " + type);
+                            "Une procédure judiciaire requiert un AVOCAT. "
+                                    + "Type sélectionné : " + prestataire.getType());
                 }
             }
         }
@@ -304,7 +289,8 @@ public class PrestationService {
             try {
                 String[] parts = last.get().split("-");
                 seq = Integer.parseInt(parts[parts.length - 1]) + 1;
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         return String.format("%s-%05d", prefix, seq);
     }
@@ -317,29 +303,33 @@ public class PrestationService {
             try {
                 String[] parts = last.get().split("-");
                 seq = Integer.parseInt(parts[parts.length - 1]) + 1;
-            } catch (NumberFormatException ignored) {}
+            } catch (NumberFormatException ignored) {
+            }
         }
         return String.format("%s-%05d", prefix, seq);
     }
-
-
 
     public boolean deletePrestataire(Long id, String username) {
         Prestataire prestataire = prestataireRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
 
-        // (optionnel) vérification utilisateur
-        if (!prestataire.getAgentResponsable().getUsername().equals(username)) {            throw new RuntimeException("Accès refusé");
+        if (!prestataire.getAgentResponsable().getUsername().equals(username)) {
+            throw new RuntimeException("Accès refusé");
         }
 
         prestataireRepository.delete(prestataire);
         return true;
     }
 
-
     public Mission getMissionByIdWithDetails(Long id) {
         return missionRepository.findByIdWithDetails(id)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable"));
     }
 
+    @Transactional
+public void changerStatutMission(Long missionId, StatutMission nouveauStatut) {
+    Mission mission = getMissionById(missionId);
+    mission.setStatut(nouveauStatut);
+    missionRepository.save(mission);
+}
 }
