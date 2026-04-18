@@ -87,7 +87,7 @@ public class DocumentAffaire {
 
     // ── Relation ───────────────────────────────────────────
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "affaire_id", nullable = false)
     private AffaireJudiciaire affaire;
 }

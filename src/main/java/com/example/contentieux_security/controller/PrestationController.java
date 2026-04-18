@@ -5,6 +5,10 @@ import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.enums.TypePrestation;
 import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.service.PrestationService;
+
+import jakarta.transaction.Transactional;
+
+import com.example.contentieux_security.service.AffaireJudiciaireService;
 import com.example.contentieux_security.service.DossierService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -12,6 +16,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import java.time.LocalDate;
@@ -27,6 +32,9 @@ public class PrestationController {
 
     // Repository pour accéder aux prestataires
     private final PrestataireRepository prestataireRepository;
+
+    private final AffaireJudiciaireService affaireService; // ← AJOUTER
+
 
     // ─────────────────────────────────────────────────────────────────────────
     // 🔹 GET : Afficher le formulaire de lancement d’une prestation
@@ -132,7 +140,6 @@ public class PrestationController {
     // ─────────────────────────────────────────────────────────────────────────
     @PostMapping("/agent/dossiers/{dossierId}/prestations/{prestationId}/designer")
     @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
-    
     public String designerPrestataire(@PathVariable Long dossierId,
                                       @PathVariable Long prestationId,
                                       @RequestParam Long prestataireId,
@@ -141,12 +148,11 @@ public class PrestationController {
                                       Authentication authentication,
                                       RedirectAttributes ra) {
         try {
-            // Conversion String → LocalDate (sécurisée)
             LocalDate dateFin = (dateFinPrevue != null && !dateFinPrevue.isBlank())
                     ? LocalDate.parse(dateFinPrevue)
                     : null;
 
-            // Appel service pour créer la mission
+            // 1. Créer la mission
             Mission m = prestationService.designerPrestataire(
                     prestationId,
                     prestataireId,
@@ -155,22 +161,74 @@ public class PrestationController {
                     authentication.getName()
             );
 
-            // Message succès
             ra.addFlashAttribute("success",
                     "Mission " + m.getNumeroMission() + " assignée avec succès.");
 
-        } catch (IllegalArgumentException e) {
-            // Erreur validation
-            ra.addFlashAttribute("error", "Données invalides : " + e.getMessage());
+            // 2. Si c'est une procédure judiciaire → créer automatiquement l'affaire
+            Prestation prestation = prestationService.getPrestationById(prestationId);
+            if (prestation.getType() == TypePrestation.PROCEDURE_JUDICIAIRE) {
+                try {
+                    AffaireJudiciaire affaire = affaireService.creerAffaire(
+                            m.getId(),   // missionId
+                            null,        // tribunal (à renseigner plus tard par l'avocat)
+                            null,        // numeroRole
+                            null,        // chambre
+                            authentication.getName()
+                    );
+                    ra.addFlashAttribute("success",
+                            "Mission " + m.getNumeroMission()
+                            + " assignée et affaire " + affaire.getNumeroAffaire()
+                            + " créée avec succès.");
+                } catch (Exception e) {
+                    // La mission est créée mais l'affaire a échoué — on log sans bloquer
+                    ra.addFlashAttribute("warning",
+                            "Mission créée mais erreur lors de la création de l'affaire : "
+                            + e.getMessage());
+                }
+            }
 
+        } catch (IllegalArgumentException e) {
+            ra.addFlashAttribute("error", "Données invalides : " + e.getMessage());
         } catch (Exception e) {
-            // Erreur générale
             ra.addFlashAttribute("error", "Erreur : " + e.getMessage());
         }
 
-        // Redirection vers la page détail
         return "redirect:/agent/dossiers/" + dossierId + "/prestations/" + prestationId;
     }
-
     // ✅ Les routes /prestataire/** sont gérées ailleurs (MissionController)
+
+    @Transactional
+// Afficher le formulaire de modification du résultat d'une mission
+
+
+
+
+
+
+// Soumettre la modification du résultat (commentaire + fichiers)
+
+
+// Supprimer un fichier du résultat
+@PostMapping("/prestataire/missions/fichiers/{fichierId}/supprimer")
+@PreAuthorize("hasAnyRole('ROLE_AVOCAT','ROLE_HUISSIER','ROLE_EXPERT')")   // ← Correction principale
+public String supprimerFichierResultat(
+        @PathVariable Long fichierId,
+        @RequestParam Long missionId,
+        Authentication authentication,
+        RedirectAttributes ra) {
+
+    try {
+        prestationService.supprimerFichierResultat(
+                fichierId, authentication.getName());
+        ra.addFlashAttribute("success", "Fichier supprimé.");
+    } catch (SecurityException e) {
+        ra.addFlashAttribute("error", "Accès refusé.");
+    } catch (Exception e) {
+        ra.addFlashAttribute("error",
+                "Erreur suppression : " + e.getMessage());
+    }
+
+    return "redirect:/prestataire/missions/"
+            + missionId + "/resultat/modifier";
+}
 }

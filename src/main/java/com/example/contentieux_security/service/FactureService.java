@@ -72,6 +72,11 @@ public class FactureService {
                 .orElseThrow(() -> new IllegalStateException(
                         "Mission introuvable : id=" + missionId));
 
+                // 🚫 BLOQUER si validé
+if (mission.getDateValidationAgent() != null) {
+        throw new RuntimeException("Facture non modifiable : mission déjà validée");
+}
+
         // 2. Récupère la facture existante ou en crée une nouvelle
         Facture facture = factureRepository.findByMission_Id(missionId)
                 .orElseGet(Facture::new);

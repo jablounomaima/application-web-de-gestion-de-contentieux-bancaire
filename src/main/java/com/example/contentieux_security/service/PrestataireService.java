@@ -231,4 +231,6 @@ public class PrestataireService {
         prestataireRepository.delete(prestataire);
         return true;
     }
+
+    
 }

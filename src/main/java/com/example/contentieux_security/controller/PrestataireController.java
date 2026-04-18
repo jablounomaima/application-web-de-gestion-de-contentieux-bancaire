@@ -13,11 +13,11 @@ import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-
+import org.springframework.web.multipart.MultipartFile;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.List;
-
+import org.springframework.web.multipart.MultipartFile;
 @Controller
 @RequestMapping("/prestataire")
 @RequiredArgsConstructor
@@ -103,6 +103,7 @@ public class PrestataireController {
                         "attachment; filename=\"" + fichier.getNomFichierOriginal() + "\"")
                 .body(contenu);
     }
+
 
 
 }

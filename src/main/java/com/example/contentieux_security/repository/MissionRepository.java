@@ -1,6 +1,7 @@
 package com.example.contentieux_security.repository;
 
 import com.example.contentieux_security.entity.Mission;
+import com.example.contentieux_security.entity.ResultatMission;
 import com.example.contentieux_security.enums.StatutMission;
 
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -87,13 +88,9 @@ Optional<Mission> findByIdWithDetails(@Param("id") Long id);
         JOIN FETCH m.prestataire pr
         WHERE d.id = :dossierId
         AND pr.type = com.example.contentieux_security.enums.TypePrestataire.AVOCAT
-        AND m.statut IN (
-            com.example.contentieux_security.enums.StatutMission.ASSIGNEE,
-            com.example.contentieux_security.enums.StatutMission.EN_COURS
-        )
+        ORDER BY m.id DESC
     """)
-    Optional<Mission> findMissionAvocatDuDossier(@Param("dossierId") Long dossierId);
-
+    List<Mission> findMissionsAvocatDuDossier(@Param("dossierId") Long dossierId);
     // ─────────────────────────────────────────────
     // 🔹 Statistiques
     // ─────────────────────────────────────────────
@@ -124,6 +121,14 @@ Optional<Mission> findByIdWithDetails(@Param("id") Long id);
        "LEFT JOIN FETCH d.client " +
        "ORDER BY m.dateAssignation DESC")
 List<Mission> findAllWithDetails();
-    
+
+@Query("""
+    SELECT m FROM Mission m
+    LEFT JOIN FETCH m.prestataire
+    LEFT JOIN FETCH m.prestation p
+    LEFT JOIN FETCH p.dossier
+    WHERE m.id = :id
+""")
+Optional<Mission> findByIdWithPrestataire(@Param("id") Long id);
 
 }

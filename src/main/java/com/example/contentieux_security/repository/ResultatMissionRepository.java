@@ -3,6 +3,8 @@ package com.example.contentieux_security.repository;
 import com.example.contentieux_security.entity.Mission;
 import com.example.contentieux_security.entity.ResultatMission;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -33,4 +35,13 @@ public interface ResultatMissionRepository extends JpaRepository<ResultatMission
      * Recherche par missionId simple (utilisé dans getResultat()).
      */
     Optional<ResultatMission> findByMission_Id(Long missionId);
+
+
+    @Query("SELECT r FROM ResultatMission r " +
+    "LEFT JOIN FETCH r.fichiers " +
+    "WHERE r.mission.id = :missionId")
+Optional<ResultatMission> findByMissionIdWithFichiers(@Param("missionId") Long missionId);
+
+
+
 }

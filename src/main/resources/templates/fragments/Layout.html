@@ -295,48 +295,59 @@
 
         <!-- ════ AVOCAT ════ -->
         <!-- ════ AVOCAT ════ -->
-<div th:if="${role == 'AVOCAT'}" class="nav-section">
-    <div class="nav-section-label">Mon espace</div>
+<!-- ════ AVOCAT MENU ════ -->
+<div th:if="${role == 'AVOCAT'}">
 
-    <a th:href="@{/avocat/dashboard}" class="nav-item"
-       th:classappend="${currentPage == 'dashboard'} ? 'active' : ''">
-        <span class="nav-ico">📊</span>
-        <span class="nav-label">Dashboard</span>
-    </a>
+    <!-- ================= MON ESPACE ================= -->
+    <div class="nav-section">
+        <div class="nav-section-label">Mon espace</div>
 
-    <a th:href="@{/avocat/affaires}" class="nav-item"
-       th:classappend="${currentPage == 'affaires'} ? 'active' : ''">
-        <span class="nav-ico">⚖️</span>
-        <span class="nav-label">Mes affaires</span>
-    </a>
-</div>
+        <a th:href="@{/avocat/dashboard}" class="nav-item"
+           th:classappend="${currentPage == 'dashboard'} ? 'active' : ''">
 
-<div th:if="${role == 'AVOCAT'}" class="nav-section">
-    <div class="nav-section-label">Dans chaque affaire</div>
+            <span class="nav-ico">📊</span>
+            <span class="nav-label">Dashboard</span>
+        </a>
 
-    <span class="nav-item nav-item-info">
-        <span class="nav-ico">🏛️</span>
-        <span class="nav-label">Audiences</span>
-        <span class="nav-badge">onglet affaire</span>
-    </span>
+        <a th:href="@{/avocat/affaires}" class="nav-item"
+           th:classappend="${currentPage == 'affaires'} ? 'active' : ''">
 
-    <span class="nav-item nav-item-info">
-        <span class="nav-ico">📜</span>
-        <span class="nav-label">Jugements</span>
-        <span class="nav-badge">onglet affaire</span>
-    </span>
+            <span class="nav-ico">⚖️</span>
+            <span class="nav-label">Mes affaires</span>
+        </a>
+    </div>
 
-    <span class="nav-item nav-item-info">
-        <span class="nav-ico">📄</span>
-        <span class="nav-label">Documents</span>
-        <span class="nav-badge">onglet affaire</span>
-    </span>
+    <!-- ================= DANS UNE AFFAIRE ================= -->
+    <div class="nav-section">
 
-    <span class="nav-item nav-item-info">
-        <span class="nav-ico">💰</span>
-        <span class="nav-label">Factures</span>
-        <span class="nav-badge">onglet affaire</span>
-    </span>
+        <div class="nav-section-label">Gestion des affaires</div>
+
+        <a th:href="@{/avocat/affaires}" class="nav-item nav-item-info">
+
+            <span class="nav-ico">🏛️</span>
+            <span class="nav-label">Audiences</span>
+        </a>
+
+        <a th:href="@{/avocat/affaires}" class="nav-item nav-item-info">
+
+            <span class="nav-ico">📜</span>
+            <span class="nav-label">Jugements</span>
+        </a>
+
+        <a th:href="@{/avocat/affaires}" class="nav-item nav-item-info">
+
+            <span class="nav-ico">📄</span>
+            <span class="nav-label">Documents</span>
+        </a>
+
+        <a th:href="@{/avocat/affaires}" class="nav-item nav-item-info">
+
+            <span class="nav-ico">💰</span>
+            <span class="nav-label">Factures</span>
+        </a>
+
+    </div>
+
 </div>
 
         <!-- ════ HUISSIER ════ -->

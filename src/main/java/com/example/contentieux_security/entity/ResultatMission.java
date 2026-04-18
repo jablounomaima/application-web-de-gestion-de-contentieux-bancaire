@@ -25,7 +25,8 @@ public class ResultatMission {
     
     private LocalDateTime dateSoumission;
     private String soumisePar;
-
+    private LocalDateTime dateCreation;
+    private LocalDateTime dateModification;
     
     
     @ManyToOne(fetch = FetchType.LAZY, optional = false)  // ✅ mission obligatoire

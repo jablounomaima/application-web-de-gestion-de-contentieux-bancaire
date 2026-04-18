@@ -6,8 +6,11 @@ public enum StatutMission {
     PV_SOUMIS("PV soumis"),
     FACTURE_SOUMISE("Facture soumise"),
     REALISEE("Réalisée"),
+    VALIDEE_AGENT("Validée par l'agent"), // ✅ AJOUT IMPORTANT
     TERMINEE("Terminée"),
-    ANNULEE("Annulée");
+    ANNULEE("Annulée"),
+    REJETEE("Rejetée par l'agent"); // ✅ AJOUT
+
 
     private final String libelle;
     

@@ -7,9 +7,11 @@ import com.example.contentieux_security.entity.ResultatMission;
 import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.repository.MissionRepository;
 import com.example.contentieux_security.repository.ResultatMissionRepository;
-
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +43,14 @@ public class ResultatMissionService {
                                      String username) throws IOException {
 
         Mission mission = missionRepo.findById(missionId)
+
+        
             .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
+
+            // 🚫 BLOQUER si validé par l'agent
+if (mission.getDateValidationAgent() != null) {
+    throw new RuntimeException("Mission déjà validée par l'agent, modification impossible");
+}
 
         // Vérifier que c'est bien son prestataire
         if (!mission.getPrestataire().getUsername().equals(username)) {
@@ -175,4 +185,14 @@ public class ResultatMissionService {
     public List<ResultatMission> getResultatsByMission(Long missionId) {
         return resultatRepo.findByMission_IdOrderByDateSoumissionDesc(missionId);
     }
+
+
+    public ResultatMission getResultatAvecFichiers(Long missionId) {
+        return resultatRepo.findByMissionIdWithFichiers(missionId)
+                .orElse(null);
+    }
+
 }
+
+
+

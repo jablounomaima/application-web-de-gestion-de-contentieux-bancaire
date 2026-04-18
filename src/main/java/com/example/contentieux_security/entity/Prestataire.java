@@ -46,11 +46,11 @@ public class Prestataire {
 
     private boolean actif = true;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "agent_id")
     private AgentBancaire agentResponsable;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "agence_id")
     private Agence agence;
 

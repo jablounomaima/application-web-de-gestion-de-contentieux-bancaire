@@ -251,51 +251,95 @@
                                 <!-- ✅ FIX statut: utiliser m.statut.name() pour la classe CSS -->
                                 <td>
                                     <span class="statut-pill"
-                                          th:classappend="'badge-' + ${m.statut.name()}"
-                                          th:text="${m.statut.name()}">ASSIGNEE</span>
+                                    th:classappend="${m.statut != null ? 'badge-' + m.statut.name() : ''}"
+                                    th:text="${m.statut != null ? m.statut.name() : '—'}">ASSIGNEE</span>
                                 </td>
 
                                 <!-- Actions -->
                                 <td>
                                     <div class="d-flex gap-1 flex-wrap">
-
+                                
+                                        <!-- 👁 Voir -->
                                         <a th:href="@{/prestataire/missions/{id}(id=${m.id})}"
                                            class="btn btn-outline-primary action-btn"
                                            title="Voir le détail">
                                             <i class="bi bi-eye"></i>
                                         </a>
-
-                                        <!-- ✅ FIX: utiliser m.statut.name() -->
+                                
+                                        <!-- ✔ VALIDER -->
                                         <form th:if="${m.statut.name() == 'FACTURE_SOUMISE'}"
-                                              th:action="@{/agent/dossiers/{dId}/missions/{mId}/statut(dId=${dossier.id},mId=${m.id})}"
-                                              method="post"
-                                              onsubmit="return confirm('Terminer cette mission ?')">
-                                            <input type="hidden" name="statut" value="TERMINEE"/>
-                                            <button type="submit"
-                                                    class="btn btn-success action-btn"
-                                                    title="Valider et terminer">
-                                                <i class="bi bi-check2-circle"></i>
-                                            </button>
-                                        </form>
-
+                                        th:action="@{/agent/missions/{id}/valider(id=${m.id})}"
+                                        method="post">
+                                  
+                                      <input type="hidden"
+                                             th:name="${_csrf.parameterName}"
+                                             th:value="${_csrf.token}"/>
+                                  
+                                      <!-- champ commentaire -->
+                                      <input type="text" name="commentaire"
+                                             class="form-control form-control-sm"
+                                             placeholder="Commentaire..."
+                                             style="max-width:120px;"/>
+                                  
+                                      <button type="submit"
+                                              class="btn btn-success action-btn mt-1">
+                                          ✔
+                                      </button>
+                                  </form>
+                                
+                                        <!-- ❌ REJETER -->
+                                        <form th:if="${m.statut.name() == 'FACTURE_SOUMISE'}"
+                                        th:action="@{/agent/missions/{id}/rejeter(id=${m.id})}"
+                                        method="post">
+                                  
+                                      <input type="hidden"
+                                             th:name="${_csrf.parameterName}"
+                                             th:value="${_csrf.token}"/>
+                                  
+                                      <input type="text" name="commentaire"
+                                             class="form-control form-control-sm"
+                                             placeholder="Pourquoi rejet ?"
+                                             style="max-width:120px;"/>
+                                  
+                                      <button type="submit"
+                                              class="btn btn-danger action-btn mt-1">
+                                          ✖
+                                      </button>
+                                  </form>
+                                
+                                        <!-- ✅ AFFICHAGE VALIDÉ -->
+                                        <span th:if="${m.statut.name() == 'TERMINEE'}"
+                                              class="badge bg-success">
+                                            ✔ Validée
+                                        </span>
+                                
+                                        <!-- ❌ AFFICHAGE REJETÉ -->
+                                        <span th:if="${m.statut.name() == 'REJETEE'}"
+                                              class="badge bg-danger">
+                                            ❌ Rejetée
+                                        </span>
+                                
+                                        <!-- ✏️ Modifier -->
                                         <a th:if="${m.statut.name() == 'ASSIGNEE'}"
                                            th:href="@{/prestataire/missions/{id}/modifier(id=${m.id})}"
                                            class="btn btn-outline-warning action-btn"
                                            title="Modifier">
                                             <i class="bi bi-pencil"></i>
                                         </a>
-
+                                
+                                        <!-- 🗑 Supprimer -->
                                         <form th:if="${m.statut.name() == 'ASSIGNEE'}"
                                               th:action="@{/agent/dossiers/{dId}/missions/{mId}/supprimer(dId=${dossier.id},mId=${m.id})}"
                                               method="post"
                                               onsubmit="return confirm('Supprimer cette mission ?')">
+                                
                                             <button type="submit"
                                                     class="btn btn-outline-danger action-btn"
                                                     title="Supprimer">
                                                 <i class="bi bi-trash3"></i>
                                             </button>
                                         </form>
-
+                                
                                     </div>
                                 </td>
                             </tr>

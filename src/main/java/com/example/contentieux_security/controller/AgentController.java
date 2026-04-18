@@ -8,13 +8,17 @@ import com.example.contentieux_security.dto.PrestataireDTO;
 import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.entity.Client;
 import com.example.contentieux_security.entity.DossierContentieux;
+import com.example.contentieux_security.entity.Mission;
 import com.example.contentieux_security.entity.Prestataire;
 import com.example.contentieux_security.enums.DossierStatus;
+import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.repository.DossierRepository;
+import com.example.contentieux_security.repository.MissionRepository;
 import com.example.contentieux_security.service.AgentBancaireService;
 import com.example.contentieux_security.service.ClientService;
 import com.example.contentieux_security.service.DossierService;
+import com.example.contentieux_security.service.MissionService;
 import com.example.contentieux_security.service.PrestataireService;
 import com.example.contentieux_security.enums.TypeClient;
 import jakarta.transaction.Transactional;
@@ -32,6 +36,7 @@ import com.example.contentieux_security.service.PrestataireService;
 
 import java.security.Principal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -46,6 +51,8 @@ public class AgentController {
     private final ClientService clientService;
     private final DossierService dossierService;
     private final DossierRepository dossierRepository;
+    private final MissionService missionService;
+    private final MissionRepository missionRepository;
 
     // ══════════════════════════════════════════════════════════════
     //  DASHBOARD
@@ -493,4 +500,52 @@ public String ressoumettreDossier(@PathVariable Long id,
 }
 
 
+
+//agennt valider mission
+// 👇 Validation mission par agent
+@PostMapping("/missions/{id}/valider")
+@PreAuthorize("hasRole('AGENT')")
+public String validerMission(@PathVariable Long id,
+                            @RequestParam(required = false) String commentaire,
+                            Principal principal,
+                            RedirectAttributes redirectAttributes) {
+    try {
+        String agentUsername = principal.getName(); // ✅ AJOUT
+
+        missionService.validerMission(id, commentaire, agentUsername); // ✅ 3 paramètres
+
+        redirectAttributes.addFlashAttribute("success",
+                "Mission validée avec succès ✔");
+    } catch (Exception e) {
+        redirectAttributes.addFlashAttribute("error",
+                "Erreur validation mission : " + e.getMessage());
+    }
+
+    return "redirect:/prestataire/missions";
+}
+
+@PostMapping("/missions/{id}/rejeter")
+@PreAuthorize("hasRole('AGENT')")
+public String rejeterMission(
+        @PathVariable("id") Long id,
+        Authentication authentication,
+        @RequestParam String commentaire) {
+
+    String agentUsername = authentication.getName();
+
+    Mission mission = missionRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+    mission.setStatut(StatutMission.REJETEE); // ✅ important
+    mission.setDateValidationAgent(LocalDateTime.now());
+    mission.setValideParAgent(agentUsername);
+    mission.setCommentaireAgent(commentaire);
+
+    mission.setPvValide(false);
+    mission.setFactureValide(false);
+
+    missionRepository.save(mission);
+
+    return "redirect:/prestataire/missions";
+}
 }

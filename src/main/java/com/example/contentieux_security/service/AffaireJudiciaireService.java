@@ -8,13 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-
+import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import java.io.IOException;
 import java.time.LocalDate;
 import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.stream.Collectors;
+
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -24,57 +24,96 @@ public class AffaireJudiciaireService {
     private final AffaireJudiciaireRepository affaireRepo;
     private final AudienceRepository          audienceRepo;
     private final DocumentAffaireRepository   documentRepo;
-    // Add to the field declarations at the top of AffaireJudiciaireService
-private final MissionRepository missionRepository;
+    private final MissionRepository           missionRepository;
+
     // =========================================================
     //  AFFAIRE
     // =========================================================
 
-   // Replace the old 2-param creerAffaire with this 5-param version
-public AffaireJudiciaire creerAffaire(Long missionId,
-    String tribunal,
-    String numeroRole,
-    String chambre,
-    String username) {
-Mission mission = missionRepository.findById(missionId)
-.orElseThrow(() -> new IllegalArgumentException(
-"Mission introuvable : id=" + missionId));
+    public AffaireJudiciaire creerAffaire(Long missionId,
+                                           String tribunal,
+                                           String numeroRole,
+                                           String chambre,
+                                           String username) {
 
-// Prevent duplicates
-affaireRepo.findByMission_Id(missionId).ifPresent(a -> {
-throw new IllegalStateException(
-"Une affaire existe déjà pour cette mission : " + a.getNumeroAffaire());
-});
+        System.out.println(">>> CREATION AFFAIRE START - missionId=" + missionId);
 
-AffaireJudiciaire affaire = new AffaireJudiciaire();
-affaire.setNumeroAffaire(genererNumeroAffaire());
-affaire.setTribunal(tribunal);
-affaire.setNumeroRole(numeroRole);
-affaire.setChambre(chambre);
-affaire.setDateLancement(LocalDate.now());
-affaire.setStatut(AffaireJudiciaire.StatutAffaire.EN_COURS);
-affaire.setMission(mission);
-affaire.setDossier(mission.getPrestation().getDossier());
+        // 1. Charger la mission avec tous ses détails (fetch join)
+        Mission mission = missionRepository.findByIdWithDetails(missionId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Mission introuvable : id=" + missionId));
 
-return affaireRepo.save(affaire);
-}
+        System.out.println(">>> Mission trouvée : " + mission.getNumeroMission());
+        System.out.println(">>> Prestataire : " + (mission.getPrestataire() != null ? mission.getPrestataire().getUsername() : "NULL"));
+        System.out.println(">>> Prestation : " + (mission.getPrestation() != null ? mission.getPrestation().getId() : "NULL"));
+        System.out.println(">>> Dossier : " + (mission.getPrestation() != null && mission.getPrestation().getDossier() != null ? mission.getPrestation().getDossier().getId() : "NULL"));
 
-// Add this new method
-public AffaireJudiciaire getAffaireParDossier(Long dossierId) {
-return affaireRepo.findByDossier_Id(dossierId).orElse(null);
-}
+        // 2. Vérification doublon
+        affaireRepo.findByMission_Id(missionId).ifPresent(a -> {
+            throw new IllegalStateException(
+                    "Une affaire existe déjà pour cette mission : " + a.getNumeroAffaire());
+        });
 
-// Private helper — add at the bottom of the service
-private String genererNumeroAffaire() {
-long count = affaireRepo.count() + 1;
-return String.format("AFF-%d-%05d", LocalDate.now().getYear(), count);
-}
+        // 3. Vérification que le dossier est accessible
+        if (mission.getPrestation() == null) {
+            throw new IllegalStateException(
+                    "La mission " + missionId + " n'a pas de prestation liée.");
+        }
+        if (mission.getPrestation().getDossier() == null) {
+            throw new IllegalStateException(
+                    "La prestation liée à la mission " + missionId + " n'a pas de dossier.");
+        }
+
+        // 4. Construction de l'affaire
+        AffaireJudiciaire affaire = new AffaireJudiciaire();
+        affaire.setNumeroAffaire(genererNumeroAffaire());
+        affaire.setTribunal(tribunal);
+        affaire.setNumeroRole(numeroRole);
+        affaire.setChambre(chambre);
+        affaire.setDateLancement(LocalDate.now());
+        affaire.setStatut(AffaireJudiciaire.StatutAffaire.EN_COURS);
+        affaire.setAvocat(mission.getPrestataire());
+        affaire.setMission(mission);
+        affaire.setDossier(mission.getPrestation().getDossier());
+
+        System.out.println(">>> AVANT SAVE : " + affaire.getNumeroAffaire());
+
+        // 5. Sauvegarde
+        AffaireJudiciaire result = affaireRepo.save(affaire);
+
+        System.out.println(">>> APRES SAVE : id=" + result.getId());
+
+        return result;
+    }
+
+    @Transactional(readOnly = true)
+    public AffaireJudiciaire getAffaireParDossier(Long dossierId) {
+        return affaireRepo.findByDossier_Id(dossierId).orElse(null);
+    }
+
+    @Transactional(readOnly = true)
     public AffaireJudiciaire getAffaireById(Long id) {
-        return affaireRepo.findById(id).orElse(null);
+        // Charger avec audiences d'abord
+        AffaireJudiciaire affaire = affaireRepo.findByIdWithAudiences(id).orElse(null);
+        if (affaire == null) return null;
+        // Puis initialiser les documents séparément
+        affaireRepo.findByIdWithDocuments(id)
+                   .ifPresent(a -> affaire.setDocuments(a.getDocuments()));
+        return affaire;
     }
 
     public List<AffaireJudiciaire> getAffairesParAvocat(String username) {
-        return affaireRepo.findByMission_Prestataire_Username(username);
+        List<AffaireJudiciaire> viaMission = affaireRepo.findByMissionPrestataireUsernameWithDetails(username);
+        List<AffaireJudiciaire> viaAvocat  = affaireRepo.findByAvocatUsernameWithDetails(username);
+    
+        return Stream.concat(viaMission.stream(), viaAvocat.stream())
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    private String genererNumeroAffaire() {
+        long count = affaireRepo.count() + 1;
+        return String.format("AFF-%d-%05d", LocalDate.now().getYear(), count);
     }
 
     // =========================================================
@@ -82,7 +121,7 @@ return String.format("AFF-%d-%05d", LocalDate.now().getYear(), count);
     // =========================================================
 
     public Audience ajouterAudience(Long affaireId, LocalDate dateAudience,
-                                    String heure, String salle, String motif) {
+                                     String heure, String salle, String motif) {
         AffaireJudiciaire affaire = affaireRepo.findById(affaireId).orElse(null);
         if (affaire == null) return null;
 
@@ -95,17 +134,16 @@ return String.format("AFF-%d-%05d", LocalDate.now().getYear(), count);
         return audienceRepo.save(audience);
     }
 
-    // Signature matches controller exactly: (Long, String, StatutAudience, LocalDate)
     public Audience enregistrerResultatAudience(Long audienceId,
-                                                String resultat,
-                                                StatutAudience statut,
-                                                LocalDate prochaineAudience) {
+                                                 String resultat,
+                                                 StatutAudience statut,
+                                                 LocalDate prochaineAudience) {
         Audience audience = audienceRepo.findById(audienceId).orElse(null);
         if (audience == null) return null;
 
         audience.setResultat(resultat);
         audience.setStatut(statut);
-audienceRepo.save(audience);
+
         if (prochaineAudience != null) {
             audience.setProchaineAudience(prochaineAudience);
             AffaireJudiciaire affaire = audience.getAffaire();
@@ -118,17 +156,66 @@ audienceRepo.save(audience);
         return audienceRepo.save(audience);
     }
 
+    @Transactional(readOnly = true)
+    public List<Audience> getAudiencesParAvocat(String username) {
+        List<AffaireJudiciaire> affaires = getAffairesParAvocat(username);
+        return affaires.stream()
+                .flatMap(a -> a.getAudiences().stream())
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<Audience> getAudiencesAVenir(String username) {
+        LocalDate today = LocalDate.now();
+        return getAudiencesParAvocat(username).stream()
+                .filter(a -> a.getDateAudience() != null
+                        && a.getDateAudience().isAfter(today)
+                        && a.getStatut() != StatutAudience.TENUE
+                        && a.getStatut() != StatutAudience.ANNULEE)
+                .sorted(Comparator.comparing(Audience::getDateAudience))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Audience getAudienceById(Long audienceId) {
+        return audienceRepo.findById(audienceId)
+                .orElseThrow(() -> new RuntimeException("Audience introuvable : " + audienceId));
+    }
+
+    public void modifierAudience(Long audienceId, LocalDate dateAudience, String heure,
+                                  String salle, String motif, String observations) {
+        Audience audience = getAudienceById(audienceId);
+        audience.setDateAudience(dateAudience);
+        audience.setHeure(heure);
+        audience.setSalle(salle);
+        audience.setMotif(motif);
+        audienceRepo.save(audience);
+    }
+
+    public void changerStatutAudience(Long audienceId, String statut) {
+        Audience audience = getAudienceById(audienceId);
+        audience.setStatut(StatutAudience.valueOf(statut));
+        audienceRepo.save(audience);
+    }
+
+    public void supprimerAudience(Long audienceId) {
+        audienceRepo.delete(getAudienceById(audienceId));
+    }
+
+    public Audience saveAudience(Audience audience) {
+        return audienceRepo.save(audience);
+    }
+
     // =========================================================
     //  JUGEMENT
     // =========================================================
 
-    // Signature matches controller exactly: 6 params
     public AffaireJudiciaire enregistrerJugement(Long affaireId,
-                                                  String typeJugement,
-                                                  LocalDate dateJugement,
-                                                  String montantJuge,
-                                                  String delaiPaiement,
-                                                  String description) {
+                                                   String typeJugement,
+                                                   LocalDate dateJugement,
+                                                   String montantJuge,
+                                                   String delaiPaiement,
+                                                   String description) {
         AffaireJudiciaire affaire = affaireRepo.findById(affaireId).orElse(null);
         if (affaire == null) return null;
 
@@ -147,28 +234,36 @@ audienceRepo.save(audience);
         return affaireRepo.save(affaire);
     }
 
+    public void modifierJugement(Long id, String typeJugement, LocalDate dateJugement,
+                                  String montantJuge, String delaiPaiement, String observations) {
+        throw new UnsupportedOperationException("Unimplemented method 'modifierJugement'");
+    }
+
     // =========================================================
     //  TRIBUNAL
     // =========================================================
 
-    public void modifierTribunal(Long affaireId, String tribunalNom,
-                                  String tribunalVille, String tribunalChambre,
-                                  String numeroRole, String observations) {
-        AffaireJudiciaire affaire = affaireRepo.findById(affaireId).orElse(null);
-        if (affaire != null) {
-            affaire.setTribunal(tribunalNom);
-            affaire.setChambre(tribunalChambre);
-            affaire.setNumeroRole(numeroRole);
-            // tribunalVille: not a field on the entity, ignored
-            affaireRepo.save(affaire);
-        }
+    @Transactional
+    public AffaireJudiciaire modifierTribunal(Long affaireId,
+                                               String tribunal,
+                                               String chambre,
+                                               String numeroRole) {
+ 
+        AffaireJudiciaire affaire = affaireRepo.findById(affaireId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Affaire introuvable : " + affaireId));
+ 
+        affaire.setTribunal(tribunal);
+        affaire.setChambre(chambre);
+        affaire.setNumeroRole(numeroRole);
+ 
+        return affaireRepo.save(affaire);
     }
 
     // =========================================================
     //  DOCUMENTS
     // =========================================================
 
-    // Parameter type is DocumentAffaire.TypeDocument (enum), not String
     public DocumentAffaire uploadDocument(Long affaireId,
                                            MultipartFile file,
                                            DocumentAffaire.TypeDocument typeDocument,
@@ -178,8 +273,8 @@ audienceRepo.save(audience);
 
         DocumentAffaire doc = new DocumentAffaire();
         doc.setNomFichierOriginal(file.getOriginalFilename());
-        doc.setNomFichierServeur(file.getOriginalFilename()); // override in real impl
-        doc.setCheminFichier("");                             // set real path in impl
+        doc.setNomFichierServeur(file.getOriginalFilename());
+        doc.setCheminFichier("");
         doc.setTypeMime(file.getContentType());
         doc.setTailleFichier(file.getSize());
         doc.setTypeDocument(typeDocument);
@@ -199,96 +294,91 @@ audienceRepo.save(audience);
 
 
 
+// ══════════════════════════════════════════════════════════════════
+//  MÉTHODES À AJOUTER à la fin de AffaireJudiciaireService
+//  ✅ Aucune modification du code existant
+//  ✅ Utilise audienceRepo et affaireRepo déjà injectés
+// ══════════════════════════════════════════════════════════════════
 
-    // =========================================================
-//  AUDIENCES - Méthodes pour l'avocat
-// =========================================================
+    // ─────────────────────────────────────────────────────────────
+    //  AUDIENCES — surcharge complète (appelée par le controller)
+    //  Complète la version existante ajouterAudience(5 params)
+    //  avec resultat + prochaineAudience + statut
+    // ─────────────────────────────────────────────────────────────
 
-/**
- * Récupère toutes les audiences d'un avocat via ses affaires
- */
-@Transactional(readOnly = true)
-public List<Audience> getAudiencesParAvocat(String username) {
-    // Récupérer toutes les affaires de l'avocat
-    List<AffaireJudiciaire> affaires = getAffairesParAvocat(username);
-    
-    // Collecter toutes les audiences de ces affaires
-    return affaires.stream()
-        .flatMap(affaire -> affaire.getAudiences().stream())
-        .collect(Collectors.toList());
-}
+    public Audience ajouterAudience(Long affaireId,
+                                     LocalDate dateAudience,
+                                     String heure,
+                                     String salle,
+                                     String motif,
+                                     String resultat,
+                                     LocalDate prochaineAudience,
+                                     StatutAudience statut) {
 
-/**
- * Récupère les audiences à venir d'un avocat
- */
-@Transactional(readOnly = true)
-public List<Audience> getAudiencesAVenir(String username) {
-    List<AffaireJudiciaire> affaires = getAffairesParAvocat(username);
-    LocalDate today = LocalDate.now();
-    
-    return affaires.stream()
-        .flatMap(affaire -> affaire.getAudiences().stream())
-        .filter(a -> a.getDateAudience() != null && 
-                     a.getDateAudience().isAfter(today) &&
-                     !"TENUE".equals(a.getStatut().name()) &&
-                     !"ANNULEE".equals(a.getStatut().name()))
-        .sorted(Comparator.comparing(Audience::getDateAudience))
-        .collect(Collectors.toList());
-}
+        AffaireJudiciaire affaire = affaireRepo.findById(affaireId).orElse(null);
+        if (affaire == null) return null;
 
-/**
- * Récupère une audience par son ID
- */
-@Transactional(readOnly = true)
-public Audience getAudienceById(Long audienceId) {
-    return audienceRepo.findById(audienceId)
-        .orElseThrow(() -> new RuntimeException("Audience introuvable : " + audienceId));
-}
+        Audience audience = new Audience();
+        audience.setDateAudience(dateAudience);
+        audience.setHeure(heure);
+        audience.setSalle(salle);
+        audience.setMotif(motif);
+        audience.setResultat(resultat);
+        audience.setProchaineAudience(prochaineAudience);
+        audience.setStatut(statut != null ? statut : StatutAudience.PLANIFIEE);
+        audience.setAffaire(affaire);
 
-/**
- * Modifier une audience
- */
-@Transactional
-public void modifierAudience(Long audienceId, LocalDate dateAudience, String heure, 
-                              String salle, String motif, String observations) {
-    Audience audience = getAudienceById(audienceId);
-    audience.setDateAudience(dateAudience);
-    audience.setHeure(heure);
-    audience.setSalle(salle);
-    audience.setMotif(motif);
-    audienceRepo.save(audience);
-}
+        if (prochaineAudience != null) {
+            affaire.setDateProchainAudience(prochaineAudience);
+            affaireRepo.save(affaire);
+        }
 
-/**
- * Changer le statut d'une audience
- */
-@Transactional
-public void changerStatutAudience(Long audienceId, String statut) {
-    Audience audience = getAudienceById(audienceId);
-    audience.setStatut(Audience.StatutAudience.valueOf(statut));  // ✅ enum    audienceRepo.save(audience);
-}
+        return audienceRepo.save(audience);
+    }
 
-/**
- * Supprimer une audience
- */
-@Transactional
-public void supprimerAudience(Long audienceId) {
-    Audience audience = getAudienceById(audienceId);
-    audienceRepo.delete(audience);
-}
+    // ─────────────────────────────────────────────────────────────
+    //  AUDIENCES — modifier statut + résultat + prochaine audience
+    //  Wrapper propre autour de enregistrerResultatAudience
+    //  + changerStatutAudience existants
+    // ─────────────────────────────────────────────────────────────
 
-/**
- * Sauvegarder une audience
- */
-@Transactional
-public Audience saveAudience(Audience audience) {
-    return audienceRepo.save(audience);
-}
+    public void modifierStatutAudience(Long audienceId,
+                                        StatutAudience statut,
+                                        String resultat,
+                                        LocalDate prochaineAudience) {
 
-public void modifierJugement(Long id, String typeJugement, LocalDate localDate, String montantJuge,
-        String delaiPaiement, String observations) {
-    throw new UnsupportedOperationException("Unimplemented method 'modifierJugement'");
-}
+        // Réutilise enregistrerResultatAudience (déjà écrit, gère la cascade sur l'affaire)
+        enregistrerResultatAudience(audienceId, resultat, statut, prochaineAudience);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    //  JUGEMENT — surcharge avec TypeJugement enum (type-safe)
+    //  La version existante prend un String — celle-ci prend l'enum
+    //  directement, évite le try/catch valueOf dans le controller
+    // ─────────────────────────────────────────────────────────────
+
+    public AffaireJudiciaire enregistrerJugement(Long affaireId,
+                                                   AffaireJudiciaire.TypeJugement typeJugement,
+                                                   LocalDate dateJugement,
+                                                   String montantJuge,
+                                                   String delaiPaiement,
+                                                   String description) {
+
+        // Délègue à la version String existante — pas de duplication de logique
+        return enregistrerJugement(
+                affaireId,
+                typeJugement.name(),   // String attendu par la méthode existante
+                dateJugement,
+                montantJuge,
+                delaiPaiement,
+                description
+        );
+    }
+
+
+
+
+
 
 
 }

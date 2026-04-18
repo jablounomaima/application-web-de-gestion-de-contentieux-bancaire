@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Affaire judiciaire</title>
+    <link rel="stylesheet" th:href="@{/css/bootstrap.min.css}">
+</head>
+<body>
+
+<div class="container mt-4">
+
+    <h2>⚖️ Affaire judiciaire</h2>
+
+    <!-- ❌ PAS D'AFFAIRE -->
+    <div th:if="${pasDAffaire}" class="alert alert-warning">
+        Aucune affaire pour ce dossier.
+
+        <a th:href="@{'/agent/dossiers/' + ${dossierId} + '/affaire/lancer'}"
+           class="btn btn-primary mt-2">
+            ➕ Lancer une affaire
+        </a>
+    </div>
+
+    <!-- ✅ AFFAIRE -->
+    <div th:if="${affaire != null}">
+
+        <!-- INFO -->
+        <div class="card mb-3">
+            <div class="card-body">
+
+                <h4 th:text="${affaire.numeroAffaire}"></h4>
+
+                <p><b>Tribunal :</b> <span th:text="${affaire.tribunal}"></span></p>
+                <p><b>Chambre :</b> <span th:text="${affaire.chambre}"></span></p>
+                <p><b>Numéro rôle :</b> <span th:text="${affaire.numeroRole}"></span></p>
+                <p><b>Date :</b> <span th:text="${affaire.dateLancement}"></span></p>
+
+                <p>
+                    <b>Statut :</b>
+                    <span th:switch="${affaire.statut}">
+                        <span th:case="'EN_COURS'" class="badge bg-primary">En cours</span>
+                        <span th:case="'JUGEMENT_RENDU'" class="badge bg-success">Jugement</span>
+                        <span th:case="'EXECUTION_FORCEE'" class="badge bg-warning">Exécution</span>
+                        <span th:case="'CLOSE'" class="badge bg-secondary">Clôturée</span>
+                    </span>
+                </p>
+
+            </div>
+        </div>
+
+        <!-- AUDIENCES -->
+        <h4>🏛️ Audiences</h4>
+
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>Heure</th>
+                    <th>Salle</th>
+                    <th>Motif</th>
+                    <th>Statut</th>
+                </tr>
+            </thead>
+
+            <tbody>
+                <tr th:each="aud : ${affaire.audiences}">
+                    <td th:text="${aud.dateAudience}"></td>
+                    <td th:text="${aud.heure}"></td>
+                    <td th:text="${aud.salle}"></td>
+                    <td th:text="${aud.motif}"></td>
+                    <td th:text="${aud.statut}"></td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- DOCUMENTS -->
+        <h4>📄 Documents</h4>
+
+        <ul>
+            <li th:each="doc : ${affaire.documents}">
+                <span th:text="${doc.nomFichierOriginal}"></span>
+            </li>
+        </ul>
+
+        <!-- JUGEMENT -->
+        <h4>📜 Jugement</h4>
+
+        <div th:if="${affaire.dateJugement != null}">
+            <p><b>Type :</b> <span th:text="${affaire.typeJugement}"></span></p>
+            <p><b>Date :</b> <span th:text="${affaire.dateJugement}"></span></p>
+            <p><b>Montant :</b> <span th:text="${affaire.montantJuge}"></span></p>
+            <p><b>Description :</b> <span th:text="${affaire.descriptionJugement}"></span></p>
+        </div>
+
+        <div th:if="${affaire.dateJugement == null}" class="alert alert-info">
+            Aucun jugement enregistré
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

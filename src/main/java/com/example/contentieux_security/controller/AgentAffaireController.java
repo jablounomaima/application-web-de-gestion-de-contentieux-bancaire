@@ -57,18 +57,19 @@ public class AgentAffaireController {
                                  Principal principal,
                                  RedirectAttributes ra) {
         try {
+            System.out.println(">>> LANCER AFFAIRE - dossierId=" + dossierId + " missionId=" + missionId);
             AffaireJudiciaire affaire = affaireService.creerAffaire(
                 missionId, tribunal, numeroRole, chambre, principal.getName()
             );
+            System.out.println(">>> AFFAIRE CREEE : id=" + affaire.getId() + " num=" + affaire.getNumeroAffaire());
             ra.addFlashAttribute("successMsg",
                 "Affaire " + affaire.getNumeroAffaire() + " lancée avec succès");
         } catch (Exception e) {
-            log.error("Erreur lancement affaire", e);
+            System.out.println(">>> ERREUR LANCEMENT : " + e.getClass().getName() + " : " + e.getMessage());
+            e.printStackTrace(); // stack trace complète
             ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
         }
-        return "redirect:/agent/dossiers/" + dossierId;
-    }
-
+        return "redirect:/agent/dossiers/" + dossierId + "/affaire/lancer";    }
     // ─────────────────────────────────────────────
     //  CONSULTER L'AFFAIRE D'UN DOSSIER
     // ─────────────────────────────────────────────
@@ -84,6 +85,15 @@ public class AgentAffaireController {
             model.addAttribute("affaire", affaire);
         }
         model.addAttribute("dossierId", dossierId);
-        return "agent/affaires/vue";
+        return "agent/affaires/vue2";
     }
+
+
+
+
+
+
+
+
+    
 }

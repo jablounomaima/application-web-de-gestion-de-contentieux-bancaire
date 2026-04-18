@@ -10,138 +10,83 @@
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
     <style>
         body { background:#f0f2f8; font-family:'Segoe UI',sans-serif; }
-
         .card { border:0.5px solid #e0e4ef; border-radius:14px; background:#fff; }
-
         .mission-banner {
             background:linear-gradient(135deg,#1a3a5c 0%,#1565c0 100%);
             border-radius:14px; color:#fff; padding:1.2rem 1.5rem;
         }
         .banner-lbl { font-size:.68rem; opacity:.7; text-transform:uppercase; letter-spacing:.07em; }
         .banner-val { font-size:.92rem; font-weight:600; margin-top:2px; }
-
-        .section-lbl {
-            font-size:.7rem; font-weight:600; text-transform:uppercase;
-            letter-spacing:.07em; color:#8a94a6; margin-bottom:.75rem;
-        }
-
-        .field-lbl { font-size:.72rem; color:#8a94a6; text-transform:uppercase;
-                     letter-spacing:.05em; margin-bottom:2px; }
+        .section-lbl { font-size:.7rem; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:#8a94a6; margin-bottom:.75rem; }
+        .field-lbl { font-size:.72rem; color:#8a94a6; text-transform:uppercase; letter-spacing:.05em; margin-bottom:2px; }
         .field-val { font-size:.9rem; font-weight:500; color:#212529; }
-
         .badge-ASSIGNEE        { background:#e3f0ff; color:#0a58ca; }
         .badge-EN_COURS        { background:#fff3cd; color:#664d03; }
         .badge-PV_SOUMIS       { background:#cff4fc; color:#055160; }
         .badge-FACTURE_SOUMISE { background:#e2d9f3; color:#432874; }
         .badge-REALISEE        { background:#d1e7dd; color:#0a3622; }
         .badge-TERMINEE        { background:#dee2e6; color:#444;    }
-
         .badge-OUVERT          { background:#e3f0ff; color:#0a58ca; }
         .badge-EN_TRAITEMENT   { background:#fff3cd; color:#664d03; }
         .badge-VALIDE          { background:#d1e7dd; color:#0a3622; }
         .badge-EN_PROCEDURE    { background:#e2d9f3; color:#432874; }
         .badge-EN_EXECUTION    { background:#ffe5e0; color:#993c1d; }
         .badge-REJETE          { background:#f8d7da; color:#58151c; }
+        .badge-REJETEE         { background:#f8d7da; color:#58151c; }
         .badge-CLOTURE         { background:#dee2e6; color:#444;    }
-
         .client-avatar {
             width:52px; height:52px; border-radius:50%;
             background:#e3f0ff; color:#0a58ca;
             display:flex; align-items:center; justify-content:center;
             font-weight:700; font-size:1.1rem; flex-shrink:0;
         }
-
-        .risque-card {
-            border:0.5px solid #e0e4ef; border-radius:10px;
-            padding:.9rem 1rem; background:#fafbff;
-        }
-        .risque-card.selectionne {
-            border-color:#0d6efd; background:#e8f0fe;
-        }
+        .risque-card { border:0.5px solid #e0e4ef; border-radius:10px; padding:.9rem 1rem; background:#fafbff; }
+        .risque-card.selectionne { border-color:#0d6efd; background:#e8f0fe; }
         .garantie-pill {
             display:inline-flex; align-items:center; gap:4px;
             background:#f0f0f5; border:0.5px solid #d0d0e0;
-            border-radius:20px; padding:3px 10px;
-            font-size:.75rem; color:#495057;
+            border-radius:20px; padding:3px 10px; font-size:.75rem; color:#495057;
         }
-
         .upload-zone {
             border:2px dashed #b8c4d8; border-radius:12px;
             padding:1.75rem 1rem; text-align:center; cursor:pointer;
             transition:all .2s; background:#f8faff;
         }
-        .upload-zone:hover, .upload-zone.drag-over {
-            border-color:#0d6efd; background:#eef3ff;
-        }
-        .upload-zone.has-file {
-            border-color:#198754; background:#f0faf5;
-        }
-
+        .upload-zone:hover, .upload-zone.drag-over { border-color:#0d6efd; background:#eef3ff; }
+        .upload-zone.has-file { border-color:#198754; background:#f0faf5; }
         .resultat-box {
-            background:#f8f9fa;
-            border:1px solid #e9ecef;
-            border-radius:10px;
-            padding:1rem;
-            margin-bottom:1rem;
-            transition:box-shadow 0.2s;
+            background:#f8f9fa; border:1px solid #e9ecef;
+            border-radius:10px; padding:1rem; margin-bottom:1rem; transition:box-shadow 0.2s;
         }
-        .resultat-box:hover {
-            box-shadow:0 2px 8px rgba(0,0,0,0.05);
+        .resultat-box:hover { box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+        .fichier-item {
+            border:1px solid #dee2e6; border-radius:6px;
+            padding:.5rem; margin-bottom:.5rem; background:#fff;
         }
-
-        .file-list-item {
-            transition: all 0.2s ease;
+        .fichier-item:last-child { margin-bottom:0; }
+        .fichier-liste { max-height:200px; overflow-y:auto; }
+        .commentaire-box {
+            background:#fff; border-left:3px solid #0d6efd;
+            padding:.75rem; margin-bottom:.75rem; border-radius:0 6px 6px 0;
         }
-        .file-list-item:hover {
-            background-color: #f8f9fa;
+        .rejet-banner {
+            background:#fff5f5; border:1px solid #f5c2c7;
+            border-radius:10px; padding:.9rem 1rem;
         }
-
         .timeline { padding-left:20px; position:relative; }
-        .timeline::before {
-            content:''; position:absolute; left:6px; top:8px; bottom:8px;
-            width:1.5px; background:#e0e4ef;
-        }
+        .timeline::before { content:''; position:absolute; left:6px; top:8px; bottom:8px; width:1.5px; background:#e0e4ef; }
         .timeline-item { position:relative; padding-bottom:1rem; }
         .timeline-item::before {
             content:''; position:absolute; left:-17px; top:5px;
             width:9px; height:9px; border-radius:50%;
-            background:#0d6efd; border:2px solid #fff;
-            box-shadow:0 0 0 1px #b0c8f8;
+            background:#0d6efd; border:2px solid #fff; box-shadow:0 0 0 1px #b0c8f8;
         }
         .timeline-item:last-child { padding-bottom:0; }
-
         .nav-tabs .nav-link { border-radius:8px 8px 0 0; font-size:.85rem; color:#6c757d; }
         .nav-tabs .nav-link.active { font-weight:600; color:#0d6efd; }
-        
-        .fichier-liste {
-            max-height: 200px;
-            overflow-y: auto;
-        }
-        
-        .fichier-item {
-            border: 1px solid #dee2e6;
-            border-radius: 6px;
-            padding: 0.5rem;
-            margin-bottom: 0.5rem;
-            background: #fff;
-        }
-        
-        .fichier-item:last-child {
-            margin-bottom: 0;
-        }
-        
-        .commentaire-box {
-            background: #fff;
-            border-left: 3px solid #0d6efd;
-            padding: 0.75rem;
-            margin-bottom: 0.75rem;
-            border-radius: 0 6px 6px 0;
-        }
-        
-        @media (max-width: 768px) {
-            .mission-banner .col-sm-2, .mission-banner .col-sm-3 {
-                margin-bottom: 0.5rem;
-            }
+        .file-list-item:hover { background-color:#f8f9fa; }
+        @media (max-width:768px) {
+            .mission-banner .col-sm-2, .mission-banner .col-sm-3 { margin-bottom:.5rem; }
         }
     </style>
 </head>
@@ -165,14 +110,23 @@
 
 <div class="container-fluid py-4 px-4">
 
+    <!-- BREADCRUMB -->
     <nav aria-label="breadcrumb" class="mb-3">
         <ol class="breadcrumb small">
             <li class="breadcrumb-item"><a href="/prestataire/missions">Mes missions</a></li>
+            <li class="breadcrumb-item" th:text="${mission.prestation?.dossier?.numeroDossier ?: '—'}"></li>
             <li class="breadcrumb-item active" th:text="${mission.numeroMission}">MISS-2026-00001</li>
         </ol>
     </nav>
 
-    <!-- Messages de notification -->
+    <!-- BOUTON MODIFIER (agent + statut ASSIGNEE) -->
+    <div th:if="${isAgent and mission.statut.name() == 'ASSIGNEE'}" class="d-flex justify-content-end mb-3">
+        <a th:href="@{/prestataire/missions/{id}/modifier(id=${mission.id})}" class="btn btn-warning btn-sm">
+            <i class="bi bi-pencil me-1"></i>Modifier / Supprimer
+        </a>
+    </div>
+
+    <!-- ALERTES -->
     <div th:if="${success}" class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2">
         <i class="bi bi-check-circle-fill"></i>
         <span th:text="${success}"></span>
@@ -205,30 +159,41 @@
                 <div class="banner-val" th:unless="${mission.dateFinPrevue}">—</div>
             </div>
             <div class="col-sm-2 text-sm-end">
-                <span class="badge rounded-pill px-3 py-2 fs-6" th:classappend="'badge-' + ${mission.statut}" th:text="${mission.statut}">ASSIGNEE</span>
+                <span class="badge rounded-pill px-3 py-2 fs-6"
+                      th:classappend="'badge-' + ${mission.statut}"
+                      th:text="${mission.statut}">ASSIGNEE</span>
             </div>
         </div>
     </div>
 
     <div class="row g-4">
 
-        <!-- COLONNE GAUCHE -->
+        <!-- ═══════════════ COLONNE GAUCHE ═══════════════ -->
         <div class="col-lg-7">
             <ul class="nav nav-tabs mb-0" id="tabsDossier">
                 <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tabClient"><i class="bi bi-person me-1"></i>Client</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabDossier"><i class="bi bi-folder2 me-1"></i>Dossier</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabRisques"><i class="bi bi-exclamation-triangle me-1"></i>Risques &amp; Garanties<span class="badge bg-primary rounded-pill ms-1" style="font-size:.65rem" th:text="${mission.prestation.dossier.risques.size()}">0</span></a></li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tabRisques">
+                        <i class="bi bi-exclamation-triangle me-1"></i>Risques &amp; Garanties
+                        <span class="badge bg-primary rounded-pill ms-1" style="font-size:.65rem"
+                              th:text="${mission.prestation.dossier.risques.size()}">0</span>
+                    </a>
+                </li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tabHistorique"><i class="bi bi-clock-history me-1"></i>Historique</a></li>
             </ul>
 
-            <div class="tab-content card rounded-top-0 p-3" style="border-top:none; border-radius:0 0 14px 14px !important;">
+            <div class="tab-content card p-3" style="border-top:none; border-radius:0 0 14px 14px !important;">
+
                 <!-- TAB CLIENT -->
                 <div class="tab-pane fade show active" id="tabClient">
                     <div class="d-flex align-items-center gap-3 mb-3">
-                        <div class="client-avatar" th:text="${(mission.prestation.dossier.client.nom != null ? mission.prestation.dossier.client.nom.substring(0,1).toUpperCase() : '?') + (mission.prestation.dossier.client.prenom != null ? mission.prestation.dossier.client.prenom.substring(0,1).toUpperCase() : '?')}"></div>
+                        <div class="client-avatar"
+                             th:text="${(mission.prestation.dossier.client.nom != null ? mission.prestation.dossier.client.nom.substring(0,1).toUpperCase() : '?') + (mission.prestation.dossier.client.prenom != null ? mission.prestation.dossier.client.prenom.substring(0,1).toUpperCase() : '?')}"></div>
                         <div>
                             <div class="fw-bold fs-6" th:text="${(mission.prestation.dossier.client.nom ?: '') + ' ' + (mission.prestation.dossier.client.prenom ?: '')}">Nom Prénom</div>
-                            <span class="badge bg-light text-dark border" style="font-size:.72rem" th:text="${mission.prestation.dossier.client.typeClient}">PARTICULIER</span>
+                            <span class="badge bg-light text-dark border" style="font-size:.72rem"
+                                  th:text="${mission.prestation.dossier.client.typeClient}">PARTICULIER</span>
                         </div>
                     </div>
                     <div class="row g-3">
@@ -250,20 +215,30 @@
                         <div class="col-sm-6"><div class="field-lbl">Date de création</div><div class="field-val" th:text="${#temporals.format(mission.prestation.dossier.dateCreation,'dd/MM/yyyy')}"></div></div>
                         <div class="col-sm-6"><div class="field-lbl">Agent créateur</div><div class="field-val" th:text="${(mission.prestation.dossier.agentCreateur.prenom ?: '') + ' ' + (mission.prestation.dossier.agentCreateur.nom ?: '')}"></div></div>
                         <div class="col-sm-6"><div class="field-lbl">Libellé</div><div class="field-val" th:text="${mission.prestation.dossier.libelle ?: '—'}"></div></div>
-                        <div class="col-sm-6"><div class="field-lbl">Type prestation</div><div class="field-val" th:text="${mission.prestation.type.libelle}">Procédure judiciaire</div></div>
-                        <div class="col-12" th:if="${mission.prestation.dossier.description}"><div class="field-lbl">Description</div><div class="p-2 bg-light rounded small" th:text="${mission.prestation.dossier.description}"></div></div>
+                        <div class="col-sm-6"><div class="field-lbl">Type prestation</div><div class="field-val" th:text="${mission.prestation.type.libelle}"></div></div>
+                        <div class="col-12" th:if="${mission.prestation.dossier.description}">
+                            <div class="field-lbl">Description</div>
+                            <div class="p-2 bg-light rounded small" th:text="${mission.prestation.dossier.description}"></div>
+                        </div>
                         <div class="col-12">
                             <div class="field-lbl mb-2">Validations</div>
                             <div class="d-flex gap-2 flex-wrap">
-                                <span class="badge px-3 py-2" th:classappend="${mission.prestation.dossier.validationFinanciere == true} ? 'bg-success' : (${mission.prestation.dossier.validationFinanciere == false} ? 'bg-danger' : 'bg-secondary')">
-                                    <i class="bi bi-currency-dollar me-1"></i> Financière : <span th:text="${mission.prestation.dossier.validationFinanciere == true} ? 'Accordée' : (${mission.prestation.dossier.validationFinanciere == false} ? 'Rejetée' : 'En attente')"></span>
+                                <span class="badge px-3 py-2"
+                                      th:classappend="${mission.prestation.dossier.validationFinanciere == true} ? 'bg-success' : (${mission.prestation.dossier.validationFinanciere == false} ? 'bg-danger' : 'bg-secondary')">
+                                    <i class="bi bi-currency-dollar me-1"></i>Financière :
+                                    <span th:text="${mission.prestation.dossier.validationFinanciere == true} ? 'Accordée' : (${mission.prestation.dossier.validationFinanciere == false} ? 'Rejetée' : 'En attente')"></span>
                                 </span>
-                                <span class="badge px-3 py-2" th:classappend="${mission.prestation.dossier.validationJuridique == true} ? 'bg-success' : (${mission.prestation.dossier.validationJuridique == false} ? 'bg-danger' : 'bg-secondary')">
-                                    <i class="bi bi-balance-scale me-1"></i> Juridique : <span th:text="${mission.prestation.dossier.validationJuridique == true} ? 'Accordée' : (${mission.prestation.dossier.validationJuridique == false} ? 'Rejetée' : 'En attente')"></span>
+                                <span class="badge px-3 py-2"
+                                      th:classappend="${mission.prestation.dossier.validationJuridique == true} ? 'bg-success' : (${mission.prestation.dossier.validationJuridique == false} ? 'bg-danger' : 'bg-secondary')">
+                                    <i class="bi bi-balance-scale me-1"></i>Juridique :
+                                    <span th:text="${mission.prestation.dossier.validationJuridique == true} ? 'Accordée' : (${mission.prestation.dossier.validationJuridique == false} ? 'Rejetée' : 'En attente')"></span>
                                 </span>
                             </div>
                         </div>
-                        <div class="col-12" th:if="${mission.prestation.dossier.montantRecupere != null}"><div class="field-lbl">Montant récupéré</div><div class="field-val text-success fw-bold" th:text="${mission.prestation.dossier.montantRecupere + ' TND'}"></div></div>
+                        <div class="col-12" th:if="${mission.prestation.dossier.montantRecupere != null}">
+                            <div class="field-lbl">Montant récupéré</div>
+                            <div class="field-val text-success fw-bold" th:text="${mission.prestation.dossier.montantRecupere + ' TND'}"></div>
+                        </div>
                     </div>
                 </div>
 
@@ -272,18 +247,43 @@
                     <div th:if="${mission.prestation.dossier.risques.empty}" class="text-center py-4 text-muted">
                         <i class="bi bi-exclamation-circle d-block fs-2 mb-1"></i>Aucun risque enregistré
                     </div>
-                    <div th:each="risque : ${mission.prestation.dossier.risques}" class="risque-card mb-3" th:classappend="${risque.selectionne} ? 'selectionne' : ''">
+                    <div th:each="risque : ${mission.prestation.dossier.risques}"
+                         class="risque-card mb-3" th:classappend="${risque.selectionne} ? 'selectionne' : ''">
                         <div class="d-flex align-items-start justify-content-between mb-2">
-                            <div><div class="fw-bold small" th:text="${risque.type}">Crédit immobilier</div>
-                            <div th:if="${risque.selectionne}"><span class="badge bg-primary" style="font-size:.65rem"><i class="bi bi-check-circle me-1"></i>Risque sélectionné</span></div></div>
-                            <div class="text-end"><div class="field-lbl">Montant impayé</div><div class="fw-bold text-danger" th:text="${risque.montantImpaye + ' TND'}"></div></div>
+                            <div>
+                                <div class="fw-bold small" th:text="${risque.type}"></div>
+                                <div th:if="${risque.selectionne}">
+                                    <span class="badge bg-primary" style="font-size:.65rem"><i class="bi bi-check-circle me-1"></i>Risque sélectionné</span>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div class="field-lbl">Montant impayé</div>
+                                <div class="fw-bold text-danger" th:text="${risque.montantImpaye + ' TND'}"></div>
+                            </div>
                         </div>
                         <div class="row g-2 mb-2">
                             <div class="col-6"><div class="field-lbl">Montant initial</div><div style="font-size:.85rem" th:text="${risque.montantInitial + ' TND'}"></div></div>
-                            <div class="col-6"><div class="field-lbl">Date échéance</div><div style="font-size:.85rem" th:if="${risque.dateEcheance}" th:text="${#temporals.format(risque.dateEcheance,'dd/MM/yyyy')}"></div><div style="font-size:.85rem" th:unless="${risque.dateEcheance}">—</div></div>
-                            <div class="col-12" th:if="${risque.description}"><div class="field-lbl">Description</div><div style="font-size:.82rem" class="text-muted" th:text="${risque.description}"></div></div>
+                            <div class="col-6">
+                                <div class="field-lbl">Date échéance</div>
+                                <div style="font-size:.85rem" th:if="${risque.dateEcheance}" th:text="${#temporals.format(risque.dateEcheance,'dd/MM/yyyy')}"></div>
+                                <div style="font-size:.85rem" th:unless="${risque.dateEcheance}">—</div>
+                            </div>
+                            <div class="col-12" th:if="${risque.description}">
+                                <div class="field-lbl">Description</div>
+                                <div style="font-size:.82rem" class="text-muted" th:text="${risque.description}"></div>
+                            </div>
                         </div>
-                        <div th:if="${!risque.garanties.empty}"><div class="field-lbl mb-1">Garanties (<span th:text="${risque.garanties.size()}">0</span>)</div><div class="d-flex flex-wrap gap-2"><div th:each="garantie : ${risque.garanties}" class="garantie-pill"><i class="bi bi-shield-check text-success" style="font-size:.75rem"></i><span th:text="${garantie.typeGarantie}"></span><span class="text-muted" th:if="${garantie.valeurEstimee}" th:text="'— ' + ${garantie.valeurEstimee} + ' TND'"></span><span class="text-muted" th:if="${garantie.documentRef}" th:text="'(' + ${garantie.documentRef} + ')'"></span></div></div></div>
+                        <div th:if="${!risque.garanties.empty}">
+                            <div class="field-lbl mb-1">Garanties (<span th:text="${risque.garanties.size()}">0</span>)</div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <div th:each="garantie : ${risque.garanties}" class="garantie-pill">
+                                    <i class="bi bi-shield-check text-success" style="font-size:.75rem"></i>
+                                    <span th:text="${garantie.typeGarantie}"></span>
+                                    <span class="text-muted" th:if="${garantie.valeurEstimee}" th:text="'— ' + ${garantie.valeurEstimee} + ' TND'"></span>
+                                    <span class="text-muted" th:if="${garantie.documentRef}" th:text="'(' + ${garantie.documentRef} + ')'"></span>
+                                </div>
+                            </div>
+                        </div>
                         <div th:if="${risque.garanties.empty}" class="text-muted small fst-italic">Aucune garantie pour ce risque</div>
                     </div>
                 </div>
@@ -297,121 +297,235 @@
                         <div th:each="h : ${historique}" class="timeline-item">
                             <div class="fw-semibold small" th:text="${h.typeAction}"></div>
                             <div class="text-muted small" th:text="${h.description}"></div>
-                            <div class="text-muted" style="font-size:.7rem" th:text="${#temporals.format(h.dateAction,'dd/MM/yyyy HH:mm')} + ' — ' + ${h.utilisateur}"></div>
+                            <div class="text-muted" style="font-size:.7rem"
+                                 th:text="${#temporals.format(h.dateAction,'dd/MM/yyyy HH:mm')} + ' — ' + ${h.utilisateur}"></div>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
 
-        <!-- COLONNE DROITE -->
+            </div><!-- /tab-content -->
+        </div><!-- /col-lg-7 -->
+
+        <!-- ═══════════════ COLONNE DROITE ═══════════════ -->
         <div class="col-lg-5">
 
+            <!-- Description de la mission -->
             <div class="card p-3 mb-4" th:if="${mission.description}">
                 <div class="section-lbl">Ma mission</div>
                 <div class="small lh-lg" th:text="${mission.description}"></div>
             </div>
 
-            <!-- RÉSULTATS SOUMIS AVEC PLUSIEURS FICHIERS -->
-            <div class="card p-3 mb-4" th:if="${resultats != null and !resultats.empty}">
-                <div class="section-lbl d-flex align-items-center justify-content-between">
-                    <span><i class="bi bi-files me-1"></i>Résultats soumis</span>
-                    <span class="badge bg-primary rounded-pill" th:text="${resultats.size()}">0</span>
-                </div>
-                
-                <div th:each="r, rStat : ${resultats}" class="resultat-box">
-                    <div class="d-flex align-items-center gap-2 mb-2">
-                        <span class="badge bg-secondary rounded-pill" th:text="'#' + ${rStat.count}">#1</span>
-                        <i class="bi bi-check-circle-fill text-success small"></i>
-                        <span class="small text-muted" th:text="${#temporals.format(r.dateSoumission,'dd/MM/yyyy à HH:mm')}">01/01/2026 à 14:30</span>
-                    </div>
-                    
-                    <!-- Commentaire -->
-                    <div th:if="${r.commentaire != null and !r.commentaire.isEmpty()}" class="commentaire-box mt-2">
-                        <div class="field-lbl mb-1">
-                            <i class="bi bi-chat-text me-1"></i>Commentaire :
-                        </div>
-                        <div class="small p-2 bg-light rounded border-start border-3 border-primary" 
-                             th:text="${r.commentaire}">
-                            Commentaire du résultat...
-                        </div>
-                    </div>
-                    
-                    <!-- Liste des fichiers multiples -->
-                    <div th:if="${r.fichiers != null and !r.fichiers.empty}" class="mt-2">
-                        <div class="field-lbl mb-2">
-                            <i class="bi bi-paperclip me-1"></i>
-                            Documents attachés (<span th:text="${r.fichiers.size()}">0</span>)
-                        </div>
-                        <div class="fichier-liste">
-                            <div th:each="f : ${r.fichiers}" class="fichier-item d-flex align-items-center gap-2">
-                                <i class="bi" style="font-size:1.2rem" th:class="${f.iconeType != null ? f.iconeType : 'bi-file-earmark'}"></i>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <div class="small fw-semibold text-truncate" th:text="${f.nomFichierOriginal}">document.pdf</div>
-                                    <div class="text-muted" style="font-size:.7rem" th:text="${f.tailleFormatee}">2.5 MB</div>
-                                </div>
-                                <a th:href="@{/prestataire/missions/fichier/id/{id}(id=${f.id})}" 
-                                   class="btn btn-sm btn-outline-primary flex-shrink-0" 
-                                   th:title="'Télécharger ' + ${f.nomFichierOriginal}">
-                                    <i class="bi bi-download"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Aucun fichier -->
-                    <div th:if="${r.fichiers == null or r.fichiers.empty}" class="text-muted small fst-italic mt-2">
-                        <i class="bi bi-paperclip me-1"></i>Aucun document attaché
-                    </div>
-                </div>
-            </div>
-
-            <!-- SECTION ACTIONS PRESTATAIRE -->
+            <!-- ══ VUE PRESTATAIRE ══ -->
             <div th:if="${isPrestataire}">
 
-                <div class="card p-3 mb-4" th:if="${mission.statut.name() == 'ASSIGNEE' or mission.statut.name() == 'EN_COURS'}">
+                <!-- ════════════════════════════════════════════
+                     BANNIÈRE REJET (statut REJETEE uniquement)
+                     Affiche le commentaire de l'agent + invite à resoumettre
+                     ════════════════════════════════════════════ -->
+                <div th:if="${mission.statut.name() == 'REJETEE'}" class="rejet-banner mb-4">
+                    <div class="d-flex align-items-center gap-2 mb-2">
+                        <i class="bi bi-x-octagon-fill text-danger fs-5"></i>
+                        <span class="fw-bold text-danger">Mission rejetée par l'agent</span>
+                    </div>
+                    <div th:if="${mission.commentaireAgent != null and !mission.commentaireAgent.isEmpty()}"
+                         class="small text-dark mb-2">
+                        <span class="fw-semibold">Motif :</span>
+                        <span th:text="${mission.commentaireAgent}"></span>
+                    </div>
+                    <div class="small text-muted">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i>
+                        Veuillez soumettre un nouveau résultat via le formulaire ci-dessous.
+                    </div>
+                </div>
+
+                <!-- ════════════════════════════════════════════
+                     RÉSULTATS SOUMIS
+                     Affichés pour tous les statuts
+                     ════════════════════════════════════════════ -->
+                <div class="card p-3 mb-4" th:if="${resultats != null and !resultats.empty}">
+                    <div class="section-lbl d-flex align-items-center justify-content-between">
+                        <span><i class="bi bi-files me-1"></i>Résultats soumis</span>
+                        <span class="badge bg-primary rounded-pill" th:text="${resultats.size()}">0</span>
+                    </div>
+                    <div th:each="r, rStat : ${resultats}" class="resultat-box">
+                        <div class="d-flex align-items-center justify-content-between mb-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-secondary rounded-pill" th:text="'#' + ${rStat.count}">#1</span>
+                                <!-- Icône statut : verrouillé / rejeté / en cours -->
+                                <i th:if="${resultatVerrouille}"
+                                   class="bi bi-lock-fill text-success small" title="Validé"></i>
+                                <i th:if="${mission.statut.name() == 'REJETEE'}"
+                                   class="bi bi-x-circle-fill text-danger small" title="Rejeté"></i>
+                                <i th:if="${!resultatVerrouille and mission.statut.name() != 'REJETEE'}"
+                                   class="bi bi-check-circle-fill text-success small"></i>
+                                <span class="small text-muted"
+                                      th:text="${#temporals.format(r.dateSoumission,'dd/MM/yyyy à HH:mm')}"></span>
+                            </div>
+
+                            <!-- ── Bouton Modifier : EN_COURS ou FACTURE_SOUMISE uniquement ── -->
+                            <div th:if="${!resultatVerrouille
+                                         and (mission.statut.name() == 'EN_COURS'
+                                              or mission.statut.name() == 'FACTURE_SOUMISE')}"
+                                 class="d-flex gap-1">
+                                <a th:href="@{/prestataire/missions/{id}/resultat/modifier(id=${mission.id})}"
+                                   class="btn btn-sm btn-outline-warning" title="Modifier ce résultat">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+
+                            <!-- ── Badge Validé : statuts terminaux ── -->
+                            <span th:if="${resultatVerrouille}"
+                                  class="badge bg-success" style="font-size:.65rem">
+                                <i class="bi bi-lock me-1"></i>Validé
+                            </span>
+
+                            <!-- ── Badge Rejeté : REJETEE (pas de bouton modifier) ── -->
+                            <span th:if="${mission.statut.name() == 'REJETEE'}"
+                                  class="badge bg-danger" style="font-size:.65rem">
+                                <i class="bi bi-x-circle me-1"></i>Rejeté
+                            </span>
+                        </div>
+
+                        <!-- Commentaire du résultat -->
+                        <div th:if="${r.commentaire != null and !r.commentaire.isEmpty()}" class="commentaire-box">
+                            <div class="field-lbl mb-1"><i class="bi bi-chat-text me-1"></i>Commentaire :</div>
+                            <div class="small" th:text="${r.commentaire}"></div>
+                        </div>
+
+                        <!-- Fichiers joints -->
+                        <div th:if="${r.fichiers != null and !r.fichiers.empty}" class="mt-2">
+                            <div class="field-lbl mb-2">
+                                <i class="bi bi-paperclip me-1"></i>Documents (<span th:text="${r.fichiers.size()}">0</span>)
+                            </div>
+                            <div class="fichier-liste">
+                                <div th:each="f : ${r.fichiers}" class="fichier-item d-flex align-items-center gap-2">
+                                    <i class="bi" th:class="${f.iconeType != null ? f.iconeType : 'bi-file-earmark'}" style="font-size:1.2rem"></i>
+                                    <div class="flex-grow-1 overflow-hidden">
+                                        <div class="small fw-semibold text-truncate" th:text="${f.nomFichierOriginal}"></div>
+                                        <div class="text-muted" style="font-size:.7rem" th:text="${f.tailleFormatee}"></div>
+                                    </div>
+                                    <a th:href="@{/prestataire/missions/fichier/id/{id}(id=${f.id})}"
+                                       class="btn btn-sm btn-outline-primary" th:title="'Télécharger ' + ${f.nomFichierOriginal}">
+                                        <i class="bi bi-download"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                        <div th:if="${r.fichiers == null or r.fichiers.empty}" class="text-muted small fst-italic mt-2">
+                            <i class="bi bi-paperclip me-1"></i>Aucun document attaché
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Aucun résultat encore -->
+                <div th:if="${resultats == null or resultats.empty}" class="text-center text-muted py-3 small mb-4">
+                    <i class="bi bi-inbox me-1"></i>Aucun résultat soumis pour l'instant.
+                </div>
+
+                <!-- ════════════════════════════════════════════
+                     FORMULAIRE PV
+                     Visible : ASSIGNEE, EN_COURS, REJETEE
+                     ════════════════════════════════════════════ -->
+                <div class="card p-3 mb-4"
+                     th:if="${mission.statut.name() == 'ASSIGNEE'
+                              or mission.statut.name() == 'EN_COURS'
+                              or mission.statut.name() == 'REJETEE'}">
                     <div class="section-lbl"><i class="bi bi-file-text me-1"></i>Soumettre le PV</div>
                     <form th:action="@{/prestataire/missions/{id}/pv(id=${mission.id})}" method="post">
-                        <div class="mb-3"><textarea name="pvTexte" class="form-control" rows="4" required placeholder="Rédigez le compte-rendu complet de votre intervention..."></textarea></div>
-                        <button type="submit" class="btn btn-primary w-100"><i class="bi bi-send me-1"></i>Soumettre le PV</button>
+                        <div class="mb-3">
+                            <textarea name="pvTexte" class="form-control" rows="4" required
+                                      placeholder="Rédigez le compte-rendu complet de votre intervention..."></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">
+                            <i class="bi bi-send me-1"></i>Soumettre le PV
+                        </button>
                     </form>
                 </div>
 
-                <div class="card p-3 mb-4" th:if="${mission.statut.name() == 'PV_SOUMIS' or mission.statut.name() == 'FACTURE_SOUMISE'}">
-                    <div class="section-lbl">PV soumis</div>
+                <!-- ════════════════════════════════════════════
+                     PV AFFICHÉ (lecture seule)
+                     Visible : PV_SOUMIS, FACTURE_SOUMISE, REALISEE, TERMINEE
+                     PAS visible pour : EN_COURS, REJETEE
+                     ════════════════════════════════════════════ -->
+                <div class="card p-3 mb-4"
+                     th:if="${mission.pvMission != null
+                              and (mission.statut.name() == 'PV_SOUMIS'
+                                   or mission.statut.name() == 'FACTURE_SOUMISE'
+                                   or mission.statut.name() == 'REALISEE'
+                                   or mission.statut.name() == 'TERMINEE')}">
+                    <div class="section-lbl"><i class="bi bi-file-check me-1"></i>PV soumis</div>
                     <div class="p-2 bg-light rounded small lh-lg" th:text="${mission.pvMission}"></div>
                 </div>
 
-                <div class="card p-3 mb-4" th:if="${mission.statut.name() == 'PV_SOUMIS'}">
+                <!-- ════════════════════════════════════════════
+                     FORMULAIRE FACTURE
+                     Visible : PV_SOUMIS uniquement
+                     ════════════════════════════════════════════ -->
+                <div class="card p-3 mb-4"
+                     th:if="${mission.statut.name() == 'PV_SOUMIS'}">
                     <div class="section-lbl"><i class="bi bi-receipt me-1"></i>Soumettre la facture</div>
                     <form th:action="@{/prestataire/missions/{id}/facture(id=${mission.id})}" method="post">
                         <div class="row g-3 mb-3">
-                            <div class="col-7"><label class="form-label small fw-semibold">Montant (TND) <span class="text-danger">*</span></label><input type="number" name="montant" class="form-control form-control-sm" step="0.01" min="0.01" required placeholder="Ex : 1500.00"/></div>
-                            <div class="col-5"><label class="form-label small fw-semibold">Référence <span class="text-danger">*</span></label><input type="text" name="factureRef" class="form-control form-control-sm" required placeholder="FAC-2026-001"/></div>
+                            <div class="col-7">
+                                <label class="form-label small fw-semibold">Montant (TND) <span class="text-danger">*</span></label>
+                                <input type="number" name="montant" class="form-control form-control-sm"
+                                       step="0.01" min="0.01" required placeholder="Ex : 1500.00"/>
+                            </div>
+                            <div class="col-5">
+                                <label class="form-label small fw-semibold">Référence <span class="text-danger">*</span></label>
+                                <input type="text" name="factureRef" class="form-control form-control-sm"
+                                       required placeholder="FAC-2026-001"/>
+                            </div>
                         </div>
-                        <button type="submit" class="btn btn-success w-100"><i class="bi bi-send me-1"></i>Soumettre la facture</button>
+                        <button type="submit" class="btn btn-success w-100">
+                            <i class="bi bi-send me-1"></i>Soumettre la facture
+                        </button>
                     </form>
                 </div>
 
-                <div class="card p-3 mb-4" th:if="${mission.statut.name() == 'FACTURE_SOUMISE' or mission.statut.name() == 'REALISEE' or mission.statut.name() == 'TERMINEE'}">
-                    <div class="section-lbl">Facture</div>
+                <!-- ════════════════════════════════════════════
+                     FACTURE AFFICHÉE (lecture seule)
+                     Visible : FACTURE_SOUMISE, REALISEE, TERMINEE
+                     PAS visible pour : EN_COURS, REJETEE
+                     ════════════════════════════════════════════ -->
+                <div class="card p-3 mb-4"
+                     th:if="${mission.montantFacture != null
+                              and (mission.statut.name() == 'FACTURE_SOUMISE'
+                                   or mission.statut.name() == 'REALISEE'
+                                   or mission.statut.name() == 'TERMINEE')}">
+                    <div class="section-lbl"><i class="bi bi-receipt-cutoff me-1"></i>Facture</div>
                     <div class="d-flex align-items-center gap-3 p-2 rounded" style="background:#e8f5e9; border:1px solid #a5d6a7;">
                         <i class="bi bi-receipt-cutoff text-success fs-4"></i>
-                        <div><div class="fw-bold text-success" th:text="${mission.montantFacture + ' TND'}"></div><div class="small text-muted" th:text="'Réf : ' + ${mission.factureRef}"></div></div>
+                        <div>
+                            <div class="fw-bold text-success" th:text="${mission.montantFacture + ' TND'}"></div>
+                            <div class="small text-muted" th:text="'Réf : ' + ${mission.factureRef}"></div>
+                        </div>
                     </div>
                 </div>
 
-                <!-- SOUMETTRE RÉSULTAT + UPLOAD MULTIPLES FICHIERS -->
-                <div class="card p-3 mb-4">
+                <!-- ════════════════════════════════════════════
+                     FORMULAIRE SOUMETTRE RÉSULTAT / DOCUMENTS
+                     Masqué pour TERMINEE et REALISEE et VALIDEE_AGENT
+                     ════════════════════════════════════════════ -->
+                <div class="card p-3 mb-4"
+                     th:if="${mission.statut.name() != 'TERMINEE'
+                              and mission.statut.name() != 'REALISEE'
+                              and mission.statut.name() != 'VALIDEE_AGENT'}">
                     <div class="section-lbl"><i class="bi bi-cloud-upload me-1"></i>Soumettre un résultat / documents</div>
-                    <form th:action="@{/prestataire/missions/{id}/resultat(id=${mission.id})}" method="post" enctype="multipart/form-data" id="formResultat">
+                    <form th:action="@{/prestataire/missions/{id}/resultat(id=${mission.id})}"
+                          method="post" enctype="multipart/form-data" id="formResultat">
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Commentaire</label>
-                            <textarea name="commentaire" class="form-control form-control-sm" rows="3" placeholder="Ex : Assignation déposée le 12/03/2026..."></textarea>
+                            <textarea name="commentaire" class="form-control form-control-sm" rows="3"
+                                      placeholder="Ex : Assignation déposée le 12/03/2026..."></textarea>
                         </div>
                         <div class="mb-3">
                             <label class="form-label small fw-semibold">Documents (plusieurs fichiers)</label>
-                            <div class="upload-zone mb-2" id="uploadZone" onclick="document.getElementById('inputFichiers').click()" ondragover="event.preventDefault();this.classList.add('drag-over')" ondragleave="this.classList.remove('drag-over')" ondrop="handleDropMultiple(event)">
+                            <div class="upload-zone mb-2" id="uploadZone"
+                                 onclick="document.getElementById('inputFichiers').click()"
+                                 ondragover="event.preventDefault();this.classList.add('drag-over')"
+                                 ondragleave="this.classList.remove('drag-over')"
+                                 ondrop="handleDropMultiple(event)">
                                 <div id="etatVide">
                                     <i class="bi bi-cloud-arrow-up-fill d-block mb-1 text-primary" style="font-size:1.8rem;"></i>
                                     <div class="small fw-semibold text-primary">Glisser / Cliquer pour uploader plusieurs fichiers</div>
@@ -419,35 +533,75 @@
                                 </div>
                                 <div id="etatFichiers" class="d-none">
                                     <div id="listeFichiers" class="mb-2"></div>
-                                    <button type="button" class="btn btn-sm btn-outline-danger mt-1" onclick="effacerTousFichiers(event)"><i class="bi bi-x me-1"></i>Retirer tous les fichiers</button>
+                                    <button type="button" class="btn btn-sm btn-outline-danger mt-1"
+                                            onclick="effacerTousFichiers(event)">
+                                        <i class="bi bi-x me-1"></i>Retirer tous les fichiers
+                                    </button>
                                 </div>
                             </div>
-                            <input type="file" id="inputFichiers" name="fichiers" class="d-none" accept="*/*" multiple onchange="onFichiersChoisis(this)"/>
+                            <input type="file" id="inputFichiers" name="fichiers" class="d-none"
+                                   accept="*/*" multiple onchange="onFichiersChoisis(this)"/>
                             <small class="text-muted">Vous pouvez sélectionner plusieurs fichiers à la fois</small>
                         </div>
-                        <button type="submit" class="btn btn-outline-primary w-100" id="btnSoumettre"><i class="bi bi-send me-1"></i>Soumettre le résultat</button>
+                        <button type="submit" class="btn btn-outline-primary w-100" id="btnSoumettre">
+                            <i class="bi bi-send me-1"></i>Soumettre le résultat
+                        </button>
                     </form>
                 </div>
-            </div>
 
-            <!-- VUE AGENT -->
+                <!-- Mission terminée -->
+                <div th:if="${mission.statut.name() == 'TERMINEE'}"
+                     class="card p-4 text-center mb-4" style="border-color:#198754;">
+                    <i class="bi bi-check-circle-fill text-success display-4"></i>
+                    <h5 class="text-success mt-3">Mission terminée</h5>
+                </div>
+
+            </div><!-- /isPrestataire -->
+
+            <!-- ══ VUE AGENT ══ -->
             <div th:if="${isAgent}">
+
                 <div class="card p-3 mb-4">
                     <div class="section-lbl">Informations mission</div>
                     <div class="row g-3">
-                        <div class="col-12"><div class="field-lbl">Prestataire</div><div class="field-val" th:text="${(mission.prestataire.prenom ?: '') + ' ' + (mission.prestataire.nom ?: '')}"></div></div>
-                        <div class="col-12" th:if="${mission.pvMission}"><div class="field-lbl">PV soumis</div><div class="p-2 bg-light rounded small" th:text="${mission.pvMission}"></div></div>
-                        <div class="col-12" th:if="${mission.montantFacture != null}"><div class="field-lbl">Facture</div><div class="fw-bold text-success" th:text="${mission.montantFacture + ' TND'}"></div><div class="small text-muted" th:text="'Réf : ' + ${mission.factureRef}"></div></div>
+                        <div class="col-12">
+                            <div class="field-lbl">Prestataire</div>
+                            <div class="field-val" th:text="${(mission.prestataire.prenom ?: '') + ' ' + (mission.prestataire.nom ?: '')}"></div>
+                        </div>
+                        <!-- PV : visible pour tous statuts sauf EN_COURS et REJETEE -->
+                        <div class="col-12"
+                             th:if="${mission.pvMission != null
+                                      and mission.statut.name() != 'EN_COURS'
+                                      and mission.statut.name() != 'REJETEE'}">
+                            <div class="field-lbl">PV soumis</div>
+                            <div class="p-2 bg-light rounded small" th:text="${mission.pvMission}"></div>
+                        </div>
+                        <!-- Facture : visible pour tous statuts sauf EN_COURS et REJETEE -->
+                        <div class="col-12"
+                             th:if="${mission.montantFacture != null
+                                      and mission.statut.name() != 'EN_COURS'
+                                      and mission.statut.name() != 'REJETEE'}">
+                            <div class="field-lbl">Facture</div>
+                            <div class="fw-bold text-success" th:text="${mission.montantFacture + ' TND'}"></div>
+                            <div class="small text-muted" th:text="'Réf : ' + ${mission.factureRef}"></div>
+                        </div>
+                        <!-- Commentaire rejet affiché à l'agent -->
+                        <div class="col-12" th:if="${mission.commentaireAgent != null and !mission.commentaireAgent.isEmpty()}">
+                            <div class="field-lbl">Commentaire de rejet</div>
+                            <div class="p-2 rounded small text-danger" style="background:#fff5f5; border:1px solid #f5c2c7;"
+                                 th:text="${mission.commentaireAgent}"></div>
+                        </div>
                     </div>
                 </div>
-                
+
                 <!-- Résultats pour l'agent -->
                 <div class="card p-3 mb-4" th:if="${resultats != null and !resultats.empty}">
                     <div class="section-lbl"><i class="bi bi-files me-1"></i>Résultats du prestataire</div>
                     <div th:each="r, rStat : ${resultats}" class="resultat-box">
                         <div class="d-flex align-items-center gap-2 mb-2">
                             <span class="badge bg-secondary rounded-pill" th:text="'#' + ${rStat.count}">#1</span>
-                            <span class="small text-muted" th:text="${#temporals.format(r.dateSoumission,'dd/MM/yyyy à HH:mm')}"></span>
+                            <span class="small text-muted"
+                                  th:text="${#temporals.format(r.dateSoumission,'dd/MM/yyyy à HH:mm')}"></span>
                         </div>
                         <div th:if="${r.commentaire != null and !r.commentaire.isEmpty()}" class="commentaire-box">
                             <div class="small" th:text="${r.commentaire}"></div>
@@ -461,7 +615,8 @@
                                         <div class="small fw-semibold text-truncate" th:text="${f.nomFichierOriginal}"></div>
                                         <div class="text-muted" style="font-size:.7rem" th:text="${f.tailleFormatee}"></div>
                                     </div>
-                                    <a th:href="@{/prestataire/missions/fichier/id/{id}(id=${f.id})}" class="btn btn-sm btn-outline-primary">
+                                    <a th:href="@{/prestataire/missions/fichier/id/{id}(id=${f.id})}"
+                                       class="btn btn-sm btn-outline-primary">
                                         <i class="bi bi-download"></i>
                                     </a>
                                 </div>
@@ -469,169 +624,124 @@
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
-</div>
+
+            </div><!-- /isAgent -->
+
+        </div><!-- /col-lg-5 -->
+    </div><!-- /row -->
+</div><!-- /container -->
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-    (function() {
-        'use strict';
-        
-        let fichiersSelectionnes = [];
-        const MAX_FILE_SIZE = 20 * 1024 * 1024;
-        const MAX_TOTAL_SIZE = 100 * 1024 * 1024;
-        
-        function onFichiersChoisis(input) {
-            const files = Array.from(input.files);
-            fichiersSelectionnes = files;
-            afficherListeFichiers(files);
-        }
-        
-        function afficherListeFichiers(files) {
-            const listeDiv = document.getElementById('listeFichiers');
-            if (!listeDiv) return;
-            
-            listeDiv.innerHTML = '';
-            
-            files.forEach((file, index) => {
-                if (file.size > MAX_FILE_SIZE) {
-                    alert(`Fichier "${file.name}" trop volumineux (max 20 MB)`);
-                    return;
-                }
-                
-                const fileDiv = document.createElement('div');
-                fileDiv.className = 'd-flex align-items-center gap-2 p-2 mb-1 bg-white rounded border file-list-item';
-                fileDiv.innerHTML = `
-                    <i class="bi ${getFileIcon(file.type)}" style="font-size:1.2rem"></i>
-                    <div class="flex-grow-1 overflow-hidden">
-                        <div class="small fw-semibold text-truncate">${escapeHtml(file.name)}</div>
-                        <div class="text-muted" style="font-size:.7rem">${formatTaille(file.size)}</div>
-                    </div>
-                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="retirerFichier(${index})">
-                        <i class="bi bi-x"></i>
-                    </button>
-                `;
-                listeDiv.appendChild(fileDiv);
-            });
-            
-            const etatVide = document.getElementById('etatVide');
-            const etatFichiers = document.getElementById('etatFichiers');
-            const uploadZone = document.getElementById('uploadZone');
-            
-            if (etatVide) etatVide.classList.add('d-none');
-            if (etatFichiers) etatFichiers.classList.remove('d-none');
-            if (uploadZone) uploadZone.classList.add('has-file');
-        }
-        
-        function retirerFichier(index) {
-            fichiersSelectionnes.splice(index, 1);
-            const input = document.getElementById('inputFichiers');
-            if (input) {
-                const dt = new DataTransfer();
-                fichiersSelectionnes.forEach(file => dt.items.add(file));
-                input.files = dt.files;
+(function() {
+    'use strict';
+
+    let fichiersSelectionnes = [];
+    const MAX_FILE_SIZE  = 20 * 1024 * 1024;
+    const MAX_TOTAL_SIZE = 100 * 1024 * 1024;
+
+    function onFichiersChoisis(input) {
+        fichiersSelectionnes = Array.from(input.files);
+        afficherListeFichiers(fichiersSelectionnes);
+    }
+
+    function afficherListeFichiers(files) {
+        const listeDiv = document.getElementById('listeFichiers');
+        if (!listeDiv) return;
+        listeDiv.innerHTML = '';
+        files.forEach((file, index) => {
+            if (file.size > MAX_FILE_SIZE) { alert(`Fichier "${file.name}" trop volumineux (max 20 MB)`); return; }
+            const d = document.createElement('div');
+            d.className = 'd-flex align-items-center gap-2 p-2 mb-1 bg-white rounded border file-list-item';
+            d.innerHTML = `
+                <i class="bi ${getFileIcon(file.type)}" style="font-size:1.2rem"></i>
+                <div class="flex-grow-1 overflow-hidden">
+                    <div class="small fw-semibold text-truncate">${escapeHtml(file.name)}</div>
+                    <div class="text-muted" style="font-size:.7rem">${formatTaille(file.size)}</div>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-danger" onclick="retirerFichier(${index})">
+                    <i class="bi bi-x"></i>
+                </button>`;
+            listeDiv.appendChild(d);
+        });
+        document.getElementById('etatVide')?.classList.add('d-none');
+        document.getElementById('etatFichiers')?.classList.remove('d-none');
+        document.getElementById('uploadZone')?.classList.add('has-file');
+    }
+
+    function retirerFichier(index) {
+        fichiersSelectionnes.splice(index, 1);
+        const input = document.getElementById('inputFichiers');
+        if (input) { const dt = new DataTransfer(); fichiersSelectionnes.forEach(f => dt.items.add(f)); input.files = dt.files; }
+        if (fichiersSelectionnes.length === 0) effacerTousFichiers(); else afficherListeFichiers(fichiersSelectionnes);
+    }
+
+    function effacerTousFichiers(event) {
+        if (event) event.stopPropagation();
+        fichiersSelectionnes = [];
+        const input = document.getElementById('inputFichiers');
+        if (input) input.value = '';
+        document.getElementById('etatVide')?.classList.remove('d-none');
+        document.getElementById('etatFichiers')?.classList.add('d-none');
+        document.getElementById('uploadZone')?.classList.remove('has-file');
+        const l = document.getElementById('listeFichiers'); if (l) l.innerHTML = '';
+    }
+
+    function handleDropMultiple(event) {
+        event.preventDefault();
+        document.getElementById('uploadZone')?.classList.remove('drag-over');
+        const files = Array.from(event.dataTransfer.files);
+        fichiersSelectionnes = [...fichiersSelectionnes, ...files];
+        const input = document.getElementById('inputFichiers');
+        if (input) { const dt = new DataTransfer(); fichiersSelectionnes.forEach(f => dt.items.add(f)); input.files = dt.files; }
+        afficherListeFichiers(fichiersSelectionnes);
+    }
+
+    function getFileIcon(type) {
+        if (type === 'application/pdf') return 'bi-file-earmark-pdf text-danger';
+        if (type.startsWith('image/')) return 'bi-file-earmark-image text-info';
+        if (type.includes('word')) return 'bi-file-earmark-word text-primary';
+        if (type.includes('sheet') || type.includes('excel')) return 'bi-file-earmark-excel text-success';
+        return 'bi-file-earmark-check';
+    }
+
+    function formatTaille(b) {
+        if (b < 1024) return b + ' B';
+        if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
+        return (b/1048576).toFixed(1) + ' MB';
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    const form = document.getElementById('formResultat');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const commentaire = document.querySelector('textarea[name="commentaire"]')?.value.trim();
+            const fichiers = document.getElementById('inputFichiers')?.files;
+            if (!commentaire && (!fichiers || fichiers.length === 0)) {
+                alert('Veuillez saisir un commentaire ou sélectionner au moins un fichier.');
+                e.preventDefault(); return false;
             }
-            
-            if (fichiersSelectionnes.length === 0) {
-                effacerTousFichiers();
-            } else {
-                afficherListeFichiers(fichiersSelectionnes);
+            let tailleTotale = 0;
+            for (let f of fichiers) tailleTotale += f.size;
+            if (tailleTotale > MAX_TOTAL_SIZE) {
+                alert('La taille totale des fichiers ne doit pas dépasser 100 MB.');
+                e.preventDefault(); return false;
             }
-        }
-        
-        function effacerTousFichiers(event) {
-            if (event) event.stopPropagation();
-            fichiersSelectionnes = [];
-            const input = document.getElementById('inputFichiers');
-            if (input) input.value = '';
-            
-            const etatVide = document.getElementById('etatVide');
-            const etatFichiers = document.getElementById('etatFichiers');
-            const uploadZone = document.getElementById('uploadZone');
-            const listeFichiers = document.getElementById('listeFichiers');
-            
-            if (etatVide) etatVide.classList.remove('d-none');
-            if (etatFichiers) etatFichiers.classList.add('d-none');
-            if (uploadZone) uploadZone.classList.remove('has-file');
-            if (listeFichiers) listeFichiers.innerHTML = '';
-        }
-        
-        function handleDropMultiple(event) {
-            event.preventDefault();
-            const uploadZone = document.getElementById('uploadZone');
-            if (uploadZone) uploadZone.classList.remove('drag-over');
-            
-            const files = Array.from(event.dataTransfer.files);
-            fichiersSelectionnes = [...fichiersSelectionnes, ...files];
-            
-            const input = document.getElementById('inputFichiers');
-            if (input) {
-                const dt = new DataTransfer();
-                fichiersSelectionnes.forEach(file => dt.items.add(file));
-                input.files = dt.files;
-            }
-            
-            afficherListeFichiers(fichiersSelectionnes);
-        }
-        
-        function getFileIcon(type) {
-            if (type === 'application/pdf') return 'bi-file-earmark-pdf text-danger';
-            if (type.startsWith('image/')) return 'bi-file-earmark-image text-info';
-            if (type.includes('word')) return 'bi-file-earmark-word text-primary';
-            if (type.includes('sheet') || type.includes('excel')) return 'bi-file-earmark-excel text-success';
-            return 'bi-file-earmark-check';
-        }
-        
-        function formatTaille(b) {
-            if (b < 1024) return b + ' B';
-            if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-            return (b/1048576).toFixed(1) + ' MB';
-        }
-        
-        function escapeHtml(text) {
-            const div = document.createElement('div');
-            div.textContent = text;
-            return div.innerHTML;
-        }
-        
-        const form = document.getElementById('formResultat');
-        if (form) {
-            form.addEventListener('submit', function(e) {
-                const commentaire = document.querySelector('textarea[name="commentaire"]').value.trim();
-                const fichiers = document.getElementById('inputFichiers').files;
-                
-                if (!commentaire && fichiers.length === 0) {
-                    alert('Veuillez saisir un commentaire ou sélectionner au moins un fichier.');
-                    e.preventDefault();
-                    return false;
-                }
-                
-                let tailleTotale = 0;
-                for (let f of fichiers) {
-                    tailleTotale += f.size;
-                }
-                
-                if (tailleTotale > MAX_TOTAL_SIZE) {
-                    alert('La taille totale des fichiers ne doit pas dépasser 100 MB.');
-                    e.preventDefault();
-                    return false;
-                }
-                
-                const btn = document.getElementById('btnSoumettre');
-                if (btn) {
-                    btn.disabled = true;
-                    btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Envoi en cours...';
-                }
-            });
-        }
-        
-        window.onFichiersChoisis = onFichiersChoisis;
-        window.retirerFichier = retirerFichier;
-        window.effacerTousFichiers = effacerTousFichiers;
-        window.handleDropMultiple = handleDropMultiple;
-    })();
+            const btn = document.getElementById('btnSoumettre');
+            if (btn) { btn.disabled = true; btn.innerHTML = '<i class="bi bi-hourglass-split me-1"></i>Envoi en cours...'; }
+        });
+    }
+
+    window.onFichiersChoisis    = onFichiersChoisis;
+    window.retirerFichier       = retirerFichier;
+    window.effacerTousFichiers  = effacerTousFichiers;
+    window.handleDropMultiple   = handleDropMultiple;
+})();
 </script>
 </body>
 </html>

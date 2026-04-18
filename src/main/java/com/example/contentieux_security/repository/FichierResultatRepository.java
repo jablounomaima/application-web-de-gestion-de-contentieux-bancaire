@@ -13,4 +13,7 @@ public interface FichierResultatRepository extends JpaRepository<FichierResultat
     List<FichierResultat> findByResultatId(Long resultatId);
     
     Optional<FichierResultat> findByNomFichierServeur(String nomFichierServeur);
+
+
+    void deleteByResultatId(Long resultatId);
 }

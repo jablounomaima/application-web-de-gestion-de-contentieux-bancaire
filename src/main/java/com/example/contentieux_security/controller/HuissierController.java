@@ -22,14 +22,18 @@ public class HuissierController {
 
     private final PrestationService prestationService;
 
-    @Transactional(readOnly = true) // ✅ AJOUT IMPORTANT
+    @Transactional(readOnly = true)
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('HUISSIER')")
     public String dashboard(Model model, Authentication auth) {
 
+        // ✅ FIX: Removed orphaned getMissionById(missionid) block —
+        // 'missionid' was never declared, and a dashboard endpoint should not
+        // block on a single mission's lock status. Lock checks belong on
+        // individual action endpoints, not here.
+
         List<Mission> missions = prestationService.getMissionsPrestataire(auth.getName());
 
-        // 📊 STATISTIQUES
         long enCours = missions.stream()
                 .filter(m -> m.getStatut() == StatutMission.ASSIGNEE
                           || m.getStatut() == StatutMission.EN_COURS)
@@ -49,15 +53,12 @@ public class HuissierController {
                           && m.getStatut() != StatutMission.TERMINEE)
                 .count();
 
-        // 📦 MODEL (noms cohérents avec ExpertController)
-        model.addAttribute("dernieresMissions", missions);
-        model.addAttribute("missionsActives", enCours);          // au lieu de mandatsActifs
-        model.addAttribute("rapportsAttente", pvSoumis);         // au lieu de pvSoumis
-        model.addAttribute("evaluationsFinalisees", terminees);  // au lieu de missionsTerminees
-        model.addAttribute("contreExpertises", enRetard);        // au lieu de saisiesEnCours
-
-        // optionnel
-        model.addAttribute("totalMissions", missions.size());
+        model.addAttribute("dernieresMissions",     missions);
+        model.addAttribute("missionsActives",       enCours);
+        model.addAttribute("rapportsAttente",       pvSoumis);
+        model.addAttribute("evaluationsFinalisees", terminees);
+        model.addAttribute("contreExpertises",      enRetard);
+        model.addAttribute("totalMissions",         missions.size());
 
         return "huissier/dashboard";
     }

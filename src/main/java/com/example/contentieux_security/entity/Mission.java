@@ -51,6 +51,18 @@ public class Mission {
 
     @Column(length = 100)
     private String  factureRef;
+    private Boolean pvValide = false;
+private Boolean factureValide = false;
+
+
+    private LocalDateTime dateValidationAgent;
+    private LocalDateTime dateValidationPv;
+private LocalDateTime dateValidationFacture;
+private String valideParAgent;
+@Column(columnDefinition = "TEXT")
+
+private String commentaireAgent;
+private String resultat; // "VALIDE" ou "REJETE"
 
     // ── Relations ──────────────────────────────────────────
 
@@ -58,7 +70,7 @@ public class Mission {
      * Prestation parente.
      * ✅ getPrestation() requis par PrestationService.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "prestation_id")
     private Prestation prestation;
 
@@ -66,7 +78,7 @@ public class Mission {
      * Prestataire assigné (avocat, huissier, expert...).
      * ✅ getPrestataire() requis par PrestationService.
      */
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "prestataire_id")
     private Prestataire prestataire;
 
@@ -74,6 +86,16 @@ public class Mission {
      * Affaire judiciaire liée (si mission de type judiciaire).
      * ✅ getAffaire() utilisé dans les templates.
      */
-    @OneToOne(mappedBy = "mission", fetch = FetchType.LAZY)
+    @OneToOne(mappedBy = "mission", fetch = FetchType.EAGER)
     private AffaireJudiciaire affaire;
+
+
+    public boolean isModifiable() {
+        return dateValidationAgent == null;
+    }
+
+
+    @OneToOne(mappedBy = "mission", cascade = CascadeType.ALL, 
+          orphanRemoval = true, fetch = FetchType.EAGER)
+private ResultatMission resultatMission;
 }

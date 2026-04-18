@@ -23,8 +23,11 @@ import java.util.List;
 @Builder
 public class AffaireJudiciaire {
 
-    // ── Enums ──────────────────────────────────────────────
+    // ==============================
+    // 📌 ENUMS (états métier)
+    // ==============================
 
+    // ✔ Statut global de l'affaire
     public enum StatutAffaire {
         EN_COURS,
         JUGEMENT_RENDU,
@@ -33,6 +36,7 @@ public class AffaireJudiciaire {
         CLOSE
     }
 
+    // ✔ Type de jugement rendu
     public enum TypeJugement {
         FAVORABLE,
         DEFAVORABLE,
@@ -41,91 +45,98 @@ public class AffaireJudiciaire {
         EN_ATTENTE
     }
 
-    // ── Clef primaire ──────────────────────────────────────
+    // ==============================
+    // 🆔 IDENTIFIANT
+    // ==============================
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // ── Numéro métier ──────────────────────────────────────
-
+    // ✔ Numéro unique de l'affaire (important métier)
     @Column(unique = true, nullable = false, length = 50)
     private String numeroAffaire;
 
-    // ── Tribunal ───────────────────────────────────────────
+    // ==============================
+    // ⚖️ INFORMATIONS TRIBUNAL
+    // ==============================
 
+    // ✔ Nom du tribunal
     @Column(length = 200)
     private String tribunal;
 
+    // ✔ Chambre (ex: civile, pénale…)
     @Column(length = 100)
     private String chambre;
 
+    // ✔ Numéro de rôle
     @Column(length = 50)
     private String numeroRole;
 
-    // ── Dates ──────────────────────────────────────────────
+    // ==============================
+    // 📅 DATES IMPORTANTES
+    // ==============================
 
+    // ✔ Date de lancement de l’affaire
     @Column(nullable = false)
     private LocalDate dateLancement;
 
+    // ✔ Date de la prochaine audience
     private LocalDate dateProchainAudience;
 
-    // ── Statut ─────────────────────────────────────────────
+    // ==============================
+    // 📊 STATUT
+    // ==============================
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 30)
     private StatutAffaire statut;
 
-    // ── Jugement ───────────────────────────────────────────
+    // ==============================
+    // 📜 INFORMATIONS JUGEMENT
+    // ==============================
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 30)
     private TypeJugement typeJugement;
 
     private LocalDate dateJugement;
 
-    @Column(length = 100)
     private String montantJuge;
 
-    @Column(length = 200)
     private String delaiPaiementJuge;
 
     @Column(columnDefinition = "TEXT")
     private String descriptionJugement;
 
-    // ── Relations ──────────────────────────────────────────
+    // ==============================
+    // 🔗 RELATIONS
+    // ==============================
 
-    /**
-     * Dossier contentieux parent.
-     * ✅ getDossier() requis par AvocatController et AffaireJudiciaireService.
-     */
-    @ManyToOne(fetch = FetchType.LAZY)
+    // ✔ Relation avec le dossier contentieux
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "dossier_id", nullable = false)
     private DossierContentieux dossier;
 
-    /**
-     * Mission associée à cette affaire (1 affaire = 1 mission avocat).
-     * ✅ getMission() requis par AvocatController.
-     */
+    // ✔ Relation avec mission (1 affaire = 1 mission)
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mission_id")
     private Mission mission;
 
-    /**
-     * Liste des audiences.
-     * ✅ getAudiences() requis par les templates Thymeleaf.
-     */
+    // ✔ Liste des audiences
     @OneToMany(mappedBy = "affaire", cascade = CascadeType.ALL,
-               orphanRemoval = true, fetch = FetchType.LAZY)
+               orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<Audience> audiences = new ArrayList<>();
 
-    /**
-     * Liste des documents uploadés.
-     * ✅ getDocuments() requis par les templates Thymeleaf.
-     */
+    // ✔ Liste des documents
     @OneToMany(mappedBy = "affaire", cascade = CascadeType.ALL,
-               orphanRemoval = true, fetch = FetchType.LAZY)
+               orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
     private List<DocumentAffaire> documents = new ArrayList<>();
+
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avocat_id")
+    private Prestataire avocat;
+
 }

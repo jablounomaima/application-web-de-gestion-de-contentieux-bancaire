@@ -15,7 +15,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.example.contentieux_security.entity.Mission;
+import com.example.contentieux_security.enums.StatutMission;
+import com.example.contentieux_security.repository.MissionRepository;
 
+import java.time.LocalDateTime;
 @Service
 public class AgentBancaireService {
 
@@ -23,16 +27,18 @@ public class AgentBancaireService {
     private final AgenceRepository        agenceRepository;
     private final PasswordEncoder         passwordEncoder;
     private final KeycloakUserService     keycloakUserService;
-
+    private final MissionRepository missionRepository;
 
     public AgentBancaireService(AgentBancaireRepository agentRepository,
                                 AgenceRepository agenceRepository,
                                 PasswordEncoder passwordEncoder,
-                                KeycloakUserService keycloakUserService) {
+                                KeycloakUserService keycloakUserService,
+                                MissionRepository missionRepository) {
         this.agentRepository    = agentRepository;
         this.agenceRepository   = agenceRepository;
         this.passwordEncoder    = passwordEncoder;
         this.keycloakUserService = keycloakUserService;
+        this.missionRepository = missionRepository;
     }
 
     // ── Recherche par username ────────────────────────────────────
@@ -216,4 +222,8 @@ public class AgentBancaireService {
         dto.setActif(agent.isActif());
         return dto;
     }
+
+
+
+
 }

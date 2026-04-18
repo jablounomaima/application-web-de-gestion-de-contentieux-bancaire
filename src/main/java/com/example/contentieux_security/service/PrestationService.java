@@ -7,27 +7,44 @@ import com.example.contentieux_security.enums.StatutPrestation;
 import com.example.contentieux_security.enums.TypePrestation;
 import com.example.contentieux_security.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardCopyOption;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
 public class PrestationService {
 
-    private final PrestationRepository    prestationRepository;
-    private final MissionRepository       missionRepository;
-    private final DossierRepository       dossierRepository;
-    private final PrestataireRepository   prestataireRepository;
-    private final HistoriqueService       historiqueService;
-    private final NotificationService     notificationService;
-    private final AgentBancaireRepository agentBancaireRepository;
+    private final PrestationRepository      prestationRepository;
+    private final MissionRepository          missionRepository;
+    private final DossierRepository          dossierRepository;
+    private final PrestataireRepository      prestataireRepository;
+    private final HistoriqueService          historiqueService;
+    private final NotificationService        notificationService;
+    private final AgentBancaireRepository    agentBancaireRepository;
+    private final ResultatMissionRepository  resultatMissionRepository;   // ✅ Ajouté
+    private final FichierResultatRepository  fichierResultatRepository;   // ✅ Ajouté
+
+    @Value("${app.upload.dir}")                                            // ✅ Ajouté
+    private String uploadDir;
 
     // ═════════ PRESTATION ═════════
+
     @Transactional(readOnly = true)
     public Prestation getPrestationById(Long id) {
         return prestationRepository.findById(id)
@@ -40,25 +57,23 @@ public class PrestationService {
                                        String description,
                                        String agentUsername) {
 
-        // 🔍 1. Récupération dossier
+        // 1. Récupération dossier
         DossierContentieux dossier = dossierRepository.findById(dossierId)
                 .orElseThrow(() -> new IllegalArgumentException("Dossier introuvable : id=" + dossierId));
 
-        // 🔍 2. Récupération agent
+        // 2. Récupération agent
         AgentBancaire agent = agentBancaireRepository.findByUsername(agentUsername)
                 .orElseThrow(() -> new IllegalArgumentException("Agent introuvable : " + agentUsername));
 
-        // 🔍 3. Vérification métier
+        // 3. Vérification métier
         if (type == TypePrestation.PROCEDURE_JUDICIAIRE
                 && dossier.getStatut() != DossierStatus.VALIDE) {
-            // L'exception est levée ici, ce qui marquera la transaction pour rollback.
-            // Elle sera ensuite interceptée par un @ControllerAdvice pour une réponse HTTP appropriée.
             throw new IllegalStateException(
                     "Le dossier doit être au statut VALIDE pour lancer une procédure judiciaire. "
                             + "Statut actuel : " + dossier.getStatut());
         }
 
-        // 🔥 4. Création prestation
+        // 4. Création prestation
         Prestation prestation = Prestation.builder()
                 .numeroPrestation(genererNumeroPrestation())
                 .type(type)
@@ -71,13 +86,13 @@ public class PrestationService {
 
         prestation = prestationRepository.save(prestation);
 
-        // 🔥 5. Mise à jour dossier
+        // 5. Mise à jour dossier
         if (type == TypePrestation.PROCEDURE_JUDICIAIRE) {
             dossier.setStatut(DossierStatus.EN_PROCEDURE);
         }
         dossierRepository.save(dossier);
 
-        // 🔥 6. Historique (protégé)
+        // 6. Historique (protégé)
         try {
             historiqueService.enregistrer(
                     dossier,
@@ -86,10 +101,7 @@ public class PrestationService {
                     agentUsername
             );
         } catch (Exception e) {
-            // ❗ ne casse pas la transaction principale, mais log l'erreur d'historique
             System.err.println("Erreur lors de l'enregistrement de l'historique : " + e.getMessage());
-            // Optionnel: loguer la stack trace complète pour le débogage
-            // e.printStackTrace();
         }
 
         return prestation;
@@ -149,6 +161,7 @@ public class PrestationService {
         return mission;
     }
 
+    @Transactional(readOnly = true)                                        // ✅ Ajouté
     public List<Mission> getMissionsByPrestation(Long prestationId) {
         getPrestationById(prestationId);
         return missionRepository.findByPrestation_Id(prestationId);
@@ -170,6 +183,7 @@ public class PrestationService {
         return missions;
     }
 
+    @Transactional(readOnly = true)
     public Mission getMissionById(Long id) {
         return missionRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("Mission introuvable : id=" + id));
@@ -266,6 +280,138 @@ public class PrestationService {
         );
     }
 
+    // ═════════ RÉSULTAT MISSION ═════════
+
+    @Transactional
+    public void modifierResultatMission(Long missionId,
+                                        String commentaire,
+                                        MultipartFile[] fichiers) {
+
+        Mission mission = missionRepository.findById(missionId)           // ✅ Cohérent avec @Transactional
+                .orElseThrow(() -> new IllegalArgumentException("Mission introuvable : " + missionId));
+
+        // 1. Récupérer ou créer le ResultatMission lié
+        ResultatMission resultat = resultatMissionRepository
+                .findByMissionIdWithFichiers(missionId)
+                .orElseGet(() -> {
+                    ResultatMission r = new ResultatMission();
+                    r.setMission(mission);
+                    r.setDateCreation(LocalDateTime.now());
+                    r.setFichiers(new ArrayList<>());
+                    return r;
+                });
+
+        // 2. Mettre à jour le commentaire et la date de modification
+        resultat.setCommentaire(commentaire);
+        resultat.setDateModification(LocalDateTime.now());
+
+        // 3. Mettre à jour pvMission sur la Mission (champ legacy)
+        mission.setPvMission(commentaire);
+
+        // 4. Mettre à jour le statut si nécessaire
+        if (mission.getStatut() == StatutMission.ASSIGNEE
+                || mission.getStatut() == StatutMission.EN_COURS) {
+            mission.setStatut(StatutMission.PV_SOUMIS);
+        }
+
+        // 5. Sauvegarder les nouveaux fichiers
+        if (fichiers != null) {
+            for (MultipartFile fichier : fichiers) {
+                if (!fichier.isEmpty()) {
+                    try {
+                        Path dirPath = Paths.get(uploadDir);
+                        if (!Files.exists(dirPath)) {
+                            Files.createDirectories(dirPath);
+                        }
+
+                        String nomServeur = UUID.randomUUID() + "_"
+                                + StringUtils.cleanPath(
+                                    Objects.requireNonNull(fichier.getOriginalFilename()));
+
+                        Path destination = dirPath.resolve(nomServeur);
+                        Files.copy(fichier.getInputStream(), destination,
+                                   StandardCopyOption.REPLACE_EXISTING);
+
+                        FichierResultat fr = FichierResultat.builder()
+                                .nomFichierOriginal(fichier.getOriginalFilename())
+                                .nomFichierServeur(nomServeur)
+                                .typeMime(fichier.getContentType())
+                                .tailleFichier(fichier.getSize())
+                                .dateUpload(LocalDateTime.now())
+                                .resultat(resultat)
+                                .build();
+
+                        resultat.getFichiers().add(fr);
+
+                    } catch (IOException e) {
+                        throw new RuntimeException(
+                            "Erreur lors de l'upload du fichier : " + e.getMessage(), e);
+                    }
+                }
+            }
+        }
+
+        // 6. Sauvegarder
+        resultatMissionRepository.save(resultat);
+        missionRepository.save(mission);
+    }
+
+    @Transactional
+    public void supprimerFichierResultat(Long fichierId, String username) {
+        FichierResultat fichier = fichierResultatRepository.findById(fichierId)
+                .orElseThrow(() -> new IllegalArgumentException("Fichier introuvable : id=" + fichierId));
+
+        Mission mission = fichier.getResultat().getMission();
+        if (!mission.getPrestataire().getUsername().equals(username)) {
+            throw new SecurityException("Accès refusé");
+        }
+
+        try {
+            Path path = Paths.get(uploadDir).resolve(fichier.getNomFichierServeur());
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            System.err.println("Erreur lors de la suppression physique du fichier : " + e.getMessage());
+        }
+
+        fichierResultatRepository.delete(fichier);
+    }
+
+    // ═════════ UTILITAIRES MISSION ═════════
+
+    @Transactional
+    public void changerStatutMission(Long missionId, StatutMission nouveauStatut) {
+        Mission mission = getMissionById(missionId);
+        mission.setStatut(nouveauStatut);
+        missionRepository.save(mission);
+    }
+
+    @Transactional                                                         // ✅ Ajouté
+    public void updateMission(Long id, String description) {
+        Mission m = missionRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Mission introuvable : id=" + id));
+        m.setDescription(description);
+        missionRepository.save(m);
+    }
+
+    @Transactional
+    public boolean deletePrestataire(Long id, String username) {           // ✅ Ajouté
+        Prestataire prestataire = prestataireRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException("Prestataire introuvable : id=" + id));
+
+        if (!prestataire.getAgentResponsable().getUsername().equals(username)) {
+            throw new SecurityException("Accès refusé");
+        }
+
+        prestataireRepository.delete(prestataire);
+        return true;
+    }
+
+    @Transactional(readOnly = true)
+    public Mission getMissionByIdWithDetails(Long id) {
+        return missionRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new IllegalArgumentException("Mission introuvable : id=" + id));
+    }
+
     // ═════════ UTILITAIRES PRIVÉS ═════════
 
     private void validerCompatibiliteTypePrestataire(TypePrestation typePrestation,
@@ -308,28 +454,4 @@ public class PrestationService {
         }
         return String.format("%s-%05d", prefix, seq);
     }
-
-    public boolean deletePrestataire(Long id, String username) {
-        Prestataire prestataire = prestataireRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
-
-        if (!prestataire.getAgentResponsable().getUsername().equals(username)) {
-            throw new RuntimeException("Accès refusé");
-        }
-
-        prestataireRepository.delete(prestataire);
-        return true;
-    }
-
-    public Mission getMissionByIdWithDetails(Long id) {
-        return missionRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-    }
-
-    @Transactional
-public void changerStatutMission(Long missionId, StatutMission nouveauStatut) {
-    Mission mission = getMissionById(missionId);
-    mission.setStatut(nouveauStatut);
-    missionRepository.save(mission);
-}
 }

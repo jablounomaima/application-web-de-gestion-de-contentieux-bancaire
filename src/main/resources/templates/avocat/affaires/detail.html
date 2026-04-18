@@ -1,716 +1,306 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:sec="http://www.thymeleaf.org/extras/springsecurity6"
-      lang="fr">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
-    <meta charset="UTF-8"/>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title th:text="${affaire.numeroAffaire} + ' — Détail affaire'">Détail affaire</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Détails de l'Affaire | SGCB</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
     <style>
-        body { background: #f0f2f8; font-family: 'Segoe UI', sans-serif; }
-
-        .card { border: 0.5px solid #e0e4ef; border-radius: 14px;
-                box-shadow: none; background: #fff; }
-        .section-label { font-size: .7rem; font-weight: 600; text-transform: uppercase;
-                          letter-spacing: .07em; color: #8a94a6; margin-bottom: .75rem; }
-
-        /* Bandeau haut */
-        .affaire-banner {
-            background: linear-gradient(135deg, #1a3a5c 0%, #1565c0 100%);
-            border-radius: 14px; color: #fff; padding: 1.3rem 1.5rem;
-        }
-        .affaire-banner .lbl { font-size: .68rem; opacity: .7; text-transform: uppercase;
-                                letter-spacing: .07em; }
-        .affaire-banner .val { font-size: .95rem; font-weight: 600; margin-top: 2px; }
-
-        /* Badges statut */
-        .badge-EN_COURS        { background:#e3f0ff; color:#0a58ca; }
-        .badge-JUGEMENT_RENDU  { background:#d1e7dd; color:#0a3622; }
-        .badge-EXECUTION_FORCEE{ background:#fff3cd; color:#664d03; }
-        .badge-CLOSE           { background:#dee2e6; color:#444;    }
-        .badge-PLANIFIEE       { background:#cff4fc; color:#055160; }
-        .badge-TENUE           { background:#d1e7dd; color:#0a3622; }
-        .badge-RENVOYEE        { background:#fff3cd; color:#664d03; }
-        .badge-ANNULEE         { background:#f8d7da; color:#58151c; }
-        .badge-REALISEE        { background:#d1e7dd; color:#0a3622; }
-
-        /* Timeline audiences */
-        .timeline { position: relative; padding-left: 24px; }
-        .timeline::before { content:''; position:absolute; left:8px; top:8px;
-                             bottom:8px; width:1.5px; background:#e0e4ef; }
-        .timeline-item { position: relative; padding-bottom: 1.25rem; }
-        .timeline-item::before { content:''; position:absolute; left:-19px; top:6px;
-                                  width:10px; height:10px; border-radius:50%;
-                                  background:#0d6efd; border:2px solid #fff;
-                                  box-shadow: 0 0 0 1px #b0c8f8; }
-        .timeline-item.tenue::before  { background: #198754; }
-        .timeline-item.renvoyee::before { background: #ffc107; }
-        .timeline-item.annulee::before { background: #dc3545; }
-        .timeline-item:last-child { padding-bottom: 0; }
-
-        /* Upload zone */
-        .upload-zone {
-            border: 2px dashed #c0cce0; border-radius: 12px;
-            padding: 1.75rem 1rem; text-align: center; cursor: pointer;
-            transition: all .2s; background: #f8faff;
-        }
-        .upload-zone:hover, .upload-zone.drag-over { border-color:#0d6efd; background:#eef3ff; }
-        .upload-zone.has-file { border-color:#198754; background:#f0faf5; }
-
-        /* Doc row */
-        .doc-row { border-radius: 8px; transition: background .15s; padding: 6px 8px; }
-        .doc-row:hover { background: #f0f4ff; }
-
-        /* Résultat mission */
-        .resultat-box {
-            background: #f0faf5; border: 1.5px solid #a8d5b5;
-            border-radius: 12px; padding: 1.1rem 1.25rem;
-        }
-
-        /* Info field */
-        .field-lbl { font-size: .72rem; color: #8a94a6; text-transform: uppercase;
-                     letter-spacing: .05em; }
-        .field-val { font-size: .92rem; font-weight: 500; color: #212529; }
+        body { background-color: #f8f9fa; }
+        .card { border: none; border-radius: 10px; }
+        .card-header { border-bottom: 1px solid #eee; }
+        .stat-badge { font-size: .75rem; padding: .35em .7em; }
     </style>
 </head>
 <body>
 
-<!-- NAVBAR -->
-<nav class="navbar navbar-dark bg-dark px-4 py-2">
-    <a class="navbar-brand fw-bold" href="/avocat/dashboard">
-        <i class="bi bi-briefcase me-2"></i>Contentieux — Avocat
-    </a>
-    <div class="ms-auto d-flex align-items-center gap-3">
-        <a href="/affaires" class="text-white-50 text-decoration-none small">
-            <i class="bi bi-arrow-left me-1"></i>Mes affaires
-        </a>
-        <span class="text-white small" sec:authentication="name">avocat</span>
-        <a href="/logout" class="btn btn-outline-light btn-sm">
-            <i class="bi bi-box-arrow-right me-1"></i>Déconnexion
-        </a>
-    </div>
-</nav>
+<main class="container py-5">
 
-<div class="container-fluid py-4 px-4">
+    <!-- ── En-tête ───────────────────────────────────────────── -->
+    <div class="d-flex justify-content-between align-items-start mb-4">
+        <div>
+            <a th:href="@{/avocat/affaires}"
+               class="btn btn-link p-0 text-decoration-none mb-2 text-secondary d-inline-flex align-items-center gap-1">
+                <i class="bi bi-arrow-left"></i> Retour à la liste
+            </a>
+            <h2 class="fw-bold text-dark mb-0">
+                Affaire :
+                <span class="text-primary" th:text="${affaire.numeroAffaire}">N/A</span>
+            </h2>
+            <small class="text-muted"
+                   th:text="${affaire.dateLancement != null
+                       ? 'Lancée le ' + #temporals.format(affaire.dateLancement,'dd/MM/yyyy')
+                       : ''}">
+            </small>
+        </div>
 
-    <!-- ALERTES -->
-    <div th:if="${successMsg}"
-         class="alert alert-success alert-dismissible fade show d-flex align-items-center gap-2">
-        <i class="bi bi-check-circle-fill"></i>
-        <span th:text="${successMsg}"></span>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-    </div>
-    <div th:if="${errorMsg}"
-         class="alert alert-danger alert-dismissible fade show d-flex align-items-center gap-2">
-        <i class="bi bi-exclamation-triangle-fill"></i>
-        <span th:text="${errorMsg}"></span>
-        <button type="button" class="btn-close ms-auto" data-bs-dismiss="alert"></button>
-    </div>
-
-    <!-- BANDEAU AFFAIRE -->
-    <div class="affaire-banner mb-4">
-        <div class="row g-3 align-items-center">
-            <div class="col-sm-3">
-                <div class="lbl">Numéro affaire</div>
-                <div class="val" th:text="${affaire.numeroAffaire}">AFF-2026-00001</div>
-            </div>
-            <div class="col-sm-3">
-                <div class="lbl">Dossier</div>
-                <div class="val" th:text="${affaire.dossier.numeroDossier}">DOS-NAB-2026-00001</div>
-            </div>
-            <div class="col-sm-2">
-                <div class="lbl">Tribunal</div>
-                <div class="val" th:text="${affaire.tribunal ?: '—'}">TPI Tunis</div>
-            </div>
-            <div class="col-sm-2">
-                <div class="lbl">N° rôle</div>
-                <div class="val" th:text="${affaire.numeroRole ?: '—'}">456/2026</div>
-            </div>
-            <div class="col-sm-2 text-sm-end">
-                <span class="badge rounded-pill px-3 py-2 fs-6"
-                      th:classappend="'badge-' + ${affaire.statut}"
-                      th:text="${affaire.statut}">EN_COURS</span>
-            </div>
+        <!-- ── Boutons d'action ──────────────────────────────── -->
+        <div class="d-flex gap-2 flex-wrap justify-content-end">
+            <a th:href="@{/avocat/affaires/{id}/tribunal(id=${affaire.id})}"
+               class="btn btn-outline-warning btn-sm">
+                <i class="bi bi-bank me-1"></i>Tribunal
+            </a>
+            <a th:href="@{/avocat/affaires/{id}/audiences(id=${affaire.id})}"
+               class="btn btn-outline-info btn-sm">
+                <i class="bi bi-calendar2-event me-1"></i>Audiences
+            </a>
+            <a th:href="@{/avocat/affaires/{id}/jugement(id=${affaire.id})}"
+               class="btn btn-outline-success btn-sm">
+                <i class="bi bi-file-earmark-ruled me-1"></i>Jugement
+            </a>
         </div>
     </div>
+    <div class="col-md-6">
+        <div class="card h-100 shadow-sm">
+            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-folder2-open me-2 text-primary"></i>Dossier lié</span>
+                
+                <a th:if="${affaire.dossier != null}" 
+                   th:href="@{/avocat/affaires/{id}/dossier(id=${affaire.id})}"
+                   class="btn btn-sm btn-link p-0 text-decoration-none text-secondary">
+                    Détails <i class="bi bi-chevron-right small"></i>
+                </a>
+            </div>
+            </div>
+    </div>
 
+    <!-- ── Alertes flash ─────────────────────────────────────── -->
+    <div th:if="${successMsg}"
+         class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${successMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMsg}"
+         class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${errorMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- ── Ligne 1 : Affaire + Dossier ──────────────────────── -->
     <div class="row g-4">
 
-        <!-- ════════════════════════════════
-             COLONNE GAUCHE
-        ════════════════════════════════ -->
-        <div class="col-lg-7">
+        <!-- Détails affaire -->
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white fw-semibold">
+                    <i class="bi bi-gavel me-2 text-primary"></i>Détails de l'affaire
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
 
-            <!-- ── INFOS TRIBUNAL ── -->
-            <div class="card mb-4 p-3">
-                <div class="section-label">Informations tribunal</div>
-                <div class="row g-3">
-                    <div class="col-sm-4">
-                        <div class="field-lbl">Tribunal</div>
-                        <div class="field-val" th:text="${affaire.tribunal ?: '—'}"></div>
+                        <dt class="col-sm-5 text-muted fw-normal">Tribunal</dt>
+                        <dd class="col-sm-7 fw-medium"
+                            th:text="${affaire.tribunal ?: '—'}"></dd>
+
+                        <dt class="col-sm-5 text-muted fw-normal">Chambre</dt>
+                        <dd class="col-sm-7"
+                            th:text="${affaire.chambre ?: '—'}"></dd>
+
+                        <dt class="col-sm-5 text-muted fw-normal">N° de rôle</dt>
+                        <dd class="col-sm-7"
+                            th:text="${affaire.numeroRole ?: '—'}"></dd>
+
+                        <dt class="col-sm-5 text-muted fw-normal">Statut</dt>
+                        <dd class="col-sm-7">
+                            <span th:switch="${affaire.statut?.name()}">
+                                <span th:case="'EN_COURS'"
+                                      class="badge bg-primary stat-badge">En cours</span>
+                                <span th:case="'JUGEMENT_RENDU'"
+                                      class="badge bg-success stat-badge">Jugement rendu</span>
+                                <span th:case="'EXECUTION_FORCEE'"
+                                      class="badge bg-danger stat-badge">Exécution forcée</span>
+                                <span th:case="'TRANSACTION'"
+                                      class="badge bg-info text-dark stat-badge">Transaction</span>
+                                <span th:case="'CLOSE'"
+                                      class="badge bg-secondary stat-badge">Clôturée</span>
+                                <span th:case="*"
+                                      class="badge bg-light text-dark stat-badge"
+                                      th:text="${affaire.statut}"></span>
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-5 text-muted fw-normal">Prochaine audience</dt>
+                        <dd class="col-sm-7">
+                            <span th:if="${affaire.dateProchainAudience != null}"
+                                  class="badge bg-warning text-dark stat-badge"
+                                  th:text="${#temporals.format(affaire.dateProchainAudience,'dd/MM/yyyy')}">
+                            </span>
+                            <span th:unless="${affaire.dateProchainAudience != null}"
+                                  class="text-muted">—</span>
+                        </dd>
+
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dossier lié -->
+        <div class="col-md-6">
+            <div class="card h-100 shadow-sm">
+                <div class="card-header bg-white fw-semibold">
+                    <i class="bi bi-folder2-open me-2 text-primary"></i>Dossier lié
+                </div>
+                <div class="card-body">
+                    <div th:if="${affaire.dossier != null}">
+                        <dl class="row mb-0">
+                            <dt class="col-sm-5 text-muted fw-normal">Référence</dt>
+                            <dd class="col-sm-7 fw-semibold text-primary"
+                                th:text="${affaire.dossier.numeroDossier}"></dd>
+
+                            <dt class="col-sm-5 text-muted fw-normal">Libellé</dt>
+                            <dd class="col-sm-7"
+                                th:text="${affaire.dossier.libelle ?: '—'}"></dd>
+
+                            <dt class="col-sm-5 text-muted fw-normal">Statut dossier</dt>
+                            <dd class="col-sm-7 text-uppercase small fw-bold"
+                                th:text="${affaire.dossier.statut}"></dd>
+                        </dl>
                     </div>
-                    <div class="col-sm-4">
-                        <div class="field-lbl">Chambre</div>
-                        <div class="field-val" th:text="${affaire.chambre ?: '—'}"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="field-lbl">N° de rôle</div>
-                        <div class="field-val" th:text="${affaire.numeroRole ?: '—'}"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="field-lbl">Date lancement</div>
-                        <div class="field-val"
-                             th:text="${affaire.dateLancement != null ?
-                                       #temporals.format(affaire.dateLancement,'dd/MM/yyyy') : '—'}"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="field-lbl">Prochaine audience</div>
-                        <div class="field-val text-primary"
-                             th:if="${affaire.dateProchainAudience}"
-                             th:text="${#temporals.format(affaire.dateProchainAudience,'dd/MM/yyyy')}"></div>
-                        <div class="field-val text-muted"
-                             th:unless="${affaire.dateProchainAudience}">—</div>
-                    </div>
-                    <div class="col-sm-4">
-                        <div class="field-lbl">Client</div>
-                        <div class="field-val"
-                             th:text="${affaire.dossier.client.nom + ' ' + affaire.dossier.client.prenom}"></div>
+                    <div th:unless="${affaire.dossier != null}"
+                         class="text-center py-3">
+                        <i class="bi bi-info-circle text-muted fs-4"></i>
+                        <p class="text-muted mb-0 mt-2">Aucun dossier lié.</p>
                     </div>
                 </div>
             </div>
+        </div>
 
-            <!-- ── AUDIENCES ── -->
-            <div class="card mb-4 p-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="section-label mb-0">
-                        Audiences (<span th:text="${affaire.audiences.size()}">0</span>)
-                    </div>
-                    <button class="btn btn-sm btn-primary"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalAjouterAudience"
-                            th:if="${affaire.statut.name() == 'EN_COURS'}">
-                        <i class="bi bi-plus-lg me-1"></i>Planifier
-                    </button>
+    </div><!-- /row 1 -->
+
+    <!-- ── Ligne 2 : Jugement (si rendu) ────────────────────── -->
+    <div class="row mt-4" th:if="${affaire.typeJugement != null}">
+        <div class="col-12">
+            <div class="card shadow-sm border-success">
+                <div class="card-header bg-success-subtle text-success fw-semibold">
+                    <i class="bi bi-check2-circle me-2"></i>Jugement rendu
                 </div>
-
-                <div th:if="${affaire.audiences.empty}"
-                     class="text-center py-3 text-muted">
-                    <i class="bi bi-calendar-x d-block fs-2 mb-1"></i>
-                    Aucune audience planifiée
-                </div>
-
-                <div th:unless="${affaire.audiences.empty}" class="timeline">
-                    <div th:each="aud : ${affaire.audiences}"
-                         class="timeline-item"
-                         th:classappend="${aud.statut.name() == 'TENUE'} ? 'tenue' :
-                                         (${aud.statut.name() == 'RENVOYEE'} ? 'renvoyee' :
-                                         (${aud.statut.name() == 'ANNULEE'} ? 'annulee' : ''))">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <div class="fw-semibold small"
-                                     th:text="${#temporals.format(aud.dateAudience,'dd MMMM yyyy')}"></div>
-                                <div class="text-muted" style="font-size:.78rem"
-                                     th:text="${(aud.heure != null ? aud.heure : '') +
-                                               (aud.salle != null ? ' — Salle ' + aud.salle : '')}"></div>
-                                <div class="text-muted small mt-1" th:if="${aud.motif}"
-                                     th:text="'Objet : ' + ${aud.motif}"></div>
-                                <div class="mt-1 small" th:if="${aud.resultat}">
-                                    <span class="text-muted">Résultat : </span>
-                                    <span th:text="${aud.resultat}"></span>
-                                </div>
-                            </div>
-                            <div class="d-flex flex-column align-items-end gap-2 ms-2">
-                                <span class="badge rounded-pill"
-                                      style="font-size:.7rem"
-                                      th:classappend="'badge-' + ${aud.statut}"
-                                      th:text="${aud.statut}"></span>
-                                <button th:if="${aud.statut.name() == 'PLANIFIEE'}"
-                                        class="btn btn-sm btn-outline-secondary"
-                                        style="font-size:.75rem"
-                                        data-bs-toggle="modal"
-                                        th:data-bs-target="'#modalResultat' + ${aud.id}">
-                                    Résultat
-                                </button>
-                            </div>
-                        </div>
-
-                        <!-- Modal résultat par audience -->
-                        <div class="modal fade" th:id="'modalResultat' + ${aud.id}" tabindex="-1">
-                            <div class="modal-dialog">
-                                <div class="modal-content" style="border-radius:14px;border:none;">
-                                    <div class="modal-header border-0 pb-0">
-                                        <h6 class="modal-title fw-bold">
-                                            Résultat — audience du
-                                            <span th:text="${#temporals.format(aud.dateAudience,'dd/MM/yyyy')}"></span>
-                                        </h6>
-                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                                    </div>
-                                    <form th:action="@{/affaires/{aId}/audiences/{auId}/resultat
-                                                      (aId=${affaire.id},auId=${aud.id})}"
-                                          method="post">
-                                        <div class="modal-body">
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold small">Statut</label>
-                                                <select name="statut" class="form-select form-select-sm" required>
-                                                    <option value="TENUE">Tenue</option>
-                                                    <option value="RENVOYEE">Renvoyée</option>
-                                                    <option value="ANNULEE">Annulée</option>
-                                                </select>
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label fw-semibold small">Compte-rendu <span class="text-danger">*</span></label>
-                                                <textarea name="resultat" class="form-control form-control-sm"
-                                                          rows="3" required
-                                                          placeholder="Ex : Plaidoiries entendues, jugement mis en délibéré..."></textarea>
-                                            </div>
-                                            <div class="mb-1">
-                                                <label class="form-label fw-semibold small">
-                                                    Prochaine audience <span class="text-muted">(si renvoyée)</span>
-                                                </label>
-                                                <input type="date" name="prochaineAudience" class="form-control form-control-sm"/>
-                                            </div>
-                                        </div>
-                                        <div class="modal-footer border-0">
-                                            <button type="button" class="btn btn-sm btn-secondary"
-                                                    data-bs-dismiss="modal">Annuler</button>
-                                            <button type="submit" class="btn btn-sm btn-primary">
-                                                <i class="bi bi-check2 me-1"></i>Enregistrer
-                                            </button>
-                                        </div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ── JUGEMENT ── -->
-            <div class="card p-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="section-label mb-0">Jugement</div>
-                    <button class="btn btn-sm btn-success"
-                            data-bs-toggle="modal"
-                            data-bs-target="#modalJugement"
-                            th:if="${affaire.statut.name() == 'EN_COURS' and affaire.typeJugement == null}">
-                        <i class="bi bi-hammer me-1"></i>Saisir
-                    </button>
-                </div>
-
-                <div th:if="${affaire.typeJugement == null}"
-                     class="text-center py-3 text-muted">
-                    <i class="bi bi-hourglass-split d-block fs-2 mb-1"></i>
-                    Jugement en attente
-                </div>
-
-                <div th:unless="${affaire.typeJugement == null}">
+                <div class="card-body">
                     <div class="row g-3">
-                        <div class="col-sm-4">
-                            <div class="field-lbl">Type</div>
-                            <span class="badge px-3 py-1"
-                                  th:classappend="${affaire.typeJugement.name() == 'FAVORABLE'} ? 'bg-success' :
-                                                  (${affaire.typeJugement.name() == 'DEFAVORABLE'} ? 'bg-danger' : 'bg-warning text-dark')"
-                                  th:text="${affaire.typeJugement}"></span>
+
+                        <div class="col-md-3">
+                            <div class="small text-muted">Type</div>
+                            <span th:switch="${affaire.typeJugement?.name()}">
+                                <span th:case="'FAVORABLE'"
+                                      class="badge bg-success">Favorable</span>
+                                <span th:case="'DEFAVORABLE'"
+                                      class="badge bg-danger">Défavorable</span>
+                                <span th:case="'EN_APPEL'"
+                                      class="badge bg-warning text-dark">En appel</span>
+                                <span th:case="'TRANSACTION'"
+                                      class="badge bg-info text-dark">Transaction</span>
+                                <span th:case="'EN_ATTENTE'"
+                                      class="badge bg-secondary">En attente</span>
+                                <span th:case="*"
+                                      class="badge bg-secondary"
+                                      th:text="${affaire.typeJugement}"></span>
+                            </span>
                         </div>
-                        <div class="col-sm-4">
-                            <div class="field-lbl">Date</div>
-                            <div class="field-val"
-                                 th:text="${#temporals.format(affaire.dateJugement,'dd/MM/yyyy')}"></div>
+
+                        <div class="col-md-3">
+                            <div class="small text-muted">Date</div>
+                            <div th:text="${affaire.dateJugement != null
+                                ? #temporals.format(affaire.dateJugement,'dd/MM/yyyy')
+                                : '—'}"></div>
                         </div>
-                        <div class="col-sm-4">
-                            <div class="field-lbl">Montant jugé</div>
-                            <div class="field-val text-success fw-bold"
-                                 th:text="${affaire.montantJuge ?: '—'}"></div>
+
+                        <div class="col-md-3">
+                            <div class="small text-muted">Montant jugé</div>
+                            <div th:text="${affaire.montantJuge ?: '—'}"></div>
                         </div>
-                        <div class="col-12" th:if="${affaire.delaiPaiementJuge}">
-                            <div class="field-lbl">Délai accordé</div>
-                            <div class="field-val" th:text="${affaire.delaiPaiementJuge}"></div>
+
+                        <div class="col-md-3">
+                            <div class="small text-muted">Délai paiement</div>
+                            <div th:text="${affaire.delaiPaiementJuge ?: '—'}"></div>
                         </div>
-                        <div class="col-12" th:if="${affaire.descriptionJugement}">
-                            <div class="field-lbl">Description</div>
-                            <div class="p-2 bg-light rounded small"
+
+                        <div class="col-12"
+                             th:if="${affaire.descriptionJugement != null}">
+                            <div class="small text-muted">Description</div>
+                            <div class="mt-1 fst-italic"
                                  th:text="${affaire.descriptionJugement}"></div>
                         </div>
+
                     </div>
                 </div>
             </div>
+        </div>
+    </div><!-- /row jugement -->
 
-        </div><!-- /col gauche -->
-
-        <!-- ════════════════════════════════
-             COLONNE DROITE
-        ════════════════════════════════ -->
-        <div class="col-lg-5">
-
-            <!-- ── RÉSULTAT DE MISSION ── -->
-            <div class="card mb-4 p-3">
-                <div class="section-label">Résultat de mission</div>
-
-                <!-- Mission REALISEE -->
-                <div th:if="${affaire.mission.statut.name() == 'REALISEE' or
-                               affaire.mission.statut.name() == 'TERMINEE'}">
-                    <div class="resultat-box mb-3">
-                        <div class="d-flex align-items-center gap-2 mb-2">
-                            <i class="bi bi-check-circle-fill text-success"></i>
-                            <span class="fw-semibold text-success small">Mission réalisée</span>
-                            <span class="badge bg-success ms-auto">RÉALISÉE</span>
-                        </div>
-                        <div th:if="${resultatMission}">
-                            <div class="small text-muted mb-1">Commentaire :</div>
-                            <div class="small fw-semibold mb-2"
-                                 th:text="${resultatMission.commentaire}"></div>
-                            <div class="small text-muted"
-                                 th:text="'Soumis le ' + ${#temporals.format(resultatMission.dateSoumission,'dd/MM/yyyy à HH:mm')}"></div>
-
-                            <div th:if="${resultatMission.nomFichierOriginal}"
-                                 class="d-flex align-items-center gap-2 mt-2 p-2 bg-white rounded border">
-                                <i class="bi text-success"
-                                   style="font-size:1.3rem"
-                                   th:classappend="${resultatMission.iconeType}"></i>
-                                <div class="flex-grow-1 overflow-hidden">
-                                    <div class="small fw-semibold text-truncate"
-                                         th:text="${resultatMission.nomFichierOriginal}"></div>
-                                    <div style="font-size:.7rem" class="text-muted"
-                                         th:text="${resultatMission.tailleFormatee}"></div>
-                                </div>
-                                <a th:href="@{/affaires/{aId}/missions/{mId}/resultat/download
-                                             (aId=${affaire.id},mId=${affaire.mission.id})}"
-                                   class="btn btn-sm btn-outline-success flex-shrink-0">
-                                    <i class="bi bi-download"></i>
-                                </a>
-                            </div>
-                        </div>
-                    </div>
-                    <a th:href="@{/affaires/{aId}/missions/{mId}/resultat
-                                 (aId=${affaire.id},mId=${affaire.mission.id})}"
-                       class="btn btn-sm btn-outline-secondary w-100">
-                        <i class="bi bi-pencil me-1"></i>Modifier le résultat
+    <!-- ── Ligne 3 : Audiences ───────────────────────────────── -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">
+                        <i class="bi bi-calendar-event me-2 text-primary"></i>
+                        Historique des audiences
+                        (<span th:text="${affaire.audiences != null ? affaire.audiences.size() : 0}">0</span>)
+                    </span>
+                    <a th:href="@{/avocat/affaires/{id}/audiences(id=${affaire.id})}"
+                       class="btn btn-sm btn-outline-info">
+                        <i class="bi bi-plus-circle me-1"></i>Gérer
                     </a>
                 </div>
 
-                <!-- Mission pas encore réalisée -->
-                <div th:unless="${affaire.mission.statut.name() == 'REALISEE' or
-                                   affaire.mission.statut.name() == 'TERMINEE'}">
-                    <div class="text-center py-3">
-                        <i class="bi bi-hourglass-split d-block fs-2 text-warning mb-2"></i>
-                        <div class="text-muted small mb-3">Résultat non encore soumis</div>
-                        <a th:href="@{/affaires/{aId}/missions/{mId}/resultat
-                                     (aId=${affaire.id},mId=${affaire.mission.id})}"
-                           class="btn btn-success btn-sm px-4">
-                            <i class="bi bi-send-check me-1"></i>Soumettre le résultat
-                        </a>
-                    </div>
-                    <div class="mt-2 p-2 rounded small text-muted"
-                         style="background:#f8f9fa; border:0.5px solid #dee2e6;">
-                        <i class="bi bi-info-circle me-1"></i>
-                        Après soumission, l'agent sera notifié et la mission passera en
-                        <strong>RÉALISÉE</strong>
-                    </div>
+                <!-- Aucune audience -->
+                <div th:if="${affaire.audiences == null or #lists.isEmpty(affaire.audiences)}"
+                     class="card-body text-center text-muted py-4">
+                    <i class="bi bi-calendar-x fs-3 d-block mb-2"></i>
+                    Aucune audience enregistrée
                 </div>
+
+                <!-- Tableau audiences -->
+                <div th:unless="${affaire.audiences == null or #lists.isEmpty(affaire.audiences)}"
+                     class="card-body p-0">
+                    <table class="table table-hover mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th class="ps-4">Date</th>
+                                <th>Heure</th>
+                                <th>Salle</th>
+                                <th>Motif</th>
+                                <th>Statut</th>
+                                <th class="pe-4">Résultat</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="audience : ${affaire.audiences}">
+                                <td class="ps-4 fw-medium"
+                                    th:text="${#temporals.format(audience.dateAudience,'dd/MM/yyyy')}"></td>
+                                <td th:text="${audience.heure ?: '—'}"></td>
+                                <td th:text="${audience.salle ?: '—'}"></td>
+                                <td th:text="${audience.motif ?: '—'}"></td>
+                                <td>
+                                    <span th:switch="${audience.statut?.name()}">
+                                        <span th:case="'PLANIFIEE'"
+                                              class="badge bg-primary stat-badge">Planifiée</span>
+                                        <span th:case="'TENUE'"
+                                              class="badge bg-success stat-badge">Tenue</span>
+                                        <span th:case="'RENVOYEE'"
+                                              class="badge bg-warning text-dark stat-badge">Renvoyée</span>
+                                        <span th:case="'ANNULEE'"
+                                              class="badge bg-danger stat-badge">Annulée</span>
+                                        <span th:case="*"
+                                              class="badge bg-secondary stat-badge"
+                                              th:text="${audience.statut}"></span>
+                                    </span>
+                                </td>
+                                <td class="pe-4 fst-italic text-muted"
+                                    th:text="${audience.resultat ?: '—'}"></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
             </div>
-
-            <!-- ── DOCUMENTS ── -->
-            <div class="card p-3">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <div class="section-label mb-0">
-                        Documents (<span th:text="${affaire.documents.size()}">0</span>)
-                    </div>
-                </div>
-
-                <!-- Zone d'upload -->
-                <div class="upload-zone mb-3"
-                     id="uploadZone"
-                     onclick="document.getElementById('inputFichier').click()"
-                     ondragover="event.preventDefault();this.classList.add('drag-over')"
-                     ondragleave="this.classList.remove('drag-over')"
-                     ondrop="handleDrop(event)">
-                    <div id="etatVide">
-                        <i class="bi bi-cloud-arrow-up-fill d-block mb-1"
-                           style="font-size:1.8rem;color:#0d6efd;"></i>
-                        <div class="fw-semibold text-primary small">Glisser / Cliquer pour uploader</div>
-                        <div class="text-muted" style="font-size:.75rem">PDF, Image, Word — max 20 MB</div>
-                    </div>
-                    <div id="etatFichier" class="d-none">
-                        <i id="iconeFichier"
-                           class="bi bi-file-earmark-check d-block mb-1 text-success"
-                           style="font-size:1.8rem;"></i>
-                        <div class="fw-semibold small" id="nomFichierChoisi"></div>
-                        <div class="text-muted" style="font-size:.72rem" id="tailleFichierChoisi"></div>
-                        <button type="button" class="btn btn-sm btn-outline-danger mt-1"
-                                onclick="effacerFichier(event)">
-                            <i class="bi bi-x me-1"></i>Retirer
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Formulaire upload -->
-                <form th:action="@{/affaires/{id}/documents/upload(id=${affaire.id})}"
-                      method="post" enctype="multipart/form-data" id="formUpload">
-                    <input type="file" id="inputFichier" name="fichier"
-                           class="d-none" accept="*/*"
-                           onchange="onFichierChoisi(this)"/>
-
-                    <div id="panneauUpload" class="d-none mb-3">
-                        <div class="mb-2">
-                            <label class="form-label small fw-semibold">Type de document</label>
-                            <select name="typeDocument" class="form-select form-select-sm" required>
-                                <option value="">-- Choisir le type --</option>
-                                <option value="ASSIGNATION">Assignation</option>
-                                <option value="JUGEMENT">Jugement / Décision</option>
-                                <option value="PV_AUDIENCE">PV d'audience</option>
-                                <option value="TITRE_FONCIER">Titre foncier</option>
-                                <option value="CONTRAT">Contrat</option>
-                                <option value="RAPPORT_EXPERTISE">Rapport d'expertise</option>
-                                <option value="PV_SAISIE">PV de saisie</option>
-                                <option value="FACTURE_HONORAIRES">Facture honoraires</option>
-                                <option value="PHOTO_BIEN">Photo du bien</option>
-                                <option value="AUTRE">Autre</option>
-                            </select>
-                        </div>
-                        <div class="mb-2">
-                            <label class="form-label small fw-semibold">Description (optionnel)</label>
-                            <input type="text" name="description"
-                                   class="form-control form-control-sm"
-                                   placeholder="Ex : Assignation déposée le 12/03/2026"/>
-                        </div>
-                        <div class="d-flex gap-2">
-                            <button type="submit" class="btn btn-primary btn-sm flex-grow-1">
-                                <i class="bi bi-upload me-1"></i>Uploader
-                            </button>
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    onclick="annulerUpload()">Annuler</button>
-                        </div>
-                    </div>
-                </form>
-
-                <!-- Liste des documents -->
-                <div th:if="${affaire.documents.empty}"
-                     class="text-center py-3 text-muted">
-                    <i class="bi bi-folder2-open d-block fs-3 mb-1"></i>
-                    Aucun document
-                </div>
-
-                <div th:each="doc : ${affaire.documents}"
-                     class="d-flex align-items-center gap-2 doc-row mb-1">
-                    <i class="bi text-primary flex-shrink-0"
-                       style="font-size:1.4rem"
-                       th:classappend="${doc.iconeType}"></i>
-                    <div class="flex-grow-1 overflow-hidden">
-                        <div class="small fw-semibold text-truncate"
-                             th:text="${doc.nomFichierOriginal}"
-                             th:title="${doc.nomFichierOriginal}"></div>
-                        <div style="font-size:.7rem" class="text-muted">
-                            <span class="badge bg-light text-dark border me-1"
-                                  style="font-size:.65rem"
-                                  th:text="${doc.typeDocument}"></span>
-                            <span th:text="${doc.tailleFormatee}"></span>
-                            <span th:text="' · ' + ${#temporals.format(doc.dateUpload,'dd/MM/yy')}"></span>
-                        </div>
-                    </div>
-                    <div class="d-flex gap-1 flex-shrink-0">
-                        <a th:href="@{/affaires/{aId}/documents/{dId}/download
-                                     (aId=${affaire.id},dId=${doc.id})}"
-                           class="btn btn-sm btn-outline-primary" title="Télécharger">
-                            <i class="bi bi-download"></i>
-                        </a>
-                        <form th:action="@{/affaires/{aId}/documents/{dId}/supprimer
-                                          (aId=${affaire.id},dId=${doc.id})}"
-                              method="post"
-                              onsubmit="return confirm('Supprimer ce document ?')">
-                            <button type="submit"
-                                    class="btn btn-sm btn-outline-danger"
-                                    title="Supprimer">
-                                <i class="bi bi-trash3"></i>
-                            </button>
-                        </form>
-                    </div>
-                </div>
-
-            </div><!-- /card documents -->
-
-        </div><!-- /col droite -->
-
-    </div><!-- /row -->
-</div><!-- /container -->
-
-<!-- ════════════ MODAL : Planifier audience ════════════ -->
-<div class="modal fade" id="modalAjouterAudience" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content" style="border-radius:14px;border:none;">
-            <div class="modal-header border-0 pb-0">
-                <h6 class="modal-title fw-bold">
-                    <i class="bi bi-calendar-plus me-2 text-primary"></i>Planifier une audience
-                </h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form th:action="@{/affaires/{id}/audiences/ajouter(id=${affaire.id})}"
-                  method="post">
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold small">
-                            Date <span class="text-danger">*</span>
-                        </label>
-                        <input type="date" name="dateAudience"
-                               class="form-control form-control-sm" required/>
-                    </div>
-                    <div class="row g-2 mb-3">
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Heure</label>
-                            <input type="time" name="heure" class="form-control form-control-sm"/>
-                        </div>
-                        <div class="col-6">
-                            <label class="form-label fw-semibold small">Salle</label>
-                            <input type="text" name="salle"
-                                   class="form-control form-control-sm"
-                                   placeholder="Ex : Salle 3"/>
-                        </div>
-                    </div>
-                    <div class="mb-1">
-                        <label class="form-label fw-semibold small">Objet / Motif</label>
-                        <textarea name="motif" class="form-control form-control-sm" rows="2"
-                                  placeholder="Ex : Première comparution, Plaidoiries..."></textarea>
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-sm btn-secondary"
-                            data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-sm btn-primary">
-                        <i class="bi bi-calendar-check me-1"></i>Planifier
-                    </button>
-                </div>
-            </form>
         </div>
-    </div>
-</div>
+    </div><!-- /row audiences -->
 
-<!-- ════════════ MODAL : Enregistrer jugement ════════════ -->
-<div class="modal fade" id="modalJugement" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content" style="border-radius:14px;border:none;">
-            <div class="modal-header border-0 pb-0">
-                <h6 class="modal-title fw-bold">
-                    <i class="bi bi-hammer me-2 text-success"></i>Enregistrer le jugement
-                </h6>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <form th:action="@{/affaires/{id}/jugement(id=${affaire.id})}" method="post">
-                <div class="modal-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">
-                                Type <span class="text-danger">*</span>
-                            </label>
-                            <select name="typeJugement" class="form-select form-select-sm" required>
-                                <option value="">-- Choisir --</option>
-                                <option value="FAVORABLE">Favorable</option>
-                                <option value="DEFAVORABLE">Défavorable</option>
-                                <option value="EN_APPEL">En appel</option>
-                                <option value="TRANSACTION">Transaction</option>
-                                <option value="EN_ATTENTE">En attente</option>
-                            </select>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">
-                                Date <span class="text-danger">*</span>
-                            </label>
-                            <input type="date" name="dateJugement"
-                                   class="form-control form-control-sm" required/>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Montant jugé</label>
-                            <input type="text" name="montantJuge"
-                                   class="form-control form-control-sm"
-                                   placeholder="Ex : 45 000 TND"/>
-                        </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold small">Délai de paiement</label>
-                            <input type="text" name="delaiPaiement"
-                                   class="form-control form-control-sm"
-                                   placeholder="Ex : 30 jours à compter du jugement"/>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label fw-semibold small">Description</label>
-                            <textarea name="description"
-                                      class="form-control form-control-sm" rows="3"
-                                      placeholder="Résumé du jugement rendu..."></textarea>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-sm btn-secondary"
-                            data-bs-dismiss="modal">Annuler</button>
-                    <button type="submit" class="btn btn-sm btn-success">
-                        <i class="bi bi-check2-circle me-1"></i>Enregistrer
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
+</main>
 
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-<script>
-    function onFichierChoisi(input) {
-        const file = input.files[0];
-        if (!file) return;
-        if (file.size > 20 * 1024 * 1024) {
-            alert('Fichier trop volumineux (max 20 MB)');
-            input.value = '';
-            return;
-        }
-        afficherFichier(file);
-    }
-
-    function afficherFichier(file) {
-        document.getElementById('etatVide').classList.add('d-none');
-        document.getElementById('etatFichier').classList.remove('d-none');
-        document.getElementById('uploadZone').classList.add('has-file');
-        document.getElementById('nomFichierChoisi').textContent  = file.name;
-        document.getElementById('tailleFichierChoisi').textContent = formatTaille(file.size);
-        document.getElementById('panneauUpload').classList.remove('d-none');
-
-        const icone = document.getElementById('iconeFichier');
-        const t = file.type;
-        icone.className = 'bi d-block mb-1 ';
-        if (t === 'application/pdf')    icone.className += 'bi-file-earmark-pdf text-danger';
-        else if (t.startsWith('image/'))icone.className += 'bi-file-earmark-image text-info';
-        else if (t.includes('word'))    icone.className += 'bi-file-earmark-word text-primary';
-        else                            icone.className += 'bi-file-earmark-check text-success';
-        icone.style.fontSize = '1.8rem';
-    }
-
-    function effacerFichier(event) {
-        event.stopPropagation();
-        document.getElementById('inputFichier').value = '';
-        document.getElementById('etatVide').classList.remove('d-none');
-        document.getElementById('etatFichier').classList.add('d-none');
-        document.getElementById('uploadZone').classList.remove('has-file');
-        document.getElementById('panneauUpload').classList.add('d-none');
-    }
-
-    function annulerUpload() {
-        effacerFichier({ stopPropagation: () => {} });
-    }
-
-    function handleDrop(event) {
-        event.preventDefault();
-        document.getElementById('uploadZone').classList.remove('drag-over');
-        const file = event.dataTransfer.files[0];
-        if (!file) return;
-        const input = document.getElementById('inputFichier');
-        const dt = new DataTransfer();
-        dt.items.add(file);
-        input.files = dt.files;
-        afficherFichier(file);
-    }
-
-    function formatTaille(bytes) {
-        if (bytes < 1024)        return bytes + ' B';
-        if (bytes < 1048576)     return (bytes / 1024).toFixed(1) + ' KB';
-        return (bytes / 1048576).toFixed(1) + ' MB';
-    }
-</script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
