@@ -2,11 +2,9 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout/base}">
-
 <head>
     <title>Tribunal — Affaire</title>
 </head>
-
 <body>
 <div layout:fragment="content" class="container py-4">
 
@@ -41,11 +39,29 @@
 
     <div class="row g-4">
 
-        <!-- ── Colonne gauche : valeurs actuelles ─────────── -->
+        <!-- ══════════════════════════════════════════════════
+             COLONNE GAUCHE — valeurs actuelles + supprimer
+             ══════════════════════════════════════════════════ -->
         <div class="col-lg-4">
             <div class="card shadow-sm h-100">
-                <div class="card-header fw-semibold">
-                    <i class="bi bi-info-circle me-1"></i>Valeurs actuelles
+                <div class="card-header fw-semibold d-flex
+                            justify-content-between align-items-center">
+                    <span>
+                        <i class="bi bi-info-circle me-1"></i>Valeurs actuelles
+                    </span>
+                    <!-- Supprimer (si au moins un champ renseigné) -->
+                    <form th:if="${affaire.tribunal != null
+                                  or affaire.chambre != null
+                                  or affaire.numeroRole != null}"
+                          th:action="@{/avocat/affaires/{id}/tribunal/supprimer(
+                                      id=${affaire.id})}"
+                          method="post"
+                          onsubmit="return confirm('Effacer les informations du tribunal ?')">
+                        <button type="submit"
+                                class="btn btn-outline-danger btn-sm">
+                            <i class="bi bi-trash me-1"></i>Effacer
+                        </button>
+                    </form>
                 </div>
                 <div class="card-body">
 
@@ -54,49 +70,52 @@
                         <div class="fw-medium"
                              th:text="${affaire.tribunal ?: '—'}"></div>
                     </div>
-
                     <hr class="my-2">
-
                     <div class="mb-3">
                         <div class="small text-muted mb-1">Chambre</div>
                         <div th:text="${affaire.chambre ?: '—'}"></div>
                     </div>
-
                     <hr class="my-2">
-
                     <div class="mb-3">
                         <div class="small text-muted mb-1">N° de rôle</div>
                         <div th:text="${affaire.numeroRole ?: '—'}"></div>
                     </div>
-
                     <hr class="my-2">
-
                     <div>
                         <div class="small text-muted mb-1">Statut affaire</div>
-                        <div th:switch="${affaire.statut?.name()}">
-                            <span th:case="'EN_COURS'"       class="badge bg-primary">En cours</span>
-                            <span th:case="'JUGEMENT_RENDU'" class="badge bg-success">Jugement rendu</span>
-                            <span th:case="'EXECUTION_FORCEE'" class="badge bg-danger">Exécution forcée</span>
-                            <span th:case="'TRANSACTION'"    class="badge bg-info text-dark">Transaction</span>
-                            <span th:case="'CLOSE'"          class="badge bg-secondary">Clôturée</span>
-                            <span th:case="*" class="badge bg-light text-dark"
+                        <span th:switch="${affaire.statut?.name()}">
+                            <span th:case="'EN_COURS'"
+                                  class="badge bg-primary">En cours</span>
+                            <span th:case="'JUGEMENT_RENDU'"
+                                  class="badge bg-success">Jugement rendu</span>
+                            <span th:case="'EXECUTION_FORCEE'"
+                                  class="badge bg-danger">Exécution forcée</span>
+                            <span th:case="'TRANSACTION'"
+                                  class="badge bg-info text-dark">Transaction</span>
+                            <span th:case="'CLOSE'"
+                                  class="badge bg-secondary">Clôturée</span>
+                            <span th:case="*"
+                                  class="badge bg-light text-dark"
                                   th:text="${affaire.statut}"></span>
-                        </div>
+                        </span>
                     </div>
 
                 </div>
             </div>
         </div>
 
-        <!-- ── Colonne droite : formulaire modification ───── -->
+        <!-- ══════════════════════════════════════════════════
+             COLONNE DROITE — formulaire modifier
+             ══════════════════════════════════════════════════ -->
         <div class="col-lg-8">
             <div class="card shadow-sm">
                 <div class="card-header fw-semibold">
-                    <i class="bi bi-pencil-square me-1"></i>Modifier les informations
+                    <i class="bi bi-pencil-square me-1"></i>
+                    Modifier les informations du tribunal
                 </div>
                 <div class="card-body">
-
-                    <form th:action="@{/avocat/affaires/{id}/tribunal(id=${affaire.id})}"
+                    <form th:action="@{/avocat/affaires/{id}/tribunal(
+                                      id=${affaire.id})}"
                           method="post">
 
                         <!-- Tribunal -->
@@ -118,7 +137,6 @@
                         </div>
 
                         <div class="row g-3 mb-4">
-
                             <!-- Chambre -->
                             <div class="col-md-6">
                                 <label for="chambre" class="form-label fw-semibold">
@@ -132,12 +150,11 @@
                                            id="chambre"
                                            name="chambre"
                                            class="form-control"
-                                           placeholder="Ex : Chambre civile, 3ème chambre"
+                                           placeholder="Ex : Chambre civile"
                                            th:value="${affaire.chambre}">
                                 </div>
                             </div>
-
-                            <!-- Numéro de rôle -->
+                            <!-- N° rôle -->
                             <div class="col-md-6">
                                 <label for="numeroRole" class="form-label fw-semibold">
                                     Numéro de rôle
@@ -154,14 +171,13 @@
                                            th:value="${affaire.numeroRole}">
                                 </div>
                             </div>
-
                         </div>
 
-                        <!-- Récapitulatif lecture seule -->
+                        <!-- Récap lecture seule -->
                         <div class="alert alert-light border mb-4">
                             <div class="small text-muted mb-1">
                                 <i class="bi bi-lock me-1"></i>
-                                Champs non modifiables (gérés par le système)
+                                Champs non modifiables
                             </div>
                             <div class="row g-2 mt-1">
                                 <div class="col-sm-4">
@@ -173,13 +189,15 @@
                                     <span class="small text-muted">Date lancement :</span>
                                     <span class="fw-medium ms-1"
                                           th:text="${affaire.dateLancement != null
-                                              ? #temporals.format(affaire.dateLancement,'dd/MM/yyyy')
-                                              : '—'}"></span>
+                                                    ? #temporals.format(
+                                                      affaire.dateLancement,'dd/MM/yyyy')
+                                                    : '—'}"></span>
                                 </div>
                                 <div class="col-sm-4">
                                     <span class="small text-muted">Dossier :</span>
                                     <span class="fw-medium ms-1"
-                                          th:text="${affaire.dossier?.numeroDossier ?: '—'}"></span>
+                                          th:text="${affaire.dossier?.numeroDossier ?: '—'}">
+                                    </span>
                                 </div>
                             </div>
                         </div>
@@ -196,13 +214,11 @@
                         </div>
 
                     </form>
-
                 </div>
             </div>
         </div>
 
     </div><!-- /row -->
-
 </div>
 </body>
 </html>

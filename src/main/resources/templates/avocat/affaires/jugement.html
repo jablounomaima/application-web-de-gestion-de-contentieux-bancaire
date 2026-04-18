@@ -2,11 +2,9 @@
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
       layout:decorate="~{layout/base}">
-
 <head>
-    <title>Saisir le jugement</title>
+    <title>Jugement — Affaire</title>
 </head>
-
 <body>
 <div layout:fragment="content" class="container py-4">
 
@@ -14,10 +12,12 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h2 class="mb-0">
-                <i class="bi bi-file-earmark-ruled me-2"></i>Saisir le jugement
+                <i class="bi bi-file-earmark-ruled me-2"></i>Jugement
             </h2>
             <small class="text-muted"
-                   th:text="'Affaire ' + ${affaire.numeroAffaire} + ' · ' + ${affaire.tribunal}">
+                   th:text="'Affaire ' + ${affaire.numeroAffaire}
+                             + (${affaire.tribunal} != null ?
+                             ' · ' + ${affaire.tribunal} : '')">
             </small>
         </div>
         <a th:href="@{/avocat/affaires/{id}(id=${affaire.id})}"
@@ -27,77 +27,123 @@
     </div>
 
     <!-- ── Alertes flash ──────────────────────────────────── -->
-    <div th:if="${successMsg}" class="alert alert-success alert-dismissible fade show" role="alert">
+    <div th:if="${successMsg}"
+         class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="bi bi-check-circle me-2"></i>
         <span th:text="${successMsg}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
-    <div th:if="${errorMsg}" class="alert alert-danger alert-dismissible fade show" role="alert">
+    <div th:if="${errorMsg}"
+         class="alert alert-danger alert-dismissible fade show" role="alert">
         <i class="bi bi-exclamation-triangle me-2"></i>
         <span th:text="${errorMsg}"></span>
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
 
-    <!-- ── Jugement déjà saisi → affichage en lecture ────── -->
-    <div th:if="${affaire.typeJugement != null}" class="card shadow-sm mb-4 border-success">
-        <div class="card-header bg-success-subtle text-success fw-semibold">
-            <i class="bi bi-check2-circle me-1"></i>Jugement enregistré
+    <!-- ══════════════════════════════════════════════════════
+         JUGEMENT EXISTANT — lecture + actions
+         ══════════════════════════════════════════════════════ -->
+    <div th:if="${affaire.typeJugement != null}"
+         class="card shadow-sm mb-4 border-success">
+        <div class="card-header bg-success-subtle text-success fw-semibold
+                    d-flex justify-content-between align-items-center">
+            <span>
+                <i class="bi bi-check2-circle me-1"></i>Jugement enregistré
+            </span>
+            <!-- Boutons modifier / supprimer -->
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-warning"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#formJugement">
+                    <i class="bi bi-pencil me-1"></i>Modifier
+                </button>
+                <form th:action="@{/avocat/affaires/{id}/jugement/supprimer(
+                                  id=${affaire.id})}"
+                      method="post"
+                      onsubmit="return confirm('Supprimer ce jugement ?\n'
+                                + 'Le statut repassera à EN COURS.')">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash me-1"></i>Supprimer
+                    </button>
+                </form>
+            </div>
         </div>
+
+        <!-- Valeurs actuelles -->
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-3">
-                    <div class="small text-muted">Type</div>
-                    <div th:switch="${affaire.typeJugement.name()}">
-                        <span th:case="'FAVORABLE'"   class="badge bg-success fs-6">Favorable</span>
-                        <span th:case="'DEFAVORABLE'" class="badge bg-danger fs-6">Défavorable</span>
-                        <span th:case="'EN_APPEL'"    class="badge bg-warning text-dark fs-6">En appel</span>
-                        <span th:case="'TRANSACTION'" class="badge bg-info text-dark fs-6">Transaction</span>
-                        <span th:case="'EN_ATTENTE'"  class="badge bg-secondary fs-6">En attente</span>
-                        <span th:case="*"             class="badge bg-secondary fs-6" th:text="${affaire.typeJugement}"></span>
-                    </div>
+                    <div class="small text-muted mb-1">Type</div>
+                    <span th:switch="${affaire.typeJugement.name()}">
+                        <span th:case="'FAVORABLE'"
+                              class="badge bg-success fs-6">Favorable</span>
+                        <span th:case="'DEFAVORABLE'"
+                              class="badge bg-danger fs-6">Défavorable</span>
+                        <span th:case="'EN_APPEL'"
+                              class="badge bg-warning text-dark fs-6">En appel</span>
+                        <span th:case="'TRANSACTION'"
+                              class="badge bg-info text-dark fs-6">Transaction</span>
+                        <span th:case="'EN_ATTENTE'"
+                              class="badge bg-secondary fs-6">En attente</span>
+                        <span th:case="*"
+                              class="badge bg-secondary fs-6"
+                              th:text="${affaire.typeJugement}"></span>
+                    </span>
                 </div>
                 <div class="col-md-3">
-                    <div class="small text-muted">Date</div>
-                    <div th:text="${affaire.dateJugement != null ? #temporals.format(affaire.dateJugement,'dd/MM/yyyy') : '—'}"></div>
+                    <div class="small text-muted mb-1">Date</div>
+                    <div th:text="${affaire.dateJugement != null
+                                  ? #temporals.format(affaire.dateJugement,'dd/MM/yyyy')
+                                  : '—'}"></div>
                 </div>
                 <div class="col-md-3">
-                    <div class="small text-muted">Montant jugé</div>
-                    <div th:text="${affaire.montantJuge ?: '—'}"></div>
+                    <div class="small text-muted mb-1">Montant jugé</div>
+                    <div class="fw-semibold text-success"
+                         th:text="${affaire.montantJuge ?: '—'}"></div>
                 </div>
                 <div class="col-md-3">
-                    <div class="small text-muted">Délai paiement</div>
+                    <div class="small text-muted mb-1">Délai paiement</div>
                     <div th:text="${affaire.delaiPaiementJuge ?: '—'}"></div>
                 </div>
-                <div class="col-12" th:if="${affaire.descriptionJugement}">
-                    <div class="small text-muted">Description</div>
-                    <div th:text="${affaire.descriptionJugement}"></div>
+                <div class="col-12" th:if="${affaire.descriptionJugement != null}">
+                    <div class="small text-muted mb-1">Description / Dispositif</div>
+                    <div class="fst-italic"
+                         th:text="${affaire.descriptionJugement}"></div>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- ── Formulaire de saisie ────────────────────────────── -->
-    <div class="card shadow-sm">
+    <!-- ══════════════════════════════════════════════════════
+         FORMULAIRE — ajout (si pas de jugement)
+                    + modification (collapse si jugement existe)
+         ══════════════════════════════════════════════════════ -->
+    <div class="card shadow-sm"
+         th:classappend="${affaire.typeJugement != null} ? 'collapse' : ''"
+         th:id="formJugement">
         <div class="card-header fw-semibold">
             <i class="bi bi-pencil-square me-1"></i>
-            <span th:text="${affaire.typeJugement != null ? 'Modifier le jugement' : 'Renseigner le jugement'}"></span>
+            <span th:text="${affaire.typeJugement != null}
+                            ? 'Modifier le jugement'
+                            : 'Renseigner le jugement'">
+            </span>
         </div>
         <div class="card-body">
-
             <form th:action="@{/avocat/affaires/{id}/jugement(id=${affaire.id})}"
                   method="post">
-
                 <div class="row g-3">
 
-                    <!-- Type de jugement -->
-                    <div class="col-md-6">
+                    <!-- Type jugement -->
+                    <div class="col-12">
                         <label class="form-label fw-semibold">
                             Type de jugement <span class="text-danger">*</span>
                         </label>
                         <div class="d-flex flex-wrap gap-2">
                             <div th:each="t : ${typesJugement}"
-                                 class="form-check form-check-inline border rounded px-3 py-2">
-                                <input class="form-check-input" type="radio"
+                                 class="form-check border rounded px-3 py-2">
+                                <input class="form-check-input"
+                                       type="radio"
                                        name="typeJugement"
                                        th:id="'type_' + ${t}"
                                        th:value="${t}"
@@ -111,12 +157,13 @@
                         </div>
                     </div>
 
-                    <!-- Date du jugement -->
-                    <div class="col-md-3">
+                    <!-- Date -->
+                    <div class="col-md-4">
                         <label class="form-label fw-semibold">
-                            Date du jugement <span class="text-danger">*</span>
+                            Date <span class="text-danger">*</span>
                         </label>
-                        <input type="date" name="dateJugement"
+                        <input type="date"
+                               name="dateJugement"
                                class="form-control"
                                th:value="${affaire.dateJugement}"
                                required>
@@ -125,29 +172,45 @@
                     <!-- Montant jugé -->
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Montant jugé</label>
-                        <input type="text" name="montantJuge"
-                               class="form-control"
-                               placeholder="Ex : 15 000 DT"
-                               th:value="${affaire.montantJuge}">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-currency-dollar"></i>
+                            </span>
+                            <input type="text"
+                                   name="montantJuge"
+                                   class="form-control"
+                                   placeholder="Ex : 15 000 TND"
+                                   th:value="${affaire.montantJuge}">
+                        </div>
                         <div class="form-text">Montant alloué par le tribunal</div>
                     </div>
 
                     <!-- Délai paiement -->
                     <div class="col-md-4">
                         <label class="form-label fw-semibold">Délai de paiement</label>
-                        <input type="text" name="delaiPaiementJuge"
-                               class="form-control"
-                               placeholder="Ex : 30 jours"
-                               th:value="${affaire.delaiPaiementJuge}">
+                        <div class="input-group">
+                            <span class="input-group-text">
+                                <i class="bi bi-hourglass-split"></i>
+                            </span>
+                            <input type="text"
+                                   name="delaiPaiementJuge"
+                                   class="form-control"
+                                   placeholder="Ex : 30 jours"
+                                   th:value="${affaire.delaiPaiementJuge}">
+                        </div>
                     </div>
 
                     <!-- Description -->
                     <div class="col-12">
-                        <label class="form-label fw-semibold">Description / Dispositif</label>
+                        <label class="form-label fw-semibold">
+                            Description / Dispositif
+                        </label>
                         <textarea name="descriptionJugement"
-                                  class="form-control" rows="5"
-                                  placeholder="Résumé du dispositif du jugement, conditions, observations..."
-                                  th:text="${affaire.descriptionJugement}"></textarea>
+                                  class="form-control"
+                                  rows="5"
+                                  placeholder="Résumé du dispositif, conditions, observations..."
+                                  th:text="${affaire.descriptionJugement}">
+                        </textarea>
                     </div>
 
                 </div><!-- /row -->
@@ -161,9 +224,7 @@
                         Annuler
                     </a>
                 </div>
-
             </form>
-
         </div>
     </div>
 

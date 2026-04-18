@@ -299,4 +299,101 @@ public String voirDossier(@PathVariable Long affaireId,
     model.addAttribute("dossier", dossier);
     return "avocat/affaires/dossier-detail";
 }
+
+// ─────────────────────────────────────────────
+//  AUDIENCES — POST (supprimer une audience)
+// ─────────────────────────────────────────────
+@PostMapping("/{affaireId}/audiences/{audienceId}/supprimer")
+public String supprimerAudience(@PathVariable Long affaireId,
+                                 @PathVariable Long audienceId,
+                                 Principal principal,
+                                 RedirectAttributes ra) {
+    try {
+        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+        if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
+            return "redirect:/avocat/affaires";
+        }
+        affaireService.supprimerAudience(audienceId);
+        ra.addFlashAttribute("successMsg", "Audience supprimée avec succès.");
+    } catch (Exception e) {
+        log.error("Erreur suppression audience {} : {}", audienceId, e.getMessage(), e);
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/audiences";
+}
+
+// ─────────────────────────────────────────────
+//  AUDIENCES — POST (modifier une audience)
+// ─────────────────────────────────────────────
+@PostMapping("/{affaireId}/audiences/{audienceId}/modifier")
+public String modifierAudience(@PathVariable Long affaireId,
+                                @PathVariable Long audienceId,
+                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAudience,
+                                @RequestParam(required = false) String heure,
+                                @RequestParam(required = false) String salle,
+                                @RequestParam(required = false) String motif,
+                                @RequestParam(required = false) String resultat,
+                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate prochaineAudience,
+                                @RequestParam Audience.StatutAudience statut,
+                                Principal principal,
+                                RedirectAttributes ra) {
+    try {
+        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+        if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
+            return "redirect:/avocat/affaires";
+        }
+        affaireService.modifierAudienceComplete(audienceId, dateAudience, heure,
+                                                 salle, motif, resultat,
+                                                 prochaineAudience, statut);
+        ra.addFlashAttribute("successMsg", "Audience modifiée avec succès.");
+    } catch (Exception e) {
+        log.error("Erreur modification audience {} : {}", audienceId, e.getMessage(), e);
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/audiences";
+}
+
+// ─────────────────────────────────────────────
+//  JUGEMENT — POST (supprimer le jugement)
+// ─────────────────────────────────────────────
+@PostMapping("/{affaireId}/jugement/supprimer")
+public String supprimerJugement(@PathVariable Long affaireId,
+                                 Principal principal,
+                                 RedirectAttributes ra) {
+    try {
+        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+        if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
+            return "redirect:/avocat/affaires";
+        }
+        affaireService.supprimerJugement(affaireId);
+        ra.addFlashAttribute("successMsg", "Jugement supprimé avec succès.");
+    } catch (Exception e) {
+        log.error("Erreur suppression jugement affaire {} : {}", affaireId, e.getMessage(), e);
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/jugement";
+}
+
+// ─────────────────────────────────────────────
+//  TRIBUNAL — POST (supprimer)
+// ─────────────────────────────────────────────
+@PostMapping("/{affaireId}/tribunal/supprimer")
+public String supprimerTribunal(@PathVariable Long affaireId,
+                                 Principal principal,
+                                 RedirectAttributes ra) {
+    try {
+        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+        if (affaire == null || !isOwner(affaire, principal.getName())) {
+            return "redirect:/avocat/affaires";
+        }
+        affaireService.modifierTribunal(affaireId, null, null, null);
+        ra.addFlashAttribute("successMsg", "Informations du tribunal supprimées.");
+    } catch (Exception e) {
+        log.error("Erreur suppression tribunal affaire {} : {}", affaireId, e.getMessage(), e);
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/tribunal";
+}
+
+
 }

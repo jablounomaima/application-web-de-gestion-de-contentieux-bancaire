@@ -376,7 +376,56 @@ public class AffaireJudiciaireService {
     }
 
 
+// ─────────────────────────────────────────────
+//  AUDIENCES — modifier complète
+// ─────────────────────────────────────────────
+@Transactional
+public void modifierAudienceComplete(Long audienceId,
+                                      LocalDate dateAudience,
+                                      String heure,
+                                      String salle,
+                                      String motif,
+                                      String resultat,
+                                      LocalDate prochaineAudience,
+                                      StatutAudience statut) {
+    Audience audience = audienceRepo.findById(audienceId)
+            .orElseThrow(() -> new RuntimeException("Audience introuvable : " + audienceId));
 
+    audience.setDateAudience(dateAudience);
+    audience.setHeure(heure);
+    audience.setSalle(salle);
+    audience.setMotif(motif);
+    audience.setResultat(resultat);
+    audience.setStatut(statut != null ? statut : StatutAudience.PLANIFIEE);
+    audience.setProchaineAudience(prochaineAudience);
+
+    // Mettre à jour la prochaine audience sur l'affaire
+    if (prochaineAudience != null) {
+        AffaireJudiciaire affaire = audience.getAffaire();
+        if (affaire != null) {
+            affaire.setDateProchainAudience(prochaineAudience);
+            affaireRepo.save(affaire);
+        }
+    }
+    audienceRepo.save(audience);
+}
+
+// ─────────────────────────────────────────────
+//  JUGEMENT — supprimer
+// ─────────────────────────────────────────────
+@Transactional
+public void supprimerJugement(Long affaireId) {
+    AffaireJudiciaire affaire = affaireRepo.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+
+    affaire.setTypeJugement(null);
+    affaire.setDateJugement(null);
+    affaire.setMontantJuge(null);
+    affaire.setDelaiPaiementJuge(null);
+    affaire.setDescriptionJugement(null);
+    affaire.setStatut(AffaireJudiciaire.StatutAffaire.EN_COURS);
+    affaireRepo.save(affaire);
+}
 
 
 
