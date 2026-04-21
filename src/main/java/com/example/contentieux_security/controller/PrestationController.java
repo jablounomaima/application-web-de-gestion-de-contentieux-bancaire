@@ -3,6 +3,7 @@ package com.example.contentieux_security.controller;
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.enums.TypePrestation;
+import com.example.contentieux_security.repository.AgentBancaireRepository;
 import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.service.PrestationService;
 
@@ -18,10 +19,12 @@ import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-
+import lombok.extern.slf4j.Slf4j;
+import com.example.contentieux_security.entity.AgentBancaire;
+import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
-
+@Slf4j
 @Controller
 @RequiredArgsConstructor // Injection automatique des dépendances via constructeur
 public class PrestationController {
@@ -35,14 +38,14 @@ public class PrestationController {
 
     private final AffaireJudiciaireService affaireService; // ← AJOUTER
 
-
+     private final AgentBancaireRepository agentBancaireRepository;
     // ─────────────────────────────────────────────────────────────────────────
     // 🔹 GET : Afficher le formulaire de lancement d’une prestation
     // ─────────────────────────────────────────────────────────────────────────
     @GetMapping("/agent/dossiers/{dossierId}/prestations/lancer")
     @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')") // Sécurité : seuls AGENT et ADMIN
     
-    public String formLancer(@PathVariable Long dossierId, Model model) {
+    public String formLancer(@PathVariable Long dossierId, Model model, Principal principal) {
 
         // Récupération du dossier
         DossierContentieux dossier = dossierService.getDossierById(dossierId);
@@ -52,15 +55,15 @@ public class PrestationController {
             return "redirect:/agent/dossiers/" + dossierId
                     + "?erreur=Le dossier doit être au statut VALIDE";
         }
+        // ✅ Récupérer l'agent connecté
+    AgentBancaire agent = agentBancaireRepository
+    .findByUsername(principal.getName())
+    .orElseThrow(() -> new RuntimeException("Agent introuvable"));
 
-        // Récupérer la liste des avocats actifs
-        List<Prestataire> avocats =
-                prestataireRepository.findByTypeAndActifTrue(TypePrestataire.AVOCAT);
-
+    
         // Ajouter les données au modèle pour Thymeleaf
         model.addAttribute("dossier", dossier);
         model.addAttribute("typesPrestations", TypePrestation.values());
-        model.addAttribute("avocats", avocats);
 
         // Retourner la vue
         return "agent/prestations/lancer";
@@ -151,8 +154,8 @@ public class PrestationController {
             LocalDate dateFin = (dateFinPrevue != null && !dateFinPrevue.isBlank())
                     ? LocalDate.parse(dateFinPrevue)
                     : null;
-
-            // 1. Créer la mission
+    
+            // ── 1. Créer la mission ──────────────────────────────
             Mission m = prestationService.designerPrestataire(
                     prestationId,
                     prestataireId,
@@ -160,43 +163,75 @@ public class PrestationController {
                     dateFin,
                     authentication.getName()
             );
-
+    
             ra.addFlashAttribute("success",
                     "Mission " + m.getNumeroMission() + " assignée avec succès.");
-
-            // 2. Si c'est une procédure judiciaire → créer automatiquement l'affaire
+    
+            // ── 2. Créer l'affaire si avocat + procédure judiciaire ──
             Prestation prestation = prestationService.getPrestationById(prestationId);
-            if (prestation.getType() == TypePrestation.PROCEDURE_JUDICIAIRE) {
+    
+            boolean estAvocat = m.getPrestataire() != null
+                    && m.getPrestataire().getType() == TypePrestataire.AVOCAT;
+    
+            boolean estProcedureJudiciaire =
+                    prestation.getType() == TypePrestation.PROCEDURE_JUDICIAIRE;
+    
+            if (estProcedureJudiciaire && estAvocat) {
                 try {
-                    AffaireJudiciaire affaire = affaireService.creerAffaire(
-                            m.getId(),   // missionId
-                            null,        // tribunal (à renseigner plus tard par l'avocat)
-                            null,        // numeroRole
-                            null,        // chambre
+                    // Utiliser creerAffaireDirecte avec les objets déjà en mémoire
+                    DossierContentieux dossier = prestation.getDossier();
+    
+                    if (dossier == null) {
+                        // Fallback : recharger le dossier depuis le service
+                        dossier = dossierService.getDossierById(dossierId);
+                    }
+    
+                    AffaireJudiciaire affaire = affaireService.creerAffaireDirecte(
+                            m,
+                            dossier,
                             authentication.getName()
                     );
+    
                     ra.addFlashAttribute("success",
                             "Mission " + m.getNumeroMission()
-                            + " assignée et affaire " + affaire.getNumeroAffaire()
-                            + " créée avec succès.");
+                            + " assignée et affaire judiciaire "
+                            + affaire.getNumeroAffaire()
+                            + " créée avec succès pour l'avocat "
+                            + m.getPrestataire().getUsername() + ".");
+    
+                } catch (IllegalStateException e) {
+                    // Doublon — affaire déjà existante, pas grave
+                    log.warn("Affaire déjà existante pour mission {} : {}",
+                            m.getId(), e.getMessage());
+                    ra.addFlashAttribute("success",
+                            "Mission " + m.getNumeroMission()
+                            + " assignée (affaire judiciaire déjà existante).");
+    
                 } catch (Exception e) {
-                    // La mission est créée mais l'affaire a échoué — on log sans bloquer
+                    log.error("Erreur création affaire pour mission {} : {}",
+                            m.getId(), e.getMessage(), e);
                     ra.addFlashAttribute("warning",
-                            "Mission créée mais erreur lors de la création de l'affaire : "
-                            + e.getMessage());
+                            "Mission créée mais erreur affaire : " + e.getMessage());
                 }
+    
+            } else if (estProcedureJudiciaire && !estAvocat) {
+                // Expert ou Huissier sur une procédure judiciaire → mission seulement
+                log.info("Prestataire {} ({}) désigné sur procédure judiciaire — pas d'affaire créée",
+                        m.getPrestataire() != null ? m.getPrestataire().getUsername() : "NULL",
+                        m.getPrestataire() != null ? m.getPrestataire().getType() : "NULL");
             }
-
+    
         } catch (IllegalArgumentException e) {
             ra.addFlashAttribute("error", "Données invalides : " + e.getMessage());
         } catch (Exception e) {
+            log.error("Erreur designerPrestataire dossierId={} prestationId={} : {}",
+                    dossierId, prestationId, e.getMessage(), e);
             ra.addFlashAttribute("error", "Erreur : " + e.getMessage());
         }
-
-        return "redirect:/agent/dossiers/" + dossierId + "/prestations/" + prestationId;
+    
+        return "redirect:/agent/dossiers/" + dossierId
+                + "/prestations/" + prestationId;
     }
-    // ✅ Les routes /prestataire/** sont gérées ailleurs (MissionController)
-
     @Transactional
 // Afficher le formulaire de modification du résultat d'une mission
 

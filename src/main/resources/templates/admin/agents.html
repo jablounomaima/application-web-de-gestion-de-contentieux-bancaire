@@ -37,7 +37,7 @@
             <!-- ══════════════════════════════════
                  FORMULAIRE CRÉATION
             ══════════════════════════════════ -->
-            <div class="card fade-in delay-1" style="margin-bottom: 24px;">
+            <div class="card fade-in delay-1" style="margin-bottom: 50px;">
                 <div class="card-header">
                     <h2>➕ Créer un nouvel agent</h2>
                     <button class="btn btn-outline btn-sm" onclick="toggleForm()" id="toggleBtn">
@@ -208,14 +208,33 @@
                                         </button>
                                     </form>
 
-                                    <!-- Supprimer -->
-                                    <form th:action="@{/admin/agents/{id}/delete(id=${a.id})}"
-                                          method="post" style="display:inline;"
-                                          onsubmit="return confirmDelete(event)">
-                                        <input type="hidden" th:name="${_csrf.parameterName}" th:value="${_csrf.token}"/>
-                                        <button type="submit" class="btn btn-danger btn-sm">🗑️</button>
-                                    </form>
-
+                                    
+                                    
+                                            <!-- ✏️ Modifier -->
+                                            <a th:href="@{/admin/agents/{id}/edit(id=${a.id})}"
+                                               class="btn btn-sm btn-outline"
+                                               title="Modifier">
+                                                ✏️ Modifier
+                                            </a>
+                                    
+                                            <!-- Toggle actif/inactif -->
+                                           
+                                    
+                                            <!-- 🗑️ Supprimer -->
+                                            <form th:action="@{/admin/agents/{id}/delete(id=${a.id})}"
+                                                  method="post" style="display:inline;"
+                                                  onsubmit="return confirmDelete(event)">
+                                                <input type="hidden"
+                                                       th:name="${_csrf.parameterName}"
+                                                       th:value="${_csrf.token}"/>
+                                                <button type="submit" class="btn btn-danger btn-sm"
+                                                        title="Supprimer">
+                                                    🗑️ Supprimer
+                                                </button>
+                                            </form>
+                                    
+                                       
+                                    
                                 </div>
                             </td>
                         </tr>
@@ -258,9 +277,9 @@
     .form-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 16px;
+        gap: 40px;
     }
-    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .form-group { display: flex; flex-direction: column; gap: 20px; }
 
     .section-title {
         grid-column: 1 / -1;
@@ -332,6 +351,36 @@
 
     /* Toggle form collapsible */
     #formBody { transition: all .3s ease; }
+
+
+    /* Amélioration de l'affichage des boutons dans le tableau */
+table td {
+    padding: 5px 6px; /* Augmente l'espace interne des cellules */
+    vertical-align: middle;
+}
+
+.actions-group {
+    display: flex;
+    gap: 2px; /* Espacement entre les boutons */
+    align-items: center;
+    justify-content: flex-start;
+    white-space: nowrap; /* Empêche les boutons de passer à la ligne */
+}
+
+.btn-sm {
+    padding: 3px 6px;
+    font-size: 12px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    height: 32px; /* Hauteur uniforme pour tous les boutons */
+}
+
+/* Optionnel : donner une largeur minimale à la colonne Actions */
+table th:last-child, 
+table td:last-child {
+    min-width: 350px; 
+}
 </style>
 
 

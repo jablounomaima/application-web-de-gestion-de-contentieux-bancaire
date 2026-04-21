@@ -49,8 +49,7 @@ public class SecurityConfig {
                 .requestMatchers("/validateur/juridique/**").hasAnyRole("VALIDATEUR_JURIDIQUE", "ADMIN")
                 .requestMatchers("/validateur/**").hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
                 .requestMatchers("/notifications/**").hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
-                .requestMatchers("/prestataire/**")
-                    .hasAnyRole("AVOCAT", "HUISSIER", "EXPERT", "VALIDATEUR_JURIDIQUE", "VALIDATEUR_FINANCIER","AGENT")
+                .requestMatchers("/prestataire/**").hasAnyRole("HUISSIER", "EXPERT","AVOCAT","AGENT")
                 .anyRequest().authenticated()
             )
 
@@ -71,7 +70,7 @@ public class SecurityConfig {
                     } else if (hasRole(authentication, "ROLE_AGENT")) {
                         response.sendRedirect("/agent/dashboard");
                     } else if (hasRole(authentication, "ROLE_AVOCAT")) {
-                        response.sendRedirect("/avocat/dashboard");
+                        response.sendRedirect("/avocat/affaires/dashboard");
                     } else if (hasRole(authentication, "ROLE_HUISSIER")) {
                         response.sendRedirect("/huissier/dashboard");
                     } else if (hasRole(authentication, "ROLE_EXPERT")) {

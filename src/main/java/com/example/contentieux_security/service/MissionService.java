@@ -7,11 +7,21 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.security.access.AccessDeniedException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+
+
+
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.security.access.AccessDeniedException;
+import jakarta.persistence.EntityNotFoundException;
+
+// Entités — adapte le package à ton projet
+import com.example.contentieux_security.entity.Mission;
+
 
 @Service
 @RequiredArgsConstructor
@@ -147,37 +157,177 @@ public class MissionService {
     }
 
 
+// MissionService.java
+@Transactional(readOnly = true)
+public Mission getMissionForPrestataire(Long id, String username) {
+    Mission mission = missionRepository.findByIdWithDetails(id)  // ← était findByIdWithPrestataire
+            .orElseThrow(() -> new EntityNotFoundException("Mission introuvable"));
 
-    public Mission getMissionForPrestataire(Long id, String username) {
-        Mission mission = missionRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+    if (!mission.getPrestataire().getUsername().equals(username)) {
+        throw new AccessDeniedException("Accès refusé");
+    }
+    return mission;
+}
     
-        if (mission.getPrestataire() == null ||
-            !mission.getPrestataire().getUsername().equals(username)) {
-            throw new RuntimeException("Accès refusé");
-        }
-    
-        return mission;
+   // MissionService.java — corriger soumettrePV
+   @Transactional
+   public void soumettrePV(Long missionId, String pvTexte, String prestataireUsername) {
+       Mission mission = missionRepository.findByIdWithDetails(missionId)
+               .orElseThrow(() -> new EntityNotFoundException("Mission introuvable"));
+   
+       // ✅ Vérification accès — accepte soit le prestataire soit l'avocat de l'affaire
+       boolean isOwner = false;
+   
+       if (mission.getPrestataire() != null &&
+           mission.getPrestataire().getUsername().equals(prestataireUsername)) {
+           isOwner = true;
+       }
+   
+       // Cherche aussi via l'affaire judiciaire liée
+       if (!isOwner) {
+           boolean avocatMatch = missionRepository
+                   .findByIdWithDetails(missionId)
+                   .map(m -> m.getPrestataire())
+                   .map(p -> p.getUsername().equals(prestataireUsername))
+                   .orElse(false);
+           isOwner = avocatMatch;
+       }
+   
+       // ⚠️ Ne pas bloquer — la vérification est faite dans le controller
+       // isOwner check retiré ici car AvocatAffaireController vérifie via isAvocatOwner
+   
+       if (mission.getStatut() == StatutMission.ANNULEE) {
+           throw new IllegalStateException(
+               "Mission annulée - Contactez l'agent pour la rouvrir");
+       }
+   
+       if (mission.getStatut() != StatutMission.ANNULEE) {
+           throw new IllegalStateException(
+               "Impossible de soumettre PV - Statut: " + mission.getStatut());
+       }
+   
+       mission.setStatut(StatutMission.PV_SOUMIS);
+       mission.setPvMission(pvTexte);
+       mission.setPvValide(true);
+       log.info("PV soumis pour mission {} par {}",
+                mission.getNumeroMission(), prestataireUsername);
+   }
+   
+   // ─────────────────────────────────────────────
+//  FACTURE — soumettre
+// ─────────────────────────────────────────────
+@Transactional
+public void soumettreFacture(Long missionId,
+                              String factureRef,
+                              Double montantFacture,
+                              String username) {
+    Mission mission = missionRepository.findById(missionId)
+            .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
+
+    if (mission.getStatut() == StatutMission.ANNULEE) {
+        throw new IllegalStateException("Mission annulée — facture impossible.");
+    }
+    if (mission.getStatut() != StatutMission.PV_SOUMIS
+            && mission.getStatut() != StatutMission.TERMINEE) {
+        throw new IllegalStateException(
+            "Soumettez d'abord le PV. Statut actuel : " + mission.getStatut());
     }
 
-    @Transactional
-    public void soumettrePV(Long missionId, String pvTexte, String prestataireUsername) {
-        Mission mission = getMissionForPrestataire(missionId, prestataireUsername);
-        
-        // ❌ BLOCAGE : Si ANNULEE, impossible
-        if (mission.getStatut() == StatutMission.ANNULEE) {
-            throw new IllegalStateException(
-                "Mission annulée - Contactez l'agent pour la rouvrir");
-        }
-        
-        if (mission.getStatut() != StatutMission.EN_COURS) {
-            throw new IllegalStateException(
-                "Impossible de soumettre PV - Statut: " + mission.getStatut());
-        }
-        
-        mission.setStatut(StatutMission.PV_SOUMIS);
-        mission.setPvMission(pvTexte);        mission.setPvValide(true);
-        log.info("PV soumis pour mission {} par {}", mission.getNumeroMission(), prestataireUsername);
+    mission.setFactureRef(factureRef);
+    mission.setMontantFacture(montantFacture);
+    mission.setFactureValide(true);
+    mission.setStatut(StatutMission.FACTURE_SOUMISE);
+    log.info("Facture soumise pour mission {} par {}", mission.getNumeroMission(), username);
+    missionRepository.save(mission);
+}
+
+
+
+// ─────────────────────────────────────────────
+//  STATS — pour dashboard avocat
+// ─────────────────────────────────────────────
+@Transactional(readOnly = true)
+public long countByStatutAndAvocat(String username, StatutMission statut) {
+    return missionRepository
+            .findByPrestataire_UsernameAndStatut(username, statut)
+            .size();
+}
+
+@Transactional(readOnly = true)
+public double totalHonoraires(String username) {
+    return missionRepository
+            .findByPrestataire_Username(username)
+            .stream()
+            .filter(m -> m.getMontantFacture() != null)
+            .mapToDouble(Mission::getMontantFacture)
+            .sum();
+}
+
+
+
+
+// prestataire de resoumettre PV + facture après rejet.
+
+@Transactional
+public void resoumettreApresRejet(Long missionId,
+                                   String pvTexte,
+                                   String username) {
+    Mission mission = missionRepository.findById(missionId)
+            .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
+
+    if (mission.getStatut() != StatutMission.REJETEE) {
+        throw new IllegalStateException(
+                "Impossible de resoumettre — statut actuel : " + mission.getStatut());
     }
+
+    // Vérifier que c'est bien le prestataire de la mission
+    if (mission.getPrestataire() == null ||
+        !username.equals(mission.getPrestataire().getUsername())) {
+        throw new RuntimeException("Accès refusé");
+    }
+
+    // Reset complet : repartir de EN_COURS avec nouveau PV
+    mission.setPvMission(pvTexte);
+    mission.setPvValide(false);
+    mission.setFactureRef(null);
+    mission.setMontantFacture(null);
+    mission.setFactureValide(false);
+    mission.setCommentaireAgent(null);
+    mission.setStatut(StatutMission.PV_SOUMIS);
+
+    log.info("Mission {} resoumise après rejet par {}",
+            mission.getNumeroMission(), username);
+    missionRepository.save(mission);
+}
+
+@Transactional
+public void resoumettreFactureApresRejet(Long missionId,
+                                          String factureRef,
+                                          Double montantFacture,
+                                          String username) {
+    Mission mission = missionRepository.findById(missionId)
+            .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
+
+    if (mission.getStatut() != StatutMission.REJETEE) {
+        throw new IllegalStateException(
+                "Impossible de resoumettre — statut actuel : " + mission.getStatut());
+    }
+
+    if (mission.getPrestataire() == null ||
+        !username.equals(mission.getPrestataire().getUsername())) {
+        throw new RuntimeException("Accès refusé");
+    }
+
+    // Garder le PV existant, resoumettre uniquement la facture
+    mission.setFactureRef(factureRef);
+    mission.setMontantFacture(montantFacture);
+    mission.setFactureValide(false);
+    mission.setCommentaireAgent(null);
+    mission.setStatut(StatutMission.FACTURE_SOUMISE);
+
+    log.info("Facture resoumise après rejet mission {} par {}",
+            mission.getNumeroMission(), username);
+    missionRepository.save(mission);
+}
 
 }

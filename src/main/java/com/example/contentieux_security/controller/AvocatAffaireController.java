@@ -3,6 +3,7 @@ package com.example.contentieux_security.controller;
 import com.example.contentieux_security.entity.AffaireJudiciaire;
 import com.example.contentieux_security.entity.Audience;
 import com.example.contentieux_security.entity.Audience.StatutAudience;
+import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.service.AffaireJudiciaireService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,6 +20,14 @@ import com.example.contentieux_security.service.HistoriqueService;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
+
+import java.time.LocalDate;
+import org.springframework.format.annotation.DateTimeFormat;
+
+
+import com.example.contentieux_security.entity.Mission;
+import com.example.contentieux_security.enums.StatutMission;
+import com.example.contentieux_security.service.MissionService;
 @Controller
 @RequestMapping("/avocat/affaires")
 @PreAuthorize("hasAnyRole('AVOCAT')")
@@ -29,14 +38,54 @@ public class AvocatAffaireController {
     private final AffaireJudiciaireService affaireService;
     private final DossierService dossierService;
 private final HistoriqueService historiqueService;
-    @GetMapping
-    public String mesAffaires(Model model, Principal principal) {
-        String username = principal.getName();
-        List<AffaireJudiciaire> affaires = affaireService.getAffairesParAvocat(username);
-        model.addAttribute("affaires", affaires);
-        return "avocat/affaires/liste";
+// Ajouter ce champ avec les autres dans AvocatAffaireController
+private final AffaireJudiciaireService affaireJudiciaireService;
+private final MissionService missionService;  // ← ajouter cette ligne
+@GetMapping
+public String mesAffaires(Model model, Principal principal) {
+    String username = principal.getName();
+    log.info("=== LISTE AFFAIRES - username : '{}'", username);
+
+    List<AffaireJudiciaire> affaires =
+            affaireService.getAffairesParAvocat(username);
+    log.info("=== {} affaires trouvées", affaires.size());
+
+    java.util.Map<Long, String> missionStatuts = new java.util.HashMap<>();
+    java.util.Map<Long, Long>   missionIds     = new java.util.HashMap<>();
+
+    for (AffaireJudiciaire affaire : affaires) {
+        if (affaire.getMission() != null) {
+            try {
+                Long affaireId = affaire.getId();
+                Long missionId = affaire.getMission().getId();
+                String statut  = affaire.getMission().getStatut() != null
+                        ? affaire.getMission().getStatut().name()
+                        : "INCONNU";
+
+                log.info("  affaireId={} missionId={} statut={}",
+                        affaireId, missionId, statut);
+
+                missionStatuts.put(affaireId, statut);
+                missionIds.put(affaireId, missionId);
+
+            } catch (Exception e) {
+                log.warn("Mission lazy affaire {} : {}",
+                        affaire.getId(), e.getMessage());
+            }
+        } else {
+            log.warn("  affaireId={} — pas de mission", affaire.getId());
+        }
     }
-    @GetMapping("/{affaireId}")
+
+    model.addAttribute("affaires",       affaires);
+    model.addAttribute("missionStatuts", missionStatuts);
+    model.addAttribute("missionIds",     missionIds);
+
+    return "avocat/affaires/liste";
+}
+  
+
+@GetMapping("/{affaireId}")
     public String detailAffaire(@PathVariable Long affaireId,
                                 Model model,
                                 Principal principal) {
@@ -295,11 +344,15 @@ public String voirDossier(@PathVariable Long affaireId,
     Long dossierId = affaire.getDossier().getId();
     DossierDetailDTO dossier = dossierService.getDossierDetail(dossierId);
 
+    // Charger la mission avec JOIN FETCH pour éviter LazyInitializationException
+    AffaireJudiciaire affaireAvecMission = affaireJudiciaireService.findById(affaireId);
+    Mission mission = affaireAvecMission.getMission();
+
     model.addAttribute("affaire", affaire);
     model.addAttribute("dossier", dossier);
+    model.addAttribute("mission", mission);
     return "avocat/affaires/dossier-detail";
 }
-
 // ─────────────────────────────────────────────
 //  AUDIENCES — POST (supprimer une audience)
 // ─────────────────────────────────────────────
@@ -394,6 +447,235 @@ public String supprimerTribunal(@PathVariable Long affaireId,
     }
     return "redirect:/avocat/affaires/" + affaireId + "/tribunal";
 }
+
+
+
+
+
+
+
+
+
+@GetMapping("/dashboard")
+public String dashboard(Model model, Principal principal) {
+    String username = principal.getName();
+
+    List<AffaireJudiciaire> affaires =
+            affaireService.getAffairesParAvocat(username);
+
+    // ── Stats missions via affaires ──────────────
+    long totalMissions  = affaires.stream()
+            .filter(a -> a.getMission() != null).count();
+    long enCours        = affaires.stream()
+            .filter(a -> a.getMission() != null &&
+                    a.getMission().getStatut() == StatutMission.EN_COURS).count();
+    long pvSoumis       = affaires.stream()
+            .filter(a -> a.getMission() != null &&
+                    a.getMission().getStatut() == StatutMission.PV_SOUMIS).count();
+    long factureSoumise = affaires.stream()
+            .filter(a -> a.getMission() != null &&
+                    a.getMission().getStatut() == StatutMission.FACTURE_SOUMISE).count();
+    long terminees      = affaires.stream()
+            .filter(a -> a.getMission() != null &&
+                    a.getMission().getStatut() == StatutMission.TERMINEE).count();
+    long annulees       = affaires.stream()
+            .filter(a -> a.getMission() != null &&
+                    a.getMission().getStatut() == StatutMission.ANNULEE).count();
+
+    double totalHonoraires = affaires.stream()
+            .filter(a -> a.getMission() != null &&
+                    a.getMission().getMontantFacture() != null)
+            .mapToDouble(a -> a.getMission().getMontantFacture())
+            .sum();
+
+    // ── Stats affaires ───────────────────────────
+    long totalAffaires   = affaires.size();
+    long affairesEnCours = affaires.stream()
+            .filter(a -> a.getStatut() ==
+                    AffaireJudiciaire.StatutAffaire.EN_COURS).count();
+    long jugementRendu   = affaires.stream()
+            .filter(a -> a.getStatut() ==
+                    AffaireJudiciaire.StatutAffaire.JUGEMENT_RENDU).count();
+    long audiencesAVenir = affaireService
+            .getAudiencesAVenir(username).size();
+
+    // ── Affaires récentes (5 dernières) ──────────
+    List<AffaireJudiciaire> affairesRecentes = affaires.stream()
+            .limit(5)
+            .toList();
+
+    model.addAttribute("totalMissions",    totalMissions);
+    model.addAttribute("enCours",          enCours);
+    model.addAttribute("pvSoumis",         pvSoumis);
+    model.addAttribute("factureSoumise",   factureSoumise);
+    model.addAttribute("terminees",        terminees);
+    model.addAttribute("annulees",         annulees);
+    model.addAttribute("totalHonoraires",  totalHonoraires);
+    model.addAttribute("totalAffaires",    totalAffaires);
+    model.addAttribute("affairesEnCours",  affairesEnCours);
+    model.addAttribute("jugementRendu",    jugementRendu);
+    model.addAttribute("audiencesAVenir",  audiencesAVenir);
+    model.addAttribute("affairesRecentes", affairesRecentes);
+
+    return "avocat/dashboard";
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+// =========================================================
+//  📄 PV — GET formulaire
+// =========================================================
+// =========================================================
+//  📄 PV — GET formulaire
+// =========================================================
+@GetMapping("/{affaireId}/missions/{missionId}/pv")
+@PreAuthorize("hasAnyRole('AVOCAT')")
+public String voirPV(@PathVariable Long affaireId,
+                     @PathVariable Long missionId,
+                     Model model) {
+    AffaireJudiciaire affaire = affaireJudiciaireService.findById(affaireId);
+    Mission mission = affaire.getMission(); // déjà chargée avec JOIN FETCH
+    model.addAttribute("affaire", affaire);
+    model.addAttribute("mission", mission);
+    return "avocat/missions/pv";
+}
+
+// =========================================================
+//  📄 PV — POST soumettre
+// =========================================================
+@PostMapping("/{affaireId}/missions/{missionId}/pv")
+@PreAuthorize("hasAnyRole('AVOCAT','EXPERT','HUISSIER')")
+public String soumettrePV(@PathVariable Long affaireId,
+                           @PathVariable Long missionId,
+                           @RequestParam String pvTexte,
+                           RedirectAttributes ra) {
+    try {
+        affaireJudiciaireService.soumettreAvocatPV(affaireId, pvTexte);
+        ra.addFlashAttribute("successMsg", "PV soumis avec succès.");
+    } catch (Exception e) {
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/pv";
+}
+// =========================================================
+//  🧾 FACTURE — GET formulaire
+// =========================================================
+@GetMapping("/{affaireId}/missions/{missionId}/facture")
+@PreAuthorize("hasAnyRole('AVOCAT')")
+public String voirFacture(@PathVariable Long affaireId,
+                           @PathVariable Long missionId,
+                           Model model) {
+    AffaireJudiciaire affaire = affaireJudiciaireService.findById(affaireId);
+    Mission mission = affaire.getMission();
+    model.addAttribute("affaire", affaire);
+    model.addAttribute("mission", mission);
+    return "avocat/missions/facture";
+}
+// =========================================================
+//  🧾 FACTURE — POST soumettre
+// =========================================================
+@PostMapping("/{affaireId}/missions/{missionId}/facture")
+@PreAuthorize("hasAnyRole('AVOCAT')")
+public String soumettreFacture(@PathVariable Long affaireId,
+                                @PathVariable Long missionId,
+                                @RequestParam String factureRef,
+                                @RequestParam Double montantFacture,
+                                RedirectAttributes ra) {
+    try {
+        affaireJudiciaireService.soumettreAvocatFacture(affaireId, factureRef, montantFacture);
+        ra.addFlashAttribute("successMsg", "Facture soumise avec succès.");
+    } catch (Exception e) {
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/facture";
+}
+
+
+
+
+
+// =========================================================
+//  📄 PV — DELETE supprimer
+// =========================================================
+@PostMapping("/{affaireId}/missions/{missionId}/pv/supprimer")
+@PreAuthorize("hasAnyRole('AVOCAT')")
+public String supprimerPV(@PathVariable Long affaireId,
+                           @PathVariable Long missionId,
+                           RedirectAttributes ra) {
+    try {
+        affaireJudiciaireService.supprimerAvocatPV(affaireId);
+        ra.addFlashAttribute("successMsg", "PV supprimé avec succès.");
+    } catch (Exception e) {
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/pv";
+}
+
+// =========================================================
+//  📄 PV — PUT modifier
+// =========================================================
+@PostMapping("/{affaireId}/missions/{missionId}/pv/modifier")
+@PreAuthorize("hasAnyRole('AVOCAT')")
+public String modifierPV(@PathVariable Long affaireId,
+                          @PathVariable Long missionId,
+                          @RequestParam String pvTexte,
+                          RedirectAttributes ra) {
+    try {
+        affaireJudiciaireService.modifierAvocatPV(affaireId, pvTexte);
+        ra.addFlashAttribute("successMsg", "PV modifié avec succès.");
+    } catch (Exception e) {
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/pv";
+}
+
+// =========================================================
+//  🧾 FACTURE — DELETE supprimer
+// =========================================================
+@PostMapping("/{affaireId}/missions/{missionId}/facture/supprimer")
+@PreAuthorize("hasAnyRole('AVOCAT')")
+public String supprimerFacture(@PathVariable Long affaireId,
+                                @PathVariable Long missionId,
+                                RedirectAttributes ra) {
+    try {
+        affaireJudiciaireService.supprimerAvocatFacture(affaireId);
+        ra.addFlashAttribute("successMsg", "Facture supprimée avec succès.");
+    } catch (Exception e) {
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/facture";
+}
+
+// =========================================================
+//  🧾 FACTURE — PUT modifier
+// =========================================================
+@PostMapping("/{affaireId}/missions/{missionId}/facture/modifier")
+@PreAuthorize("hasAnyRole('AVOCAT')")
+public String modifierFacture(@PathVariable Long affaireId,
+                               @PathVariable Long missionId,
+                               @RequestParam String factureRef,
+                               @RequestParam Double montantFacture,
+                               RedirectAttributes ra) {
+    try {
+        affaireJudiciaireService.modifierAvocatFacture(affaireId, factureRef, montantFacture);
+        ra.addFlashAttribute("successMsg", "Facture modifiée avec succès.");
+    } catch (Exception e) {
+        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/facture";
+}
+
+
 
 
 }

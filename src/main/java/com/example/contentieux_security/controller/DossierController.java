@@ -16,7 +16,8 @@ import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.HistoriqueService;
 import com.example.contentieux_security.service.NotificationService;
 import com.example.contentieux_security.service.RisqueService;
-
+import com.example.contentieux_security.entity.Client;
+import java.util.List;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,7 +30,14 @@ import com.example.contentieux_security.entity.Risque;
 import java.security.Principal;
 import java.util.List;
 
-
+// ── Ajouter ces imports en haut ──
+import com.example.contentieux_security.entity.Mission;
+import com.example.contentieux_security.entity.Prestation;
+import com.example.contentieux_security.service.MissionService;
+import com.example.contentieux_security.service.PrestationService;
+import com.example.contentieux_security.repository.AffaireJudiciaireRepository;
+import com.example.contentieux_security.repository.AgentBancaireRepository;
+import com.example.contentieux_security.entity.AgentBancaire;
 @Controller
 @RequiredArgsConstructor
 public class DossierController {
@@ -46,7 +54,13 @@ public class DossierController {
    
     private final RisqueRepository risqueRepository;
     private final RisqueService risqueService;
+    private final AgentBancaireRepository agentBancaireRepository;
 
+
+    // ── Ajouter ces dépendances dans la classe ──
+private final MissionService missionService;
+private final PrestationService prestationService;
+private final AffaireJudiciaireRepository affaireRepository;
     
 
     
@@ -74,11 +88,20 @@ public class DossierController {
     // =====================================================
     @GetMapping("/agent/dossiers/create")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-    public String formulaireCreation(Model model) {
-
+    public String formulaireCreation(Model model, Principal principal) { // ✅ ajouter Principal
+    
+        // ✅ Récupérer l'agent connecté et son agence
+        AgentBancaire agent = agentBancaireRepository
+                .findByUsername(principal.getName())
+                .orElseThrow(() -> new RuntimeException("Agent introuvable"));
+    
+        // ✅ Clients de la même agence uniquement
+        List<Client> clients = clientRepository
+                .findByAgence_Id(agent.getAgence().getId());
+    
         model.addAttribute("dossierRequest", new DossierCreationRequest());
-        model.addAttribute("clients", clientRepository.findAll());
-
+        model.addAttribute("clients", clients);
+    
         return "agent/dossiers/create";
     }
 
@@ -109,34 +132,63 @@ public class DossierController {
     // =====================================================
     // 📌 DÉTAIL DOSSIER
     // =====================================================
-    @GetMapping("/agent/dossiers/{id}")
-    @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-    public String detailDossier(@PathVariable Long id,
-                                Model model,
-                                RedirectAttributes redirectAttributes) {
-    
-        try {
-            DossierDetailDTO dossier = dossierService.getDossierDetail(id);
-    
-            model.addAttribute("dossier", dossier);
-    
-            model.addAttribute("validateurs_financiers",
-                validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_FINANCIER));
-    
-            model.addAttribute("validateurs_juridiques",
-                validateurRepository.findByTypeValidateurAndActifTrue(TypeValidateur.VALIDATEUR_JURIDIQUE));
-    
-            // ── Historique ────────────────────────────────────────────
-            model.addAttribute("historique",
-                historiqueService.getHistorique(id));
-    
-            return "agent/dossiers/detail";
-    
-        } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", e.getMessage());
-            return "redirect:/agent/dossiers";
-        }
+   // ── Remplacer detailDossier() par cette version ──
+@GetMapping("/agent/dossiers/{id}")
+@PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+public String detailDossier(@PathVariable Long id,
+                            Model model,Principal principal,
+                            
+                            RedirectAttributes redirectAttributes) {
+
+    try {
+        DossierDetailDTO dossier = dossierService.getDossierDetail(id);
+        model.addAttribute("dossier", dossier);
+
+           // ✅ Récupérer l'agence de l'agent connecté
+           AgentBancaire agent = agentBancaireRepository
+           .findByUsername(principal.getName())
+           .orElseThrow(() -> new RuntimeException("Agent introuvable"));
+
+            Long agenceId = agent.getAgence().getId();
+
+
+         // ✅ Filtrer les validateurs par agence de l'agent
+         model.addAttribute("validateurs_financiers",
+         validateurRepository
+             .findByTypeValidateurAndActifTrueAndAgence_Id(
+                 TypeValidateur.VALIDATEUR_FINANCIER, agenceId));
+
+     model.addAttribute("validateurs_juridiques",
+         validateurRepository
+             .findByTypeValidateurAndActifTrueAndAgence_Id(
+                 TypeValidateur.VALIDATEUR_JURIDIQUE, agenceId));
+
+        model.addAttribute("historique",
+            historiqueService.getHistorique(id));
+
+        // ── AJOUTS POUR PROCÉDURE JUDICIAIRE ──────────────
+        
+        // 1. Mission avocat liée au dossier
+        Mission missionAvocat = missionService.getMissionAvocatDuDossier(id);
+        model.addAttribute("missionAvocat", missionAvocat);
+
+        // 2. Affaire judiciaire déjà lancée ?
+        boolean affaireExiste = !affaireRepository.findByDossier_Id(id).isEmpty();
+        model.addAttribute("affaireExiste", affaireExiste);
+
+        // 3. Prestation judiciaire existante (pour lien designer-avocat)
+        Prestation prestationJudiciaire = prestationService
+                .getPrestationJudiciaireParDossier(id);
+        model.addAttribute("prestationJudiciaire", prestationJudiciaire);
+
+        return "agent/dossiers/detail";
+
+    } catch (Exception e) {
+        redirectAttributes.addFlashAttribute("error", e.getMessage());
+        return "redirect:/agent/dossiers";
     }
+}
+    
     // =====================================================
     // 📌 CHOISIR VALIDATEURS
     // =====================================================

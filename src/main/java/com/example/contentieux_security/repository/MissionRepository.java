@@ -1,5 +1,6 @@
 package com.example.contentieux_security.repository;
 
+import com.example.contentieux_security.entity.DossierContentieux;
 import com.example.contentieux_security.entity.Mission;
 import com.example.contentieux_security.entity.ResultatMission;
 import com.example.contentieux_security.enums.StatutMission;
@@ -12,6 +13,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface MissionRepository extends JpaRepository<Mission, Long> {
+    boolean existsByNumeroMission(String numeroMission);
 
     // ─────────────────────────────────────────────
     // 🔹 Méthodes simples
@@ -54,18 +56,22 @@ public interface MissionRepository extends JpaRepository<Mission, Long> {
     // ─────────────────────────────────────────────
     // 🔹 Trouver mission par ID avec détails complets
     // ─────────────────────────────────────────────
-    @Query("SELECT DISTINCT m FROM Mission m " +
-    "LEFT JOIN FETCH m.prestation p " +
-    "LEFT JOIN FETCH p.dossier d " +
-    "LEFT JOIN FETCH d.client " +
-    "LEFT JOIN FETCH d.agence " +
-    "LEFT JOIN FETCH d.agentCreateur " +
-    "LEFT JOIN FETCH d.risques r " +
-    "LEFT JOIN FETCH r.garanties " +
-    "LEFT JOIN FETCH m.prestataire " +
-    "WHERE m.id = :id")
-Optional<Mission> findByIdWithDetails(@Param("id") Long id);
-    // ─────────────────────────────────────────────
+    @Query("""
+        SELECT DISTINCT m FROM Mission m
+        LEFT JOIN FETCH m.prestation p
+        LEFT JOIN FETCH p.dossier d
+        LEFT JOIN FETCH d.client
+        LEFT JOIN FETCH d.agence
+        LEFT JOIN FETCH d.agentCreateur
+        LEFT JOIN FETCH d.risques r
+        LEFT JOIN FETCH r.garanties
+        LEFT JOIN FETCH m.prestataire pr
+        WHERE m.id = :id
+    """)
+    Optional<Mission> findByIdWithDetails(@Param("id") Long id);
+
+
+// ─────────────────────────────────────────────
     // 🔹 Missions créées par agent
     // ─────────────────────────────────────────────
     @Query("""
@@ -100,19 +106,7 @@ Optional<Mission> findByIdWithDetails(@Param("id") Long id);
     """)
     long countByAnnee(@Param("annee") int annee);
 
-    // ─────────────────────────────────────────────
-    // 🔹 Génération numéro mission
-    // ─────────────────────────────────────────────
-    @Query(value = """
-        SELECT m.numero_mission
-        FROM missions m
-        WHERE m.numero_mission LIKE CONCAT(:prefix, '%')
-        ORDER BY m.numero_mission DESC
-        LIMIT 1
-    """, nativeQuery = true)
-    Optional<String> findLastNumero(@Param("prefix") String prefix);
-
-
+  
 
     @Query("SELECT m FROM Mission m " +
        "LEFT JOIN FETCH m.prestataire " +
@@ -122,13 +116,41 @@ Optional<Mission> findByIdWithDetails(@Param("id") Long id);
        "ORDER BY m.dateAssignation DESC")
 List<Mission> findAllWithDetails();
 
+// MissionRepository.java
+@Query("SELECT m FROM Mission m JOIN FETCH m.prestataire WHERE m.id = :id")
+Optional<Mission> findByIdWithPrestataire(@Param("id") Long id);
+
+
+
+
+@Query("""
+    SELECT p.dossier FROM Mission m
+    JOIN m.prestation p
+    WHERE m.id = :missionId
+""")
+DossierContentieux findDossierByMissionId(@Param("missionId") Long missionId);
+
+
+
+// Et corriger findLastNumero si elle existe déjà :
+@Query("SELECT m.numeroMission FROM Mission m " +
+       "WHERE m.numeroMission LIKE CONCAT(:prefix, '%') " +
+       "ORDER BY m.numeroMission DESC LIMIT 1")
+Optional<String> findLastNumero(@Param("prefix") String prefix);
+
+
+
+
+// MissionRepository.java
 @Query("""
     SELECT m FROM Mission m
     LEFT JOIN FETCH m.prestataire
     LEFT JOIN FETCH m.prestation p
-    LEFT JOIN FETCH p.dossier
-    WHERE m.id = :id
+    LEFT JOIN FETCH p.dossier d
+    LEFT JOIN FETCH d.client
+    LEFT JOIN FETCH d.agentCreateur
+    WHERE d.creePar = :username
 """)
-Optional<Mission> findByIdWithPrestataire(@Param("id") Long id);
+List<Mission> findByPrestation_Dossier_CreeParWithDetails(@Param("username") String username);
 
 }

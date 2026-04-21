@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head><title>Facture d'honoraires</title></head>
+<body>
+<div layout:fragment="content" class="container py-4">
+
+    <!-- En-tête -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-receipt me-2"></i>Facture d'honoraires
+            </h2>
+            <small class="text-muted"
+                   th:text="${mission.numeroMission}"></small>
+        </div>
+        <div class="d-flex gap-2">
+            <a th:href="@{/avocat/missions/{id}/pv(id=${mission.id})}"
+               class="btn btn-outline-info btn-sm">
+                <i class="bi bi-file-text me-1"></i>Voir PV
+            </a>
+            <a th:href="@{/avocat/missions/{id}(id=${mission.id})}"
+               class="btn btn-outline-secondary btn-sm">
+                <i class="bi bi-arrow-left me-1"></i>Retour
+            </a>
+        </div>
+    </div>
+
+    <!-- Alertes -->
+    <div th:if="${successMsg}"
+         class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${successMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMsg}"
+         class="alert alert-warning alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${errorMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- Colonne gauche : infos + PV -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm mb-4">
+                <div class="card-header fw-semibold">
+                    <i class="bi bi-info-circle me-1"></i>Mission
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-5 text-muted fw-normal">N° Mission</dt>
+                        <dd class="col-sm-7 fw-semibold text-primary"
+                            th:text="${mission.numeroMission}"></dd>
+
+                        <dt class="col-sm-5 text-muted fw-normal">Statut</dt>
+                        <dd class="col-sm-7">
+                            <span th:switch="${mission.statut.name()}">
+                                <span th:case="'PV_SOUMIS'"
+                                      class="badge bg-success">PV soumis</span>
+                                <span th:case="'FACTURE_SOUMISE'"
+                                      class="badge bg-info text-dark">
+                                    Facture soumise</span>
+                                <span th:case="'TERMINEE'"
+                                      class="badge bg-secondary">Terminée</span>
+                                <span th:case="*"
+                                      class="badge bg-light text-dark"
+                                      th:text="${mission.statut}"></span>
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-5 text-muted fw-normal">Dossier</dt>
+                        <dd class="col-sm-7"
+                            th:text="${mission.prestation?.dossier?.numeroDossier ?: '—'}">
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+
+            <!-- Résumé PV -->
+            <div class="card shadow-sm border-success"
+                 th:if="${mission.pvMission != null}">
+                <div class="card-header bg-success-subtle text-success fw-semibold small">
+                    <i class="bi bi-check2-circle me-1"></i>PV validé
+                </div>
+                <div class="card-body">
+                    <p class="small text-muted mb-0"
+                       style="white-space:pre-wrap; max-height:150px;
+                              overflow-y:auto;"
+                       th:text="${mission.pvMission}">
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Colonne droite : formulaire facture -->
+        <div class="col-lg-8">
+
+            <!-- Facture déjà soumise -->
+            <div th:if="${mission.factureRef != null}"
+                 class="card shadow-sm border-info mb-4">
+                <div class="card-header bg-info-subtle text-info fw-semibold
+                            d-flex justify-content-between align-items-center">
+                    <span>
+                        <i class="bi bi-receipt me-1"></i>Facture soumise
+                    </span>
+                    <span class="badge bg-info text-dark">
+                        <i class="bi bi-lock me-1"></i>Transmise à l'agent
+                    </span>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="small text-muted mb-1">
+                                Référence facture
+                            </div>
+                            <div class="fw-semibold"
+                                 th:text="${mission.factureRef}"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="small text-muted mb-1">
+                                Montant honoraires
+                            </div>
+                            <div class="fw-bold text-success fs-5"
+                                 th:text="${mission.montantFacture != null ?
+                                           #numbers.formatDecimal(mission.montantFacture,
+                                           1,'COMMA',3,'POINT') + ' TND' : '—'}">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Formulaire saisie facture -->
+            <div class="card shadow-sm"
+                 th:classappend="${mission.statut.name() != 'PV_SOUMIS'} ?
+                                  'opacity-50 pe-none' : ''">
+                <div class="card-header fw-semibold">
+                    <i class="bi bi-pencil-square me-1"></i>
+                    <span th:text="${mission.factureRef != null} ?
+                                    'Facture déjà soumise (non modifiable)' :
+                                    'Saisir la facture d\'honoraires'">
+                    </span>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/avocat/missions/{id}/facture(id=${mission.id})}"
+                          method="post">
+
+                        <!-- Référence facture -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                Référence de la facture
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-hash"></i>
+                                </span>
+                                <input type="text"
+                                       name="factureRef"
+                                       class="form-control"
+                                       placeholder="Ex : FACT-2025-001"
+                                       th:value="${mission.factureRef}"
+                                       th:readonly="${mission.factureRef != null}"
+                                       required>
+                            </div>
+                            <div class="form-text">
+                                Numéro unique de votre facture
+                            </div>
+                        </div>
+
+                        <!-- Montant honoraires -->
+                        <div class="mb-4">
+                            <label class="form-label fw-semibold">
+                                Montant des honoraires (TND)
+                                <span class="text-danger">*</span>
+                            </label>
+                            <div class="input-group">
+                                <span class="input-group-text">
+                                    <i class="bi bi-cash-coin"></i>
+                                </span>
+                                <input type="number"
+                                       name="montantFacture"
+                                       class="form-control"
+                                       step="0.001"
+                                       min="0"
+                                       placeholder="Ex : 1500.000"
+                                       th:value="${mission.montantFacture}"
+                                       th:readonly="${mission.factureRef != null}"
+                                       required>
+                                <span class="input-group-text">TND</span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2"
+                             th:if="${mission.statut.name() == 'PV_SOUMIS'}">
+                            <button type="submit"
+                                    class="btn btn-primary"
+                                    onclick="return confirm('Soumettre la facture ? Cette action est irréversible.')">
+                                <i class="bi bi-send me-1"></i>Soumettre la facture
+                            </button>
+                            <a th:href="@{/avocat/missions}"
+                               class="btn btn-outline-secondary">Annuler</a>
+                        </div>
+
+                        <div th:unless="${mission.statut.name() == 'PV_SOUMIS'}"
+                             class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <span th:if="${mission.factureRef != null}">
+                                Facture déjà transmise à l'agent bancaire.
+                            </span>
+                            <span th:unless="${mission.factureRef != null}">
+                                Soumettez d'abord le
+                                <a th:href="@{/avocat/missions/{id}/pv(id=${mission.id})}"
+                                   class="alert-link">PV de mission</a>
+                                avant la facture.
+                            </span>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

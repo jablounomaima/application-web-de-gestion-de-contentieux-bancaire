@@ -1,115 +1,203 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org"
       xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head>
-    <meta charset="UTF-8">
-    <title>Mes Affaires Judiciaires</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-</head>
+
+<head th:replace="~{fragments/layout :: head('Mes Affaires Judiciaires')}"></head>
+
 <body>
-<main class="container mt-5">
-    <div class="page-header mb-4">
-        <h2 class="fw-semibold">
-            <i class="bi bi-briefcase-fill text-primary me-2"></i>Mes Affaires Judiciaires
-        </h2>
-        <p class="text-muted mb-0">Liste des affaires qui vous ont été assignées</p>
+<div class="layout-wrapper">
+
+    <aside th:replace="~{fragments/layout :: sidebar('AVOCAT', ${#authentication.name})}"></aside>
+
+    <div class="page-content">
+
+        <header th:replace="~{fragments/layout :: topbar('Mes Affaires', ${#authentication.name}, 'AVOCAT')}"></header>
+
+        <div class="page-inner fade-in">
+
+            <!-- En-tête -->
+            <div class="page-title-bar">
+                <div>
+                    <h1>⚖️ Mes Affaires Judiciaires</h1>
+                    <p>Liste des affaires qui vous ont été assignées</p>
+                </div>
+                <a th:href="@{/avocat/dashboard}" class="btn btn-outline btn-sm">
+                    ← Dashboard
+                </a>
+            </div>
+
+            <!-- Alertes flash -->
+            <div th:if="${successMsg}"
+                 class="alert alert-success">
+                ✅ <span th:text="${successMsg}"></span>
+            </div>
+            <div th:if="${errorMsg}"
+                 class="alert alert-error">
+                ⚠️ <span th:text="${errorMsg}"></span>
+            </div>
+
+            <!-- Aucune affaire -->
+            <div th:if="${affaires == null or #lists.isEmpty(affaires)}"
+                 class="alert alert-info">
+                ℹ️ Aucune affaire judiciaire ne vous a été assignée pour le moment.
+            </div>
+
+            <!-- Tableau -->
+            <div th:unless="${affaires == null or #lists.isEmpty(affaires)}"
+                 class="table-wrap">
+
+                <div class="table-header">
+                    <h2>⚖️ Affaires judiciaires
+                        <span style="font-size:12px;font-weight:400;color:var(--muted)"
+                              th:text="'(' + ${affaires.size()} + ' affaire(s))'"></span>
+                    </h2>
+                </div>
+
+                <div style="overflow-x:auto">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>N° Affaire</th>
+                                <th>Dossier</th>
+                                <th>Tribunal</th>
+                                <th>Date lancement</th>
+                                <th>Prochaine audience</th>
+                                <th>Statut affaire</th>
+                                <th>Statut mission</th>
+                                <th style="text-align:right">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:each="affaire : ${affaires}">
+
+                                <!-- N° Affaire -->
+                                <td>
+                                    <a th:href="@{/avocat/affaires/{id}(id=${affaire.id})}"
+                                       th:text="${affaire.numeroAffaire}"
+                                       style="color:var(--accent);font-weight:600;
+                                              text-decoration:none"></a>
+                                </td>
+
+                                <!-- Dossier -->
+                                <td style="color:var(--muted);font-size:13px"
+                                    th:text="${affaire.dossier != null ?
+                                              affaire.dossier.numeroDossier : '—'}"></td>
+
+                                <!-- Tribunal -->
+                                <td>
+                                    <span th:text="${affaire.tribunal ?: '—'}"></span>
+                                    <small th:if="${affaire.chambre != null}"
+                                           style="display:block;color:var(--muted);font-size:11px"
+                                           th:text="${'Chambre : ' + affaire.chambre}"></small>
+                                </td>
+
+                                <!-- Date lancement -->
+                                <td style="font-size:13px"
+                                    th:text="${affaire.dateLancement != null ?
+                                              #temporals.format(affaire.dateLancement,'dd/MM/yyyy')
+                                              : '—'}"></td>
+
+                                <!-- Prochaine audience -->
+                                <td>
+                                    <span th:if="${affaire.dateProchainAudience != null}"
+                                          class="badge badge-amber"
+                                          th:text="${#temporals.format(
+                                                     affaire.dateProchainAudience,'dd/MM/yyyy')}">
+                                    </span>
+                                    <span th:unless="${affaire.dateProchainAudience != null}"
+                                          style="color:var(--muted)">—</span>
+                                </td>
+
+                                <!-- Statut affaire -->
+                                <td>
+                                    <span th:switch="${affaire.statut?.name()}">
+                                        <span th:case="'EN_COURS'"
+                                              class="badge badge-blue">En cours</span>
+                                        <span th:case="'JUGEMENT_RENDU'"
+                                              class="badge badge-green">Jugement rendu</span>
+                                        <span th:case="'CLOTUREE'"
+                                              class="badge badge-muted">Clôturée</span>
+                                        <span th:case="'SUSPENDUE'"
+                                              class="badge badge-amber">Suspendue</span>
+                                        <span th:case="*"
+                                              class="badge badge-muted"
+                                              th:text="${affaire.statut}">—</span>
+                                    </span>
+                                </td>
+
+                                <!-- Statut mission -->
+                                <td>
+                                    <span th:if="${affaire.mission != null}"
+                                          th:switch="${affaire.mission.statut?.name()}">
+                                        <span th:case="'EN_COURS'"
+                                              class="badge badge-blue">En cours</span>
+                                        <span th:case="'PV_SOUMIS'"
+                                              class="badge badge-green">PV soumis</span>
+                                        <span th:case="'FACTURE_SOUMISE'"
+                                              class="badge badge-purple">Facture soumise</span>
+                                        <span th:case="'TERMINEE'"
+                                              class="badge badge-muted">Terminée</span>
+                                        <span th:case="'ANNULEE'"
+                                              class="badge badge-red">Annulée</span>
+                                        <span th:case="*"
+                                              class="badge badge-muted"
+                                              th:text="${affaire.mission.statut}"></span>
+                                    </span>
+                                    <span th:unless="${affaire.mission != null}"
+                                          style="color:var(--muted)">—</span>
+                                </td>
+
+                               <!-- Actions -->
+<td style="text-align:right">
+    <div style="display:flex;gap:4px;justify-content:flex-end;flex-wrap:wrap">
+
+        <!-- Voir détail -->
+        <a th:href="@{/avocat/affaires/{id}(id=${affaire.id})}"
+           class="btn btn-outline btn-sm"
+           title="Voir le détail">👁</a>
+
+        <!-- Audiences -->
+        <a th:href="@{/avocat/affaires/{id}/audiences(id=${affaire.id})}"
+           class="btn btn-outline btn-sm"
+           title="Audiences">📅</a>
+
+        <!-- Tribunal -->
+        <a th:href="@{/avocat/affaires/{id}/tribunal(id=${affaire.id})}"
+           class="btn btn-outline btn-sm"
+           title="Tribunal">🏦</a>
+
+        <!-- Jugement -->
+        <a th:href="@{/avocat/affaires/{id}/jugement(id=${affaire.id})}"
+           class="btn btn-outline btn-sm"
+           title="Jugement">📜</a>
+
+        <!-- Dossier -->
+        <a th:href="@{/avocat/affaires/{id}/dossier(id=${affaire.id})}"
+           class="btn btn-outline btn-sm"
+           title="Dossier">📁</a>
+
+       <!-- PV -->
+<!-- PV -->
+<!-- PV -->
+<a th:if="${affaire.mission != null}"
+   th:href="@{/avocat/affaires/{aid}/missions/{mid}/pv(aid=${affaire.id},mid=${affaire.mission.id})}"
+   class="btn btn-green btn-sm">📄 PV</a>
+
+<!-- Facture -->
+<a th:if="${affaire.mission != null}"
+   th:href="@{/avocat/affaires/{aid}/missions/{mid}/facture(aid=${affaire.id},mid=${affaire.mission.id})}"
+   class="btn btn-primary btn-sm">🧾 Facture</a>
     </div>
+</td>
 
-    <div th:if="${#lists.isEmpty(affaires)}" class="alert alert-info d-flex align-items-center gap-2">
-        <i class="bi bi-info-circle-fill"></i>
-        <span>Aucune affaire judiciaire ne vous a été assignée pour le moment.</span>
-    </div>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
 
-    <div th:unless="${#lists.isEmpty(affaires)}" class="card shadow-sm border-0">
-        <div class="table-responsive">
-            <table class="table table-hover align-middle mb-0">
-                <thead class="table-light">
-                    <tr>
-                        <th class="ps-3">N° Affaire</th>
-                        <th>Dossier</th>
-                        <th>Tribunal</th>
-                        <th>Date Lancement</th>
-                        <th>Prochaine Audience</th>
-                        <th>Statut</th>
-                        <th class="pe-3 text-end">Actions</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr th:each="affaire : ${affaires}">
-                        <td class="ps-3">
-                            <span class="fw-bold text-primary" th:text="${affaire.numeroAffaire}">AFF-2025</span>
-                        </td>
-                        <td>
-                            <span th:if="${affaire.dossier != null}"
-                                  th:text="${affaire.dossier?.numeroDossier}"
-                                  class="fw-medium text-dark"></span>
-                            <span th:unless="${affaire.dossier != null}" class="text-muted">—</span>
-                        </td>
-                        <td>
-                            <span th:text="${affaire.tribunal ?: '—'}">Tribunal</span>
-                            <small th:if="${affaire.chambre != null}" class="d-block text-muted"
-                                   th:text="${'Chambre : ' + affaire.chambre}"></small>
-                        </td>
-                        <td th:text="${affaire.dateLancement != null ? #temporals.format(affaire.dateLancement, 'dd/MM/yyyy') : '—'}"></td>
-                        <td>
-                            <span th:if="${affaire.dateProchainAudience != null}" class="badge bg-warning text-dark"
-                                  th:text="${#temporals.format(affaire.dateProchainAudience, 'dd/MM/yyyy')}"></span>
-                            <span th:unless="${affaire.dateProchainAudience != null}" class="text-muted">—</span>
-                        </td>
-                        <td>
-                            <div th:switch="${affaire.statut?.name()}">
-                                <span th:case="'EN_COURS'" class="badge bg-primary">En cours</span>
-                                <span th:case="'JUGEMENT_RENDU'" class="badge bg-success">Jugement rendu</span>
-                                <span th:case="'CLOTUREE'" class="badge bg-secondary">Clôturée</span>
-                                <span th:case="'SUSPENDUE'" class="badge bg-warning text-dark">Suspendue</span>
-                                <span th:case="*" class="badge bg-light text-dark" th:text="${affaire.statut}">—</span>
-                            </div>
-                        </td>
-                        <td class="pe-3 text-end">
-                            <div class="d-inline-flex gap-1">
-
-                                <!-- Voir le détail -->
-                                <a th:href="@{/avocat/affaires/{id}(id=${affaire.id})}"
-                                   class="btn btn-sm btn-outline-primary"
-                                   title="Voir le détail">
-                                    <i class="bi bi-eye"></i>
-                                </a>
-
-                                <!-- Gérer les audiences -->
-                                <a th:href="@{/avocat/affaires/{id}/audiences(id=${affaire.id})}"
-                                   class="btn btn-sm btn-outline-info"
-                                   title="Gérer les audiences">
-                                    <i class="bi bi-calendar2-event"></i>
-                                </a>
-
-                                <!-- Gérer le tribunal -->
-                                <a th:href="@{/avocat/affaires/{id}/tribunal(id=${affaire.id})}"
-                                   class="btn btn-sm btn-outline-warning"
-                                   title="Gérer le tribunal">
-                                    <i class="bi bi-bank"></i>
-                                </a>
-
-                                <!-- Saisir / modifier le jugement -->
-                                <a th:href="@{/avocat/affaires/{id}/jugement(id=${affaire.id})}"
-                                   class="btn btn-sm btn-outline-success"
-                                   title="Saisir le jugement">
-                                    <i class="bi bi-file-earmark-ruled"></i>
-                                </a>
-
-                                <a th:href="@{/avocat/affaires/{id}/dossier(id=${affaire.id})}"
-   class="btn btn-outline-secondary btn-sm">
-    <i class="bi bi-folder2-open me-1"></i>Voir dossier
-</a>
-
-                            </div>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
         </div>
     </div>
-</main>
-<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</div>
 </body>
 </html>

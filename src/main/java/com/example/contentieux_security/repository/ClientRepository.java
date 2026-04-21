@@ -13,4 +13,7 @@ public interface ClientRepository extends JpaRepository<Client, Long> {
     boolean existsByEmail(String email);
     List<Client> findByAgence(Agence agence);
     List<Client> findByNomContainingIgnoreCaseOrPrenomContainingIgnoreCase(String nom, String prenom);
+
+    // ClientRepository.java
+    List<Client> findByAgence_Id(Long agenceId);
 }

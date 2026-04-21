@@ -40,4 +40,9 @@ public interface ValidateurRepository extends JpaRepository<Validateur, Long> {
        "WHERE d.id = :id")
 Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
 
+
+
+
+List<Validateur> findByTypeValidateurAndActifTrueAndAgence_Id(
+    TypeValidateur type, Long agenceId);
 }

@@ -4,6 +4,8 @@ import com.example.contentieux_security.entity.Agence;
 import com.example.contentieux_security.entity.Client;
 import com.example.contentieux_security.enums.TypeClient;
 import com.example.contentieux_security.repository.ClientRepository;
+import com.example.contentieux_security.repository.DossierRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,7 +17,7 @@ import java.util.List;
 public class ClientService {
 
     private final ClientRepository clientRepository;
-
+    private final DossierRepository dossierRepository;
       // ✅ ICI tu ajoutes la méthode
       private String clean(String value) {
         if (value == null) return null;
@@ -56,5 +58,15 @@ public Client save(Client client) {
 public Client findById(Long id) {
     return clientRepository.findById(id)
             .orElseThrow(() -> new RuntimeException("Client introuvable avec id = " + id));
+}
+
+// ClientService.java
+// ClientService.java
+@Transactional
+public void deleteById(Long id) {
+    // Supprimer d'abord les dossiers liés
+    dossierRepository.deleteByClientId(id);
+    // Puis supprimer le client
+    clientRepository.deleteById(id);
 }
 }

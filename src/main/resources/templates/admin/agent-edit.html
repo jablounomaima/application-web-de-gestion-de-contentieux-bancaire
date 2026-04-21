@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<head th:replace="~{fragments/layout :: head('Modifier un Agent')}"></head>
+
+<body>
+<div class="layout-wrapper">
+
+    <aside th:replace="~{fragments/layout :: sidebar('ADMIN',
+                        ${#authentication.name})}"></aside>
+
+    <div class="page-content">
+
+        <header th:replace="~{fragments/layout :: topbar('Modifier un Agent',
+                             ${#authentication.name}, 'Administrateur')}">
+        </header>
+
+        <div class="page-inner">
+
+            <!-- Titre -->
+            <div class="page-title-bar fade-in">
+                <div>
+                    <h1>✏️ Modifier l'agent</h1>
+                    <p th:text="'Compte : ' + ${agent.username}"></p>
+                </div>
+                <a href="/admin/agents" class="btn btn-outline">
+                    ← Retour à la liste
+                </a>
+            </div>
+
+            <!-- Messages flash -->
+            <div th:if="${success}" class="alert alert-success fade-in">
+                ✓ <span th:text="${success}"></span>
+            </div>
+            <div th:if="${error}" class="alert alert-error fade-in">
+                ⚠ <span th:text="${error}"></span>
+            </div>
+
+            <!-- Formulaire -->
+            <div class="card fade-in delay-1">
+                <div class="card-header">
+                    <h2>Informations de l'agent</h2>
+                </div>
+                <div class="card-body">
+                    <form th:action="@{/admin/agents/{id}/update(id=${agent.id})}"
+                          method="post">
+                        <input type="hidden"
+                               th:name="${_csrf.parameterName}"
+                               th:value="${_csrf.token}"/>
+
+                        <div class="form-grid">
+
+                            <!-- Section identité -->
+                            <div class="section-title">Informations personnelles</div>
+
+                            <div class="form-group">
+                                <label for="nom">
+                                    Nom <span class="req">*</span>
+                                </label>
+                                <input type="text" id="nom" name="nom"
+                                       th:value="${agent.nom}"
+                                       placeholder="ex : Benali" required/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="prenom">
+                                    Prénom <span class="req">*</span>
+                                </label>
+                                <input type="text" id="prenom" name="prenom"
+                                       th:value="${agent.prenom}"
+                                       placeholder="ex : Mohamed" required/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="email">
+                                    Email <span class="req">*</span>
+                                </label>
+                                <input type="email" id="email" name="email"
+                                       th:value="${agent.email}"
+                                       placeholder="m.benali@banque.dz"
+                                       required/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="telephone">Téléphone</label>
+                                <input type="text" id="telephone"
+                                       name="telephone"
+                                       th:value="${agent.telephone}"
+                                       placeholder="021 XX XX XX"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="matricule">Matricule</label>
+                                <input type="text" id="matricule"
+                                       name="matricule"
+                                       th:value="${agent.matricule}"
+                                       placeholder="ex : MAT-001"/>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="dateEmbauche">
+                                    Date d'embauche
+                                </label>
+                                <input type="date" id="dateEmbauche"
+                                       name="dateEmbauche"
+                                       th:value="${agent.dateEmbauche}"/>
+                            </div>
+
+                            <!-- Section compte -->
+                            <div class="section-title">Compte &amp; accès</div>
+
+                            <div class="form-group">
+                                <label>Nom d'utilisateur</label>
+                                <input type="text"
+                                       th:value="${agent.username}"
+                                       readonly
+                                       style="background:#f1f5f9;
+                                              color:#64748b;
+                                              cursor:not-allowed;"/>
+                                <small style="color:#94a3b8; font-size:11px;">
+                                    Le nom d'utilisateur ne peut pas être modifié.
+                                </small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="agenceId">
+                                    Agence <span class="req">*</span>
+                                </label>
+                                <select id="agenceId" name="agenceId" required>
+                                    <option value="">
+                                        — Sélectionner une agence —
+                                    </option>
+                                    <option th:each="a : ${agences}"
+                                            th:value="${a.id}"
+                                            th:text="${a.nom}"
+                                            th:selected="${a.id == agent.agenceId}">
+                                    </option>
+                                </select>
+                            </div>
+
+                        </div><!-- /form-grid -->
+
+                        <div style="margin-top:24px; display:flex; gap:10px;">
+                            <button type="submit" class="btn btn-primary">
+                                💾 Enregistrer les modifications
+                            </button>
+                            <a href="/admin/agents" class="btn btn-outline">
+                                Annuler
+                            </a>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+            <!-- Zone danger -->
+            <div class="card fade-in delay-2"
+                 style="margin-top:24px; border-color:#fca5a5;">
+                <div class="card-header"
+                     style="background:#fff5f5; border-bottom-color:#fca5a5;">
+                    <h2 style="color:#dc2626;">⚠️ Zone de danger</h2>
+                </div>
+                <div class="card-body">
+                    <p style="color:#64748b; font-size:13.5px; margin-bottom:16px;">
+                        La suppression est définitive et irréversible.
+                        Le compte sera supprimé de Keycloak et de la base de données.
+                    </p>
+                    <form th:action="@{/admin/agents/{id}/delete(id=${agent.id})}"
+                          method="post"
+                          onsubmit="return confirm('Supprimer définitivement cet agent ?')">
+                        <input type="hidden"
+                               th:name="${_csrf.parameterName}"
+                               th:value="${_csrf.token}"/>
+                        <button type="submit" class="btn btn-danger">
+                            🗑️ Supprimer cet agent définitivement
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+        </div><!-- /page-inner -->
+    </div><!-- /page-content -->
+</div><!-- /layout-wrapper -->
+
+<style>
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+    }
+    .form-group { display: flex; flex-direction: column; gap: 6px; }
+    .section-title {
+        grid-column: 1 / -1;
+        font-size: 11px; font-weight: 700;
+        text-transform: uppercase; letter-spacing: .1em;
+        color: var(--accent);
+        padding-bottom: 8px;
+        border-bottom: 1px solid var(--border);
+        margin-top: 4px;
+    }
+    .req { color: var(--red); margin-left: 2px; }
+    label {
+        font-size: 11.5px; font-weight: 600;
+        text-transform: uppercase; letter-spacing: .07em;
+        color: var(--text2);
+    }
+    input[type="text"], input[type="email"],
+    input[type="date"], select {
+        background: var(--surface2);
+        border: 1.5px solid var(--border2);
+        border-radius: var(--radius-sm);
+        padding: 10px 13px;
+        font-size: 13.5px;
+        color: var(--text);
+        font-family: 'Outfit', sans-serif;
+        outline: none;
+        transition: border-color .15s, box-shadow .15s;
+        width: 100%;
+    }
+    input:focus, select:focus {
+        border-color: var(--accent);
+        box-shadow: 0 0 0 3px rgba(37,99,235,.1);
+        background: white;
+    }
+</style>
+
+</body>
+</html>

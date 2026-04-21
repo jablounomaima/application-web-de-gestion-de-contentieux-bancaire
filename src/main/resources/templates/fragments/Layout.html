@@ -204,6 +204,9 @@
             <a th:href="@{/admin/agents}" class="nav-item">
                 <span class="nav-ico">👤</span><span class="nav-label">Agents</span>
             </a>
+            <a th:href="@{/admin/validateur}" class="nav-item">
+                <span class="nav-ico">👤</span><span class="nav-label">Validateurs</span>
+            </a>
         </div>
         <div th:if="${role == 'ADMIN'}" class="nav-section">
             <div class="nav-section-label">Paramétrage</div>
@@ -303,53 +306,90 @@
         <div class="nav-section-label">Mon espace</div>
 
         <a th:href="@{/avocat/dashboard}" class="nav-item"
-           th:classappend="${currentPage == 'dashboard'} ? 'active' : ''">
-
+           th:classappend="${currentPage == 'dashboard'} ? ' active' : ''">
             <span class="nav-ico">📊</span>
             <span class="nav-label">Dashboard</span>
         </a>
 
         <a th:href="@{/avocat/affaires}" class="nav-item"
-           th:classappend="${currentPage == 'affaires'} ? 'active' : ''">
-
+           th:classappend="${currentPage == 'affaires'} ? ' active' : ''">
             <span class="nav-ico">⚖️</span>
             <span class="nav-label">Mes affaires</span>
         </a>
+
+        <a th:href="@{/avocat/missions}" class="nav-item"
+           th:classappend="${currentPage == 'missions'} ? ' active' : ''">
+            <span class="nav-ico">📋</span>
+            <span class="nav-label">Mes missions</span>
+        </a>
+
     </div>
 
-    <!-- ================= DANS UNE AFFAIRE ================= -->
-    <div class="nav-section">
+    <!-- ================= GESTION DES AFFAIRES ================= -->
+    <div class="nav-section"
+         th:if="${affaire != null}">
+        <div class="nav-section-label">
+            Affaire
+            <span th:text="${affaire.numeroAffaire}"
+                  class="fw-bold text-primary"></span>
+        </div>
 
-        <div class="nav-section-label">Gestion des affaires</div>
-
-        <a th:href="@{/avocat/affaires}" class="nav-item nav-item-info">
-
+        <a th:href="@{/avocat/affaires/{id}/audiences(id=${affaire.id})}"
+           class="nav-item nav-item-info"
+           th:classappend="${currentPage == 'audiences'} ? ' active' : ''">
             <span class="nav-ico">🏛️</span>
             <span class="nav-label">Audiences</span>
         </a>
 
-        <a th:href="@{/avocat/affaires}" class="nav-item nav-item-info">
+        <a th:href="@{/avocat/affaires/{id}/tribunal(id=${affaire.id})}"
+           class="nav-item nav-item-info"
+           th:classappend="${currentPage == 'tribunal'} ? ' active' : ''">
+            <span class="nav-ico">🏦</span>
+            <span class="nav-label">Tribunal</span>
+        </a>
 
+        <a th:href="@{/avocat/affaires/{id}/jugement(id=${affaire.id})}"
+           class="nav-item nav-item-info"
+           th:classappend="${currentPage == 'jugement'} ? ' active' : ''">
             <span class="nav-ico">📜</span>
-            <span class="nav-label">Jugements</span>
+            <span class="nav-label">Jugement</span>
         </a>
 
-        <a th:href="@{/avocat/affaires}" class="nav-item nav-item-info">
+        <a th:href="@{/avocat/affaires/{id}/dossier(id=${affaire.id})}"
+           class="nav-item nav-item-info"
+           th:classappend="${currentPage == 'dossier'} ? ' active' : ''">
+            <span class="nav-ico">📁</span>
+            <span class="nav-label">Dossier lié</span>
+        </a>
 
+    </div>
+
+    <!-- ================= GESTION DES MISSIONS ================= -->
+    <div class="nav-section"
+         th:if="${mission != null}">
+        <div class="nav-section-label">
+            Mission
+            <span th:text="${mission.numeroMission}"
+                  class="fw-bold text-primary"></span>
+        </div>
+
+        <a th:href="@{/avocat/missions/{id}/pv(id=${mission.id})}"
+           class="nav-item nav-item-info"
+           th:classappend="${currentPage == 'pv'} ? ' active' : ''">
             <span class="nav-ico">📄</span>
-            <span class="nav-label">Documents</span>
+            <span class="nav-label">PV de mission</span>
         </a>
 
-        <a th:href="@{/avocat/affaires}" class="nav-item nav-item-info">
-
+        <a th:href="@{/avocat/missions/{id}/facture(id=${mission.id})}"
+           class="nav-item nav-item-info"
+           th:classappend="${currentPage == 'facture'} ? ' active' : ''">
             <span class="nav-ico">💰</span>
-            <span class="nav-label">Factures</span>
+            <span class="nav-label">Facture d'honoraires</span>
         </a>
 
     </div>
 
 </div>
-
         <!-- ════ HUISSIER ════ -->
         <div th:if="${role == 'HUISSIER'}" class="nav-section">
             <div class="nav-section-label">Mon espace</div>

@@ -6,6 +6,8 @@ import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.repository.*;
 import com.example.contentieux_security.service.MissionService;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -13,10 +15,11 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.example.contentieux_security.repository.AgentBancaireRepository;
+import com.example.contentieux_security.entity.AgentBancaire;
 import java.time.LocalDate;
 import java.util.List;
-
+@PreAuthorize("hasRole('AGENT')")
 @Controller
 @RequestMapping("/agent/dossiers/{dossierId}/missions")
 @RequiredArgsConstructor
@@ -28,13 +31,14 @@ public class DossierMissionController {
     private final PrestataireRepository prestataireRepository;
     private final MissionService missionService;
     private final NotificationAdvice notificationService; // ← ajouter
+    private final AgentBancaireRepository agentBancaireRepository; // ✅ AJOUTER ICI
 
+    @PreAuthorize("hasRole('AGENT')")
     @GetMapping
-    @Transactional(readOnly = true)  // ← AJOUTER CETTE LIGNE
-
+    @Transactional(readOnly = true)
     public String listeMissions(@PathVariable Long dossierId,
                                 Model model,
-                                Authentication auth,
+                                Authentication auth,  // ✅ Authentication existe déjà
                                 RedirectAttributes ra) {
     
         DossierContentieux dossier = dossierRepository.findByIdWithDetails(dossierId).orElse(null);
@@ -48,14 +52,11 @@ public class DossierMissionController {
             return "redirect:/agent/dossiers";
         }
     
-        // ✅ Utiliser getMissionByIdWithDetails via le service qui fait FETCH JOIN
-        List<Mission> missions = missionRepository
-        .findByDossierIdWithPrestataire(dossierId);
-        // ✅ Forcer le chargement des relations lazy dans la session JPA ouverte
+        List<Mission> missions = missionRepository.findByDossierIdWithPrestataire(dossierId);
         missions.forEach(m -> {
             try {
                 if (m.getPrestataire() != null) {
-                    m.getPrestataire().getNom(); // force init
+                    m.getPrestataire().getNom();
                     m.getPrestataire().getPrenom();
                     m.getPrestataire().getUsername();
                     m.getPrestataire().getType();
@@ -70,7 +71,7 @@ public class DossierMissionController {
             } catch (Exception ignored) {}
         });
     
-        // Statistiques
+        // Statistiques (inchangées)
         model.addAttribute("nbAssignee", missions.stream()
                 .filter(m -> m.getStatut() == StatutMission.ASSIGNEE).count());
         model.addAttribute("nbEnCours", missions.stream()
@@ -86,7 +87,15 @@ public class DossierMissionController {
                           && m.getDateFinPrevue().isBefore(LocalDate.now())
                           && m.getStatut() != StatutMission.TERMINEE).count());
     
-        List<Prestataire> prestataires = prestataireRepository.findAll();
+        // ✅ Récupérer l'agence de l'agent connecté
+        AgentBancaire agent = agentBancaireRepository
+                .findByUsername(auth.getName())
+                .orElseThrow(() -> new RuntimeException("Agent introuvable"));
+    
+        // ✅ Prestataires filtrés par agence (au lieu de findAll())
+        List<Prestataire> prestataires = prestataireRepository
+                .findByAgence_Id(agent.getAgence().getId());
+    
         List<Prestation> prestations = prestationRepository.findByDossier_Id(dossierId);
     
         String clientNom = dossier.getClient() != null
@@ -103,7 +112,8 @@ public class DossierMissionController {
     
         return "agent/dossiers/missions";
     }
-    
+   
+    @PreAuthorize("hasRole('AGENT')") 
     @PostMapping("/creer")
 public String creerMission(@PathVariable Long dossierId,
                             @RequestParam Long prestationId,

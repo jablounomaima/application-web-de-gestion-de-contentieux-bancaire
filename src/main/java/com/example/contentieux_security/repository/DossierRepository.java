@@ -17,7 +17,7 @@ import java.util.Optional;
 public interface DossierRepository extends JpaRepository<DossierContentieux, Long> {
 
 
-
+    void deleteByClient_Id(Long clientId);
     
 
     // =====================================================

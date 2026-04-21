@@ -205,6 +205,13 @@ public class AdminController {
         return "redirect:/admin/agents";
     }
 
+    @GetMapping("/agents/{id}/edit")
+public String editAgentForm(@PathVariable Long id, Model model) {
+    model.addAttribute("agent",   agentService.getAgentById(id));
+    model.addAttribute("agences", agenceService.getAllAgences());
+    return "admin/agent-edit";
+}
+
     /**
      * Met à jour un agent bancaire existant.
      * Modifie uniquement les données métier (pas le mot de passe dans Keycloak ici).
@@ -367,4 +374,61 @@ public class AdminController {
         }
         return "redirect:/admin/validateurs";
     }
+
+// ═══════════════════════════════════════════════════════════════════════
+// GESTION DES VALIDATEURS - AJOUT MODIFICATION
+// ═══════════════════════════════════════════════════════════════════════
+@GetMapping("/validateurs/{id}/edit")
+public String editValidateurForm(@PathVariable Long id, Model model) {
+    try {
+        // ✅ use getById() instead of getValidateurById()
+        ValidateurDTO validateur = validateurService.getById(id);
+
+        ValidateurCreationRequest request = new ValidateurCreationRequest();
+        request.setUsername(validateur.getUsername());
+        request.setEmail(validateur.getEmail());
+        request.setPrenom(validateur.getPrenom());
+        request.setNom(validateur.getNom());
+        request.setMatricule(validateur.getMatricule());     // ✅ don't forget this
+        request.setTelephone(validateur.getTelephone());
+        request.setType(validateur.getTypeValidateur()); // ✅ setType() not setTypeValidateur()
+        request.setAgenceId(validateur.getAgenceId());
+
+        model.addAttribute("validateur", request);
+        model.addAttribute("validateurId", id);
+        model.addAttribute("agences", agenceService.getAllAgences());
+        model.addAttribute("types", TypeValidateur.values());
+
+        return "admin/validateur-edit";
+    } catch (Exception e) {
+        model.addAttribute("error", "Validateur non trouvé: " + e.getMessage());
+        return "redirect:/admin/validateurs";
+    }
+}
+
+@PostMapping("/validateurs/{id}/update")
+public String updateValidateur(@PathVariable Long id,
+                               @ModelAttribute ValidateurCreationRequest request,
+                               RedirectAttributes ra) {
+    try {
+        // ✅ Build a ValidateurDTO and call update() which the service already has
+        ValidateurDTO dto = new ValidateurDTO();
+        dto.setUsername(request.getUsername());
+        dto.setEmail(request.getEmail());
+        dto.setNom(request.getNom());
+        dto.setPrenom(request.getPrenom());
+        dto.setMatricule(request.getMatricule());
+        dto.setTelephone(request.getTelephone());
+        dto.setTypeValidateur(request.getType());
+        dto.setAgenceId(request.getAgenceId());
+        dto.setActif(true);
+
+        validateurService.update(id, dto); // ✅ use update() instead of updateValidateur()
+        ra.addFlashAttribute("success",
+            "Validateur '" + request.getUsername() + "' mis à jour avec succès !");
+    } catch (Exception e) {
+        ra.addFlashAttribute("error", "Erreur mise à jour validateur: " + e.getMessage());
+    }
+    return "redirect:/admin/validateurs";
+}
 }

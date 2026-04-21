@@ -9,19 +9,23 @@ import java.util.Optional;
 import java.util.List;
 
 public interface AffaireJudiciaireRepository extends JpaRepository<AffaireJudiciaire, Long> {
-
+       
+       boolean existsByNumeroAffaire(String numeroAffaire);
        // ============================
        // 📄 DETAIL COMPLET D’UNE AFFAIRE
        // ============================
        // ✔ Charge audiences + documents (évite LazyInitializationException)
     // PAR ces deux requêtes séparées :
-    @Query("SELECT a FROM AffaireJudiciaire a " +
-    "LEFT JOIN FETCH a.audiences " +
-    "LEFT JOIN FETCH a.avocat " +
-    "LEFT JOIN FETCH a.dossier d " +
-    "LEFT JOIN FETCH d.client " +
-    "WHERE a.id = :id")
-Optional<AffaireJudiciaire> findByIdWithAudiences(@Param("id") Long id);
+    @Query("""
+       SELECT DISTINCT a FROM AffaireJudiciaire a
+       LEFT JOIN FETCH a.audiences
+       LEFT JOIN FETCH a.mission
+       LEFT JOIN FETCH a.avocat
+       WHERE a.id = :id
+   """)
+   Optional<AffaireJudiciaire> findByIdWithAudiences(@Param("id") Long id);
+
+
 @Query("SELECT a FROM AffaireJudiciaire a " +
        "LEFT JOIN FETCH a.documents " +
        "LEFT JOIN FETCH a.avocat " +
@@ -68,8 +72,8 @@ Optional<AffaireJudiciaire> findByIdWithDocuments(@Param("id") Long id);     // 
        // ============================
        Optional<AffaireJudiciaire> findByMission_Id(Long missionId);
    
-       Optional<AffaireJudiciaire> findByDossier_Id(Long dossierId);
-   
+       List<AffaireJudiciaire> findByDossier_Id(Long dossierId);
+
    
        // ============================
        // 📋 AFFAIRES PAR AVOCAT (version simple)
@@ -106,4 +110,61 @@ List<AffaireJudiciaire> findByAvocatUsernameWithDetails(@Param("username") Strin
        "LEFT JOIN FETCH m.prestataire pr " +
        "WHERE pr.username = :username")
 List<AffaireJudiciaire> findByMissionPrestataireUsernameWithDetails(@Param("username") String username);
-}
+
+
+
+
+// Dans AffaireJudiciaireRepository.java
+
+@Query("""
+    SELECT DISTINCT a FROM AffaireJudiciaire a
+    LEFT JOIN FETCH a.mission m
+    LEFT JOIN FETCH a.avocat av
+    LEFT JOIN FETCH a.dossier d
+    LEFT JOIN FETCH d.client
+    WHERE av.username = :username
+    ORDER BY a.dateLancement DESC
+""")
+List<AffaireJudiciaire> findByAvocatUsernameWithMission(
+        @Param("username") String username);
+
+
+
+
+        @Query("""
+              SELECT DISTINCT a FROM AffaireJudiciaire a
+              LEFT JOIN FETCH a.mission m
+              LEFT JOIN FETCH m.prestataire pr
+              LEFT JOIN FETCH a.avocat av
+              LEFT JOIN FETCH a.dossier d
+              LEFT JOIN FETCH d.client
+              WHERE pr.username = :username
+              ORDER BY a.dateLancement DESC
+          """)
+          List<AffaireJudiciaire> findByMissionPrestataireUsernameWithMission(
+                  @Param("username") String username);
+          
+          
+          
+          
+                  @Query("""
+                     SELECT DISTINCT a FROM AffaireJudiciaire a
+                     LEFT JOIN FETCH a.mission m
+                     LEFT JOIN FETCH m.prestation p
+                     LEFT JOIN FETCH p.dossier d
+                     LEFT JOIN FETCH d.client
+                     LEFT JOIN FETCH a.avocat
+                     WHERE m.prestataire.username = :username
+                 """)
+                 List<AffaireJudiciaire> findByDossierMissionPrestataireUsername(
+                         @Param("username") String username);
+          
+          
+
+
+                         Optional<AffaireJudiciaire> findByMissionId(Long missionId);
+              
+                         @Query("SELECT a FROM AffaireJudiciaire a LEFT JOIN FETCH a.mission m LEFT JOIN FETCH m.prestation WHERE a.id = :id")
+                         Optional<AffaireJudiciaire> findByIdWithMission(@Param("id") Long id);
+              
+                     }          

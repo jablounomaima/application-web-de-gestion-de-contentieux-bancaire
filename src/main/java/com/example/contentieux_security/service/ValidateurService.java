@@ -185,6 +185,8 @@ public class ValidateurService {
         ValidateurDTO dto = new ValidateurDTO();
         dto.setId(v.getId());
         dto.setMatricule(v.getMatricule());
+        dto.setUsername(v.getUsername()); // ✅ add this
+
         dto.setNom(v.getNom());
         dto.setPrenom(v.getPrenom());
         dto.setEmail(v.getEmail());

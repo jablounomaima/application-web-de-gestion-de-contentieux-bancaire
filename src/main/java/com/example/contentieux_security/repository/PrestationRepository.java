@@ -2,6 +2,8 @@ package com.example.contentieux_security.repository;
 
 import com.example.contentieux_security.entity.Prestation;
 import com.example.contentieux_security.enums.StatutPrestation;
+import com.example.contentieux_security.enums.TypePrestation;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -12,7 +14,7 @@ import java.util.Optional;
 
 @Repository
 public interface PrestationRepository extends JpaRepository<Prestation, Long> {
-
+    boolean existsByNumeroPrestation(String numeroPrestation);
     List<Prestation> findByDossier_Id(Long dossierId);
     List<Prestation> findByDossier_IdAndStatut(Long dossierId, StatutPrestation statut);
 
@@ -31,4 +33,7 @@ public interface PrestationRepository extends JpaRepository<Prestation, Long> {
     @Query("SELECT COUNT(p) FROM Prestation p WHERE YEAR(p.dateCreation) = :annee")
     long countByAnnee(@Param("annee") int annee);
 
+
+
+    List<Prestation> findByDossier_IdAndType(Long dossierId, TypePrestation type);
 }

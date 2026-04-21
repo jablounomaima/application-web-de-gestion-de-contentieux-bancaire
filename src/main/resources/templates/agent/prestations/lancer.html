@@ -124,52 +124,12 @@
                     </textarea>
                 </div>
 
-                <!-- Avocat (affiché si PROCEDURE_JUDICIAIRE) -->
-                <div class="mb-4" id="sectionAvocat">
-                    <label class="form-label fw-bold">
-                        Avocat désigné <span class="text-danger">*</span>
-                    </label>
-
-                    <!-- Cas : aucun avocat disponible -->
-                    <div th:if="${#lists.isEmpty(avocats)}"
-                         class="alert alert-warning">
-                        <i class="bi bi-exclamation-triangle me-2"></i>
-                        Aucun avocat disponible. Contactez l'administrateur pour en ajouter.
-                    </div>
-
-                    <!-- Liste avocats -->
-                    <div th:unless="${#lists.isEmpty(avocats)}" class="row g-3">
-                        <div th:each="avocat : ${avocats}" class="col-md-6">
-                            <div class="form-check border rounded p-3 h-100">
-                                <input class="form-check-input mt-1"
-                                       type="radio"
-                                       name="prestataireId"
-                                       th:id="${'avocat_' + avocat.id}"
-                                       th:value="${avocat.id}"
-                                       required/>
-                                <label class="form-check-label w-100"
-                                       th:for="${'avocat_' + avocat.id}">
-                                    <div class="fw-bold"
-                                         th:text="${avocat.nom + ' ' + avocat.prenom}">
-                                    </div>
-                                    <small class="text-muted"
-                                           th:text="${avocat.specialite != null ? avocat.specialite : 'Généraliste'}">
-                                    </small>
-                                    <br/>
-                                    <small class="text-muted">
-                                        N° <span th:text="${avocat.numeroCartePro}"></span>
-                                    </small>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
+    
                 <!-- Boutons -->
                 <div class="d-flex gap-2 mt-4">
                     <button type="submit"
                             class="btn btn-danger px-4"
-                            th:disabled="${#lists.isEmpty(avocats)}">
+                            >
                         <i class="bi bi-gavel me-2"></i>Lancer la procédure
                     </button>
                     <a th:href="@{/agent/dossiers/{id}(id=${dossier.id})}"

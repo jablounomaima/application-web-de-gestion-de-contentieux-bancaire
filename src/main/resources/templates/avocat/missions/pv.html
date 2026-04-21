@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/base}">
+<head>
+    <title>PV de mission | SGCB</title>
+</head>
+<body>
+<div layout:fragment="content" class="container py-4">
+
+    <!-- ── En-tête (الراس) ───────────────────────────────────────────── -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">
+                <i class="bi bi-file-text me-2"></i>PV de mission
+            </h2>
+            <small class="text-muted" th:text="${mission.numeroMission}"></small>
+        </div>
+        <!-- زرار باش نرجعو لصفحة التفاصيل متاع l'affaire -->
+        <a th:href="@{/avocat/affaires/{id}(id=${affaire.id})}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left me-1"></i>Retour
+        </a>
+    </div>
+
+    <!-- ── Alertes (رسائل النجاح والتحذير) ───────────────────────────────── -->
+    <div th:if="${successMsg}"
+         class="alert alert-success alert-dismissible fade show">
+        <i class="bi bi-check-circle me-2"></i>
+        <span th:text="${successMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMsg}"
+         class="alert alert-warning alert-dismissible fade show">
+        <i class="bi bi-exclamation-triangle me-2"></i>
+        <span th:text="${errorMsg}"></span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <div class="row g-4">
+
+        <!-- ── Colonne gauche : infos mission (معلومات المهمة) ──────────────── -->
+        <div class="col-lg-4">
+            <div class="card shadow-sm">
+                <div class="card-header fw-semibold">
+                    <i class="bi bi-info-circle me-1"></i>Mission
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <!-- رقم المهمة -->
+                        <dt class="col-sm-5 text-muted fw-normal">N° Mission</dt>
+                        <dd class="col-sm-7 fw-semibold text-primary"
+                            th:text="${mission.numeroMission}"></dd>
+
+                        <!-- Statut متاع المهمة -->
+                        <dt class="col-sm-5 text-muted fw-normal">Statut</dt>
+                        <dd class="col-sm-7">
+                            <!-- نستعملو th:text مباشرة بدون .name() باش نتجنبو NPE -->
+                            <span th:text="${mission.statut}"></span>
+                        </dd>
+
+                        <!-- رقم l'affaire -->
+                        <dt class="col-sm-5 text-muted fw-normal">Affaire</dt>
+                        <dd class="col-sm-7 fw-semibold text-primary"
+                            th:text="${affaire.numeroAffaire}"></dd>
+
+                        <!-- رقم dossier -->
+                        <dt class="col-sm-5 text-muted fw-normal">Dossier</dt>
+                        <dd class="col-sm-7"
+                            th:text="${affaire.dossier != null ?
+                                      affaire.dossier.numeroDossier : '—'}">
+                        </dd>
+
+                        <!-- تاريخ التعيين -->
+                        <dt class="col-sm-5 text-muted fw-normal">Date assignation</dt>
+                        <dd class="col-sm-7"
+                            th:text="${mission.dateAssignation != null ?
+                                      #temporals.format(mission.dateAssignation,'dd/MM/yyyy')
+                                      : '—'}">
+                        </dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+
+        <!-- ── Colonne droite : PV (المحضر) ───────────────────────────────── -->
+        <div class="col-lg-8">
+
+            <!-- قسم يعرض الـ PV الموجود مع إمكانية التعديل والحذف -->
+            <div th:if="${mission.pvMission != null}"
+                 class="card shadow-sm border-success mb-4">
+                <div class="card-header bg-success-subtle text-success fw-semibold
+                           d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-check2-circle me-1"></i>PV soumis</span>
+                    <div class="d-flex gap-2">
+                        <!-- زرار تعديل الـ PV -->
+                        <button class="btn btn-sm btn-outline-warning"
+                                data-bs-toggle="collapse"
+                                data-bs-target="#formModifierPV">
+                            <i class="bi bi-pencil me-1"></i>Modifier
+                        </button>
+                        <!-- زرار حذف الـ PV -->
+                        <form th:action="@{/avocat/affaires/{aid}/missions/{mid}/pv/supprimer(
+                                          aid=${affaire.id},mid=${mission.id})}"
+                              method="post"
+                              onsubmit="return confirm('Supprimer le PV ? Le statut reviendra à EN_COURS.')">
+                            <button type="submit" class="btn btn-sm btn-outline-danger">
+                                <i class="bi bi-trash me-1"></i>Supprimer
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                <!-- عرض نص الـ PV -->
+                <div class="card-body">
+                    <div class="border rounded p-3 bg-light"
+                         style="white-space: pre-wrap; font-family: inherit;"
+                         th:text="${mission.pvMission}">
+                    </div>
+                </div>
+
+                <!-- Formulaire تعديل الـ PV (يظهر بالـ collapse) -->
+                <div class="collapse" id="formModifierPV">
+                    <div class="card-body border-top">
+                        <form th:action="@{/avocat/affaires/{aid}/missions/{mid}/pv/modifier(
+                                          aid=${affaire.id},mid=${mission.id})}"
+                              method="post">
+                            <div class="mb-3">
+                                <label class="form-label fw-semibold">Modifier le PV</label>
+                                <textarea name="pvTexte"
+                                          class="form-control"
+                                          rows="10"
+                                          required
+                                          th:text="${mission.pvMission}"></textarea>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-warning"
+                                        onclick="return confirm('Confirmer la modification du PV ?')">
+                                    <i class="bi bi-save me-1"></i>Enregistrer
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#formModifierPV">
+                                    Annuler
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── Formulaire saisie PV (إضافة محضر جديد) ─────────────────────── -->
+            <div class="card shadow-sm">
+                <div class="card-header fw-semibold">
+                    <i class="bi bi-pencil-square me-1"></i>
+                    <!-- نعرض عنوان مناسب حسب ما كان PV موجود ولا لا -->
+                    <span th:if="${mission.pvMission != null}">
+                        PV déjà soumis (non modifiable)
+                    </span>
+                    <span th:unless="${mission.pvMission != null}">
+                        Rédiger le PV de mission
+                    </span>
+                </div>
+                <div class="card-body">
+
+                    <!-- رسالة تنبيه: كان الـ PV موجود بالفعل -->
+                    <div th:if="${mission.pvMission != null}"
+                         class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle me-1"></i>
+                        PV déjà transmis à l'agent bancaire.
+                        <a th:href="@{/avocat/affaires/{aid}/missions/{mid}/facture(
+                                     aid=${affaire.id},mid=${mission.id})}"
+                           class="alert-link">
+                            Passez à la facture d'honoraires →
+                        </a>
+                    </div>
+
+                    <!-- Formulaire إضافة PV جديد (يظهر فقط كان ما توجدش PV) -->
+                    <form th:unless="${mission.pvMission != null}"
+                          th:action="@{/avocat/affaires/{aid}/missions/{mid}/pv(
+                                      aid=${affaire.id},mid=${mission.id})}"
+                          method="post">
+
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">
+                                Procès-verbal de mission
+                                <span class="text-danger">*</span>
+                            </label>
+                            <textarea name="pvTexte"
+                                      class="form-control"
+                                      rows="12"
+                                      placeholder="Rédigez ici le PV de votre mission :&#10;- Diligences effectuées&#10;- Résultats obtenus&#10;- Observations..."
+                                      required></textarea>
+                            <div class="form-text">
+                                Le PV ne peut être soumis qu'une seule fois
+                                et ne sera plus modifiable après soumission.
+                            </div>
+                        </div>
+
+                        <div class="d-flex gap-2">
+                            <button type="submit"
+                                    class="btn btn-success"
+                                    onclick="return confirm('Soumettre le PV ? Cette action est irréversible.')">
+                                <i class="bi bi-send me-1"></i>Soumettre le PV
+                            </button>
+                            <a th:href="@{/avocat/affaires/{id}(id=${affaire.id})}"
+                               class="btn btn-outline-secondary">
+                                Annuler
+                            </a>
+                        </div>
+
+                    </form>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<!-- Bootstrap JS (nécessaire pour les collapses et les alertes) -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

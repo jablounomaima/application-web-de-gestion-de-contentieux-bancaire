@@ -51,19 +51,6 @@
             </a>
         </div>
     </div>
-    <div class="col-md-6">
-        <div class="card h-100 shadow-sm">
-            <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
-                <span><i class="bi bi-folder2-open me-2 text-primary"></i>Dossier lié</span>
-                
-                <a th:if="${affaire.dossier != null}" 
-                   th:href="@{/avocat/affaires/{id}/dossier(id=${affaire.id})}"
-                   class="btn btn-sm btn-link p-0 text-decoration-none text-secondary">
-                    Détails <i class="bi bi-chevron-right small"></i>
-                </a>
-            </div>
-            </div>
-    </div>
 
     <!-- ── Alertes flash ─────────────────────────────────────── -->
     <div th:if="${successMsg}"
@@ -81,7 +68,6 @@
 
     <!-- ── Ligne 1 : Affaire + Dossier ──────────────────────── -->
     <div class="row g-4">
-
         <!-- Détails affaire -->
         <div class="col-md-6">
             <div class="card h-100 shadow-sm">
@@ -90,7 +76,6 @@
                 </div>
                 <div class="card-body">
                     <dl class="row mb-0">
-
                         <dt class="col-sm-5 text-muted fw-normal">Tribunal</dt>
                         <dd class="col-sm-7 fw-medium"
                             th:text="${affaire.tribunal ?: '—'}"></dd>
@@ -131,7 +116,6 @@
                             <span th:unless="${affaire.dateProchainAudience != null}"
                                   class="text-muted">—</span>
                         </dd>
-
                     </dl>
                 </div>
             </div>
@@ -140,8 +124,13 @@
         <!-- Dossier lié -->
         <div class="col-md-6">
             <div class="card h-100 shadow-sm">
-                <div class="card-header bg-white fw-semibold">
-                    <i class="bi bi-folder2-open me-2 text-primary"></i>Dossier lié
+                <div class="card-header bg-white fw-semibold d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-folder2-open me-2 text-primary"></i>Dossier lié</span>
+                    <a th:if="${affaire.dossier != null}" 
+                       th:href="@{/avocat/affaires/{id}/dossier(id=${affaire.id})}"
+                       class="btn btn-sm btn-link p-0 text-decoration-none text-secondary">
+                        Détails <i class="bi bi-chevron-right small"></i>
+                    </a>
                 </div>
                 <div class="card-body">
                     <div th:if="${affaire.dossier != null}">
@@ -167,8 +156,78 @@
                 </div>
             </div>
         </div>
-
     </div><!-- /row 1 -->
+
+    <!-- ── Mission liée ─────────────────────────────────────── -->
+    <!-- هاد القسم يظهر فقط كان l'affaire عندها mission -->
+    <div class="row mt-4" th:if="${affaire.mission != null}">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold">
+                        <i class="bi bi-briefcase me-2 text-primary"></i>Mission
+                    </span>
+                    <div class="d-flex gap-2">
+                        <a th:href="@{/avocat/affaires/{aid}/missions/{mid}/pv(aid=${affaire.id},mid=${affaire.mission.id})}"
+                           class="btn btn-sm btn-success">
+                            <i class="bi bi-file-text me-1"></i>PV
+                        </a>
+                        <a th:href="@{/avocat/affaires/{aid}/missions/{mid}/facture(aid=${affaire.id},mid=${affaire.mission.id})}"
+                           class="btn btn-sm btn-primary">
+                            <i class="bi bi-receipt me-1"></i>Facture
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <dl class="row mb-0">
+                        <dt class="col-sm-4 text-muted fw-normal">N° Mission</dt>
+                        <dd class="col-sm-8 fw-semibold"
+                            th:text="${affaire.mission.numeroMission ?: '—'}"></dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">Statut</dt>
+                        <dd class="col-sm-8">
+                            <span th:switch="${affaire.mission.statut?.name()}">
+                                <span th:case="'ASSIGNEE'"
+                                      class="badge bg-secondary">Assignée</span>
+                                <span th:case="'EN_COURS'"
+                                      class="badge bg-primary">En cours</span>
+                                <span th:case="'PV_SOUMIS'"
+                                      class="badge bg-success">PV soumis</span>
+                                <span th:case="'FACTURE_SOUMISE'"
+                                      class="badge bg-info text-dark">Facture soumise</span>
+                                <span th:case="'TERMINEE'"
+                                      class="badge bg-dark">Terminée</span>
+                                <span th:case="'ANNULEE'"
+                                      class="badge bg-danger">Annulée</span>
+                                <span th:case="*"
+                                      class="badge bg-light text-dark"
+                                      th:text="${affaire.mission.statut}"></span>
+                            </span>
+                        </dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">PV</dt>
+                        <dd class="col-sm-8">
+                            <span th:if="${affaire.mission.pvMission != null}"
+                                  class="text-success">
+                                <i class="bi bi-check-circle me-1"></i>Soumis
+                            </span>
+                            <span th:unless="${affaire.mission.pvMission != null}"
+                                  class="text-muted">Non soumis</span>
+                        </dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">Facture réf.</dt>
+                        <dd class="col-sm-8"
+                            th:text="${affaire.mission.factureRef ?: '—'}"></dd>
+
+                        <dt class="col-sm-4 text-muted fw-normal">Montant</dt>
+                        <dd class="col-sm-8"
+                            th:text="${affaire.mission.montantFacture != null ?
+                                      affaire.mission.montantFacture + ' TND' : '—'}"></dd>
+                    </dl>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- ── Ligne 2 : Jugement (si rendu) ────────────────────── -->
     <div class="row mt-4" th:if="${affaire.typeJugement != null}">
@@ -179,7 +238,6 @@
                 </div>
                 <div class="card-body">
                     <div class="row g-3">
-
                         <div class="col-md-3">
                             <div class="small text-muted">Type</div>
                             <span th:switch="${affaire.typeJugement?.name()}">
@@ -222,7 +280,6 @@
                             <div class="mt-1 fst-italic"
                                  th:text="${affaire.descriptionJugement}"></div>
                         </div>
-
                     </div>
                 </div>
             </div>
@@ -245,14 +302,12 @@
                     </a>
                 </div>
 
-                <!-- Aucune audience -->
                 <div th:if="${affaire.audiences == null or #lists.isEmpty(affaire.audiences)}"
                      class="card-body text-center text-muted py-4">
                     <i class="bi bi-calendar-x fs-3 d-block mb-2"></i>
                     Aucune audience enregistrée
                 </div>
 
-                <!-- Tableau audiences -->
                 <div th:unless="${affaire.audiences == null or #lists.isEmpty(affaire.audiences)}"
                      class="card-body p-0">
                     <table class="table table-hover mb-0">
@@ -294,7 +349,6 @@
                         </tbody>
                     </table>
                 </div>
-
             </div>
         </div>
     </div><!-- /row audiences -->

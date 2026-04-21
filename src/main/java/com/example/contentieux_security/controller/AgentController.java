@@ -102,7 +102,9 @@ public class AgentController {
         model.addAttribute("username", agentUsername);
         return "agent/clients";
     }
-   @PostMapping("/clients/creer")
+  
+  
+    @PostMapping("/clients/creer")
 public String creerClient(@ModelAttribute Client nouveauClient,
                           @AuthenticationPrincipal OidcUser oidcUser,
                           RedirectAttributes redirectAttrs) {
@@ -146,7 +148,85 @@ public String creerClient(@ModelAttribute Client nouveauClient,
         redirectAttrs.addFlashAttribute("error", "Erreur: " + e.getMessage());
         return "redirect:/agent/clients";
     }
+
 }
+
+
+
+// ══════════════════════════════════════════════════════════════
+//  ÉDITION CLIENT
+// ══════════════════════════════════════════════════════════════
+
+@GetMapping("/clients/{id}/edit")
+public String editClientForm(@PathVariable Long id,
+                              Model model,
+                              @AuthenticationPrincipal OidcUser oidcUser) {
+    Client client = clientService.findById(id);
+
+    if (client == null) {
+        model.addAttribute("error", "Client non trouvé");
+        return "redirect:/agent/clients";
+    }
+
+    model.addAttribute("client", client);
+    model.addAttribute("givenName",  oidcUser.getGivenName());
+    model.addAttribute("familyName", oidcUser.getFamilyName());
+    model.addAttribute("username",   oidcUser.getPreferredUsername());
+
+    return "agent/clients/edit"; // ✅ créer ce template
+}
+
+@PostMapping("/clients/{id}/edit")
+public String updateClient(@PathVariable Long id,
+                            @ModelAttribute Client client,
+                            @AuthenticationPrincipal OidcUser oidcUser,
+                            RedirectAttributes redirectAttrs) {
+    try {
+        Client existing = clientService.findById(id);
+        if (existing == null) {
+            redirectAttrs.addFlashAttribute("error", "Client non trouvé");
+            return "redirect:/agent/clients";
+        }
+
+        // ✅ Conserver l'agence et la date d'inscription d'origine
+        client.setId(id);
+        client.setAgence(existing.getAgence());
+        client.setDateInscription(existing.getDateInscription());
+
+        clientService.save(client);
+        redirectAttrs.addFlashAttribute("success", "Client mis à jour avec succès !");
+
+    } catch (Exception e) {
+        redirectAttrs.addFlashAttribute("error", "Erreur : " + e.getMessage());
+    }
+    return "redirect:/agent/clients";
+}
+
+
+
+@PostMapping("/clients/{id}/delete")
+public String deleteClient(@PathVariable Long id,
+                           RedirectAttributes redirectAttrs) {
+    try {
+        // ✅ Vérifier si le client a des dossiers
+        List<DossierContentieux> dossiers = dossierService.findByClientId(id);
+        if (dossiers != null && !dossiers.isEmpty()) {
+            redirectAttrs.addFlashAttribute("error",
+                "Impossible de supprimer ce client : il possède " 
+                + dossiers.size() + " dossier(s) contentieux. "
+                + "Supprimez d'abord les dossiers associés.");
+            return "redirect:/agent/clients";
+        }
+
+        clientService.deleteById(id);
+        redirectAttrs.addFlashAttribute("success", "Client supprimé avec succès !");
+
+    } catch (Exception e) {
+        redirectAttrs.addFlashAttribute("error", "Erreur suppression : " + e.getMessage());
+    }
+    return "redirect:/agent/clients";
+}
+
     @GetMapping("/clients/{id}/dossiers")
     public String voirDossiersClient(@PathVariable Long id,
                                      Model model,

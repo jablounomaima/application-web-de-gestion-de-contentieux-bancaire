@@ -1,117 +1,185 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
-<head th:replace="~{fragments/layout :: head('Dashboard')}"></head>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+
+<!-- HEAD -->
+<head th:replace="~{fragments/layout :: head('Dashboard Avocat')}"></head>
+
 <body>
+<div class="layout-wrapper">
 
-<aside th:replace="~{fragments/layout :: sidebar('AVOCAT', ${#authentication.name})}"></aside>
-<header th:replace="~{fragments/layout :: topbar('Dashboard', ${#authentication.name}, 'AVOCAT')}"></header>
+    <!-- SIDEBAR -->
+    <aside th:replace="~{fragments/layout :: sidebar('AVOCAT', ${#authentication.name})}"></aside>
 
-<main style="margin-left:250px; margin-top:60px; min-height:calc(100vh - 60px); padding: 2rem;">
-    <div class="container">
+    <div class="page-content">
 
-        <!-- En-tête -->
-        <div class="d-flex align-items-center mb-4">
-            <div class="bg-primary text-white rounded-circle d-flex align-items-center
-                        justify-content-center me-3" style="width:50px;height:50px;">
-                <i class="bi bi-person-badge fs-4"></i>
-            </div>
-            <div>
-                <h4 class="mb-0">Tableau de bord — Avocat</h4>
-                <small class="text-muted" sec:authentication="name">username</small>
-            </div>
-        </div>
+        <!-- TOPBAR -->
+        <header th:replace="~{fragments/layout :: topbar('Dashboard', ${#authentication.name}, 'AVOCAT')}"></header>
 
-        <!-- Statistiques -->
-        <div class="row g-3 mb-4">
-            <div class="col-md-3">
-                <div class="card text-center border-0 bg-primary bg-opacity-10">
-                    <div class="card-body">
-                        <i class="bi bi-clipboard-check display-6 text-primary"></i>
-                        <h3 class="mt-2 text-primary" th:text="${totalMissions ?: 0}"></h3>
-                        <small class="text-muted">Total missions</small>
+        <div class="page-inner fade-in">
+
+            <!-- Bannière de bienvenue -->
+            <div class="welcome-banner mb-4">
+                <div class="welcome-inner">
+                    <div>
+                        <h2>Bonjour, <span sec:authentication="name">—</span> 👋</h2>
+                        <p>Voici un aperçu de votre activité judiciaire</p>
                     </div>
+                    <div class="role-pill">⚖️ Avocat</div>
                 </div>
             </div>
-            <div class="col-md-3">
-                <div class="card text-center border-0 bg-warning bg-opacity-10">
-                    <div class="card-body">
-                        <i class="bi bi-hourglass-split display-6 text-warning"></i>
-                        <h3 class="mt-2 text-warning" th:text="${missionsEnCours ?: 0}"></h3>
-                        <small class="text-muted">En cours</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center border-0 bg-info bg-opacity-10">
-                    <div class="card-body">
-                        <i class="bi bi-file-earmark-text display-6 text-info"></i>
-                        <h3 class="mt-2 text-info" th:text="${pvSoumis ?: 0}"></h3>
-                        <small class="text-muted">PV soumis</small>
-                    </div>
-                </div>
-            </div>
-            <div class="col-md-3">
-                <div class="card text-center border-0 bg-success bg-opacity-10">
-                    <div class="card-body">
-                        <i class="bi bi-check-circle display-6 text-success"></i>
-                        <h3 class="mt-2 text-success" th:text="${missionsTerminees ?: 0}"></h3>
-                        <small class="text-muted">Terminées</small>
-                    </div>
-                </div>
-            </div>
-        </div>
 
-        <!-- Missions récentes -->
-        <div class="card shadow-sm">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-clock-history me-2"></i>Missions récentes</h6>
-                <a th:href="@{/prestataire/missions}" class="btn btn-sm btn-outline-primary">Voir tout</a>
-            </div>
-            <div class="card-body p-0">
+            <!-- ── KPI MISSIONS ── -->
+            <div class="stats-grid fade-in delay-1">
 
-                <!-- Aucune mission -->
-                <div th:if="${#lists.isEmpty(dernieresMissions)}"
-                     class="text-center py-4 text-muted">
-                    Aucune mission pour le moment.
+                <div class="stat-card blue">
+                    <div class="stat-icon">📋</div>
+                    <div class="stat-label">Total missions</div>
+                    <div class="stat-value" th:text="${totalMissions}">0</div>
                 </div>
 
-                <!-- Liste missions -->
-                <div class="list-group list-group-flush"
-                     th:unless="${#lists.isEmpty(dernieresMissions)}">
-                    <a th:each="m : ${dernieresMissions}"
-                       th:href="@{/prestataire/missions/{id}(id=${m.id})}"
-                       class="list-group-item list-group-item-action">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <strong th:text="${m.numeroMission}"></strong>
-                                <span class="text-muted ms-2 small"
-                                      th:text="${m.prestation?.dossier?.numeroDossier ?: '—'}"></span>
-                                <div class="small text-muted mt-1">
-                                    <i class="bi bi-person me-1"></i>
-                                    <span th:text="${(m.prestation?.dossier?.client?.nom ?: '') + ' ' +
-                                                    (m.prestation?.dossier?.client?.prenom ?: '')}"></span>
-                                </div>
-                                <p class="mb-0 small text-muted" th:text="${m.description}"></p>
-                                <small th:if="${m.dateFinPrevue}"
-                                       th:text="'Échéance : ' + ${#temporals.format(m.dateFinPrevue,'dd/MM/yyyy')}"
-                                       th:class="${m.dateFinPrevue.isBefore(T(java.time.LocalDate).now())} ? 'text-danger' : 'text-muted'">
-                                </small>
-                            </div>
-                            <div class="ms-2">
-                                <span th:if="${m.statut.name() == 'ASSIGNEE'}"   class="badge bg-secondary">ASSIGNÉE</span>
-                                <span th:if="${m.statut.name() == 'EN_COURS'}"   class="badge bg-primary">EN COURS</span>
-                                <span th:if="${m.statut.name() == 'PV_SOUMIS'}"  class="badge bg-info text-dark">PV SOUMIS</span>
-                                <span th:if="${m.statut.name() == 'FACTURE_SOUMISE'}" class="badge bg-warning text-dark">FACTURE</span>
-                                <span th:if="${m.statut.name() == 'TERMINEE'}"   class="badge bg-success">TERMINÉE</span>
-                            </div>
+                <div class="stat-card blue">
+                    <div class="stat-icon">⏳</div>
+                    <div class="stat-label">En cours</div>
+                    <div class="stat-value" th:text="${enCours}">0</div>
+                </div>
+
+                <div class="stat-card green">
+                    <div class="stat-icon">📄</div>
+                    <div class="stat-label">PV soumis</div>
+                    <div class="stat-value" th:text="${pvSoumis}">0</div>
+                </div>
+
+                <div class="stat-card purple">
+                    <div class="stat-icon">🧾</div>
+                    <div class="stat-label">Factures soumises</div>
+                    <div class="stat-value" th:text="${factureSoumise}">0</div>
+                </div>
+
+                <div class="stat-card amber">
+                    <div class="stat-icon">✅</div>
+                    <div class="stat-label">Terminées</div>
+                    <div class="stat-value" th:text="${terminees}">0</div>
+                </div>
+
+                <div class="stat-card red">
+                    <div class="stat-icon">❌</div>
+                    <div class="stat-label">Annulées</div>
+                    <div class="stat-value" th:text="${annulees}">0</div>
+                </div>
+
+            </div>
+
+            <!-- ── KPI AFFAIRES + HONORAIRES ── -->
+            <div class="stats-grid fade-in delay-2">
+
+                <div class="stat-card green">
+                    <div class="stat-icon">💰</div>
+                    <div class="stat-label">Total honoraires</div>
+                    <div class="stat-value"
+                         th:text="${#numbers.formatDecimal(totalHonoraires,1,'COMMA',0,'POINT')}">
+                        0
+                    </div>
+                    <div class="stat-delta">TND facturés</div>
+                </div>
+
+                <div class="stat-card blue">
+                    <div class="stat-icon">⚖️</div>
+                    <div class="stat-label">Total affaires</div>
+                    <div class="stat-value" th:text="${totalAffaires}">0</div>
+                </div>
+
+                <div class="stat-card blue">
+                    <div class="stat-icon">🔄</div>
+                    <div class="stat-label">Affaires en cours</div>
+                    <div class="stat-value" th:text="${affairesEnCours}">0</div>
+                </div>
+
+                <div class="stat-card green">
+                    <div class="stat-icon">🏛️</div>
+                    <div class="stat-label">Jugements rendus</div>
+                    <div class="stat-value" th:text="${jugementRendu}">0</div>
+                </div>
+
+                <div class="stat-card amber">
+                    <div class="stat-icon">📅</div>
+                    <div class="stat-label">Audiences à venir</div>
+                    <div class="stat-value" th:text="${audiencesAVenir}">0</div>
+                </div>
+
+            </div>
+
+            <!-- ── TABLEAUX RÉCENTS ── -->
+            <div class="row g-4 fade-in delay-3">
+
+                <!-- Affaires récentes -->
+                <div class="col-lg-6">
+                    <div class="table-wrap">
+                        <div class="table-header">
+                            <h2>⚖️ Dernières affaires</h2>
+                            <a th:href="@{/avocat/affaires}"
+                               class="btn btn-outline btn-sm">Voir tout</a>
                         </div>
-                    </a>
+
+                        <div th:if="${affairesRecentes == null or #lists.isEmpty(affairesRecentes)}"
+                             style="padding:40px;text-align:center;color:var(--muted)">
+                            <div style="font-size:2rem;margin-bottom:8px">📭</div>
+                            Aucune affaire pour le moment
+                        </div>
+
+                        <table th:unless="${affairesRecentes == null or #lists.isEmpty(affairesRecentes)}">
+                            <thead>
+                                <tr>
+                                    <th>N° Affaire</th>
+                                    <th>Tribunal</th>
+                                    <th>Statut</th>
+                                    <th>Prochaine audience</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="a : ${affairesRecentes}">
+                                    <td>
+                                        <a th:href="@{/avocat/affaires/{id}(id=${a.id})}"
+                                           th:text="${a.numeroAffaire}"
+                                           style="color:var(--accent);font-weight:600;
+                                                  text-decoration:none"></a>
+                                    </td>
+                                    <td style="color:var(--muted);font-size:13px"
+                                        th:text="${a.tribunal ?: '—'}"></td>
+                                    <td>
+                                        <span th:switch="${a.statut?.name()}">
+                                            <span th:case="'EN_COURS'"
+                                                  class="badge badge-blue">En cours</span>
+                                            <span th:case="'JUGEMENT_RENDU'"
+                                                  class="badge badge-green">Jugement rendu</span>
+                                            <span th:case="'CLOTUREE'"
+                                                  class="badge badge-muted">Clôturée</span>
+                                            <span th:case="*"
+                                                  class="badge badge-muted"
+                                                  th:text="${a.statut}"></span>
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <span th:if="${a.dateProchainAudience != null}"
+                                              class="badge badge-amber"
+                                              th:text="${#temporals.format(a.dateProchainAudience,'dd/MM/yyyy')}">
+                                        </span>
+                                        <span th:unless="${a.dateProchainAudience != null}"
+                                              style="color:var(--muted)">—</span>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
+            
+
             </div>
-        </div>
-    </div>
-</main>
+
+        </div><!-- /page-inner -->
+    </div><!-- /page-content -->
+</div><!-- /layout-wrapper -->
 
 </body>
 </html>

@@ -139,7 +139,6 @@
                     <td th:text="${client.telephone}"></td>
                     <td th:text="${#temporals.format(client.dateInscription, 'dd/MM/yyyy')}"></td>
                     <td>
-                        <a th:href="@{/agent/clients/{id}(id=${client.id})}">Voir</a>
                         <a th:href="@{/agent/clients/{id}/edit(id=${client.id})}">Modifier</a>
                         <a th:href="@{/agent/clients/{id}/dossiers(id=${client.id})}">Dossiers</a>
                         <form th:action="@{/agent/clients/{id}/delete(id=${client.id})}" method="post" style="display: inline;">

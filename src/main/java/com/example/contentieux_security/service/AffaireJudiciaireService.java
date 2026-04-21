@@ -2,6 +2,7 @@ package com.example.contentieux_security.service;
 
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.entity.Audience.StatutAudience;
+import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -13,6 +14,7 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import java.io.IOException;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 
 @Service
@@ -25,72 +27,90 @@ public class AffaireJudiciaireService {
     private final AudienceRepository          audienceRepo;
     private final DocumentAffaireRepository   documentRepo;
     private final MissionRepository           missionRepository;
-
+    private final jakarta.persistence.EntityManager entityManager;
+    private final AffaireJudiciaireRepository affaireJudiciaireRepository;
     // =========================================================
     //  AFFAIRE
     // =========================================================
+// Ajouter dans AffaireJudiciaireService
 
-    public AffaireJudiciaire creerAffaire(Long missionId,
-                                           String tribunal,
-                                           String numeroRole,
-                                           String chambre,
-                                           String username) {
+@Transactional
+public AffaireJudiciaire creerAffaire(Long missionId, String username) { // Na77ina el 3 paramètres mel signature
 
-        System.out.println(">>> CREATION AFFAIRE START - missionId=" + missionId);
+    log.info(">>> CREATION AFFAIRE START - missionId={} par agent={}", missionId, username);
 
-        // 1. Charger la mission avec tous ses détails (fetch join)
-        Mission mission = missionRepository.findByIdWithDetails(missionId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Mission introuvable : id=" + missionId));
+    // ── 1. Charger la mission avec TOUS ses détails ──────────
+    Mission mission = missionRepository.findByIdWithDetails(missionId)
+            .orElseThrow(() -> new IllegalArgumentException(
+                    "Mission introuvable : id=" + missionId));
 
-        System.out.println(">>> Mission trouvée : " + mission.getNumeroMission());
-        System.out.println(">>> Prestataire : " + (mission.getPrestataire() != null ? mission.getPrestataire().getUsername() : "NULL"));
-        System.out.println(">>> Prestation : " + (mission.getPrestation() != null ? mission.getPrestation().getId() : "NULL"));
-        System.out.println(">>> Dossier : " + (mission.getPrestation() != null && mission.getPrestation().getDossier() != null ? mission.getPrestation().getDossier().getId() : "NULL"));
-
-        // 2. Vérification doublon
-        affaireRepo.findByMission_Id(missionId).ifPresent(a -> {
-            throw new IllegalStateException(
-                    "Une affaire existe déjà pour cette mission : " + a.getNumeroAffaire());
-        });
-
-        // 3. Vérification que le dossier est accessible
-        if (mission.getPrestation() == null) {
-            throw new IllegalStateException(
-                    "La mission " + missionId + " n'a pas de prestation liée.");
-        }
-        if (mission.getPrestation().getDossier() == null) {
-            throw new IllegalStateException(
-                    "La prestation liée à la mission " + missionId + " n'a pas de dossier.");
-        }
-
-        // 4. Construction de l'affaire
-        AffaireJudiciaire affaire = new AffaireJudiciaire();
-        affaire.setNumeroAffaire(genererNumeroAffaire());
-        affaire.setTribunal(tribunal);
-        affaire.setNumeroRole(numeroRole);
-        affaire.setChambre(chambre);
-        affaire.setDateLancement(LocalDate.now());
-        affaire.setStatut(AffaireJudiciaire.StatutAffaire.EN_COURS);
-        affaire.setAvocat(mission.getPrestataire());
-        affaire.setMission(mission);
-        affaire.setDossier(mission.getPrestation().getDossier());
-
-        System.out.println(">>> AVANT SAVE : " + affaire.getNumeroAffaire());
-
-        // 5. Sauvegarde
-        AffaireJudiciaire result = affaireRepo.save(affaire);
-
-        System.out.println(">>> APRES SAVE : id=" + result.getId());
-
-        return result;
+    // ── 2. Vérification doublon ──────────────────────────────
+    if (affaireRepo.findByMission_Id(missionId).isPresent()) {
+        throw new IllegalStateException(
+                "Une affaire existe déjà pour cette mission.");
     }
 
+    // ── 3. Récupérer le dossier ──────────────────────────────
+    DossierContentieux dossier = null;
+
+    if (mission.getPrestation() != null && mission.getPrestation().getDossier() != null) {
+        dossier = mission.getPrestation().getDossier();
+    }
+
+    if (dossier == null) {
+        dossier = missionRepository.findDossierByMissionId(missionId);
+    }
+
+    if (dossier == null) {
+        throw new IllegalStateException(
+                "Impossible de trouver le dossier pour la mission " + missionId);
+    }
+
+    // ── 4. Récupérer l'avocat ────────────────────────────────
+    Prestataire avocat = mission.getPrestataire();
+    if (avocat == null) {
+        throw new IllegalStateException(
+                "La mission " + missionId + " n'a pas d'avocat assigné.");
+    }
+
+    // ── 5. Construire et sauvegarder ─────────────────────────
+    AffaireJudiciaire affaire = new AffaireJudiciaire();
+    
+    // El "numeroAffaire" iji automatique
+    String nouveauNumero = genererNumeroAffaire();
+    affaire.setNumeroAffaire(nouveauNumero);
+    
+    // Houni tna77ina el variables, donc iwalliw null fil base (cella ken t7ebhom ferghin)
+    affaire.setTribunal(null);
+    affaire.setNumeroRole(null);
+    affaire.setChambre(null);
+    
+    affaire.setDateLancement(LocalDate.now());
+    affaire.setStatut(AffaireJudiciaire.StatutAffaire.EN_COURS);
+    affaire.setAvocat(avocat);
+    affaire.setMission(mission);
+    affaire.setDossier(dossier);
+
+    AffaireJudiciaire result = affaireRepo.save(affaire);
+    entityManager.flush(); 
+
+    log.info(">>> AFFAIRE SAUVEGARDÉE : id={} num={} dossier={}",
+            result.getId(),
+            result.getNumeroAffaire(),
+            result.getDossier().getNumeroDossier());
+
+    return result;
+}
+    
     @Transactional(readOnly = true)
     public AffaireJudiciaire getAffaireParDossier(Long dossierId) {
-        return affaireRepo.findByDossier_Id(dossierId).orElse(null);
+        List<AffaireJudiciaire> affaires = affaireRepo.findByDossier_Id(dossierId);
+        if (affaires.isEmpty()) return null;
+        // Retourne la plus récente
+        return affaires.stream()
+                .max(Comparator.comparing(AffaireJudiciaire::getDateLancement))
+                .orElse(null);
     }
-
     @Transactional(readOnly = true)
     public AffaireJudiciaire getAffaireById(Long id) {
         // Charger avec audiences d'abord
@@ -102,18 +122,52 @@ public class AffaireJudiciaireService {
         return affaire;
     }
 
+    @Transactional(readOnly = true)
     public List<AffaireJudiciaire> getAffairesParAvocat(String username) {
-        List<AffaireJudiciaire> viaMission = affaireRepo.findByMissionPrestataireUsernameWithDetails(username);
-        List<AffaireJudiciaire> viaAvocat  = affaireRepo.findByAvocatUsernameWithDetails(username);
     
-        return Stream.concat(viaMission.stream(), viaAvocat.stream())
-                .distinct()
+        List<AffaireJudiciaire> viaMission =
+                affaireRepo.findByMissionPrestataireUsernameWithMission(username);
+        List<AffaireJudiciaire> viaAvocat =
+                affaireRepo.findByAvocatUsernameWithMission(username);
+        List<AffaireJudiciaire> viaDossier =
+                affaireRepo.findByDossierMissionPrestataireUsername(username);
+    
+        log.info("getAffairesParAvocat('{}') → viaMission={} viaAvocat={} viaDossier={}",
+                username, viaMission.size(), viaAvocat.size(), viaDossier.size());
+    
+        List<AffaireJudiciaire> toutes = new java.util.ArrayList<>();
+        toutes.addAll(viaMission);
+        toutes.addAll(viaAvocat);
+        toutes.addAll(viaDossier);
+    
+        // Dédupliquer par ID
+        return toutes.stream()
+                .filter(a -> a != null && a.getId() != null)
+                .collect(java.util.stream.Collectors.toMap(
+                        a -> a.getId(),
+                        a -> a,
+                        (a1, a2) -> a1
+                ))
+                .values()
+                .stream()
                 .collect(Collectors.toList());
     }
-
+    
+    
+    
+    
     private String genererNumeroAffaire() {
         long count = affaireRepo.count() + 1;
-        return String.format("AFF-%d-%05d", LocalDate.now().getYear(), count);
+        String numero = String.format("AFF-%d-%05d", LocalDate.now().getYear(), count);
+        
+        int tentatives = 0;
+        while (affaireRepo.existsByNumeroAffaire(numero) && tentatives < 100) {
+            count++;
+            numero = String.format("AFF-%d-%05d", LocalDate.now().getYear(), count);
+            tentatives++;
+        }
+        
+        return numero;
     }
 
     // =========================================================
@@ -429,5 +483,153 @@ public void supprimerJugement(Long affaireId) {
 
 
 
+// ─────────────────────────────────────────────
+//  CRÉER AFFAIRE DIRECTE (sans rechargement)
+// ─────────────────────────────────────────────
+@Transactional
+public AffaireJudiciaire creerAffaireDirecte(Mission mission,
+                                              DossierContentieux dossier,
+                                              String username) {
 
+    log.info(">>> creerAffaireDirecte mission={} dossier={} avocat={}",
+            mission.getNumeroMission(),
+            dossier.getNumeroDossier(),
+            mission.getPrestataire() != null
+                    ? mission.getPrestataire().getUsername() : "NULL");
+
+    // Vérification doublon
+    if (affaireRepo.findByMission_Id(mission.getId()).isPresent()) {
+        throw new IllegalStateException(
+                "Une affaire existe déjà pour cette mission.");
+    }
+
+    Prestataire avocat = mission.getPrestataire();
+    if (avocat == null) {
+        throw new IllegalStateException("Pas d'avocat sur cette mission.");
+    }
+
+    AffaireJudiciaire affaire = new AffaireJudiciaire();
+    affaire.setNumeroAffaire(genererNumeroAffaire());
+    affaire.setDateLancement(LocalDate.now());
+    affaire.setStatut(AffaireJudiciaire.StatutAffaire.EN_COURS);
+    affaire.setAvocat(avocat);
+    affaire.setMission(mission);
+    affaire.setDossier(dossier);
+
+    AffaireJudiciaire result = affaireRepo.save(affaire);
+
+    log.info(">>> AFFAIRE CRÉÉE : id={} num={}",
+            result.getId(), result.getNumeroAffaire());
+
+    return result;
+}
+
+
+public AffaireJudiciaire findByMissionId(Long missionId) {
+    return affaireJudiciaireRepository.findByMissionId(missionId)
+            .orElse(null);
+}
+
+
+
+// =========================================================
+//  📄 PV — Soumission par l'avocat
+// =========================================================
+@Transactional
+public void soumettreAvocatPV(Long affaireId, String pvTexte) {
+    AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+
+    Mission mission = affaire.getMission();
+    if (mission == null) {
+        throw new RuntimeException("Aucune mission liée à cette affaire.");
+    }
+
+    // L'avocat peut soumettre depuis ASSIGNEE ou EN_COURS
+    if (mission.getStatut() != StatutMission.ASSIGNEE
+            && mission.getStatut() != StatutMission.EN_COURS) {
+        throw new RuntimeException("PV déjà soumis ou mission terminée.");
+    }
+
+    mission.setPvMission(pvTexte);
+    mission.setStatut(StatutMission.PV_SOUMIS);
+    mission.setDateValidationPv(LocalDateTime.now());
+    missionRepository.save(mission);
+}
+
+// =========================================================
+//  🧾 FACTURE — Soumission par l'avocat
+// =========================================================
+@Transactional
+public void soumettreAvocatFacture(Long affaireId, String factureRef, Double montant) {
+    AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+
+    Mission mission = affaire.getMission();
+    if (mission == null) {
+        throw new RuntimeException("Aucune mission liée à cette affaire.");
+    }
+
+    if (mission.getStatut() != StatutMission.PV_SOUMIS) {
+        throw new RuntimeException("Soumettez d'abord le PV avant la facture.");
+    }
+
+    mission.setFactureRef(factureRef);
+    mission.setMontantFacture(montant);
+    mission.setStatut(StatutMission.FACTURE_SOUMISE);
+    mission.setDateValidationFacture(LocalDateTime.now());
+    missionRepository.save(mission);
+}
+
+public AffaireJudiciaire findById(Long id) {
+    return affaireRepo.findByIdWithMission(id)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + id));
+}
+
+
+@Transactional
+public void modifierAvocatPV(Long affaireId, String pvTexte) {
+    AffaireJudiciaire affaire = affaireRepo.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+    Mission mission = affaire.getMission();
+    if (mission == null) throw new RuntimeException("Aucune mission liée.");
+    mission.setPvMission(pvTexte);
+    missionRepository.save(mission);
+}
+
+@Transactional
+public void supprimerAvocatPV(Long affaireId) {
+    AffaireJudiciaire affaire = affaireRepo.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+    Mission mission = affaire.getMission();
+    if (mission == null) throw new RuntimeException("Aucune mission liée.");
+    mission.setPvMission(null);
+    mission.setStatut(StatutMission.EN_COURS);
+    mission.setDateValidationPv(null);
+    missionRepository.save(mission);
+}
+
+@Transactional
+public void modifierAvocatFacture(Long affaireId, String factureRef, Double montant) {
+    AffaireJudiciaire affaire = affaireRepo.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+    Mission mission = affaire.getMission();
+    if (mission == null) throw new RuntimeException("Aucune mission liée.");
+    mission.setFactureRef(factureRef);
+    mission.setMontantFacture(montant);
+    missionRepository.save(mission);
+}
+
+@Transactional
+public void supprimerAvocatFacture(Long affaireId) {
+    AffaireJudiciaire affaire = affaireRepo.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+    Mission mission = affaire.getMission();
+    if (mission == null) throw new RuntimeException("Aucune mission liée.");
+    mission.setFactureRef(null);
+    mission.setMontantFacture(null);
+    mission.setStatut(StatutMission.PV_SOUMIS);
+    mission.setDateValidationFacture(null);
+    missionRepository.save(mission);
+}
 }

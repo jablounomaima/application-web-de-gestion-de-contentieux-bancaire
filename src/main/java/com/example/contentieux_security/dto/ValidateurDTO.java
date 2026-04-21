@@ -6,8 +6,9 @@ import lombok.Data;
 @Data
 public class ValidateurDTO {
     private Long id;
-    private String username;
     private String matricule;
+    private String username;
+    
     private String nom;
     private String prenom;
     private String email;

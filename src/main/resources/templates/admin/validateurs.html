@@ -55,10 +55,8 @@
 
             <td>
                 <!-- ✅ FIX URL -->
-                <a class="btn btn-sm btn-warning"
-                   th:href="@{'/admin/validateurs/edit/' + ${v.id}}">
-                    Modifier
-                </a>
+                <a th:href="@{/admin/validateurs/{id}/edit(id=${v.id})}">Modifier</a>
+                  
 
                 <form th:action="@{'/admin/validateurs/' + ${v.id} + '/delete'}"
                       method="post"
@@ -89,7 +87,7 @@
 
             <td>
                 <a class="btn btn-sm btn-warning"
-                   th:href="@{'/admin/validateurs/edit/' + ${v.id}}">
+                   th:href="@{/admin/validateurs/{id}/edit(id=${v.id})}">
                     Modifier
                 </a>
 

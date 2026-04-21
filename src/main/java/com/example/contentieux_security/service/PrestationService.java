@@ -428,30 +428,127 @@ public class PrestationService {
     }
 
     private String genererNumeroPrestation() {
-        String prefix = "PREST-" + LocalDate.now().getYear();
-        Optional<String> last = prestationRepository.findLastNumero(prefix);
-        int seq = 1;
-        if (last.isPresent()) {
-            try {
-                String[] parts = last.get().split("-");
-                seq = Integer.parseInt(parts[parts.length - 1]) + 1;
-            } catch (NumberFormatException ignored) {
-            }
+        long count = prestationRepository.count() + 1;
+        String numero = String.format("PREST-%d-%05d", LocalDate.now().getYear(), count);
+        
+        int tentatives = 0;
+        while (prestationRepository.existsByNumeroPrestation(numero) && tentatives < 100) {
+            count++;
+            numero = String.format("PREST-%d-%05d", LocalDate.now().getYear(), count);
+            tentatives++;
         }
-        return String.format("%s-%05d", prefix, seq);
+        
+        return numero;
     }
 
     private String genererNumeroMission() {
-        String prefix = "MISS-" + LocalDate.now().getYear();
-        Optional<String> last = missionRepository.findLastNumero(prefix);
-        int seq = 1;
-        if (last.isPresent()) {
-            try {
-                String[] parts = last.get().split("-");
-                seq = Integer.parseInt(parts[parts.length - 1]) + 1;
-            } catch (NumberFormatException ignored) {
-            }
+        // Compter toutes les missions existantes + 1
+        long count = missionRepository.count() + 1;
+        String numero = String.format("MISS-%d-%05d", LocalDate.now().getYear(), count);
+        
+        // Sécurité : si le numéro existe déjà, incrémenter jusqu'à trouver un libre
+        int tentatives = 0;
+        while (missionRepository.existsByNumeroMission(numero) && tentatives < 100) {
+            count++;
+            numero = String.format("MISS-%d-%05d", LocalDate.now().getYear(), count);
+            tentatives++;
         }
-        return String.format("%s-%05d", prefix, seq);
+        
+        return numero;
     }
+    @Transactional(readOnly = true)
+public Prestation getPrestationJudiciaireParDossier(Long dossierId) {
+    return prestationRepository
+            .findByDossier_IdAndType(dossierId, TypePrestation.PROCEDURE_JUDICIAIRE)
+            .stream()
+            .findFirst()
+            .orElse(null);
+}
+
+
+@Transactional
+public void resoumettreApresRejet(Long missionId, String pvTexte, String username) {
+    Mission mission = getMissionById(missionId);
+
+    // 1. Vérification des accès : Seul le prestataire assigné peut resoumettre
+    if (!mission.getPrestataire().getUsername().equals(username)) {
+        throw new SecurityException("Accès refusé : Vous n'êtes pas le prestataire de cette mission.");
+    }
+
+    // 2. Vérification du statut : Doit être en REJETEE pour permettre la correction
+    if (mission.getStatut() != StatutMission.REJETEE) {
+        throw new IllegalStateException("Statut invalide pour resoumission : " + mission.getStatut());
+    }
+
+    if (pvTexte == null || pvTexte.isBlank()) {
+        throw new IllegalArgumentException("Le contenu du PV ne peut pas être vide.");
+    }
+
+    // 3. Mise à jour de la mission
+    // On réinitialise tout pour repartir sur un cycle propre de validation PV
+    mission.setPvMission(pvTexte);
+    mission.setPvValide(false);
+    mission.setFactureRef(null);
+    mission.setMontantFacture(null);
+    mission.setFactureValide(false);
+    mission.setCommentaireAgent(null); // On efface le motif du précédent rejet
+    mission.setStatut(StatutMission.PV_SOUMIS);
+
+    missionRepository.save(mission);
+
+    // 4. Traces et Notifications
+    historiqueService.enregistrer(
+            mission.getPrestation().getDossier(),
+            "PV_RESOUMIS",
+            "PV corrigé et resoumis par le prestataire " + username,
+            username
+    );
+
+    notificationService.notifier(
+            mission.getPrestation().getDossier().getAgentCreateur().getUsername(),
+            "Mission resoumise (PV) - " + mission.getNumeroMission(),
+            "Le prestataire a corrigé le PV du dossier " + mission.getPrestation().getDossier().getNumeroDossier(),
+            "MISSION",
+            mission.getPrestation().getDossier()
+    );
+}
+
+@Transactional
+public void resoumettreFactureApresRejet(Long missionId, Double montant, String factureRef, String username) {
+    Mission mission = getMissionById(missionId);
+
+    if (!mission.getPrestataire().getUsername().equals(username)) {
+        throw new SecurityException("Accès refusé.");
+    }
+
+    if (mission.getStatut() != StatutMission.REJETEE) {
+        throw new IllegalStateException("Statut invalide : " + mission.getStatut());
+    }
+
+    // 3. Mise à jour de la facture (Le PV reste tel quel car il était déjà validé)
+    mission.setMontantFacture(montant);
+    mission.setFactureRef(factureRef);
+    mission.setFactureValide(false);
+    mission.setCommentaireAgent(null);
+    mission.setStatut(StatutMission.FACTURE_SOUMISE);
+
+    missionRepository.save(mission);
+
+    // 4. Traces et Notifications
+    historiqueService.enregistrer(
+            mission.getPrestation().getDossier(),
+            "FACTURE_RESOUMISE",
+            "Facture corrigée (" + montant + " TND) resoumise par " + username,
+            username
+    );
+
+    notificationService.notifier(
+            mission.getPrestation().getDossier().getAgentCreateur().getUsername(),
+            "Facture resoumise - " + mission.getNumeroMission(),
+            "Nouvelle facture soumise pour le dossier " + mission.getPrestation().getDossier().getNumeroDossier(),
+            "MISSION",
+            mission.getPrestation().getDossier()
+    );
+}
+
 }
