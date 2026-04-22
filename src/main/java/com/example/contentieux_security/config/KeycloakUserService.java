@@ -52,6 +52,13 @@ public class KeycloakUserService {
     public void createUser(String username, String email, String firstName,
                            String lastName, String password, String roleName) {
         try {
+            if (usernameExists(username)) {
+                throw new RuntimeException("Nom d'utilisateur déjà existant dans Keycloak");
+            }
+            if (emailExists(email)) {
+                throw new RuntimeException("Email déjà existant dans Keycloak");
+            }
+
             UserRepresentation user = new UserRepresentation();
             user.setUsername(username);
             user.setEmail(email);
@@ -62,6 +69,9 @@ public class KeycloakUserService {
             user.setEmailVerified(false);
 
             Response response = keycloak.realm(realm).users().create(user);
+            if (response.getStatus() == 409) {
+                throw new RuntimeException("Conflit Keycloak: username ou email déjà utilisé");
+            }
             if (response.getStatus() != 201)
                 throw new RuntimeException("Erreur Keycloak [" + response.getStatus() + "]");
 
@@ -79,6 +89,30 @@ public class KeycloakUserService {
 
         } catch (Exception e) {
             throw new RuntimeException("Erreur création utilisateur: " + e.getMessage(), e);
+        }
+    }
+
+    public boolean usernameExists(String username) {
+        try {
+            return keycloak.realm(realm)
+                    .users()
+                    .search(username, true)
+                    .stream()
+                    .anyMatch(u -> u.getUsername() != null && u.getUsername().equalsIgnoreCase(username));
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    public boolean emailExists(String email) {
+        try {
+            return keycloak.realm(realm)
+                    .users()
+                    .searchByEmail(email, true)
+                    .stream()
+                    .anyMatch(u -> u.getEmail() != null && u.getEmail().equalsIgnoreCase(email));
+        } catch (Exception e) {
+            return false;
         }
     }
 

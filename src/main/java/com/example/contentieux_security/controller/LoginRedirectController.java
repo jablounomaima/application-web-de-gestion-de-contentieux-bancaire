@@ -1,35 +1,42 @@
 package com.example.contentieux_security.controller;
 
 import java.util.List;
+import java.util.Map;
 
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
-@Controller
+@RestController
+@RequestMapping("/api")
 public class LoginRedirectController {
 
     @GetMapping("/prestation-redirect")
-    public String redirectToDashboard(Authentication authentication) {
+    public ResponseEntity<?> redirectToDashboard(Authentication authentication) {
+        if (authentication == null) {
+            return ResponseEntity.status(401).body(Map.of("error", "Non authentifié"));
+        }
 
-        // Récupérer les rôles
         List<String> roles = authentication.getAuthorities()
                                            .stream()
                                            .map(a -> a.getAuthority())
                                            .toList();
 
+        String target = "/";
         if (roles.contains("ROLE_AVOCAT")) {
-            return "redirect:/avocat/dashboard";
+            target = "/avocat/dashboard";
         } else if (roles.contains("ROLE_HUISSIER")) {
-            return "redirect:/huissier/dashboard";
+            target = "/huissier/dashboard";
         } else if (roles.contains("ROLE_EXPERT")) {
-            return "redirect:/expert/dashboard";
+            target = "/expert/dashboard";
         } else if (roles.contains("ROLE_VALIDATEUR_FINANCIER")) {
-            return "redirect:/validateur-financier/dashboard";
+            target = "/validateur-financier/dashboard";
         } else if (roles.contains("ROLE_VALIDATEUR_JURIDIQUE")) {
-            return "redirect:/validateur-juridique/dashboard";
+            target = "/validateur-juridique/dashboard";
         }
 
-        return "redirect:/"; // défaut
+        return ResponseEntity.ok(Map.of("redirectUrl", target, "roles", roles));
     }
 }

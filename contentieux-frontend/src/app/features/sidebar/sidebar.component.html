@@ -1,0 +1,75 @@
+<nav class="sidebar">
+  <div class="sidebar-header">
+    <p class="role-badge">{{ getRoleDisplayName() }}</p>
+    <p class="user-name-small">{{ username }}</p>
+  </div>
+
+  <!-- MENU AGENT BANCAIRE -->
+  <div class="menu-section" *ngIf="hasRole('AGENT')">
+    <p class="menu-label">ESPACE AGENT</p>
+    <ul>
+      <li><a routerLink="/agent/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Tableau de Bord</a></li>
+      <li><a routerLink="/agent/dossiers" routerLinkActive="active-link"><i class="icon">📁</i> Tous les Dossiers</a></li>
+      <li><a routerLink="/agent/nouveau-dossier" routerLinkActive="active-link"><i class="icon">➕</i> Nouveau Dossier</a></li>
+    </ul>
+  </div>
+
+  <!-- MENU PRESTATAIRE -->
+  <div class="menu-section" *ngIf="hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER')">
+    <p class="menu-label">ESPACE PRESTATAIRE</p>
+    <ul>
+      <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
+      <li><a routerLink="/prestataire/missions" routerLinkActive="active-link"><i class="icon">⏳</i> Mes Missions</a></li>
+      <li><a routerLink="/prestataire/factures" routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
+    </ul>
+  </div>
+
+  <!-- MENU AVOCAT -->
+  <div class="menu-section" *ngIf="hasRole('AVOCAT')">
+    <p class="menu-label">ESPACE AVOCAT</p>
+    <ul>
+      <li><a routerLink="/avocat/dashboard" routerLinkActive="active-link"><i class="icon">⚖️</i> Dashboard</a></li>
+      <li><a routerLink="/avocat/dossiers" routerLinkActive="active-link"><i class="icon">📁</i> Dossiers Assignés</a></li>
+    </ul>
+  </div>
+
+  <!-- MENU ADMIN -->
+  <!-- MENU ADMIN -->
+<div class="menu-section" *ngIf="hasRole('ADMIN')">
+  <p class="menu-label">ADMINISTRATION</p>
+  <ul>
+    <li><a routerLink="/admin/dashboard" routerLinkActive="active-link"><i class="icon">⚙️</i> Vue Globale</a></li>
+    <li><a routerLink="/admin/dashboard" [queryParams]="{tab: 'agents'}" routerLinkActive="active-link"><i class="icon">👥</i> Agents</a></li>
+    <li><a routerLink="/admin/dashboard" [queryParams]="{tab: 'agences'}" routerLinkActive="active-link"><i class="icon">🏢</i> Agences</a></li>
+    <li><a routerLink="/admin/dashboard" [queryParams]="{tab: 'validateurs'}" routerLinkActive="active-link"><i class="icon">⚖️</i> Validateurs</a></li>
+  </ul>
+</div>
+  <!-- MENU VALIDATEUR JURIDIQUE -->
+  <div class="menu-section" *ngIf="hasRole('VALIDATEUR_JURIDIQUE')">
+    <p class="menu-label">VALIDATION JURIDIQUE</p>
+    <ul>
+      <li><a routerLink="/validateur/juridique/dashboard" routerLinkActive="active-link"><i class="icon">📋</i> Tableau de Bord</a></li>
+      <li><a routerLink="/validateur/juridique/a-valider" routerLinkActive="active-link"><i class="icon">⏳</i> PVs à valider</a></li>
+    </ul>
+  </div>
+
+  <!-- MENU VALIDATEUR FINANCIER -->
+  <div class="menu-section" *ngIf="hasRole('VALIDATEUR_FINANCIER')">
+    <p class="menu-label">VALIDATION FINANCIÈRE</p>
+    <ul>
+      <li><a routerLink="/validateur/financier/dashboard" routerLinkActive="active-link"><i class="icon">💰</i> Tableau de Bord</a></li>
+      <li><a routerLink="/validateur/financier/factures" routerLinkActive="active-link"><i class="icon">🧾</i> Factures en attente</a></li>
+    </ul>
+  </div>
+
+  <!-- MENU PAR DÉFAUT -->
+  <div class="menu-section" *ngIf="roles.length === 0 || (!hasRole('AGENT') && !hasRole('ADMIN') && !hasRole('AVOCAT') && !hasRole('PRESTATAIRE') && !hasRole('EXPERT') && !hasRole('HUISSIER') && !hasRole('VALIDATEUR_JURIDIQUE') && !hasRole('VALIDATEUR_FINANCIER'))">
+    <p class="menu-label">NAVIGATION</p>
+    <ul>
+      <li><a routerLink="/" routerLinkActive="active-link"><i class="icon">🏠</i> Accueil</a></li>
+    </ul>
+    <div class="debug-info">
+      <small>Rôles détectés : {{ roles.join(', ') || 'aucun' }}</small>
+    </div>
+  </div>
+</nav>

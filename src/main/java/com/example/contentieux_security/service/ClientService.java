@@ -18,9 +18,11 @@ public class ClientService {
 
     private final ClientRepository clientRepository;
     private final DossierRepository dossierRepository;
-      // ✅ ICI tu ajoutes la méthode
-      private String clean(String value) {
-        if (value == null) return null;
+
+    // ✅ ICI tu ajoutes la méthode
+    private String clean(String value) {
+        if (value == null)
+            return null;
         value = value.trim();
         return value.isEmpty() ? null : value;
     }
@@ -30,43 +32,42 @@ public class ClientService {
     }
 
     @Transactional
-public Client save(Client client) {
+    public Client save(Client client) {
 
-    // 🔥 nettoyage de TOUS les champs String
-    client.setCin(clean(client.getCin()));
-    client.setRne(clean(client.getRne()));
-    client.setEmail(clean(client.getEmail()));
-    client.setRaisonSociale(clean(client.getRaisonSociale()));
-    client.setTelephone(clean(client.getTelephone()));
-    client.setAdresse(clean(client.getAdresse()));
-    client.setNom(clean(client.getNom()));
-    client.setPrenom(clean(client.getPrenom()));
+        // 🔥 nettoyage de TOUS les champs String
+        client.setCin(clean(client.getCin()));
+        client.setRne(clean(client.getRne()));
+        client.setEmail(clean(client.getEmail()));
+        client.setRaisonSociale(clean(client.getRaisonSociale()));
+        client.setTelephone(clean(client.getTelephone()));
+        client.setAdresse(clean(client.getAdresse()));
+        client.setNom(clean(client.getNom()));
+        client.setPrenom(clean(client.getPrenom()));
 
-    // 🔥 cohérence métier
-    if (client.getTypeClient() == TypeClient.ENTREPRISE) {
-        client.setCin(null);
-        client.setPrenom(null);   // pas de prénom pour une entreprise
-    } else {
-        client.setRne(null);
-        client.setRaisonSociale(null);
+        // 🔥 cohérence métier
+        if (client.getTypeClient() == TypeClient.ENTREPRISE) {
+            client.setCin(null);
+            client.setPrenom(null); // pas de prénom pour une entreprise
+        } else {
+            client.setRne(null);
+            client.setRaisonSociale(null);
+        }
+
+        return clientRepository.save(client);
     }
 
-    return clientRepository.save(client);
-}
+    public Client findById(Long id) {
+        return clientRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Client introuvable avec id = " + id));
+    }
 
-
-public Client findById(Long id) {
-    return clientRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Client introuvable avec id = " + id));
-}
-
-// ClientService.java
-// ClientService.java
-@Transactional
-public void deleteById(Long id) {
-    // Supprimer d'abord les dossiers liés
-    dossierRepository.deleteByClientId(id);
-    // Puis supprimer le client
-    clientRepository.deleteById(id);
-}
+    // ClientService.java
+    // ClientService.java
+    @Transactional
+    public void deleteById(Long id) {
+        // Supprimer d'abord les dossiers liés
+        dossierRepository.deleteByClient_Id(id);
+        // Puis supprimer le client
+        clientRepository.deleteById(id);
+    }
 }

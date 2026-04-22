@@ -8,28 +8,22 @@ import com.example.contentieux_security.service.AffaireJudiciaireService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
- // Ajouter ces imports
 import com.example.contentieux_security.dto.DossierDetailDTO;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.HistoriqueService;
 import java.security.Principal;
 import java.time.LocalDate;
 import java.util.List;
-
-import java.time.LocalDate;
-import org.springframework.format.annotation.DateTimeFormat;
-
-
+import java.util.HashMap;
+import java.util.Map;
 import com.example.contentieux_security.entity.Mission;
-import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.service.MissionService;
-@Controller
-@RequestMapping("/avocat/affaires")
+
+@RestController
+@RequestMapping("/api/avocat/affaires")
 @PreAuthorize("hasAnyRole('AVOCAT')")
 @RequiredArgsConstructor
 @Slf4j
@@ -37,645 +31,337 @@ public class AvocatAffaireController {
 
     private final AffaireJudiciaireService affaireService;
     private final DossierService dossierService;
-private final HistoriqueService historiqueService;
-// Ajouter ce champ avec les autres dans AvocatAffaireController
-private final AffaireJudiciaireService affaireJudiciaireService;
-private final MissionService missionService;  // ← ajouter cette ligne
-@GetMapping
-public String mesAffaires(Model model, Principal principal) {
-    String username = principal.getName();
-    log.info("=== LISTE AFFAIRES - username : '{}'", username);
+    private final HistoriqueService historiqueService;
+    private final AffaireJudiciaireService affaireJudiciaireService;
+    private final MissionService missionService;
 
-    List<AffaireJudiciaire> affaires =
-            affaireService.getAffairesParAvocat(username);
-    log.info("=== {} affaires trouvées", affaires.size());
+    @GetMapping
+    public ResponseEntity<?> mesAffaires(Principal principal) {
+        String username = principal.getName();
+        List<AffaireJudiciaire> affaires = affaireService.getAffairesParAvocat(username);
+        Map<Long, String> missionStatuts = new HashMap<>();
+        Map<Long, Long> missionIds = new HashMap<>();
 
-    java.util.Map<Long, String> missionStatuts = new java.util.HashMap<>();
-    java.util.Map<Long, Long>   missionIds     = new java.util.HashMap<>();
-
-    for (AffaireJudiciaire affaire : affaires) {
-        if (affaire.getMission() != null) {
-            try {
-                Long affaireId = affaire.getId();
-                Long missionId = affaire.getMission().getId();
-                String statut  = affaire.getMission().getStatut() != null
-                        ? affaire.getMission().getStatut().name()
-                        : "INCONNU";
-
-                log.info("  affaireId={} missionId={} statut={}",
-                        affaireId, missionId, statut);
-
-                missionStatuts.put(affaireId, statut);
-                missionIds.put(affaireId, missionId);
-
-            } catch (Exception e) {
-                log.warn("Mission lazy affaire {} : {}",
-                        affaire.getId(), e.getMessage());
+        for (AffaireJudiciaire affaire : affaires) {
+            if (affaire.getMission() != null) {
+                try {
+                    Long affaireId = affaire.getId();
+                    Long missionId = affaire.getMission().getId();
+                    String statut = affaire.getMission().getStatut() != null ? affaire.getMission().getStatut().name() : "INCONNU";
+                    missionStatuts.put(affaireId, statut);
+                    missionIds.put(affaireId, missionId);
+                } catch (Exception e) {
+                    log.warn("Mission lazy affaire {} : {}", affaire.getId(), e.getMessage());
+                }
             }
-        } else {
-            log.warn("  affaireId={} — pas de mission", affaire.getId());
         }
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("affaires", affaires);
+        response.put("missionStatuts", missionStatuts);
+        response.put("missionIds", missionIds);
+        return ResponseEntity.ok(response);
     }
 
-    model.addAttribute("affaires",       affaires);
-    model.addAttribute("missionStatuts", missionStatuts);
-    model.addAttribute("missionIds",     missionIds);
-
-    return "avocat/affaires/liste";
-}
-  
-
-@GetMapping("/{affaireId}")
-    public String detailAffaire(@PathVariable Long affaireId,
-                                Model model,
-                                Principal principal) {
+    @GetMapping("/{affaireId}")
+    public ResponseEntity<?> detailAffaire(@PathVariable Long affaireId, Principal principal) {
         AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-
-        if (affaire == null) {
-            return "redirect:/avocat/affaires";
+        if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
+            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
         }
-
-        // ✅ Utiliser affaire.avocat (champ direct) — jamais mission.prestataire (LAZY)
-        String avocatUsername = affaire.getAvocat() != null
-                ? affaire.getAvocat().getUsername()
-                : null;
-
-        if (avocatUsername == null || !principal.getName().equals(avocatUsername)) {
-            log.warn("Accès refusé : {} tente d'accéder à l'affaire {}",
-                    principal.getName(), affaireId);
-            return "redirect:/avocat/affaires";
-        }
-
-        model.addAttribute("affaire", affaire);
-        return "avocat/affaires/detail";
+        return ResponseEntity.ok(affaire);
     }
 
-
-
-
-
-
-
-
-     // ─────────────────────────────────────────────
-    //  AUDIENCES — GET (liste + formulaire ajout)
-    // ─────────────────────────────────────────────
- 
     @GetMapping("/{affaireId}/audiences")
-    public String gererAudiences(@PathVariable Long affaireId,
-                                 Model model,
-                                 Principal principal) {
+    public ResponseEntity<?> gererAudiences(@PathVariable Long affaireId, Principal principal) {
         AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
- 
         if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-            return "redirect:/avocat/affaires";
+            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
         }
- 
-        model.addAttribute("affaire", affaire);
-        model.addAttribute("audiences", affaire.getAudiences());
-        model.addAttribute("statutsAudience", Audience.StatutAudience.values());
-        return "avocat/affaires/audiences";
+        return ResponseEntity.ok(Map.of("audiences", affaire.getAudiences(), "statutsAudience", Audience.StatutAudience.values()));
     }
- 
-    // ─────────────────────────────────────────────
-    //  AUDIENCES — POST (ajouter une audience)
-    // ─────────────────────────────────────────────
- 
+
     @PostMapping("/{affaireId}/audiences")
-    public String ajouterAudience(@PathVariable Long affaireId,
-                                  @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAudience,
-                                  @RequestParam(required = false) String heure,
-                                  @RequestParam(required = false) String salle,
-                                  @RequestParam(required = false) String motif,
-                                  @RequestParam(required = false) String resultat,
-                                  @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate prochaineAudience,
-                                  @RequestParam Audience.StatutAudience statut,
-                                  Principal principal,
-                                  RedirectAttributes ra) {
+    public ResponseEntity<?> ajouterAudience(@PathVariable Long affaireId, @RequestBody Map<String, Object> body, Principal principal) {
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
- 
             if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-                return "redirect:/avocat/affaires";
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
- 
-            affaireService.ajouterAudience(
-                    affaireId, dateAudience, heure, salle, motif, resultat, prochaineAudience, statut
-            );
-            ra.addFlashAttribute("successMsg", "Audience ajoutée avec succès.");
+            LocalDate dateAudience = LocalDate.parse(body.get("dateAudience").toString());
+            String heure = (String) body.get("heure");
+            String salle = (String) body.get("salle");
+            String motif = (String) body.get("motif");
+            String resultat = (String) body.get("resultat");
+            LocalDate prochaineAudience = body.get("prochaineAudience") != null ? LocalDate.parse(body.get("prochaineAudience").toString()) : null;
+            Audience.StatutAudience statut = Audience.StatutAudience.valueOf((String) body.get("statut"));
+
+            affaireService.ajouterAudience(affaireId, dateAudience, heure, salle, motif, resultat, prochaineAudience, statut);
+            return ResponseEntity.ok(Map.of("message", "Audience ajoutée avec succès."));
         } catch (Exception e) {
-            log.error("Erreur ajout audience affaire {} : {}", affaireId, e.getMessage(), e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        return "redirect:/avocat/affaires/" + affaireId + "/audiences";
     }
- 
-    // ─────────────────────────────────────────────
-    //  AUDIENCES — POST (modifier le statut d'une audience)
-    // ─────────────────────────────────────────────
- 
-    @PostMapping("/{affaireId}/audiences/{audienceId}/statut")
-    public String modifierStatutAudience(@PathVariable Long affaireId,
-                                         @PathVariable Long audienceId,
-                                         @RequestParam Audience.StatutAudience statut,
-                                         @RequestParam(required = false) String resultat,
-                                         @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate prochaineAudience,
-                                         Principal principal,
-                                         RedirectAttributes ra) {
+
+    @PatchMapping("/{affaireId}/audiences/{audienceId}/statut")
+    public ResponseEntity<?> modifierStatutAudience(@PathVariable Long affaireId, @PathVariable Long audienceId, @RequestBody Map<String, Object> body, Principal principal) {
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
- 
             if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-                return "redirect:/avocat/affaires";
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
- 
+            Audience.StatutAudience statut = Audience.StatutAudience.valueOf((String) body.get("statut"));
+            String resultat = (String) body.get("resultat");
+            LocalDate prochaineAudience = body.get("prochaineAudience") != null ? LocalDate.parse(body.get("prochaineAudience").toString()) : null;
+            
             affaireService.modifierStatutAudience(audienceId, statut, resultat, prochaineAudience);
-            ra.addFlashAttribute("successMsg", "Audience mise à jour.");
+            return ResponseEntity.ok(Map.of("message", "Audience mise à jour."));
         } catch (Exception e) {
-            log.error("Erreur modification audience {} : {}", audienceId, e.getMessage(), e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        return "redirect:/avocat/affaires/" + affaireId + "/audiences";
     }
- 
-    // ─────────────────────────────────────────────
-    //  JUGEMENT — GET (formulaire saisie)
-    // ─────────────────────────────────────────────
- 
-    @GetMapping("/{affaireId}/jugement")
-    public String formulaireJugement(@PathVariable Long affaireId,
-                                     Model model,
-                                     Principal principal) {
-        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
- 
-        if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-            return "redirect:/avocat/affaires";
-        }
- 
-        model.addAttribute("affaire", affaire);
-        model.addAttribute("typesJugement", AffaireJudiciaire.TypeJugement.values());
-        return "avocat/affaires/jugement";
-    }
- 
-    // ─────────────────────────────────────────────
-    //  JUGEMENT — POST (enregistrer le jugement)
-    // ─────────────────────────────────────────────
- 
+
     @PostMapping("/{affaireId}/jugement")
-    public String saisirJugement(@PathVariable Long affaireId,
-                                 @RequestParam AffaireJudiciaire.TypeJugement typeJugement,
-                                 @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateJugement,
-                                 @RequestParam(required = false) String montantJuge,
-                                 @RequestParam(required = false) String delaiPaiementJuge,
-                                 @RequestParam(required = false) String descriptionJugement,
-                                 Principal principal,
-                                 RedirectAttributes ra) {
+    public ResponseEntity<?> saisirJugement(@PathVariable Long affaireId, @RequestBody Map<String, Object> body, Principal principal) {
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
- 
             if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-                return "redirect:/avocat/affaires";
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
- 
-            affaireService.enregistrerJugement(
-                    affaireId, typeJugement, dateJugement,
-                    montantJuge, delaiPaiementJuge, descriptionJugement
-            );
-            ra.addFlashAttribute("successMsg", "Jugement enregistré avec succès.");
+            AffaireJudiciaire.TypeJugement typeJugement = AffaireJudiciaire.TypeJugement.valueOf((String) body.get("typeJugement"));
+            LocalDate dateJugement = LocalDate.parse(body.get("dateJugement").toString());
+            String montantJuge = (String) body.get("montantJuge");
+            String delaiPaiementJuge = (String) body.get("delaiPaiementJuge");
+            String descriptionJugement = (String) body.get("descriptionJugement");
+
+            affaireService.enregistrerJugement(affaireId, typeJugement, dateJugement, montantJuge, delaiPaiementJuge, descriptionJugement);
+            return ResponseEntity.ok(Map.of("message", "Jugement enregistré avec succès."));
         } catch (Exception e) {
-            log.error("Erreur enregistrement jugement affaire {} : {}", affaireId, e.getMessage(), e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        return "redirect:/avocat/affaires/" + affaireId;
     }
- 
-    // ─────────────────────────────────────────────
-    //  UTILITAIRE PRIVÉ
-    // ─────────────────────────────────────────────
- 
-    private boolean isAvocatOwner(AffaireJudiciaire affaire, String username) {
-        return affaire.getAvocat() != null
-                && username.equals(affaire.getAvocat().getUsername());
-    }
-
-
-
-    // ══════════════════════════════════════════════════════════════════
-//  À AJOUTER dans AvocatAffaireController
-//  — avant la méthode privée isOwner()
-// ══════════════════════════════════════════════════════════════════
-
-    // ─────────────────────────────────────────────
-    //  TRIBUNAL — GET (formulaire)
-    // ─────────────────────────────────────────────
-
-    @GetMapping("/{affaireId}/tribunal")
-    public String formulaireTribunal(@PathVariable Long affaireId,
-                                     Model model,
-                                     Principal principal) {
-        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-
-        if (affaire == null || !isOwner(affaire, principal.getName())) {
-            return "redirect:/avocat/affaires";
-        }
-
-        model.addAttribute("affaire", affaire);
-        return "avocat/affaires/tribunal";
-    }
-
-    // ─────────────────────────────────────────────
-    //  TRIBUNAL — POST (enregistrer)
-    // ─────────────────────────────────────────────
 
     @PostMapping("/{affaireId}/tribunal")
-    public String modifierTribunal(
-            @PathVariable Long affaireId,
-            @RequestParam(required = false) String tribunal,
-            @RequestParam(required = false) String chambre,
-            @RequestParam(required = false) String numeroRole,
-            Principal principal,
-            RedirectAttributes ra) {
-
+    public ResponseEntity<?> modifierTribunal(@PathVariable Long affaireId, @RequestBody Map<String, String> body, Principal principal) {
         AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-
         if (affaire == null || !isOwner(affaire, principal.getName())) {
-            return "redirect:/avocat/affaires";
+            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
         }
-
         try {
-            affaireService.modifierTribunal(affaireId, tribunal, chambre, numeroRole);
-            ra.addFlashAttribute("successMsg", "Informations du tribunal mises à jour.");
+            affaireService.modifierTribunal(affaireId, body.get("tribunal"), body.get("chambre"), body.get("numeroRole"));
+            return ResponseEntity.ok(Map.of("message", "Informations du tribunal mises à jour."));
         } catch (Exception e) {
-            log.error("Erreur modification tribunal affaire {} : {}", affaireId, e.getMessage(), e);
-            ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        return "redirect:/avocat/affaires/" + affaireId + "/tribunal";
     }
 
+    private boolean isAvocatOwner(AffaireJudiciaire affaire, String username) {
+        return affaire.getAvocat() != null && username.equals(affaire.getAvocat().getUsername());
+    }
 
     private boolean isOwner(AffaireJudiciaire affaire, String username) {
-        return affaire.getAvocat() != null
-                && username.equals(affaire.getAvocat().getUsername());
+        return isAvocatOwner(affaire, username);
     }
 
-
-
-
-
-
-// ─────────────────────────────────────────────
-//  DOSSIER — GET (détails complets) afficher les details de chaque dossier a l avocat assignee
-// ─────────────────────────────────────────────
-@GetMapping("/{affaireId}/dossier")
-public String voirDossier(@PathVariable Long affaireId,
-                           Model model,
-                           Principal principal) {
-
-    AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-
-    if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-        return "redirect:/avocat/affaires";
-    }
-
-    if (affaire.getDossier() == null) {
-        return "redirect:/avocat/affaires/" + affaireId;
-    }
-
-    Long dossierId = affaire.getDossier().getId();
-    DossierDetailDTO dossier = dossierService.getDossierDetail(dossierId);
-
-    // Charger la mission avec JOIN FETCH pour éviter LazyInitializationException
-    AffaireJudiciaire affaireAvecMission = affaireJudiciaireService.findById(affaireId);
-    Mission mission = affaireAvecMission.getMission();
-
-    model.addAttribute("affaire", affaire);
-    model.addAttribute("dossier", dossier);
-    model.addAttribute("mission", mission);
-    return "avocat/affaires/dossier-detail";
-}
-// ─────────────────────────────────────────────
-//  AUDIENCES — POST (supprimer une audience)
-// ─────────────────────────────────────────────
-@PostMapping("/{affaireId}/audiences/{audienceId}/supprimer")
-public String supprimerAudience(@PathVariable Long affaireId,
-                                 @PathVariable Long audienceId,
-                                 Principal principal,
-                                 RedirectAttributes ra) {
-    try {
+    @GetMapping("/{affaireId}/dossier")
+    public ResponseEntity<?> voirDossier(@PathVariable Long affaireId, Principal principal) {
         AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
         if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-            return "redirect:/avocat/affaires";
+            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
         }
-        affaireService.supprimerAudience(audienceId);
-        ra.addFlashAttribute("successMsg", "Audience supprimée avec succès.");
-    } catch (Exception e) {
-        log.error("Erreur suppression audience {} : {}", audienceId, e.getMessage(), e);
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
-    }
-    return "redirect:/avocat/affaires/" + affaireId + "/audiences";
-}
-
-// ─────────────────────────────────────────────
-//  AUDIENCES — POST (modifier une audience)
-// ─────────────────────────────────────────────
-@PostMapping("/{affaireId}/audiences/{audienceId}/modifier")
-public String modifierAudience(@PathVariable Long affaireId,
-                                @PathVariable Long audienceId,
-                                @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate dateAudience,
-                                @RequestParam(required = false) String heure,
-                                @RequestParam(required = false) String salle,
-                                @RequestParam(required = false) String motif,
-                                @RequestParam(required = false) String resultat,
-                                @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate prochaineAudience,
-                                @RequestParam Audience.StatutAudience statut,
-                                Principal principal,
-                                RedirectAttributes ra) {
-    try {
-        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-        if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-            return "redirect:/avocat/affaires";
+        if (affaire.getDossier() == null) {
+            return ResponseEntity.status(404).body(Map.of("error", "Dossier introuvable"));
         }
-        affaireService.modifierAudienceComplete(audienceId, dateAudience, heure,
-                                                 salle, motif, resultat,
-                                                 prochaineAudience, statut);
-        ra.addFlashAttribute("successMsg", "Audience modifiée avec succès.");
-    } catch (Exception e) {
-        log.error("Erreur modification audience {} : {}", audienceId, e.getMessage(), e);
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
-    }
-    return "redirect:/avocat/affaires/" + affaireId + "/audiences";
-}
+        Long dossierId = affaire.getDossier().getId();
+        DossierDetailDTO dossier = dossierService.getDossierDetail(dossierId);
+        AffaireJudiciaire affaireAvecMission = affaireJudiciaireService.findById(affaireId);
+        Mission mission = affaireAvecMission.getMission();
 
-// ─────────────────────────────────────────────
-//  JUGEMENT — POST (supprimer le jugement)
-// ─────────────────────────────────────────────
-@PostMapping("/{affaireId}/jugement/supprimer")
-public String supprimerJugement(@PathVariable Long affaireId,
-                                 Principal principal,
-                                 RedirectAttributes ra) {
-    try {
-        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-        if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
-            return "redirect:/avocat/affaires";
+        return ResponseEntity.ok(Map.of("affaire", affaire, "dossier", dossier, "mission", mission));
+    }
+
+    @DeleteMapping("/{affaireId}/audiences/{audienceId}")
+    public ResponseEntity<?> supprimerAudience(@PathVariable Long affaireId, @PathVariable Long audienceId, Principal principal) {
+        try {
+            AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+            if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+            }
+            affaireService.supprimerAudience(audienceId);
+            return ResponseEntity.ok(Map.of("message", "Audience supprimée avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        affaireService.supprimerJugement(affaireId);
-        ra.addFlashAttribute("successMsg", "Jugement supprimé avec succès.");
-    } catch (Exception e) {
-        log.error("Erreur suppression jugement affaire {} : {}", affaireId, e.getMessage(), e);
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
     }
-    return "redirect:/avocat/affaires/" + affaireId + "/jugement";
-}
 
-// ─────────────────────────────────────────────
-//  TRIBUNAL — POST (supprimer)
-// ─────────────────────────────────────────────
-@PostMapping("/{affaireId}/tribunal/supprimer")
-public String supprimerTribunal(@PathVariable Long affaireId,
-                                 Principal principal,
-                                 RedirectAttributes ra) {
-    try {
-        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-        if (affaire == null || !isOwner(affaire, principal.getName())) {
-            return "redirect:/avocat/affaires";
+    @PutMapping("/{affaireId}/audiences/{audienceId}")
+    public ResponseEntity<?> modifierAudience(@PathVariable Long affaireId, @PathVariable Long audienceId, @RequestBody Map<String, Object> body, Principal principal) {
+        try {
+            AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+            if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+            }
+            LocalDate dateAudience = LocalDate.parse(body.get("dateAudience").toString());
+            String heure = (String) body.get("heure");
+            String salle = (String) body.get("salle");
+            String motif = (String) body.get("motif");
+            String resultat = (String) body.get("resultat");
+            LocalDate prochaineAudience = body.get("prochaineAudience") != null ? LocalDate.parse(body.get("prochaineAudience").toString()) : null;
+            Audience.StatutAudience statut = Audience.StatutAudience.valueOf((String) body.get("statut"));
+
+            affaireService.modifierAudienceComplete(audienceId, dateAudience, heure, salle, motif, resultat, prochaineAudience, statut);
+            return ResponseEntity.ok(Map.of("message", "Audience modifiée avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        affaireService.modifierTribunal(affaireId, null, null, null);
-        ra.addFlashAttribute("successMsg", "Informations du tribunal supprimées.");
-    } catch (Exception e) {
-        log.error("Erreur suppression tribunal affaire {} : {}", affaireId, e.getMessage(), e);
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
     }
-    return "redirect:/avocat/affaires/" + affaireId + "/tribunal";
-}
 
-
-
-
-
-
-
-
-
-@GetMapping("/dashboard")
-public String dashboard(Model model, Principal principal) {
-    String username = principal.getName();
-
-    List<AffaireJudiciaire> affaires =
-            affaireService.getAffairesParAvocat(username);
-
-    // ── Stats missions via affaires ──────────────
-    long totalMissions  = affaires.stream()
-            .filter(a -> a.getMission() != null).count();
-    long enCours        = affaires.stream()
-            .filter(a -> a.getMission() != null &&
-                    a.getMission().getStatut() == StatutMission.EN_COURS).count();
-    long pvSoumis       = affaires.stream()
-            .filter(a -> a.getMission() != null &&
-                    a.getMission().getStatut() == StatutMission.PV_SOUMIS).count();
-    long factureSoumise = affaires.stream()
-            .filter(a -> a.getMission() != null &&
-                    a.getMission().getStatut() == StatutMission.FACTURE_SOUMISE).count();
-    long terminees      = affaires.stream()
-            .filter(a -> a.getMission() != null &&
-                    a.getMission().getStatut() == StatutMission.TERMINEE).count();
-    long annulees       = affaires.stream()
-            .filter(a -> a.getMission() != null &&
-                    a.getMission().getStatut() == StatutMission.ANNULEE).count();
-
-    double totalHonoraires = affaires.stream()
-            .filter(a -> a.getMission() != null &&
-                    a.getMission().getMontantFacture() != null)
-            .mapToDouble(a -> a.getMission().getMontantFacture())
-            .sum();
-
-    // ── Stats affaires ───────────────────────────
-    long totalAffaires   = affaires.size();
-    long affairesEnCours = affaires.stream()
-            .filter(a -> a.getStatut() ==
-                    AffaireJudiciaire.StatutAffaire.EN_COURS).count();
-    long jugementRendu   = affaires.stream()
-            .filter(a -> a.getStatut() ==
-                    AffaireJudiciaire.StatutAffaire.JUGEMENT_RENDU).count();
-    long audiencesAVenir = affaireService
-            .getAudiencesAVenir(username).size();
-
-    // ── Affaires récentes (5 dernières) ──────────
-    List<AffaireJudiciaire> affairesRecentes = affaires.stream()
-            .limit(5)
-            .toList();
-
-    model.addAttribute("totalMissions",    totalMissions);
-    model.addAttribute("enCours",          enCours);
-    model.addAttribute("pvSoumis",         pvSoumis);
-    model.addAttribute("factureSoumise",   factureSoumise);
-    model.addAttribute("terminees",        terminees);
-    model.addAttribute("annulees",         annulees);
-    model.addAttribute("totalHonoraires",  totalHonoraires);
-    model.addAttribute("totalAffaires",    totalAffaires);
-    model.addAttribute("affairesEnCours",  affairesEnCours);
-    model.addAttribute("jugementRendu",    jugementRendu);
-    model.addAttribute("audiencesAVenir",  audiencesAVenir);
-    model.addAttribute("affairesRecentes", affairesRecentes);
-
-    return "avocat/dashboard";
-}
-
-
-
-
-
-
-
-
-
-
-
-
-
-// =========================================================
-//  📄 PV — GET formulaire
-// =========================================================
-// =========================================================
-//  📄 PV — GET formulaire
-// =========================================================
-@GetMapping("/{affaireId}/missions/{missionId}/pv")
-@PreAuthorize("hasAnyRole('AVOCAT')")
-public String voirPV(@PathVariable Long affaireId,
-                     @PathVariable Long missionId,
-                     Model model) {
-    AffaireJudiciaire affaire = affaireJudiciaireService.findById(affaireId);
-    Mission mission = affaire.getMission(); // déjà chargée avec JOIN FETCH
-    model.addAttribute("affaire", affaire);
-    model.addAttribute("mission", mission);
-    return "avocat/missions/pv";
-}
-
-// =========================================================
-//  📄 PV — POST soumettre
-// =========================================================
-@PostMapping("/{affaireId}/missions/{missionId}/pv")
-@PreAuthorize("hasAnyRole('AVOCAT','EXPERT','HUISSIER')")
-public String soumettrePV(@PathVariable Long affaireId,
-                           @PathVariable Long missionId,
-                           @RequestParam String pvTexte,
-                           RedirectAttributes ra) {
-    try {
-        affaireJudiciaireService.soumettreAvocatPV(affaireId, pvTexte);
-        ra.addFlashAttribute("successMsg", "PV soumis avec succès.");
-    } catch (Exception e) {
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    @DeleteMapping("/{affaireId}/jugement")
+    public ResponseEntity<?> supprimerJugement(@PathVariable Long affaireId, Principal principal) {
+        try {
+            AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+            if (affaire == null || !isAvocatOwner(affaire, principal.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+            }
+            affaireService.supprimerJugement(affaireId);
+            return ResponseEntity.ok(Map.of("message", "Jugement supprimé avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
-    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/pv";
-}
-// =========================================================
-//  🧾 FACTURE — GET formulaire
-// =========================================================
-@GetMapping("/{affaireId}/missions/{missionId}/facture")
-@PreAuthorize("hasAnyRole('AVOCAT')")
-public String voirFacture(@PathVariable Long affaireId,
-                           @PathVariable Long missionId,
-                           Model model) {
-    AffaireJudiciaire affaire = affaireJudiciaireService.findById(affaireId);
-    Mission mission = affaire.getMission();
-    model.addAttribute("affaire", affaire);
-    model.addAttribute("mission", mission);
-    return "avocat/missions/facture";
-}
-// =========================================================
-//  🧾 FACTURE — POST soumettre
-// =========================================================
-@PostMapping("/{affaireId}/missions/{missionId}/facture")
-@PreAuthorize("hasAnyRole('AVOCAT')")
-public String soumettreFacture(@PathVariable Long affaireId,
-                                @PathVariable Long missionId,
-                                @RequestParam String factureRef,
-                                @RequestParam Double montantFacture,
-                                RedirectAttributes ra) {
-    try {
-        affaireJudiciaireService.soumettreAvocatFacture(affaireId, factureRef, montantFacture);
-        ra.addFlashAttribute("successMsg", "Facture soumise avec succès.");
-    } catch (Exception e) {
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+
+    @DeleteMapping("/{affaireId}/tribunal")
+    public ResponseEntity<?> supprimerTribunal(@PathVariable Long affaireId, Principal principal) {
+        try {
+            AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+            if (affaire == null || !isOwner(affaire, principal.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+            }
+            affaireService.modifierTribunal(affaireId, null, null, null);
+            return ResponseEntity.ok(Map.of("message", "Informations du tribunal supprimées."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
-    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/facture";
-}
 
+    @GetMapping("/dashboard")
+    public ResponseEntity<?> dashboard(Principal principal) {
+        String username = principal.getName();
+        List<AffaireJudiciaire> affaires = affaireService.getAffairesParAvocat(username);
 
+        long totalMissions = affaires.stream().filter(a -> a.getMission() != null).count();
+        long enCours = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.EN_COURS).count();
+        long pvSoumis = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.PV_SOUMIS).count();
+        long factureSoumise = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.FACTURE_SOUMISE).count();
+        long terminees = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.TERMINEE).count();
+        long annulees = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.ANNULEE).count();
 
+        double totalHonoraires = affaires.stream()
+                .filter(a -> a.getMission() != null && a.getMission().getMontantFacture() != null)
+                .mapToDouble(a -> a.getMission().getMontantFacture())
+                .sum();
 
+        long totalAffaires = affaires.size();
+        long affairesEnCours = affaires.stream().filter(a -> a.getStatut() == AffaireJudiciaire.StatutAffaire.EN_COURS).count();
+        long jugementRendu = affaires.stream().filter(a -> a.getStatut() == AffaireJudiciaire.StatutAffaire.JUGEMENT_RENDU).count();
+        long audiencesAVenir = affaireService.getAudiencesAVenir(username).size();
 
-// =========================================================
-//  📄 PV — DELETE supprimer
-// =========================================================
-@PostMapping("/{affaireId}/missions/{missionId}/pv/supprimer")
-@PreAuthorize("hasAnyRole('AVOCAT')")
-public String supprimerPV(@PathVariable Long affaireId,
-                           @PathVariable Long missionId,
-                           RedirectAttributes ra) {
-    try {
-        affaireJudiciaireService.supprimerAvocatPV(affaireId);
-        ra.addFlashAttribute("successMsg", "PV supprimé avec succès.");
-    } catch (Exception e) {
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+        List<AffaireJudiciaire> affairesRecentes = affaires.stream().limit(5).toList();
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("totalMissions", totalMissions);
+        response.put("enCours", enCours);
+        response.put("pvSoumis", pvSoumis);
+        response.put("factureSoumise", factureSoumise);
+        response.put("terminees", terminees);
+        response.put("annulees", annulees);
+        response.put("totalHonoraires", totalHonoraires);
+        response.put("totalAffaires", totalAffaires);
+        response.put("affairesEnCours", affairesEnCours);
+        response.put("jugementRendu", jugementRendu);
+        response.put("audiencesAVenir", audiencesAVenir);
+        response.put("affairesRecentes", affairesRecentes);
+
+        return ResponseEntity.ok(response);
     }
-    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/pv";
-}
 
-// =========================================================
-//  📄 PV — PUT modifier
-// =========================================================
-@PostMapping("/{affaireId}/missions/{missionId}/pv/modifier")
-@PreAuthorize("hasAnyRole('AVOCAT')")
-public String modifierPV(@PathVariable Long affaireId,
-                          @PathVariable Long missionId,
-                          @RequestParam String pvTexte,
-                          RedirectAttributes ra) {
-    try {
-        affaireJudiciaireService.modifierAvocatPV(affaireId, pvTexte);
-        ra.addFlashAttribute("successMsg", "PV modifié avec succès.");
-    } catch (Exception e) {
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    @GetMapping("/{affaireId}/missions/{missionId}/pv")
+    @PreAuthorize("hasAnyRole('AVOCAT')")
+    public ResponseEntity<?> voirPV(@PathVariable Long affaireId, @PathVariable Long missionId) {
+        AffaireJudiciaire affaire = affaireJudiciaireService.findById(affaireId);
+        return ResponseEntity.ok(Map.of("affaire", affaire, "mission", affaire.getMission()));
     }
-    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/pv";
-}
 
-// =========================================================
-//  🧾 FACTURE — DELETE supprimer
-// =========================================================
-@PostMapping("/{affaireId}/missions/{missionId}/facture/supprimer")
-@PreAuthorize("hasAnyRole('AVOCAT')")
-public String supprimerFacture(@PathVariable Long affaireId,
-                                @PathVariable Long missionId,
-                                RedirectAttributes ra) {
-    try {
-        affaireJudiciaireService.supprimerAvocatFacture(affaireId);
-        ra.addFlashAttribute("successMsg", "Facture supprimée avec succès.");
-    } catch (Exception e) {
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    @PostMapping("/{affaireId}/missions/{missionId}/pv")
+    @PreAuthorize("hasAnyRole('AVOCAT','EXPERT','HUISSIER')")
+    public ResponseEntity<?> soumettrePV(@PathVariable Long affaireId, @PathVariable Long missionId, @RequestBody Map<String, String> body) {
+        try {
+            affaireJudiciaireService.soumettreAvocatPV(affaireId, body.get("pvTexte"));
+            return ResponseEntity.ok(Map.of("message", "PV soumis avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
     }
-    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/facture";
-}
 
-// =========================================================
-//  🧾 FACTURE — PUT modifier
-// =========================================================
-@PostMapping("/{affaireId}/missions/{missionId}/facture/modifier")
-@PreAuthorize("hasAnyRole('AVOCAT')")
-public String modifierFacture(@PathVariable Long affaireId,
-                               @PathVariable Long missionId,
-                               @RequestParam String factureRef,
-                               @RequestParam Double montantFacture,
-                               RedirectAttributes ra) {
-    try {
-        affaireJudiciaireService.modifierAvocatFacture(affaireId, factureRef, montantFacture);
-        ra.addFlashAttribute("successMsg", "Facture modifiée avec succès.");
-    } catch (Exception e) {
-        ra.addFlashAttribute("errorMsg", "Erreur : " + e.getMessage());
+    @GetMapping("/{affaireId}/missions/{missionId}/facture")
+    @PreAuthorize("hasAnyRole('AVOCAT')")
+    public ResponseEntity<?> voirFacture(@PathVariable Long affaireId, @PathVariable Long missionId) {
+        AffaireJudiciaire affaire = affaireJudiciaireService.findById(affaireId);
+        return ResponseEntity.ok(Map.of("affaire", affaire, "mission", affaire.getMission()));
     }
-    return "redirect:/avocat/affaires/" + affaireId + "/missions/" + missionId + "/facture";
-}
 
+    @PostMapping("/{affaireId}/missions/{missionId}/facture")
+    @PreAuthorize("hasAnyRole('AVOCAT')")
+    public ResponseEntity<?> soumettreFacture(@PathVariable Long affaireId, @PathVariable Long missionId, @RequestBody Map<String, Object> body) {
+        try {
+            affaireJudiciaireService.soumettreAvocatFacture(affaireId, (String) body.get("factureRef"), Double.valueOf(body.get("montantFacture").toString()));
+            return ResponseEntity.ok(Map.of("message", "Facture soumise avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
+    @DeleteMapping("/{affaireId}/missions/{missionId}/pv")
+    @PreAuthorize("hasAnyRole('AVOCAT')")
+    public ResponseEntity<?> supprimerPV(@PathVariable Long affaireId, @PathVariable Long missionId) {
+        try {
+            affaireJudiciaireService.supprimerAvocatPV(affaireId);
+            return ResponseEntity.ok(Map.of("message", "PV supprimé avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
+    @PutMapping("/{affaireId}/missions/{missionId}/pv")
+    @PreAuthorize("hasAnyRole('AVOCAT')")
+    public ResponseEntity<?> modifierPV(@PathVariable Long affaireId, @PathVariable Long missionId, @RequestBody Map<String, String> body) {
+        try {
+            affaireJudiciaireService.modifierAvocatPV(affaireId, body.get("pvTexte"));
+            return ResponseEntity.ok(Map.of("message", "PV modifié avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
+    @DeleteMapping("/{affaireId}/missions/{missionId}/facture")
+    @PreAuthorize("hasAnyRole('AVOCAT')")
+    public ResponseEntity<?> supprimerFacture(@PathVariable Long affaireId, @PathVariable Long missionId) {
+        try {
+            affaireJudiciaireService.supprimerAvocatFacture(affaireId);
+            return ResponseEntity.ok(Map.of("message", "Facture supprimée avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{affaireId}/missions/{missionId}/facture")
+    @PreAuthorize("hasAnyRole('AVOCAT')")
+    public ResponseEntity<?> modifierFacture(@PathVariable Long affaireId, @PathVariable Long missionId, @RequestBody Map<String, Object> body) {
+        try {
+            affaireJudiciaireService.modifierAvocatFacture(affaireId, (String) body.get("factureRef"), Double.valueOf(body.get("montantFacture").toString()));
+            return ResponseEntity.ok(Map.of("message", "Facture modifiée avec succès."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 }

@@ -1,0 +1,106 @@
+.sidebar {
+  width: 280px;
+  background-color: #ffffff;
+  border-right: 1px solid #eaeaea;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  position: relative;   /* Fix: empêche le header de bloquer les clics */
+  z-index: 20;
+  height: calc(100vh - 65px);
+  overflow-y: auto;
+  pointer-events: all;  /* ← force les clics */
+}
+
+.sidebar-header {
+  padding: 20px;
+  border-bottom: 1px solid #f1f1f1;
+  background: #fafafa;
+}
+
+.role-badge {
+  display: inline-block;
+  background: #e3f2fd;
+  color: #1976d2;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  margin: 0 0 5px 0;
+  letter-spacing: 0.5px;
+  border: 1px solid #bbdefb;
+}
+
+.user-name-small {
+  margin: 5px 0 0 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.menu-section {
+  padding: 20px 0;
+  border-bottom: 1px solid #f1f1f1;
+}
+
+.menu-label {
+  padding: 0 25px;
+  color: #999;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  margin-bottom: 10px;
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+li a {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 25px;
+  color: #444;
+  text-decoration: none;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  border-left: 4px solid transparent;
+  position: relative;
+  z-index: 21;
+  cursor: pointer;
+  pointer-events: all;
+
+  .icon {
+    font-size: 1.1rem;
+    opacity: 0.8;
+  }
+
+  &:hover {
+    background-color: #f8f9fa;
+    color: #007bff;
+
+    .icon { opacity: 1; }
+  }
+
+  &.active-link {
+    background-color: #f0f7ff;
+    color: #007bff;
+    font-weight: 600;
+    border-left-color: #007bff;
+
+    .icon { opacity: 1; }
+  }
+}
+
+.debug-info {
+  padding: 10px 25px;
+
+  small {
+    color: #aaa;
+    font-size: 0.75rem;
+    font-style: italic;
+  }
+}

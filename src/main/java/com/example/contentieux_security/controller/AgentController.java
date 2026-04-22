@@ -4,7 +4,6 @@ import com.example.contentieux_security.dto.AgentProfileUpdateRequest;
 import com.example.contentieux_security.dto.GarantieAjoutRequest;
 import com.example.contentieux_security.dto.PasswordChangeRequest;
 import com.example.contentieux_security.dto.PrestataireCreationRequest;
-import com.example.contentieux_security.dto.PrestataireDTO;
 import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.entity.Client;
 import com.example.contentieux_security.entity.DossierContentieux;
@@ -12,7 +11,6 @@ import com.example.contentieux_security.entity.Mission;
 import com.example.contentieux_security.entity.Prestataire;
 import com.example.contentieux_security.enums.DossierStatus;
 import com.example.contentieux_security.enums.StatutMission;
-import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.repository.DossierRepository;
 import com.example.contentieux_security.repository.MissionRepository;
 import com.example.contentieux_security.service.AgentBancaireService;
@@ -20,28 +18,23 @@ import com.example.contentieux_security.service.ClientService;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.MissionService;
 import com.example.contentieux_security.service.PrestataireService;
-import com.example.contentieux_security.enums.TypeClient;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import com.example.contentieux_security.service.PrestataireService;
 
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-@Controller
-@RequestMapping("/agent")
+@RestController
+@RequestMapping("/api/agent")
 @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
 @RequiredArgsConstructor
 public class AgentController {
@@ -59,18 +52,16 @@ public class AgentController {
     // ══════════════════════════════════════════════════════════════
 
     @GetMapping("/dashboard")
-    public String agentDashboard(Model model, @AuthenticationPrincipal OidcUser oidcUser) {
-        AgentBancaire agent = agentService.findAgentByUsername(oidcUser.getPreferredUsername());
+    public ResponseEntity<?> agentDashboard(Principal principal) {
+        AgentBancaire agent = agentService.findAgentByUsername(principal.getName());
         if (agent == null) {
-            model.addAttribute("error", "Compte Keycloak non enregistré en base. Contactez un administrateur.");
-            return "error";
+            return ResponseEntity.badRequest().body(Map.of("error", "Compte non enregistré en base."));
         }
-        model.addAttribute("agent", agent);
-        model.addAttribute("agence", agent.getAgence());
-        model.addAttribute("givenName", oidcUser.getGivenName());
-        model.addAttribute("familyName", oidcUser.getFamilyName());
-        model.addAttribute("username", oidcUser.getPreferredUsername());
-        return "agent/dashboard";
+        Map<String, Object> response = new HashMap<>();
+        response.put("agent", agent);
+        response.put("agence", agent.getAgence());
+        response.put("username", principal.getName());
+        return ResponseEntity.ok(response);
     }
 
     // ══════════════════════════════════════════════════════════════
@@ -78,554 +69,264 @@ public class AgentController {
     // ══════════════════════════════════════════════════════════════
 
     @GetMapping("/clients")
-    public String gererClients(Model model, @AuthenticationPrincipal OidcUser oidcUser) {
-        String agentUsername = oidcUser.getPreferredUsername();
-        AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
+    public ResponseEntity<?> gererClients(Principal principal) {
+        AgentBancaire agent = agentService.findAgentByUsername(principal.getName());
 
-        if (agent == null) {
-            model.addAttribute("error", "Agent non trouvé");
-            return "error";
-        }
-
-        if (agent.getAgence() == null) {
-            model.addAttribute("error", "Agent non rattaché à une agence");
-            return "error";
+        if (agent == null || agent.getAgence() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Agent ou agence non trouvé"));
         }
 
         List<Client> clients = clientService.findByAgence(agent.getAgence());
-
-        model.addAttribute("pageTitle", "Gérer les Clients");
-        model.addAttribute("clients", clients != null ? clients : new ArrayList<>());
-        model.addAttribute("nouveauClient", new Client());
-        model.addAttribute("givenName", oidcUser.getGivenName());
-        model.addAttribute("familyName", oidcUser.getFamilyName());
-        model.addAttribute("username", agentUsername);
-        return "agent/clients";
+        return ResponseEntity.ok(clients);
     }
-  
   
     @PostMapping("/clients/creer")
-public String creerClient(@ModelAttribute Client nouveauClient,
-                          @AuthenticationPrincipal OidcUser oidcUser,
-                          RedirectAttributes redirectAttrs) {
-    try {
-        String agentUsername = oidcUser.getPreferredUsername();
-        AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
+    public ResponseEntity<?> creerClient(@RequestBody Client nouveauClient, Principal principal) {
+        try {
+            AgentBancaire agent = agentService.findAgentByUsername(principal.getName());
 
-        if (agent == null || agent.getAgence() == null) {
-            redirectAttrs.addFlashAttribute("error", "Agent ou agence non trouvé");
-            return "redirect:/agent/clients";
+            if (agent == null || agent.getAgence() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Agent ou agence non trouvé"));
+            }
+
+            nouveauClient.setAgence(agent.getAgence());
+            nouveauClient.setDateInscription(LocalDate.now());
+
+            Client saved = clientService.save(nouveauClient);
+            return ResponseEntity.ok(Map.of("message", "Client " + saved.getTypeClient() + " créé avec succès !", "client", saved));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-
-        // 🏦 Affectation agence + date
-        nouveauClient.setAgence(agent.getAgence());
-        nouveauClient.setDateInscription(LocalDate.now());
-
-        // 🔥 DEBUG CRITIQUE
-        System.out.println("========================================");
-        System.out.println("🔍 AVANT Service:");
-        System.out.println("  - typeClient = " + nouveauClient.getTypeClient());
-        System.out.println("  - raisonSociale = " + nouveauClient.getRaisonSociale());
-        System.out.println("  - rne = " + nouveauClient.getRne());
-        System.out.println("========================================");
-
-        // 💾 Sauvegarde (le Service fait la déduction et validation)
-        Client saved = clientService.save(nouveauClient);
-
-        System.out.println("✅ APRÈS Service:");
-        System.out.println("  - ID = " + saved.getId());
-        System.out.println("  - typeClient = " + saved.getTypeClient());
-
-        redirectAttrs.addFlashAttribute("success", 
-            "Client " + saved.getTypeClient() + " créé avec succès !");
-        return "redirect:/agent/clients";
-
-    } catch (IllegalArgumentException e) {
-        redirectAttrs.addFlashAttribute("error", e.getMessage());
-        return "redirect:/agent/clients";
-    } catch (Exception e) {
-        e.printStackTrace();
-        redirectAttrs.addFlashAttribute("error", "Erreur: " + e.getMessage());
-        return "redirect:/agent/clients";
     }
 
-}
-
-
-
-// ══════════════════════════════════════════════════════════════
-//  ÉDITION CLIENT
-// ══════════════════════════════════════════════════════════════
-
-@GetMapping("/clients/{id}/edit")
-public String editClientForm(@PathVariable Long id,
-                              Model model,
-                              @AuthenticationPrincipal OidcUser oidcUser) {
-    Client client = clientService.findById(id);
-
-    if (client == null) {
-        model.addAttribute("error", "Client non trouvé");
-        return "redirect:/agent/clients";
-    }
-
-    model.addAttribute("client", client);
-    model.addAttribute("givenName",  oidcUser.getGivenName());
-    model.addAttribute("familyName", oidcUser.getFamilyName());
-    model.addAttribute("username",   oidcUser.getPreferredUsername());
-
-    return "agent/clients/edit"; // ✅ créer ce template
-}
-
-@PostMapping("/clients/{id}/edit")
-public String updateClient(@PathVariable Long id,
-                            @ModelAttribute Client client,
-                            @AuthenticationPrincipal OidcUser oidcUser,
-                            RedirectAttributes redirectAttrs) {
-    try {
-        Client existing = clientService.findById(id);
-        if (existing == null) {
-            redirectAttrs.addFlashAttribute("error", "Client non trouvé");
-            return "redirect:/agent/clients";
+    @GetMapping("/clients/{id}")
+    public ResponseEntity<?> getClient(@PathVariable Long id, Principal principal) {
+        Client client = clientService.findById(id);
+        if (client == null) {
+            return ResponseEntity.notFound().build();
         }
-
-        // ✅ Conserver l'agence et la date d'inscription d'origine
-        client.setId(id);
-        client.setAgence(existing.getAgence());
-        client.setDateInscription(existing.getDateInscription());
-
-        clientService.save(client);
-        redirectAttrs.addFlashAttribute("success", "Client mis à jour avec succès !");
-
-    } catch (Exception e) {
-        redirectAttrs.addFlashAttribute("error", "Erreur : " + e.getMessage());
+        return ResponseEntity.ok(client);
     }
-    return "redirect:/agent/clients";
-}
 
+    @PutMapping("/clients/{id}")
+    public ResponseEntity<?> updateClient(@PathVariable Long id, @RequestBody Client client, Principal principal) {
+        try {
+            Client existing = clientService.findById(id);
+            if (existing == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Client non trouvé"));
+            }
 
+            client.setId(id);
+            client.setAgence(existing.getAgence());
+            client.setDateInscription(existing.getDateInscription());
 
-@PostMapping("/clients/{id}/delete")
-public String deleteClient(@PathVariable Long id,
-                           RedirectAttributes redirectAttrs) {
-    try {
-        // ✅ Vérifier si le client a des dossiers
-        List<DossierContentieux> dossiers = dossierService.findByClientId(id);
-        if (dossiers != null && !dossiers.isEmpty()) {
-            redirectAttrs.addFlashAttribute("error",
-                "Impossible de supprimer ce client : il possède " 
-                + dossiers.size() + " dossier(s) contentieux. "
-                + "Supprimez d'abord les dossiers associés.");
-            return "redirect:/agent/clients";
+            Client updated = clientService.save(client);
+            return ResponseEntity.ok(Map.of("message", "Client mis à jour avec succès !", "client", updated));
+
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-
-        clientService.deleteById(id);
-        redirectAttrs.addFlashAttribute("success", "Client supprimé avec succès !");
-
-    } catch (Exception e) {
-        redirectAttrs.addFlashAttribute("error", "Erreur suppression : " + e.getMessage());
     }
-    return "redirect:/agent/clients";
-}
+
+    @DeleteMapping("/clients/{id}")
+    public ResponseEntity<?> deleteClient(@PathVariable Long id) {
+        try {
+            List<DossierContentieux> dossiers = dossierService.findByClientId(id);
+            if (dossiers != null && !dossiers.isEmpty()) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Impossible de supprimer ce client : il possède " + dossiers.size() + " dossier(s) contentieux."));
+            }
+            clientService.deleteById(id);
+            return ResponseEntity.ok(Map.of("message", "Client supprimé avec succès !"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
     @GetMapping("/clients/{id}/dossiers")
-    public String voirDossiersClient(@PathVariable Long id,
-                                     Model model,
-                                     @AuthenticationPrincipal OidcUser oidcUser) {
+    public ResponseEntity<?> voirDossiersClient(@PathVariable Long id, Principal principal) {
         try {
-            String agentUsername = oidcUser.getPreferredUsername();
-            AgentBancaire agent = agentService.findAgentByUsername(agentUsername);
-
-            if (agent == null) {
-                model.addAttribute("error", "Agent non trouvé");
-                return "error";
+            AgentBancaire agent = agentService.findAgentByUsername(principal.getName());
+            if (agent == null || agent.getAgence() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Agent ou agence non trouvé"));
             }
-
-            if (agent.getAgence() == null) {
-                model.addAttribute("error", "Agent non rattaché à une agence");
-                return "error";
-            }
-
-            Long agentAgenceId = agent.getAgence().getId();
 
             Client client = clientService.findById(id);
-
-            if (client == null) {
-                model.addAttribute("error", "Client non trouvé avec l'id: " + id);
-                return "error";
+            if (client == null || client.getAgence() == null) {
+                return ResponseEntity.badRequest().body(Map.of("error", "Client non trouvé ou sans agence"));
             }
 
-            if (client.getAgence() == null) {
-                model.addAttribute("error", "Client " + id + " non rattaché à une agence");
-                return "error";
-            }
-
-            Long clientAgenceId = client.getAgence().getId();
-
-            if (!clientAgenceId.equals(agentAgenceId)) {
-                model.addAttribute("error", "Client non autorisé pour cette agence");
-                return "error";
+            if (!client.getAgence().getId().equals(agent.getAgence().getId())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Client non autorisé pour cette agence"));
             }
 
             List<DossierContentieux> dossiers = dossierService.findByClientId(id);
-
-            model.addAttribute("client", client);
-            model.addAttribute("dossiers", dossiers != null ? dossiers : new ArrayList<>());
-            model.addAttribute("pageTitle", "Dossiers de " + client.getNom() + " " + client.getPrenom());
-            model.addAttribute("givenName", oidcUser.getGivenName());
-            model.addAttribute("familyName", oidcUser.getFamilyName());
-            model.addAttribute("username", agentUsername);
-
-            return "agent/clients/dossiers";
+            Map<String, Object> response = new HashMap<>();
+            response.put("client", client);
+            response.put("dossiers", dossiers);
+            return ResponseEntity.ok(response);
 
         } catch (Exception e) {
-            e.printStackTrace();
-            model.addAttribute("error", "Erreur technique: " + e.getClass().getSimpleName() + " - " + e.getMessage());
-            return "error";
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 
-  //  @GetMapping("/missions")
-    //public String suivreMissions(Model model) {
-      //  model.addAttribute("pageTitle", "Suivre les Missions");
-        //return "agent/missions";
-    //}
-
     // ══════════════════════════════════════════════════════════════
-    //  MOT DE PASSE
+    //  MOT DE PASSE & PROFIL
     // ══════════════════════════════════════════════════════════════
-
-    @GetMapping("/change-password")
-    public String showChangePasswordForm(Model model) {
-        model.addAttribute("passwordChange", new PasswordChangeRequest());
-        return "agent/change-password";
-    }
 
     @PostMapping("/change-password")
-    public String changePassword(@ModelAttribute PasswordChangeRequest request,
-                                 RedirectAttributes redirectAttrs) {
+    public ResponseEntity<?> changePassword(@RequestBody PasswordChangeRequest request) {
         try {
             agentService.changePassword(getCurrentUsername(), request);
-            redirectAttrs.addFlashAttribute("success", "Mot de passe changé !");
-            return "redirect:/agent/dashboard";
+            return ResponseEntity.ok(Map.of("message", "Mot de passe changé !"));
         } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", e.getMessage());
-            return "redirect:/agent/change-password";
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
-    // ══════════════════════════════════════════════════════════════
-    //  PROFIL
-    // ══════════════════════════════════════════════════════════════
-
-    @GetMapping("/profile/edit")
-    public String showEditProfileForm(Model model) {
+    @GetMapping("/profile")
+    public ResponseEntity<?> getProfile() {
         AgentBancaire agent = agentService.findAgentByUsername(getCurrentUsername());
         if (agent == null) {
-            model.addAttribute("error", "Agent non trouvé");
-            return "error";
+            return ResponseEntity.badRequest().body(Map.of("error", "Agent non trouvé"));
         }
-        AgentProfileUpdateRequest request = new AgentProfileUpdateRequest();
-        request.setNom(agent.getNom());
-        request.setPrenom(agent.getPrenom());
-        request.setEmail(agent.getEmail());
-        request.setTelephone(agent.getTelephone());
-        model.addAttribute("profileUpdate", request);
-        model.addAttribute("agent", agent);
-        return "agent/edit-profile";
+        return ResponseEntity.ok(agent);
     }
 
-    @PostMapping("/profile/edit")
-    public String updateProfile(@ModelAttribute AgentProfileUpdateRequest request,
-                                RedirectAttributes redirectAttrs) {
+    @PutMapping("/profile")
+    public ResponseEntity<?> updateProfile(@RequestBody AgentProfileUpdateRequest request) {
         try {
             agentService.updateProfile(getCurrentUsername(), request);
-            redirectAttrs.addFlashAttribute("success", "Profil mis à jour !");
-            return "redirect:/agent/dashboard";
+            return ResponseEntity.ok(Map.of("message", "Profil mis à jour !"));
         } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", e.getMessage());
-            return "redirect:/agent/profile/edit";
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     // ══════════════════════════════════════════════════════════════
-    //  PRESTATAIRES
-    // ══════════════════════════════════════════════════════════════
-
-      // ══════════════════════════════════════════════════════════════
     //  PRESTATAIRES
     // ══════════════════════════════════════════════════════════════
 
     @GetMapping("/prestataires")
-    public String listPrestataires(Model model, @AuthenticationPrincipal OidcUser oidcUser) {
-        String agentUsername = oidcUser.getPreferredUsername();
-        List<Prestataire> prestataires = prestataireService.getPrestatairesParAgent(agentUsername);
-
-        model.addAttribute("prestataires", prestataires != null ? prestataires : new ArrayList<>());
-        model.addAttribute("nouveauPrestataire", new PrestataireCreationRequest());
-        model.addAttribute("typesPrestataire", TypePrestataire.values());
-        model.addAttribute("givenName", oidcUser.getGivenName());
-        model.addAttribute("familyName", oidcUser.getFamilyName());
-        model.addAttribute("username", agentUsername);
-        return "agent/prestataires/list";
+    public ResponseEntity<?> listPrestataires(Principal principal) {
+        List<Prestataire> prestataires = prestataireService.getPrestatairesParAgent(principal.getName());
+        return ResponseEntity.ok(prestataires);
     }
 
-    @GetMapping("/prestataires/create")
-    public String showCreateForm(Model model, @AuthenticationPrincipal OidcUser oidcUser) {
-        if (oidcUser == null) {
-            return "redirect:/oauth2/authorization/keycloak";
-        }
-
-        model.addAttribute("nouveauPrestataire", new PrestataireCreationRequest());
-        model.addAttribute("typesPrestataire", TypePrestataire.values());
-
-        model.addAttribute("givenName", oidcUser.getGivenName() != null ? oidcUser.getGivenName() : "");
-        model.addAttribute("familyName", oidcUser.getFamilyName() != null ? oidcUser.getFamilyName() : "");
-        model.addAttribute("username", oidcUser.getPreferredUsername() != null ? oidcUser.getPreferredUsername() : "");
-
-        return "agent/prestataires/create";
-    }
-
-  // Redirection pour les anciens liens en français (utile pendant la transition)
-  @GetMapping("/agent/prestataires/creer")
-public String showCreateForm(Model model) {
-    model.addAttribute("prestataire", new PrestataireCreationRequest());
-    model.addAttribute("typesPrestataire", TypePrestataire.values());
-    return "agent/prestataires/create";
-}
-
-    @PostMapping("/prestataires/create")        // ← CHANGÉ : "create" au lieu de "creer"
-    public String creerPrestataire(@ModelAttribute("nouveauPrestataire") PrestataireCreationRequest request,
-                                   @AuthenticationPrincipal OidcUser oidcUser,
-                                   RedirectAttributes redirectAttrs) {
+    @PostMapping("/prestataires")
+    public ResponseEntity<?> creerPrestataire(@RequestBody PrestataireCreationRequest request, Principal principal) {
         try {
-            Prestataire p = prestataireService.creerPrestataire(request, oidcUser.getPreferredUsername());
-            redirectAttrs.addFlashAttribute("success",
-                "Prestataire '" + p.getPrenom() + " " + p.getNom()
-                + "' créé ! Login: " + p.getUsername());
+            Prestataire p = prestataireService.creerPrestataire(request, principal.getName());
+            return ResponseEntity.ok(Map.of("message", "Prestataire créé !", "prestataire", p));
         } catch (Exception e) {
-            redirectAttrs.addFlashAttribute("error", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        return "redirect:/agent/prestataires";
     }
 
+    @GetMapping("/prestataires/{id}")
+    public ResponseEntity<?> getPrestataire(@PathVariable("id") Long id) {
+        Prestataire prestataire = prestataireService.findById(id);
+        if (prestataire == null) return ResponseEntity.notFound().build();
+        return ResponseEntity.ok(prestataire);
+    }
 
-
-
-        // ====================== ÉDITION D'UN PRESTATAIRE ======================
-    
-        @GetMapping("/prestataires/{id}/edit")
-        public String editPrestataire(@PathVariable("id") Long id,
-                                      Model model,
-                                      @AuthenticationPrincipal OidcUser oidcUser) {
-        
-            Prestataire prestataire = prestataireService.findById(id);
-        
-            if (prestataire == null) {
-                return "redirect:/agent/prestataires?error=Prestataire non trouvé";
-            }
-        
-            PrestataireCreationRequest request = new PrestataireCreationRequest();
-            request.setId(prestataire.getId());                    // ← AJOUTE CETTE LIGNE
-            request.setUsername(prestataire.getUsername());
-            request.setPrenom(prestataire.getPrenom());
-            request.setNom(prestataire.getNom());
-            request.setEmail(prestataire.getEmail());
-            request.setTelephone(prestataire.getTelephone());
-            request.setSpecialite(prestataire.getSpecialite());
-            request.setNumeroCartePro(prestataire.getNumeroCartePro());
-            request.setAdresse(prestataire.getAdresse());
-            request.setTypePrestataire(prestataire.getType());           // ← Ici
-            request.setNiveauValidation(prestataire.getNiveauValidation());
-            request.setPlafondValidation(prestataire.getPlafondValidation());
-        
-            model.addAttribute("prestataire", request);
-            model.addAttribute("typesPrestataire", TypePrestataire.values());
-            model.addAttribute("givenName", oidcUser != null ? oidcUser.getGivenName() : "");
-            model.addAttribute("familyName", oidcUser != null ? oidcUser.getFamilyName() : "");
-            model.addAttribute("username", oidcUser != null ? oidcUser.getPreferredUsername() : "");
-        
-            return "agent/prestataires/form-edit";
-        }
-    
-        @PostMapping("/prestataires/{id}/edit")
-        public String updatePrestataire(@PathVariable("id") Long id,
-                                        @ModelAttribute("prestataire") PrestataireCreationRequest request,
-                                        @AuthenticationPrincipal OidcUser oidcUser,
-                                        RedirectAttributes redirectAttrs) {
-            try {
-                prestataireService.updatePrestataire(id, request, oidcUser.getPreferredUsername());
-                redirectAttrs.addFlashAttribute("success", "Prestataire mis à jour avec succès !");
-            } catch (Exception e) {
-                redirectAttrs.addFlashAttribute("error", "Erreur lors de la mise à jour : " + e.getMessage());
-            }
-            return "redirect:/agent/prestataires";
-        }
-
-
-            // ====================== SUPPRESSION D'UN PRESTATAIRE ======================
-
-    @PostMapping("/prestataires/{id}/delete")
-    public String deletePrestataire(@PathVariable("id") Long id,
-                                    RedirectAttributes redirectAttributes,
-                                    @AuthenticationPrincipal OidcUser oidcUser) {
-        
+    @PutMapping("/prestataires/{id}")
+    public ResponseEntity<?> updatePrestataire(@PathVariable("id") Long id, @RequestBody PrestataireCreationRequest request, Principal principal) {
         try {
-            boolean deleted = prestataireService.deletePrestataire(id, oidcUser.getPreferredUsername());
-            
-            if (deleted) {
-                redirectAttributes.addFlashAttribute("success", "Prestataire supprimé avec succès !");
-            } else {
-                redirectAttributes.addFlashAttribute("error", "Impossible de supprimer ce prestataire.");
-            }
+            prestataireService.updatePrestataire(id, request, principal.getName());
+            return ResponseEntity.ok(Map.of("message", "Prestataire mis à jour avec succès !"));
         } catch (Exception e) {
-            redirectAttributes.addFlashAttribute("error", "Erreur lors de la suppression : " + e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
-        
-        return "redirect:/agent/prestataires";
     }
 
-
-
-        // ====================== ACTIVATION / DÉSACTIVATION (TOGGLE) ======================
-
-        @PostMapping("/prestataires/{id}/toggle")
-        public String togglePrestataire(@PathVariable("id") Long id,
-                                        RedirectAttributes redirectAttributes,
-                                        @AuthenticationPrincipal OidcUser oidcUser) {
-    
-            try {
-                Prestataire updated = prestataireService.toggleActif(id, oidcUser.getPreferredUsername());
-                String status = updated.isActif() ? "activé" : "désactivé";
-                
-                redirectAttributes.addFlashAttribute("success", 
-                    "Prestataire " + updated.getPrenom() + " " + updated.getNom() 
-                    + " a été " + status + " avec succès !");
-            } catch (Exception e) {
-                redirectAttributes.addFlashAttribute("error", "Erreur : " + e.getMessage());
-            }
-    
-            return "redirect:/agent/prestataires";
+    @DeleteMapping("/prestataires/{id}")
+    public ResponseEntity<?> deletePrestataire(@PathVariable("id") Long id, Principal principal) {
+        try {
+            boolean deleted = prestataireService.deletePrestataire(id, principal.getName());
+            if (deleted) return ResponseEntity.ok(Map.of("message", "Prestataire supprimé avec succès !"));
+            return ResponseEntity.badRequest().body(Map.of("error", "Impossible de supprimer ce prestataire."));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
+    }
 
-    // ... le reste de tes méthodes reste identique
+    @PatchMapping("/prestataires/{id}/toggle")
+    public ResponseEntity<?> togglePrestataire(@PathVariable("id") Long id, Principal principal) {
+        try {
+            Prestataire updated = prestataireService.toggleActif(id, principal.getName());
+            return ResponseEntity.ok(Map.of("message", "Statut modifié", "actif", updated.isActif()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
     // ══════════════════════════════════════════════════════════════
-    //  UTILITAIRE
+    //  DOSSIERS / MISSIONS
     // ══════════════════════════════════════════════════════════════
+
+    @PostMapping("/dossiers/risques/{risqueId}/garanties")
+    public ResponseEntity<?> ajouterGarantie(@PathVariable Long risqueId, @RequestBody GarantieAjoutRequest request, Authentication authentication) {
+        try {
+            dossierService.ajouterGarantie(risqueId, request, authentication.getName());
+            return ResponseEntity.ok(Map.of("message", "Garantie ajoutée avec succès"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/dossiers/{id}/ressoumettre")
+    @Transactional
+    public ResponseEntity<?> ressoumettreDossier(@PathVariable Long id) {
+        try {
+            DossierContentieux d = dossierRepository.findByIdWithDetails(id)
+                    .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
+
+            if (Boolean.FALSE.equals(d.getValidationFinanciere())) d.setValidationFinanciere(null);
+            if (Boolean.FALSE.equals(d.getValidationJuridique())) d.setValidationJuridique(null);
+
+            d.setStatut(DossierStatus.EN_TRAITEMENT);
+            dossierRepository.save(d);
+
+            return ResponseEntity.ok(Map.of("message", "Dossier ressoumis au validateur concerné ✅"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/missions/{id}/valider")
+    public ResponseEntity<?> validerMission(@PathVariable Long id, @RequestBody Map<String, String> body, Principal principal) {
+        try {
+            missionService.validerMission(id, body.get("commentaire"), principal.getName());
+            return ResponseEntity.ok(Map.of("message", "Mission validée avec succès ✔"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/missions/{id}/rejeter")
+    public ResponseEntity<?> rejeterMission(@PathVariable("id") Long id, @RequestBody Map<String, String> body, Authentication authentication) {
+        try {
+            Mission mission = missionRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+            mission.setStatut(StatutMission.REJETEE);
+            mission.setDateValidationAgent(LocalDateTime.now());
+            mission.setValideParAgent(authentication.getName());
+            mission.setCommentaireAgent(body.get("commentaire"));
+            mission.setPvValide(false);
+            mission.setFactureValide(false);
+            missionRepository.save(mission);
+
+            return ResponseEntity.ok(Map.of("message", "Mission rejetée"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
 
     private String getCurrentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth.getName();
     }
-
-    @PostMapping("/agent/dossiers/risques/{risqueId}/garanties/ajouter")
-public String ajouterGarantie(
-        @PathVariable Long risqueId,
-        @ModelAttribute GarantieAjoutRequest request,
-        Authentication authentication,
-        RedirectAttributes redirectAttributes) {
-
-    try {
-        dossierService.ajouterGarantie(
-                risqueId,
-                request,
-                authentication.getName()
-        );
-
-        redirectAttributes.addFlashAttribute("success", "Garantie ajoutée avec succès");
-
-    } catch (Exception e) {
-        redirectAttributes.addFlashAttribute("error", e.getMessage());
-    }
-
-    // 🔴 IMPORTANT : revenir au dossier
-    return "redirect:/agent/dossiers/" + request.getDossierId();
-}
-
-
-
-@PostMapping("/dossiers/{id}/ressoumettre")
-@PreAuthorize("hasRole('AGENT')")
-@Transactional
-public String ressoumettreDossier(@PathVariable Long id,
-                                  RedirectAttributes redirectAttributes,
-                                  Principal principal) {
-    try {
-        DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
-
-        // 🔥 CAS 1 : financier rejeté → reset financier seulement
-        if (Boolean.FALSE.equals(d.getValidationFinanciere())) {
-            d.setValidationFinanciere(null);
-        }
-
-        // 🔥 CAS 2 : juridique rejeté → reset juridique seulement
-        if (Boolean.FALSE.equals(d.getValidationJuridique())) {
-            d.setValidationJuridique(null);
-        }
-
-        // garder statut en traitement
-        d.setStatut(DossierStatus.EN_TRAITEMENT);
-
-        dossierRepository.save(d);
-
-        redirectAttributes.addFlashAttribute("success",
-                "Dossier ressoumis au validateur concerné ✅");
-
-    } catch (Exception e) {
-        e.printStackTrace();
-        redirectAttributes.addFlashAttribute("error", e.getMessage());
-    }
-
-    return "redirect:/agent/dossiers/" + id;
-}
-
-
-
-//agennt valider mission
-// 👇 Validation mission par agent
-@PostMapping("/missions/{id}/valider")
-@PreAuthorize("hasRole('AGENT')")
-public String validerMission(@PathVariable Long id,
-                            @RequestParam(required = false) String commentaire,
-                            Principal principal,
-                            RedirectAttributes redirectAttributes) {
-    try {
-        String agentUsername = principal.getName(); // ✅ AJOUT
-
-        missionService.validerMission(id, commentaire, agentUsername); // ✅ 3 paramètres
-
-        redirectAttributes.addFlashAttribute("success",
-                "Mission validée avec succès ✔");
-    } catch (Exception e) {
-        redirectAttributes.addFlashAttribute("error",
-                "Erreur validation mission : " + e.getMessage());
-    }
-
-    return "redirect:/prestataire/missions";
-}
-
-@PostMapping("/missions/{id}/rejeter")
-@PreAuthorize("hasRole('AGENT')")
-public String rejeterMission(
-        @PathVariable("id") Long id,
-        Authentication authentication,
-        @RequestParam String commentaire) {
-
-    String agentUsername = authentication.getName();
-
-    Mission mission = missionRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-
-    mission.setStatut(StatutMission.REJETEE); // ✅ important
-    mission.setDateValidationAgent(LocalDateTime.now());
-    mission.setValideParAgent(agentUsername);
-    mission.setCommentaireAgent(commentaire);
-
-    mission.setPvValide(false);
-    mission.setFactureValide(false);
-
-    missionRepository.save(mission);
-
-    return "redirect:/prestataire/missions";
-}
 }

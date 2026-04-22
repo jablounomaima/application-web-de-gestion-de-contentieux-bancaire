@@ -8,13 +8,15 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.RequestMapping;
 
 import java.security.Principal;
 
-@Controller
+@RestController
+@RequestMapping("/api")
 @RequiredArgsConstructor
 public class PdfController {
 
@@ -28,7 +30,6 @@ public class PdfController {
         try {
             DossierDetailDTO dossier = dossierService.getDossierDetail(id);
 
-            // ✅ Vérifier que les deux validations sont accordées
             if (dossier.getValidationFinanciere() == null
                     || !dossier.getValidationFinanciere()
                     || dossier.getValidationJuridique() == null

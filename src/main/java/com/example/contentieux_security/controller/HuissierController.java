@@ -4,19 +4,21 @@ import com.example.contentieux_security.entity.Mission;
 import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.service.PrestationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
-import org.springframework.stereotype.Controller;
-import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
-@Controller
-@RequestMapping("/huissier")
+@RestController
+@RequestMapping("/api/huissier")
 @RequiredArgsConstructor
 public class HuissierController {
 
@@ -25,12 +27,7 @@ public class HuissierController {
     @Transactional(readOnly = true)
     @GetMapping("/dashboard")
     @PreAuthorize("hasRole('HUISSIER')")
-    public String dashboard(Model model, Authentication auth) {
-
-        // ✅ FIX: Removed orphaned getMissionById(missionid) block —
-        // 'missionid' was never declared, and a dashboard endpoint should not
-        // block on a single mission's lock status. Lock checks belong on
-        // individual action endpoints, not here.
+    public ResponseEntity<?> dashboard(Authentication auth) {
 
         List<Mission> missions = prestationService.getMissionsPrestataire(auth.getName());
 
@@ -53,13 +50,14 @@ public class HuissierController {
                           && m.getStatut() != StatutMission.TERMINEE)
                 .count();
 
-        model.addAttribute("dernieresMissions",     missions);
-        model.addAttribute("missionsActives",       enCours);
-        model.addAttribute("rapportsAttente",       pvSoumis);
-        model.addAttribute("evaluationsFinalisees", terminees);
-        model.addAttribute("contreExpertises",      enRetard);
-        model.addAttribute("totalMissions",         missions.size());
+        Map<String, Object> response = new HashMap<>();
+        response.put("dernieresMissions", missions);
+        response.put("missionsActives", enCours);
+        response.put("rapportsAttente", pvSoumis);
+        response.put("evaluationsFinalisees", terminees);
+        response.put("contreExpertises", enRetard);
+        response.put("totalMissions", missions.size());
 
-        return "huissier/dashboard";
+        return ResponseEntity.ok(response);
     }
 }

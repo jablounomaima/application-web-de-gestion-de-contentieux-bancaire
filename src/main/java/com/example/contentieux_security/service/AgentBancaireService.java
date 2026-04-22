@@ -93,6 +93,15 @@ public class AgentBancaireService {
     public AgentBancaireDTO createAgent(AgentCreationRequest request) {
         if (agentRepository.existsByUsername(request.getUsername()))
             throw new RuntimeException("Nom d'utilisateur déjà existant");
+        if (request.getEmail() == null || request.getEmail().isBlank()) {
+            throw new RuntimeException("Email obligatoire");
+        }
+        if (request.getPassword() == null || request.getPassword().isBlank()) {
+            throw new RuntimeException("Mot de passe obligatoire");
+        }
+        if (request.getUsername() == null || request.getUsername().isBlank()) {
+            throw new RuntimeException("Nom d'utilisateur obligatoire");
+        }
 
         Agence agence = agenceRepository.findById(request.getAgenceId())
                 .orElseThrow(() -> new RuntimeException("Agence non trouvée"));
@@ -110,6 +119,10 @@ public class AgentBancaireService {
             System.out.println("✅ Keycloak: Utilisateur créé - " + request.getUsername());
         } catch (Exception e) {
             System.err.println("❌ Keycloak: Échec création - " + e.getMessage());
+            String lower = (e.getMessage() == null ? "" : e.getMessage().toLowerCase());
+            if (lower.contains("déjà existant") || lower.contains("already exists") || lower.contains("[409]") || lower.contains("conflit")) {
+                throw new RuntimeException("Utilisateur déjà existant dans Keycloak (username ou email). Choisissez un autre username/email.");
+            }
             throw new RuntimeException("Erreur création Keycloak: " + e.getMessage(), e);
         }
 

@@ -1,28 +1,26 @@
 package com.example.contentieux_security.config;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;
-import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserService;
-import org.springframework.security.oauth2.client.userinfo.OAuth2UserService;
-import org.springframework.security.oauth2.core.oidc.user.DefaultOidcUser;
-import org.springframework.security.oauth2.core.oidc.user.OidcUser;
-import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.logout.LogoutSuccessHandler;
-import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 
-import java.util.*;
+import java.util.ArrayList; // ✅ liste mutable
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
 
 @Configuration
 @EnableWebSecurity
@@ -36,144 +34,66 @@ public class SecurityConfig {
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-
         http
-            .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/", "/login", "/error", "/css/**", "/js/**", "/images/**").permitAll()
-                .requestMatchers("/admin/**").hasRole("ADMIN")
-                .requestMatchers("/agent/**").hasAnyRole("AGENT", "ADMIN")
-                .requestMatchers("/avocat/**").hasRole("AVOCAT")
-                .requestMatchers("/expert/**").hasRole("EXPERT")
-                .requestMatchers("/huissier/**").hasRole("HUISSIER")
-                .requestMatchers("/validateur/financier/**").hasAnyRole("VALIDATEUR_FINANCIER", "ADMIN")
-                .requestMatchers("/validateur/juridique/**").hasAnyRole("VALIDATEUR_JURIDIQUE", "ADMIN")
-                .requestMatchers("/validateur/**").hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
-                .requestMatchers("/notifications/**").hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
-                .requestMatchers("/prestataire/**").hasAnyRole("HUISSIER", "EXPERT","AVOCAT","AGENT")
-                .anyRequest().authenticated()
-            )
-
-            // ✅ CSRF activé par défaut (NE PAS désactiver sauf API REST)
-            //.csrf(csrf -> csrf.disable())
-
-            .oauth2Login(oauth2 -> oauth2
-                .userInfoEndpoint(user -> user.oidcUserService(oidcUserService()))
-                .successHandler((request, response, authentication) -> {
-
-                    // DEBUG ROLES
-                    authentication.getAuthorities()
-                        .forEach(a -> System.out.println("ROLE SPRING: " + a.getAuthority()));
-
-                    // Redirection selon rôle
-                    if (hasRole(authentication, "ROLE_ADMIN")) {
-                        response.sendRedirect("/admin/dashboard");
-                    } else if (hasRole(authentication, "ROLE_AGENT")) {
-                        response.sendRedirect("/agent/dashboard");
-                    } else if (hasRole(authentication, "ROLE_AVOCAT")) {
-                        response.sendRedirect("/avocat/affaires/dashboard");
-                    } else if (hasRole(authentication, "ROLE_HUISSIER")) {
-                        response.sendRedirect("/huissier/dashboard");
-                    } else if (hasRole(authentication, "ROLE_EXPERT")) {
-                        response.sendRedirect("/expert/dashboard");
-                    } else if (hasRole(authentication, "ROLE_VALIDATEUR_JURIDIQUE")) {
-                        response.sendRedirect("/validateur/dashboard-juridique");
-                    } else if (hasRole(authentication, "ROLE_VALIDATEUR_FINANCIER")) {
-                        response.sendRedirect("/validateur/dashboard-financier");
-                    } else {
-                        response.sendRedirect("/access-denied");
-                    }
-                })
-            )
-
-            .logout(logout -> logout
-                .logoutSuccessHandler(keycloakLogoutSuccessHandler())
-            );
+                .csrf(csrf -> csrf.disable())
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+                .authorizeHttpRequests(auth -> auth
+                        .requestMatchers("/api/public/**", "/error").permitAll()
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/api/agent/**").hasAnyRole("AGENT", "ADMIN")
+                        .requestMatchers("/api/avocat/**").hasRole("AVOCAT")
+                        .requestMatchers("/api/expert/**").hasRole("EXPERT")
+                        .requestMatchers("/api/huissier/**").hasRole("HUISSIER")
+                        .requestMatchers("/api/validateur/**").hasAnyRole(
+                                "VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
+                        .requestMatchers("/api/prestataire/**").hasAnyRole(
+                                "HUISSIER", "EXPERT", "AVOCAT")
+                        .anyRequest().authenticated())
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));
 
         return http.build();
     }
 
-    private boolean hasRole(Authentication auth, String role) {
-        return auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals(role));
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:4200",
+                "http://127.0.0.1:4200"));
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(true);
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+        return source;
     }
 
     @Bean
-    public LogoutSuccessHandler keycloakLogoutSuccessHandler() {
-        return (HttpServletRequest request, HttpServletResponse response, Authentication authentication) -> {
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
 
-            String idToken = null;
+        converter.setJwtGrantedAuthoritiesConverter(jwt -> {
+            // ✅ ArrayList mutable — pas d'UnsupportedOperationException
+            List<GrantedAuthority> authorities = new ArrayList<>();
 
-            if (authentication instanceof OAuth2AuthenticationToken oauthToken &&
-                oauthToken.getPrincipal() instanceof OidcUser oidcUser) {
-                idToken = oidcUser.getIdToken().getTokenValue();
-            }
-
-            String logoutUrl = "http://127.0.0.1:8080/realms/contentieux-realm/protocol/openid-connect/logout"
-                    + "?post_logout_redirect_uri=http://localhost:8097";
-
-            if (idToken != null) {
-                logoutUrl += "&id_token_hint=" + idToken;
-            }
-
-            new SecurityContextLogoutHandler().logout(request, response, authentication);
-            response.sendRedirect(logoutUrl);
-        };
-    }
-
-    @Bean
-    public OAuth2UserService<OidcUserRequest, OidcUser> oidcUserService() {
-
-        OidcUserService delegate = new OidcUserService();
-
-        return userRequest -> {
-
-            OidcUser oidcUser = delegate.loadUser(userRequest);
-            Map<String, Object> claims = oidcUser.getClaims();
-
-            Set<GrantedAuthority> mappedAuthorities = new HashSet<>(oidcUser.getAuthorities()); // ✅ garder les roles existants
-
-            // ✅ Extraction sécurisée des rôles Keycloak
-            Object realmAccessObj = claims.get("realm_access");
-
-            if (realmAccessObj instanceof Map<?, ?> realmAccess) {
-
-                Object rolesObj = realmAccess.get("roles");
-
-                if (rolesObj instanceof List<?> rolesList) {
-
-                    for (Object roleObj : rolesList) {
-                        if (roleObj instanceof String role) {
-
-                            String roleName = role.toUpperCase();
-
-                            if (!roleName.startsWith("ROLE_")) {
-                                roleName = "ROLE_" + roleName;
-                            }
-
-                            mappedAuthorities.add(new SimpleGrantedAuthority(roleName));
-                        }
+            // Lire les rôles depuis realm_access.roles (standard Keycloak)
+            Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
+            if (realmAccess != null && realmAccess.containsKey("roles")) {
+                List<String> roles = (List<String>) realmAccess.get("roles");
+                for (String role : roles) {
+                    String roleName = role.toUpperCase();
+                    if (!roleName.startsWith("ROLE_")) {
+                        roleName = "ROLE_" + roleName;
                     }
+                    authorities.add(new SimpleGrantedAuthority(roleName));
                 }
             }
 
-            String preferredUsername = (String) claims.get("preferred_username");
-            String email = (String) claims.get("email");
+            return authorities;
+        });
 
-            return new DefaultOidcUser(
-                    mappedAuthorities,
-                    oidcUser.getIdToken(),
-                    oidcUser.getUserInfo()
-            ) {
-                @Override
-                public String getName() {
-                    return preferredUsername != null ? preferredUsername : email;
-                }
-            };
-        };
+        return converter;
     }
-
-    
-
-
-
 }
