@@ -28,6 +28,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import java.security.Principal;
@@ -81,28 +82,78 @@ public class DossierController {
 
     @GetMapping("/{id}")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
+    @Transactional(readOnly = true)
     public ResponseEntity<?> detailDossier(@PathVariable Long id, Principal principal) {
         try {
+            System.out.println(">>> detailDossier appelé id=" + id + " par=" + principal.getName());
+    
+            // ── 1. Charger le DTO du dossier ──────────────────────────────
             DossierDetailDTO dossier = dossierService.getDossierDetail(id);
+            System.out.println(">>> DTO chargé : " + dossier.getNumeroDossier());
+    
+            // ── 2. Charger l'agent connecté ───────────────────────────────
             AgentBancaire agent = agentBancaireRepository.findByUsername(principal.getName())
-                    .orElseThrow(() -> new RuntimeException("Agent introuvable"));
-
+                    .orElseThrow(() -> new RuntimeException("Agent introuvable : " + principal.getName()));
+            System.out.println(">>> Agent trouvé : " + agent.getUsername());
+    
             Long agenceId = agent.getAgence().getId();
+    
+            // ── 3. Charger les validateurs de l'agence ────────────────────
+            List<?> validateurs_financiers = validateurRepository
+                    .findByTypeValidateurAndActifTrueAndAgence_Id(
+                            TypeValidateur.VALIDATEUR_FINANCIER, agenceId);
+    
+            List<?> validateurs_juridiques = validateurRepository
+                    .findByTypeValidateurAndActifTrueAndAgence_Id(
+                            TypeValidateur.VALIDATEUR_JURIDIQUE, agenceId);
+    
+            // ── 4. Charger l'historique ───────────────────────────────────
+            List<?> historique = historiqueService.getHistorique(id);
+    
+            // ── 5. Mission avocat (peut être null) ────────────────────────
+            Object missionAvocat = null;
+            try {
+                missionAvocat = missionService.getMissionAvocatDuDossier(id);
+            } catch (Exception e) {
+                System.out.println(">>> Pas de mission avocat : " + e.getMessage());
+            }
+    
+            // ── 6. Affaire judiciaire ──────────────────────────────────────
+            boolean affaireExiste = false;
+            try {
+                affaireExiste = !affaireRepository.findByDossier_Id(id).isEmpty();
+            } catch (Exception e) {
+                System.out.println(">>> Erreur affaire : " + e.getMessage());
+            }
+    
+            // ── 7. Prestation judiciaire ──────────────────────────────────
+            Object prestationJudiciaire = null;
+            try {
+                prestationJudiciaire = prestationService.getPrestationJudiciaireParDossier(id);
+            } catch (Exception e) {
+                System.out.println(">>> Erreur prestation : " + e.getMessage());
+            }
+    
+            // ── 8. Construire la réponse ──────────────────────────────────
             Map<String, Object> response = new HashMap<>();
-            response.put("dossier", dossier);
-            response.put("validateurs_financiers", validateurRepository.findByTypeValidateurAndActifTrueAndAgence_Id(TypeValidateur.VALIDATEUR_FINANCIER, agenceId));
-            response.put("validateurs_juridiques", validateurRepository.findByTypeValidateurAndActifTrueAndAgence_Id(TypeValidateur.VALIDATEUR_JURIDIQUE, agenceId));
-            response.put("historique", historiqueService.getHistorique(id));
-            response.put("missionAvocat", missionService.getMissionAvocatDuDossier(id));
-            response.put("affaireExiste", !affaireRepository.findByDossier_Id(id).isEmpty());
-            response.put("prestationJudiciaire", prestationService.getPrestationJudiciaireParDossier(id));
-
+            response.put("dossier",                dossier);
+            response.put("validateurs_financiers",  validateurs_financiers);
+            response.put("validateurs_juridiques",  validateurs_juridiques);
+            response.put("historique",              historique);
+            response.put("missionAvocat",           missionAvocat);
+            response.put("affaireExiste",           affaireExiste);
+            response.put("prestationJudiciaire",    prestationJudiciaire);
+    
+            System.out.println(">>> Réponse construite avec succès");
             return ResponseEntity.ok(response);
+    
         } catch (Exception e) {
+            System.out.println(">>> ERREUR detailDossier: " + e.getMessage());
+            e.printStackTrace();
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-
+    
     @PostMapping("/{id}/choisir-validateurs")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public ResponseEntity<?> choisirValidateurs(@PathVariable Long id, @RequestBody Map<String, String> body, Principal principal) {
@@ -176,7 +227,8 @@ public class DossierController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-    public ResponseEntity<?> listeDossiers(Principal principal, 
+    @Transactional(readOnly = true)  // ← AJOUTEZ
+    public ResponseEntity<?> listeDossiers(Principal principal,
                                             @RequestParam(required = false) String recherche) {
         try {
             List<DossierContentieux> dossiers = dossierService.rechercherDossiers(
@@ -191,7 +243,6 @@ public class DossierController {
                 item.put("statut", d.getStatut() != null ? d.getStatut().name() : null);
                 item.put("dateCreation", d.getDateCreation());
     
-                // ── Client ──
                 if (d.getClient() != null) {
                     Client c = d.getClient();
                     String type = c.getTypeClient() != null ? c.getTypeClient().name() : "PARTICULIER";
@@ -202,7 +253,7 @@ public class DossierController {
                     item.put("clientRaisonSociale", c.getRaisonSociale());
                 }
     
-                // ── Montant ──
+                // ← Risques accessibles car @Transactional maintient la session
                 double montant = 0.0;
                 if (d.getRisques() != null) {
                     montant = d.getRisques().stream()
@@ -220,10 +271,10 @@ public class DossierController {
             ));
     
         } catch (Exception e) {
+            System.out.println(">>> ERREUR listeDossiers: " + e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-
     @PutMapping("/garanties/{gId}")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public ResponseEntity<?> modifierGarantie(@PathVariable Long gId, @RequestBody Map<String, Object> body, Principal principal) {

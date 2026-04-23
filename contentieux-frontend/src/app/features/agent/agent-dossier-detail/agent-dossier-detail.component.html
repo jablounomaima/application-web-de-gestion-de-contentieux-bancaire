@@ -1,0 +1,432 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LOADING                                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="loading-screen" *ngIf="loading">
+  <div class="loader-ring"></div>
+  <p>Chargement du dossier…</p>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- ERROR                                                            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="error-screen" *ngIf="!loading && !dossier">
+  <div class="error-code">404</div>
+  <h2>Dossier introuvable</h2>
+  <p>Ce dossier n'existe pas ou vous n'y avez pas accès.</p>
+  <a routerLink="/agent/dossiers" class="btn-back">← Retour aux dossiers</a>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- PAGE PRINCIPALE                                                  -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="page" *ngIf="!loading && dossier">
+
+  <!-- ── Breadcrumb ── -->
+  <nav class="breadcrumb">
+    <a routerLink="/agent/dashboard">Tableau de bord</a>
+    <span class="sep">›</span>
+    <a routerLink="/agent/dossiers">Dossiers</a>
+    <span class="sep">›</span>
+    <span class="current">{{ dossier.numeroDossier }}</span>
+  </nav>
+
+  <!-- ═══════════════ HEADER ═══════════════ -->
+  <header class="dossier-header">
+    <div class="header-left">
+      <div class="numero-tag">{{ dossier.numeroDossier }}</div>
+      <h1>{{ dossier.libelle || 'Dossier sans titre' }}</h1>
+      <div class="client-line">
+        <span class="lbl">CLIENT</span>
+        <span class="client-name">{{ getClientName() }}</span>
+        <span class="dot">·</span>
+        <span class="date-crea">Créé le {{ dossier.dateCreation | date:'dd MMM yyyy' }}</span>
+      </div>
+    </div>
+    <div class="header-actions">
+      <span class="statut-chip" [ngClass]="getStatutClass(dossier.statut)">
+        {{ formatStatut(dossier.statut) }}
+      </span>
+      <button class="btn-ghost" (click)="telechargerPdf()">
+        <span class="btn-icon-svg">📄</span> PDF
+      </button>
+      <button class="btn-dark" *ngIf="canSoumettre()" (click)="ouvrirModalValidateurs()">
+        <span class="btn-icon-svg">🚀</span> Soumettre
+      </button>
+    </div>
+  </header>
+
+  <!-- ═══════════════ MÉTRIQUES ═══════════════ -->
+  <div class="metrics-strip">
+    <div class="metric-item">
+      <span class="metric-label">Agence</span>
+      <span class="metric-value">{{ dossier.agence?.nom || dossier.agenceNom || '—' }}</span>
+    </div>
+    <div class="metric-divider"></div>
+    <div class="metric-item">
+      <span class="metric-label">Agent créateur</span>
+      <span class="metric-value">{{ dossier.creePar || '—' }}</span>
+    </div>
+    <div class="metric-divider"></div>
+    <div class="metric-item">
+      <span class="metric-label">Type client</span>
+      <span class="metric-value">{{ dossier.client?.typeClient || '—' }}</span>
+    </div>
+    <div class="metric-divider"></div>
+    <div class="metric-item">
+      <span class="metric-label">Montant total impayé</span>
+      <span class="metric-value accent">
+        {{ getMontantTotal() | number:'1.0-0' }} <small>TND</small>
+      </span>
+    </div>
+    <div class="metric-divider" *ngIf="dossier.validateurFinancierChoisi"></div>
+    <div class="metric-item" *ngIf="dossier.validateurFinancierChoisi">
+      <span class="metric-label">Valid. Financier</span>
+      <span class="metric-value">{{ dossier.validateurFinancierChoisi }}</span>
+    </div>
+    <div class="metric-divider" *ngIf="dossier.validateurJuridiqueChoisi"></div>
+    <div class="metric-item" *ngIf="dossier.validateurJuridiqueChoisi">
+      <span class="metric-label">Valid. Juridique</span>
+      <span class="metric-value">{{ dossier.validateurJuridiqueChoisi }}</span>
+    </div>
+  </div>
+
+  <!-- ═══════════════ ALERTES ═══════════════ -->
+  <div class="alert success"
+       *ngIf="dossier.validationFinanciere === true && dossier.validationJuridique === true">
+    <span class="alert-icon">✅</span>
+    Dossier entièrement validé — financier et juridique confirmés.
+  </div>
+  <div class="alert warning" *ngIf="dossier.statut === 'EN_TRAITEMENT'">
+    <span class="alert-icon">⏳</span>
+    En attente de validation —
+    Financier : <strong>{{ dossier.validationFinanciere == null ? 'En attente' : (dossier.validationFinanciere ? '✅' : '❌') }}</strong>
+    &nbsp;| Juridique : <strong>{{ dossier.validationJuridique == null ? 'En attente' : (dossier.validationJuridique ? '✅' : '❌') }}</strong>
+  </div>
+  <div class="alert danger" *ngIf="dossier.statut === 'REJETE'">
+    <span class="alert-icon">❌</span>
+    Dossier rejeté.
+    <span *ngIf="dossier.commentaireFinancier"> Motif financier : {{ dossier.commentaireFinancier }}</span>
+    <span *ngIf="dossier.commentaireJuridique"> Motif juridique : {{ dossier.commentaireJuridique }}</span>
+  </div>
+
+  <!-- ═══════════════ GRILLE PRINCIPALE ═══════════════ -->
+  <div class="main-grid">
+
+    <!-- ───── COLONNE GAUCHE ───── -->
+    <div class="col-left">
+
+      <!-- BLOC CLIENT -->
+      <section class="card">
+        <div class="card-head">
+          <h2><span class="card-icon">👤</span> Informations Client</h2>
+        </div>
+        <div class="card-body">
+          <div class="info-grid" *ngIf="dossier.client">
+            <div class="info-cell" *ngIf="dossier.client.nom || dossier.client.prenom">
+              <span class="info-label">Nom complet</span>
+              <span class="info-val">{{ dossier.client.nom }} {{ dossier.client.prenom }}</span>
+            </div>
+            <div class="info-cell" *ngIf="dossier.client.raisonSociale">
+              <span class="info-label">Raison Sociale</span>
+              <span class="info-val">{{ dossier.client.raisonSociale }}</span>
+            </div>
+            <div class="info-cell" *ngIf="dossier.client.cin">
+              <span class="info-label">CIN</span>
+              <span class="info-val mono">{{ dossier.client.cin }}</span>
+            </div>
+            <div class="info-cell" *ngIf="dossier.client.rne">
+              <span class="info-label">RNE</span>
+              <span class="info-val mono">{{ dossier.client.rne }}</span>
+            </div>
+            <div class="info-cell" *ngIf="dossier.client.email">
+              <span class="info-label">Email</span>
+              <span class="info-val">{{ dossier.client.email }}</span>
+            </div>
+            <div class="info-cell" *ngIf="dossier.client.telephone">
+              <span class="info-label">Téléphone</span>
+              <span class="info-val mono">{{ dossier.client.telephone }}</span>
+            </div>
+            <div class="info-cell full" *ngIf="dossier.client.adresse">
+              <span class="info-label">Adresse</span>
+              <span class="info-val">{{ dossier.client.adresse }}</span>
+            </div>
+          </div>
+          <div class="empty-inline" *ngIf="!dossier.client">Aucune information client disponible.</div>
+        </div>
+      </section>
+
+      <!-- BLOC RISQUES -->
+      <section class="card">
+        <div class="card-head">
+          <h2><span class="card-icon">💳</span> Crédits &amp; Risques</h2>
+          <button class="btn-add" *ngIf="canModifier()" (click)="showModalRisque = true">
+            + Ajouter
+          </button>
+        </div>
+        <div class="card-body no-pad">
+
+          <div class="empty-state" *ngIf="!dossier.risques || dossier.risques.length === 0">
+            <div class="empty-illus">💳</div>
+            <p>Aucun crédit enregistré pour ce dossier.</p>
+            <button class="btn-add-inline" *ngIf="canModifier()" (click)="showModalRisque = true">
+              + Ajouter un crédit
+            </button>
+          </div>
+
+          <div class="risque-row" *ngFor="let r of dossier.risques; let last = last"
+               [class.last]="last" [class.selected]="r.selectionne">
+            <div class="risque-left">
+              <label class="checkbox-wrap" [class.disabled]="!canModifier()">
+                <input type="checkbox"
+                       [checked]="r.selectionne"
+                       [disabled]="!canModifier()"
+                       (change)="toggleRisque(r)">
+                <span class="checkmark"></span>
+              </label>
+              <div class="risque-info">
+                <div class="risque-type">{{ formatRisqueType(r.type) }}</div>
+                <div class="risque-meta">
+                  <span *ngIf="r.dateEcheance">📅 {{ r.dateEcheance | date:'dd/MM/yyyy' }}</span>
+                  <span *ngIf="r.description">{{ r.description }}</span>
+                  <span *ngIf="r.selectionne" class="badge-selected">✓ Sélectionné</span>
+                </div>
+              </div>
+            </div>
+            <div class="risque-right">
+              <div class="montant-block">
+                <span class="montant-label">Initial</span>
+                <span class="montant-val">{{ r.montantInitial | number:'1.0-0' }} TND</span>
+              </div>
+              <div class="montant-block impaye">
+                <span class="montant-label">Impayé</span>
+                <span class="montant-val red">{{ r.montantImpaye | number:'1.0-0' }} TND</span>
+              </div>
+            </div>
+
+            <!-- Garanties -->
+            <div class="garanties-zone" *ngIf="r.garanties && r.garanties.length > 0">
+              <span class="garanties-label">Garanties :</span>
+              <div class="garanties-chips">
+                <div class="garantie-chip" *ngFor="let g of r.garanties">
+                  <span class="g-ico">🔒</span>
+                  <span class="g-type">{{ g.typeGarantie }}</span>
+                  <span class="g-val" *ngIf="g.valeurEstimee">{{ g.valeurEstimee | number:'1.0-0' }} TND</span>
+                  <button class="btn-rm" *ngIf="canModifier()" (click)="supprimerGarantie(g.id)" title="Supprimer">✕</button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- BLOC NOTES -->
+      <section class="card" *ngIf="dossier.description || dossier.notes">
+        <div class="card-head">
+          <h2><span class="card-icon">📝</span> Notes &amp; Description</h2>
+        </div>
+        <div class="card-body">
+          <div class="notes-block" *ngIf="dossier.description">
+            <span class="notes-label">Description</span>
+            <p class="notes-text">{{ dossier.description }}</p>
+          </div>
+          <div class="notes-block" *ngIf="dossier.notes">
+            <span class="notes-label">Notes internes</span>
+            <p class="notes-text">{{ dossier.notes }}</p>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ───── COLONNE DROITE ───── -->
+    <div class="col-right">
+
+      <!-- ACTIONS RAPIDES -->
+      <section class="card actions-card" *ngIf="canModifier() || dossier.statut === 'OUVERT'">
+        <div class="card-head"><h2><span class="card-icon">⚡</span> Actions</h2></div>
+        <div class="card-body actions-list">
+          <button class="action-btn primary" *ngIf="canSoumettre()" (click)="ouvrirModalValidateurs()">
+            <span>🚀</span> Soumettre à validation
+          </button>
+          <button class="action-btn secondary" *ngIf="canModifier()" (click)="ouvrirModificationDossier()">
+            <span>✏️</span> Modifier le dossier
+          </button>
+          <button class="action-btn ghost" (click)="telechargerPdf()">
+            <span>📄</span> Télécharger PDF
+          </button>
+          <button class="action-btn danger" *ngIf="dossier.statut === 'OUVERT'" (click)="supprimerDossier()">
+            <span>🗑️</span> Supprimer le dossier
+          </button>
+        </div>
+      </section>
+
+      <!-- VALIDATION STATUS -->
+      <section class="card" *ngIf="dossier.statut === 'EN_TRAITEMENT' || dossier.statut === 'VALIDE' || dossier.statut === 'REJETE'">
+        <div class="card-head"><h2><span class="card-icon">🔐</span> Validation</h2></div>
+        <div class="card-body">
+          <div class="valid-row">
+            <div class="valid-icon" [ngClass]="getValidIcon(dossier.validationFinanciere)">
+              {{ getValidEmoji(dossier.validationFinanciere) }}
+            </div>
+            <div class="valid-info">
+              <span class="valid-label">Financière</span>
+              <span class="valid-by" *ngIf="dossier.validateurFinancierUsername">
+                par {{ dossier.validateurFinancierUsername }}
+              </span>
+              <p class="valid-comment" *ngIf="dossier.commentaireFinancier">
+                {{ dossier.commentaireFinancier }}
+              </p>
+            </div>
+          </div>
+          <div class="valid-divider"></div>
+          <div class="valid-row">
+            <div class="valid-icon" [ngClass]="getValidIcon(dossier.validationJuridique)">
+              {{ getValidEmoji(dossier.validationJuridique) }}
+            </div>
+            <div class="valid-info">
+              <span class="valid-label">Juridique</span>
+              <span class="valid-by" *ngIf="dossier.validateurJuridiqueUsername">
+                par {{ dossier.validateurJuridiqueUsername }}
+              </span>
+              <p class="valid-comment" *ngIf="dossier.commentaireJuridique">
+                {{ dossier.commentaireJuridique }}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HISTORIQUE -->
+      <section class="card">
+        <div class="card-head"><h2><span class="card-icon">🕒</span> Historique</h2></div>
+        <div class="card-body no-pad">
+          <div class="empty-state" *ngIf="!historique || historique.length === 0">
+            <p>Aucun historique disponible.</p>
+          </div>
+          <div class="histo-list">
+            <div class="histo-item" *ngFor="let h of historique">
+              <div class="histo-line"></div>
+              <div class="histo-dot"></div>
+              <div class="histo-content">
+                <span class="histo-action">{{ h.typeAction || h.action }}</span>
+                <p class="histo-desc" *ngIf="h.description || h.details">{{ h.description || h.details }}</p>
+                <span class="histo-meta">
+                  {{ (h.dateAction | date:'dd/MM/yyyy HH:mm') || '—' }}
+                  <span *ngIf="h.utilisateur"> · {{ h.utilisateur }}</span>
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MISSION AVOCAT -->
+      <section class="card" *ngIf="missionAvocat">
+        <div class="card-head"><h2><span class="card-icon">⚖️</span> Mission Avocat</h2></div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-cell">
+              <span class="info-label">Avocat</span>
+              <span class="info-val">{{ missionAvocat.avocat?.nom }} {{ missionAvocat.avocat?.prenom }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Statut</span>
+              <span class="info-val">{{ missionAvocat.statut }}</span>
+            </div>
+            <div class="info-cell" *ngIf="missionAvocat.dateDebut">
+              <span class="info-label">Début</span>
+              <span class="info-val">{{ missionAvocat.dateDebut | date:'dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MODAL : Choisir Validateurs                                      -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showModalValidateurs" (click)="showModalValidateurs = false">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <h3>🔐 Choisir les Validateurs</h3>
+      <button class="modal-close" (click)="showModalValidateurs = false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Validateur Financier *</label>
+        <select [(ngModel)]="formValidateurs.validateurFinancier">
+          <option value="">-- Sélectionner --</option>
+          <option *ngFor="let v of validateurs_financiers" [value]="v.username">
+            {{ v.nom }} {{ v.prenom }}
+          </option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Validateur Juridique *</label>
+        <select [(ngModel)]="formValidateurs.validateurJuridique">
+          <option value="">-- Sélectionner --</option>
+          <option *ngFor="let v of validateurs_juridiques" [value]="v.username">
+            {{ v.nom }} {{ v.prenom }}
+          </option>
+        </select>
+      </div>
+      <div class="error-banner" *ngIf="erreurValidateurs">{{ erreurValidateurs }}</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" (click)="showModalValidateurs = false">Annuler</button>
+      <button class="btn-submit" (click)="choisirEtSoumettre()">Enregistrer &amp; Soumettre</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- MODAL : Ajouter Risque                                           -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showModalRisque" (click)="showModalRisque = false">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <div class="modal-head">
+      <h3>💳 Ajouter un Crédit</h3>
+      <button class="modal-close" (click)="showModalRisque = false">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Type de crédit *</label>
+        <select [(ngModel)]="formRisque.type">
+          <option value="CREDIT_IMMOBILIER">Crédit Immobilier</option>
+          <option value="CREDIT_CONSOMMATION">Crédit Consommation</option>
+          <option value="CREDIT_AUTO">Crédit Auto</option>
+          <option value="CREDIT_PROFESSIONNEL">Crédit Professionnel</option>
+          <option value="LEASING">Leasing</option>
+          <option value="DECOUVERT">Découvert Bancaire</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label>Montant Initial (TND)</label>
+          <input type="number" [(ngModel)]="formRisque.montantInitial" min="0" placeholder="0">
+        </div>
+        <div class="form-group">
+          <label>Montant Impayé (TND)</label>
+          <input type="number" [(ngModel)]="formRisque.montantImpaye" min="0" placeholder="0">
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Date Échéance</label>
+        <input type="date" [(ngModel)]="formRisque.dateEcheance">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="formRisque.description" rows="2" placeholder="Optionnel…"></textarea>
+      </div>
+      <div class="error-banner" *ngIf="erreurRisque">{{ erreurRisque }}</div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn-cancel" (click)="showModalRisque = false">Annuler</button>
+      <button class="btn-submit" (click)="ajouterRisque()">Ajouter le crédit</button>
+    </div>
+  </div>
+</div>
