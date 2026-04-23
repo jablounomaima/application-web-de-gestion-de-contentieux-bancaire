@@ -24,13 +24,13 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
           <div class="notifications" (click)="toggleNotifications()">
             <i class="icon">🔔</i>
             <span class="badge" *ngIf="nonLues > 0">{{ nonLues }}</span>
-            <div class="notif-dropdown" *ngIf="showNotifications">
+            <div class="notif-dropdown" *ngIf="showNotifications" (click)="$event.stopPropagation()">
               <h4>Notifications</h4>
               <div *ngIf="notifications.length === 0" class="no-notif">Aucune notification</div>
               <ul>
                 <li *ngFor="let notif of notifications"
                     [class.unread]="!notif.lue"
-                    (click)="marquerLue(notif); $event.stopPropagation()">
+                    (click)="marquerLue(notif)">
                   <strong>{{ notif.titre }}</strong>
                   <p>{{ notif.message }}</p>
                   <small>{{ notif.dateCreation | date:'short' }}</small>
@@ -55,14 +55,10 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
 
       <!-- ══ LAYOUT ══ -->
       <div class="app-layout">
-
-        <!-- Sidebar externalisée — username et roles passés en @Input -->
         <app-sidebar [username]="username" [roles]="roles"></app-sidebar>
-
         <main class="app-main">
           <router-outlet></router-outlet>
         </main>
-
       </div>
 
     </ng-container>
@@ -74,7 +70,6 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
     </ng-template>
   `,
   styles: [`
-    /* ── Header ── */
     .app-header {
       background-color: #001f3f;
       color: white;
@@ -85,19 +80,15 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
       font-family: 'Inter', sans-serif;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
       position: relative;
-      z-index: 15;   /* ← abaissé de 20 à 15 pour ne pas écraser la sidebar */
+      z-index: 15;
     }
     .logo { display: flex; align-items: center; gap: 10px; font-size: 1.4rem; font-weight: 700; letter-spacing: 0.5px; }
     .user-actions { display: flex; align-items: center; gap: 25px; position: relative; }
-
     .user-profile { display: flex; align-items: center; gap: 10px; }
     .avatar { width: 35px; height: 35px; background: linear-gradient(135deg, #007bff, #001f3f); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; font-size: 1.1rem; box-shadow: 0 2px 4px rgba(0,0,0,0.2); }
     .username { font-weight: 500; font-size: 0.95rem; }
-
     .logout-btn { background-color: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: all 0.2s; font-weight: 500; display: flex; align-items: center; gap: 5px; }
     .logout-btn:hover { background-color: white; color: #001f3f; }
-
-    /* ── Notifications ── */
     .notifications { cursor: pointer; position: relative; font-size: 1.3rem; display: flex; align-items: center; }
     .badge { position: absolute; top: -5px; right: -8px; background: #ff4757; color: white; font-size: 0.7rem; padding: 2px 6px; border-radius: 50%; font-weight: bold; border: 2px solid #001f3f; }
     .notif-dropdown { position: absolute; top: 45px; right: -50px; background: white; color: #333; width: 320px; border-radius: 10px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); border: 1px solid #eee; z-index: 1000; overflow: hidden; cursor: default; animation: dropDown 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
@@ -111,8 +102,6 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
     .notif-dropdown li strong { display: block; font-size: 0.95rem; margin-bottom: 5px; color: #001f3f; }
     .notif-dropdown li p { margin: 0 0 5px 0; font-size: 0.85rem; color: #555; line-height: 1.4; }
     .notif-dropdown li small { font-size: 0.75rem; color: #888; }
-
-    /* ── Layout ── */
     .app-layout { display: flex; min-height: calc(100vh - 65px); font-family: 'Inter', sans-serif; }
     .app-main { flex: 1; padding: 30px; background-color: #f4f7f6; overflow-y: auto; height: calc(100vh - 65px); box-sizing: border-box; }
     .public-main { min-height: 100vh; }
@@ -134,29 +123,30 @@ export class AppComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-    this.isLoggedIn = await Promise.resolve(this.keycloak.isLoggedIn() as unknown as boolean | Promise<boolean>);
-    if (!this.isLoggedIn) return;
-
     try {
-      const kc = (this.keycloak as any).getKeycloakInstance();
-      const tokenParsed = kc?.tokenParsed;
-
-      this.username = tokenParsed?.preferred_username
-        || tokenParsed?.given_name
-        || tokenParsed?.name
-        || 'Utilisateur';
-
-      const realmRoles: string[] = tokenParsed?.realm_access?.roles || [];
-      const clientRoles: string[] = Object.values(tokenParsed?.resource_access || {})
-        .flatMap((r: any) => r?.roles || []);
-      this.roles = [...new Set([...realmRoles, ...clientRoles])];
-
-      console.log('[Keycloak] username:', this.username);
-      console.log('[Keycloak] Rôles complets:', this.roles);
-
-      this.chargerNotifications();
+      this.isLoggedIn = await this.keycloak.isLoggedIn();
+  
+      if (!this.isLoggedIn) return;
+  
+      this.roles = this.keycloak.getUserRoles();
+  
+      // 1. Récupération sécurisée du username
+      try {
+        const userProfile = await this.keycloak.loadUserProfile();
+        this.username = userProfile.username || 'Utilisateur';
+      } catch (profileErr) {
+        const tokenParsed: any = this.keycloak.getKeycloakInstance().tokenParsed;
+        this.username = tokenParsed?.preferred_username || 'Utilisateur';
+      }
+  
+      // 2. Vérification que le token existe avant d'appeler l'API
+      const token = await this.keycloak.getToken();
+      if (token) {
+        this.chargerNotifications();
+      }
+  
     } catch (err) {
-      console.error('[AppComponent] Erreur init:', err);
+      console.error('[AppComponent] Erreur globale:', err);
     }
   }
 
@@ -179,9 +169,11 @@ export class AppComponent implements OnInit {
 
   marquerLue(notif: NotificationDTO) {
     if (!notif.lue) {
-      this.notificationService.marquerCommeLue(notif.id).subscribe(() => {
-        notif.lue = true;
-        this.nonLues--;
+      this.notificationService.marquerCommeLue(notif.id).subscribe({
+        next: () => {
+          notif.lue = true;
+          this.nonLues = Math.max(0, this.nonLues - 1);
+        }
       });
     }
   }

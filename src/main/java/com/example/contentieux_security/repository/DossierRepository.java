@@ -152,12 +152,15 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
     // 📌 DÉTAIL DOSSIER (optimisé)
     // =====================================================
   // DossierRepository.java
-@Query("SELECT DISTINCT d FROM DossierContentieux d " +
-"LEFT JOIN FETCH d.client " +
-"LEFT JOIN FETCH d.agentCreateur " +
-"LEFT JOIN FETCH d.risques r " +
-"LEFT JOIN FETCH r.garanties " +
-"WHERE d.id = :id")
+  @Query("""
+    SELECT d FROM DossierContentieux d
+    LEFT JOIN FETCH d.client
+    LEFT JOIN FETCH d.agence
+    LEFT JOIN FETCH d.agentCreateur
+    LEFT JOIN FETCH d.risques r
+    LEFT JOIN FETCH r.garanties
+    WHERE d.id = :id
+""")
 Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
     // =====================================================
     // 📌 VALIDATION FINANCIÈRE AVEC FETCH

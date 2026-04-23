@@ -5,7 +5,7 @@
   </div>
 
   <!-- MENU AGENT BANCAIRE -->
-  <div class="menu-section" *ngIf="hasRole('AGENT')">
+  <div class="menu-section" *ngIf="hasRole('AGENT') || hasRole('ADMIN')">
     <p class="menu-label">ESPACE AGENT</p>
     <ul>
       <li><a routerLink="/agent/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Tableau de Bord</a></li>
@@ -33,17 +33,6 @@
     </ul>
   </div>
 
-  <!-- MENU ADMIN -->
-  <!-- MENU ADMIN -->
-<div class="menu-section" *ngIf="hasRole('ADMIN')">
-  <p class="menu-label">ADMINISTRATION</p>
-  <ul>
-    <li><a routerLink="/admin/dashboard" routerLinkActive="active-link"><i class="icon">⚙️</i> Vue Globale</a></li>
-    <li><a routerLink="/admin/dashboard" [queryParams]="{tab: 'agents'}" routerLinkActive="active-link"><i class="icon">👥</i> Agents</a></li>
-    <li><a routerLink="/admin/dashboard" [queryParams]="{tab: 'agences'}" routerLinkActive="active-link"><i class="icon">🏢</i> Agences</a></li>
-    <li><a routerLink="/admin/dashboard" [queryParams]="{tab: 'validateurs'}" routerLinkActive="active-link"><i class="icon">⚖️</i> Validateurs</a></li>
-  </ul>
-</div>
   <!-- MENU VALIDATEUR JURIDIQUE -->
   <div class="menu-section" *ngIf="hasRole('VALIDATEUR_JURIDIQUE')">
     <p class="menu-label">VALIDATION JURIDIQUE</p>
@@ -62,8 +51,35 @@
     </ul>
   </div>
 
-  <!-- MENU PAR DÉFAUT -->
-  <div class="menu-section" *ngIf="roles.length === 0 || (!hasRole('AGENT') && !hasRole('ADMIN') && !hasRole('AVOCAT') && !hasRole('PRESTATAIRE') && !hasRole('EXPERT') && !hasRole('HUISSIER') && !hasRole('VALIDATEUR_JURIDIQUE') && !hasRole('VALIDATEUR_FINANCIER'))">
+  <!-- MENU ADMIN -->
+  <div class="menu-section" *ngIf="hasRole('ADMIN')">
+    <p class="menu-label">ADMINISTRATION</p>
+    <ul>
+      <li>
+        <a routerLink="/admin/overview" routerLinkActive="active-link">
+          <i class="icon">⚙️</i> Vue Globale
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'agents'}" routerLinkActive="active-link">
+          <i class="icon">👥</i> Agents
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'agences'}" routerLinkActive="active-link">
+          <i class="icon">🏢</i> Agences
+        </a>
+      </li>
+      <li>
+        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'validateurs'}" routerLinkActive="active-link">
+          <i class="icon">⚖️</i> Validateurs
+        </a>
+      </li>
+    </ul>
+  </div>
+
+  <!-- MENU PAR DÉFAUT (Fallback) -->
+  <div class="menu-section" *ngIf="!isAnyRoleMatched()">
     <p class="menu-label">NAVIGATION</p>
     <ul>
       <li><a routerLink="/" routerLinkActive="active-link"><i class="icon">🏠</i> Accueil</a></li>

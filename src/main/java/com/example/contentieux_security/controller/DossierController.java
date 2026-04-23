@@ -66,14 +66,15 @@ public class DossierController {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-
     @PostMapping
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public ResponseEntity<?> creerDossier(@RequestBody DossierCreationRequest request, Principal principal) {
         try {
+            System.out.println(">>> USERNAME Keycloak : [" + principal.getName() + "]");
             DossierContentieux dossier = dossierService.creerDossier(request, principal.getName());
             return ResponseEntity.ok(Map.of("message", "Dossier créé avec succès", "dossierId", dossier.getId()));
         } catch (Exception e) {
+            System.out.println(">>> ERREUR : " + e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
@@ -175,10 +176,49 @@ public class DossierController {
 
     @GetMapping
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
-    public ResponseEntity<?> listeDossiers(Principal principal, @RequestParam(required = false) String recherche) {
+    public ResponseEntity<?> listeDossiers(Principal principal, 
+                                            @RequestParam(required = false) String recherche) {
         try {
-            List<DossierContentieux> dossiers = dossierService.rechercherDossiers(principal.getName(), recherche);
-            return ResponseEntity.ok(Map.of("dossiers", dossiers, "totalDossiers", dossiers.size()));
+            List<DossierContentieux> dossiers = dossierService.rechercherDossiers(
+                principal.getName(), recherche
+            );
+    
+            List<Map<String, Object>> result = dossiers.stream().map(d -> {
+                Map<String, Object> item = new HashMap<>();
+                item.put("id", d.getId());
+                item.put("numeroDossier", d.getNumeroDossier());
+                item.put("libelle", d.getLibelle());
+                item.put("statut", d.getStatut() != null ? d.getStatut().name() : null);
+                item.put("dateCreation", d.getDateCreation());
+    
+                // ── Client ──
+                if (d.getClient() != null) {
+                    Client c = d.getClient();
+                    String type = c.getTypeClient() != null ? c.getTypeClient().name() : "PARTICULIER";
+                    item.put("clientType", type);
+                    item.put("clientTypeClient", type);
+                    item.put("clientNom", c.getNom());
+                    item.put("clientPrenom", c.getPrenom());
+                    item.put("clientRaisonSociale", c.getRaisonSociale());
+                }
+    
+                // ── Montant ──
+                double montant = 0.0;
+                if (d.getRisques() != null) {
+                    montant = d.getRisques().stream()
+                        .mapToDouble(r -> r.getMontantImpaye() != null ? r.getMontantImpaye() : 0)
+                        .sum();
+                }
+                item.put("montantTotalEngagement", montant);
+    
+                return item;
+            }).toList();
+    
+            return ResponseEntity.ok(Map.of(
+                "dossiers", result,
+                "totalDossiers", result.size()
+            ));
+    
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

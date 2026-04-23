@@ -14,11 +14,32 @@ export class SidebarComponent {
   @Input() username: string = '';
   @Input() roles: string[] = [];
 
+  /**
+   * Vérifie si l'utilisateur possède un rôle spécifique.
+   * Normalise les rôles (ex: 'ROLE_AGENT' devient 'AGENT') pour une comparaison robuste.
+   */
   hasRole(role: string): boolean {
+    if (!this.roles || this.roles.length === 0) return false;
     const normalize = (r: string) => r.replace(/^ROLE_/, '').toUpperCase();
-    return this.roles.some(r => normalize(r) === normalize(role));
+    const targetRole = normalize(role);
+    return this.roles.some(r => normalize(r) === targetRole);
   }
 
+  /**
+   * Vérifie si l'utilisateur possède au moins un des rôles gérés par l'application.
+   * Utilisé pour afficher le menu par défaut si aucun rôle n'est reconnu.
+   */
+  isAnyRoleMatched(): boolean {
+    const managedRoles = [
+      'AGENT', 'ADMIN', 'AVOCAT', 'PRESTATAIRE', 
+      'EXPERT', 'HUISSIER', 'VALIDATEUR_JURIDIQUE', 'VALIDATEUR_FINANCIER'
+    ];
+    return managedRoles.some(role => this.hasRole(role));
+  }
+
+  /**
+   * Retourne le libellé du rôle principal pour l'affichage.
+   */
   getRoleDisplayName(): string {
     if (this.hasRole('ADMIN')) return 'Administrateur';
     if (this.hasRole('AGENT')) return 'Agent Bancaire';

@@ -3,7 +3,9 @@ import com.example.contentieux_security.entity.DossierContentieux;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "historique_dossier")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

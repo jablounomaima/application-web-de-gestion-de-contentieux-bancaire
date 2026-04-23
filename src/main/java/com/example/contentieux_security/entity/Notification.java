@@ -3,7 +3,9 @@ package com.example.contentieux_security.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "notifications")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

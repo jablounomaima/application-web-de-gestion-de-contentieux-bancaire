@@ -6,6 +6,10 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Set;                    
 import java.util.HashSet;  
+
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "risques")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

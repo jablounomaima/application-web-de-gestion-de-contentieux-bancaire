@@ -84,13 +84,17 @@ public DossierContentieux getDossierById(Long id) {
         }
         return d;
     }
-// ❌ SUPPRIMER CE BLOC ENTIER (lignes ~88 à ~111)
-@Transactional(readOnly = true)
-public DossierDetailDTO getDossierDetail(Long id) {
-    DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-            .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-    return DossierDetailDTO.from(d, historiqueService.getHistorique(id));
-}
+
+
+    @Transactional(readOnly = true)
+    public DossierDetailDTO getDossierDetail(Long id) {
+    
+        DossierContentieux d = dossierRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new RuntimeException("Dossier introuvable " + id));
+    
+        return DossierDetailDTO.from(d, historiqueService.getHistorique(id));
+    }
+
 // ════════════════════════════════════════════════════
     //  CRÉATION DOSSIER
     // ════════════════════════════════════════════════════

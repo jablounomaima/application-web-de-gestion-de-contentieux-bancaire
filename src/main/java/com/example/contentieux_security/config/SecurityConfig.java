@@ -73,12 +73,13 @@ public class SecurityConfig {
     @Bean
     public JwtAuthenticationConverter jwtAuthenticationConverter() {
         JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
-
+    
+        // ✅ Utiliser preferred_username au lieu du sub (UUID)
+        converter.setPrincipalClaimName("preferred_username");
+    
         converter.setJwtGrantedAuthoritiesConverter(jwt -> {
-            // ✅ ArrayList mutable — pas d'UnsupportedOperationException
             List<GrantedAuthority> authorities = new ArrayList<>();
-
-            // Lire les rôles depuis realm_access.roles (standard Keycloak)
+    
             Map<String, Object> realmAccess = jwt.getClaimAsMap("realm_access");
             if (realmAccess != null && realmAccess.containsKey("roles")) {
                 List<String> roles = (List<String>) realmAccess.get("roles");
@@ -90,10 +91,10 @@ public class SecurityConfig {
                     authorities.add(new SimpleGrantedAuthority(roleName));
                 }
             }
-
+    
             return authorities;
         });
-
+    
         return converter;
     }
 }

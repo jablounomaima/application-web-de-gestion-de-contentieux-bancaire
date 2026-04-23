@@ -6,7 +6,9 @@ import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 /**
  * Entité représentant la facture d'honoraires soumise par un avocat
  * pour une mission judiciaire.

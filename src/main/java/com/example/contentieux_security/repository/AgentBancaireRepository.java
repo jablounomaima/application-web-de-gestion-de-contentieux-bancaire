@@ -19,6 +19,7 @@ public interface AgentBancaireRepository extends JpaRepository<AgentBancaire, Lo
     
     boolean existsByUsername(String username);
     Optional<AgentBancaire> findByEmail(String email);
-
+    // Chercher aussi par email en fallback
+Optional<AgentBancaire> findByUsernameOrEmail(String username, String email);
    
 }

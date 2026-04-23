@@ -3,7 +3,9 @@ package com.example.contentieux_security.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.SuperBuilder;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "utilisateurs")
 @Inheritance(strategy = InheritanceType.JOINED)

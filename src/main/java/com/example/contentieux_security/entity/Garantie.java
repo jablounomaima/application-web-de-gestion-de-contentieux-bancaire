@@ -2,7 +2,9 @@ package com.example.contentieux_security.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "garanties")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

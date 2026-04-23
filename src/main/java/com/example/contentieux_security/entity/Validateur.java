@@ -3,7 +3,9 @@ package com.example.contentieux_security.entity;
 import com.example.contentieux_security.enums.TypeValidateur;
 import jakarta.persistence.*;
 import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "validateurs")
 @Data

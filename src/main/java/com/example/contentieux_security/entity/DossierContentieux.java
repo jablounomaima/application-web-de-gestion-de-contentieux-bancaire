@@ -4,6 +4,9 @@ import com.example.contentieux_security.enums.DossierStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Set;
@@ -13,6 +16,8 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "dossier")
 public class DossierContentieux {
@@ -82,10 +87,12 @@ public class DossierContentieux {
     // ── Relations ────────────────────────────────────────
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id", nullable = false)
+    @JsonIgnore 
     private Client client;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agence_id", nullable = false)
+    @JsonIgnore 
     private Agence agence;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -93,12 +100,15 @@ public class DossierContentieux {
     private AgentBancaire agentCreateur;
 
     @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, fetch = FetchType.LAZY ,orphanRemoval = true)
+    @JsonIgnore
     private Set<Risque> risques;
 
     @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore 
 private List<HistoriqueDossier> historiques;
 
 @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, orphanRemoval = true)
+@JsonIgnore 
 private List<Notification> notifications;
 
 

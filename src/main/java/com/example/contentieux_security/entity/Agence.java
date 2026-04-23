@@ -6,6 +6,8 @@ import lombok.*;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "agences")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -32,7 +34,8 @@ public class Agence {
     @Column(name = "directeur")
     private String directeur; // ✅ AJOUTÉ
 
-    @OneToMany(mappedBy = "agence", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "agence", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
+    
     private List<AgentBancaire> agents = new ArrayList<>();
 
     public int getNombreAgents() {

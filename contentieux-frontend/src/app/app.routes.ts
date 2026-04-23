@@ -42,9 +42,10 @@ export const routes: Routes = [
         .then(m => m.AgentDossiersComponent)
   },
   {
+    // Nouveau dossier = ouvrir le dashboard avec le modal
     path: 'agent/nouveau-dossier',
-    redirectTo: 'agent/dossiers',
-    pathMatch: 'full'
+    redirectTo: 'agent/dashboard',
+    pathMatch: 'full' // Ajouté pour la cohérence
   },
   {
     path: 'agent/dossier/:id',
@@ -67,12 +68,12 @@ export const routes: Routes = [
   {
     path: 'prestataire/missions',
     redirectTo: 'prestataire/dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full' // Ajouté pour la cohérence
   },
   {
     path: 'prestataire/factures',
     redirectTo: 'prestataire/dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full' // Ajouté pour la cohérence
   },
 
   // ── AVOCAT ─────────────────────────────────────────
@@ -87,10 +88,18 @@ export const routes: Routes = [
   {
     path: 'avocat/dossiers',
     redirectTo: 'avocat/dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full' // Ajouté pour la cohérence
   },
 
   // ── ADMIN ──────────────────────────────────────────
+  {
+    path: 'admin/overview',
+    canActivate: [AuthGuard],
+    data: { roles: ['ROLE_ADMIN'] },
+    loadComponent: () =>
+      import('./features/admin/admin-overview/admin-overview.component')
+        .then(m => m.AdminOverviewComponent)
+  },
   {
     path: 'admin/dashboard',
     canActivate: [AuthGuard],
@@ -100,14 +109,9 @@ export const routes: Routes = [
         .then(m => m.AdminDashboardComponent)
   },
   {
-    path: 'admin/utilisateurs',
-    redirectTo: 'admin/dashboard',
-    pathMatch: 'full'
-  },
-  {
-    path: 'admin/agences',
-    redirectTo: 'admin/dashboard',
-    pathMatch: 'full'
+    path: 'admin',
+    redirectTo: 'admin/overview',
+    pathMatch: 'full' // Ajouté pour la cohérence
   },
 
   // ── VALIDATEURS ────────────────────────────────────
@@ -122,7 +126,7 @@ export const routes: Routes = [
   {
     path: 'validateur/juridique/a-valider',
     redirectTo: 'validateur/juridique/dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full' // Ajouté pour la cohérence
   },
   {
     path: 'validateur/financier/dashboard',
@@ -135,9 +139,9 @@ export const routes: Routes = [
   {
     path: 'validateur/financier/factures',
     redirectTo: 'validateur/financier/dashboard',
-    pathMatch: 'full'
+    pathMatch: 'full' // Ajouté pour la cohérence
   },
 
   // ── Fallback ───────────────────────────────────────
-  { path: '**', redirectTo: 'login' }
+  { path: '**', redirectTo: 'login', pathMatch: 'full' } // Ajouté pour la cohérence
 ];

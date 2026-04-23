@@ -6,6 +6,9 @@ import lombok.*;
 import java.time.LocalDate;
 import java.util.List;
 import com.example.contentieux_security.enums.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Entity
 @Table(name = "clients")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -51,6 +54,7 @@ public class Client {
     private Agence agence;
 
     @OneToMany(mappedBy = "client", fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<DossierContentieux> dossiers;
 
     // Méthode utilitaire
