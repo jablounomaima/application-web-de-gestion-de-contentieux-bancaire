@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "risque"})
 @Entity
 @Table(name = "garanties")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

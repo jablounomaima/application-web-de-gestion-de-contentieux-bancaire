@@ -1,5 +1,7 @@
 package com.example.contentieux_security.entity;
 import com.example.contentieux_security.entity.DossierContentieux;
+import com.example.contentieux_security.enums.TypeRisque;
+
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDate;
@@ -9,7 +11,7 @@ import java.util.HashSet;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "dossier"})
 @Entity
 @Table(name = "risques")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

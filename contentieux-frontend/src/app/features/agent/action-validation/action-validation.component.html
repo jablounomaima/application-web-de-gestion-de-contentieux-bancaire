@@ -1,0 +1,28 @@
+<div class="action-validation-wrap">
+
+    <!-- Bouton Ressoumission -->
+    <button
+      class="action-btn warning"
+      *ngIf="dossier?.validationFinanciere === false || dossier?.validationJuridique === false"
+      (click)="ressoumettreDossier()"
+      [disabled]="loading">
+      <span *ngIf="loading" class="btn-spin"></span>
+      <span *ngIf="dossier?.validationFinanciere === false">
+        🔄 Ressoumettre au validateur financier
+      </span>
+      <span *ngIf="dossier?.validationJuridique === false && dossier?.validationFinanciere !== false">
+        🔄 Ressoumettre au validateur juridique
+      </span>
+    </button>
+  
+    <!-- Bouton PDF -->
+    <button
+      class="action-btn pdf"
+      *ngIf="dossier?.validationFinanciere === true && dossier?.validationJuridique === true"
+      (click)="telechargerPdf()"
+      [disabled]="loading">
+      <span *ngIf="loading" class="btn-spin"></span>
+      📄 Télécharger PDF
+    </button>
+  
+  </div>

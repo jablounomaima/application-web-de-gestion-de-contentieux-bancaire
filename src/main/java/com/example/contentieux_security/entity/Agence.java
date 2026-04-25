@@ -7,7 +7,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "agents", "dossiers", "clients"})
 @Entity
 @Table(name = "agences")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
@@ -35,7 +35,7 @@ public class Agence {
     private String directeur; // ✅ AJOUTÉ
 
     @OneToMany(mappedBy = "agence", cascade = CascadeType.ALL, fetch = FetchType.EAGER)
-    
+    @JsonIgnoreProperties
     private List<AgentBancaire> agents = new ArrayList<>();
 
     public int getNombreAgents() {

@@ -8,7 +8,7 @@ import java.util.List;
 import com.example.contentieux_security.enums.*;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "dossiers"})
 @Entity
 @Table(name = "clients")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder

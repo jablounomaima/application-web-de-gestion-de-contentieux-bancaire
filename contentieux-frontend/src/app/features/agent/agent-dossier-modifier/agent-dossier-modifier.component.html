@@ -1,0 +1,442 @@
+<div class="modifier-page">
+
+    <!-- ── Loading ──────────────────────────────────────────────────── -->
+    <div *ngIf="loading" class="loading-container">
+      <div class="spinner"></div>
+      <p>Chargement du dossier...</p>
+    </div>
+  
+    <!-- ── Contenu ──────────────────────────────────────────────────── -->
+    <div *ngIf="!loading" class="modifier-container">
+  
+      <!-- Header -->
+      <div class="page-header">
+        <button type="button" class="btn-back" (click)="cancel()">
+          <span class="arrow">←</span> Retour
+        </button>
+        <div class="header-info">
+          <h1>Modifier le dossier</h1>
+          <div class="dossier-meta">
+            <span class="dossier-ref">{{ dossierOriginal?.numeroDossier }}</span>
+            <span class="status-badge" [ngClass]="'status-' + (dossierOriginal?.statut | lowercase)">
+              {{ getStatusLabel() }}
+            </span>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Alerte non modifiable -->
+      <div *ngIf="!canModify()" class="alert alert-warning">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-content">
+          <strong>Dossier non modifiable</strong>
+          <p>Ce dossier est en statut <strong>{{ getStatusLabel() }}</strong> et ne peut plus être modifié.</p>
+          <p class="alert-hint">Seuls les dossiers "Ouvert" ou "Rejeté" peuvent être modifiés.</p>
+        </div>
+      </div>
+  
+      <!-- Formulaire -->
+      <form *ngIf="canModify()" (ngSubmit)="save()" class="modifier-form">
+  
+        <!-- ══ INFOS DOSSIER ══ -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <span class="section-icon">📋</span> Informations du dossier
+          </h2>
+  
+          <div class="form-group">
+            <label for="libelle">Libellé <span class="required">*</span></label>
+            <input id="libelle" type="text" [(ngModel)]="form.libelle" name="libelle"
+                   class="form-control" placeholder="Ex: Dossier contentieux Client ABC"
+                   [disabled]="saving" required />
+          </div>
+  
+          <div class="form-group">
+            <label for="description">Description</label>
+            <textarea id="description" [(ngModel)]="form.description" name="description"
+                      rows="4" class="form-control" placeholder="Description détaillée..."
+                      [disabled]="saving"></textarea>
+          </div>
+  
+          <div class="form-group">
+            <label for="notes">Notes internes</label>
+            <textarea id="notes" [(ngModel)]="form.notes" name="notes"
+                      rows="3" class="form-control" placeholder="Notes à usage interne..."
+                      [disabled]="saving"></textarea>
+            <div class="field-hint">Usage interne uniquement</div>
+          </div>
+        </div>
+  
+        <!-- ══ CLIENT ══ -->
+        <div class="form-section">
+          <h2 class="section-title">
+            <span class="section-icon">👤</span> Informations client
+          </h2>
+  
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Type de client <span class="required">*</span></label>
+              <select [(ngModel)]="form.client.typeClient" name="clientType" class="form-control">
+                <option *ngFor="let type of clientTypes" [value]="type.value">{{ type.label }}</option>
+              </select>
+            </div>
+          </div>
+  
+          <!-- Particulier -->
+          <div *ngIf="form.client.typeClient === 'PARTICULIER'" class="client-fields">
+            <div class="form-row">
+              <div class="form-group flex-1">
+                <label>Nom</label>
+                <input type="text" [(ngModel)]="form.client.nom" name="clientNom"
+                       class="form-control" placeholder="Nom" />
+              </div>
+              <div class="form-group flex-1">
+                <label>Prénom</label>
+                <input type="text" [(ngModel)]="form.client.prenom" name="clientPrenom"
+                       class="form-control" placeholder="Prénom" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label>CIN</label>
+              <input type="text" [(ngModel)]="form.client.cin" name="clientCin"
+                     class="form-control" placeholder="CIN" />
+            </div>
+          </div>
+  
+          <!-- Entreprise -->
+          <div *ngIf="form.client.typeClient === 'ENTREPRISE'" class="client-fields">
+            <div class="form-group">
+              <label>Raison sociale <span class="required">*</span></label>
+              <input type="text" [(ngModel)]="form.client.raisonSociale" name="clientRaisonSociale"
+                     class="form-control" placeholder="Raison sociale" />
+            </div>
+            <div class="form-group">
+              <label>RNE</label>
+              <input type="text" [(ngModel)]="form.client.rne" name="clientRne"
+                     class="form-control" placeholder="RNE" />
+            </div>
+          </div>
+  
+          <!-- Champs communs -->
+          <div class="form-row">
+            <div class="form-group flex-1">
+              <label>Email</label>
+              <input type="email" [(ngModel)]="form.client.email" name="clientEmail"
+                     class="form-control" placeholder="email@exemple.com" />
+            </div>
+            <div class="form-group flex-1">
+              <label>Téléphone</label>
+              <input type="tel" [(ngModel)]="form.client.telephone" name="clientTelephone"
+                     class="form-control" placeholder="Téléphone" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Adresse</label>
+            <textarea [(ngModel)]="form.client.adresse" name="clientAdresse"
+                      rows="2" class="form-control" placeholder="Adresse complète"></textarea>
+          </div>
+        </div>
+  
+        <!-- ══ CRÉDITS & GARANTIES ══ -->
+        <div class="form-section">
+          <div class="section-header">
+            <h2 class="section-title">
+              <span class="section-icon">💰</span> Crédits et Garanties
+            </h2>
+            <div class="total-amount">
+              Total impayé : <strong>{{ form.montantTotal | number }} TND</strong>
+            </div>
+          </div>
+  
+          <div class="risques-container">
+  
+            <!-- Aucun crédit -->
+            <div *ngIf="form.risques.length === 0" class="empty-state">
+              <div class="empty-icon">📋</div>
+              <p>Aucun crédit enregistré</p>
+              <button type="button" class="btn-primary-small" (click)="openAddRisqueModal()">
+                + Ajouter un crédit
+              </button>
+            </div>
+  
+            <!-- Liste des risques -->
+            <div *ngFor="let risque of form.risques; let i = index; trackBy: trackByIndex"
+                 class="risque-card">
+  
+              <!-- En-tête risque -->
+              <div class="risque-card-header">
+                <div class="risque-select">
+                  <label class="checkbox-label">
+                    <input type="checkbox"
+                           [(ngModel)]="risque.selectionne"
+                           [ngModelOptions]="{standalone: true}"
+                           (change)="toggleRisqueSelection(i)" />
+                    <span>Sélectionner pour validation</span>
+                  </label>
+                  <span *ngIf="risque.selectionne" class="selected-badge">✓ Sélectionné</span>
+                </div>
+                <div class="risque-actions">
+                  <button type="button" class="btn-icon" (click)="editRisque(i)" title="Modifier">✏️</button>
+                  <button type="button" class="btn-icon delete" (click)="deleteRisque(i)" title="Supprimer">🗑️</button>
+                </div>
+              </div>
+  
+              <!-- Corps risque -->
+              <div class="risque-card-body">
+                <div class="risque-type">
+                  <span class="type-badge">{{ getRisqueTypeLabel(risque.type) }}</span>
+                </div>
+  
+                <div class="risque-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Montant initial :</span>
+                    <span class="detail-value">{{ risque.montantInitial | number }} TND</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Montant impayé :</span>
+                    <span class="detail-value impaye">{{ risque.montantImpaye | number }} TND</span>
+                  </div>
+                  <div class="detail-item" *ngIf="risque.dateEcheance">
+                    <span class="detail-label">Échéance :</span>
+                    <span class="detail-value">{{ risque.dateEcheance | date:'dd/MM/yyyy' }}</span>
+                  </div>
+                </div>
+  
+                <div class="risque-description" *ngIf="risque.description">
+                  <span class="desc-label">📝</span>
+                  <span class="desc-text">{{ risque.description }}</span>
+                </div>
+  
+                <!-- ── GARANTIES DE CHAQUE CRÉDIT ── -->
+               <!-- Garanties Section -->
+<div class="garanties-section">
+    <div class="garanties-header">
+      <div class="garanties-title">
+        <span>🔒 Garanties ({{ risque.garanties?.length || 0 }})</span>
+      </div>
+      <button type="button" class="btn-link" (click)="openAddGarantieModal(i)">
+        + Ajouter une garantie
+      </button>
+    </div>
+  
+    <div *ngIf="risque.garanties && risque.garanties.length > 0">
+      <div *ngFor="let garantie of risque.garanties; let j = index" class="garantie-item">
+        <div class="garantie-info">
+          <span class="garantie-type">{{ garantie.typeGarantie }}</span>
+          <span class="garantie-value">{{ garantie.valeurEstimee | number }} TND</span>
+          <span class="garantie-desc" *ngIf="garantie.description">- {{ garantie.description }}</span>
+        </div>
+        <div class="garantie-actions">
+          <button type="button" class="btn-icon-small" (click)="editGarantie(i, j)">✏️</button>
+          <button type="button" class="btn-icon-small delete" (click)="deleteGarantie(i, j)">🗑️</button>
+        </div>
+      </div>
+    </div>
+  
+    <div *ngIf="!risque.garanties || risque.garanties.length === 0" class="garanties-empty">
+      Aucune garantie associée
+    </div>
+  </div>
+                <!-- /garanties -->
+  
+              </div>
+            </div>
+            <!-- /risque-card -->
+  
+            <button *ngIf="form.risques.length > 0" type="button"
+                    class="btn-add-risque" (click)="openAddRisqueModal()">
+              + Ajouter un autre crédit
+            </button>
+          </div>
+        </div>
+  
+        <!-- Messages -->
+        <div *ngIf="error" class="alert alert-error">
+          <span class="alert-icon">❌</span> {{ error }}
+        </div>
+        <div *ngIf="success" class="alert alert-success">
+          <span class="alert-icon">✅</span> {{ success }}
+        </div>
+  
+        <!-- Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn btn-secondary" (click)="cancel()" [disabled]="saving">
+            Annuler
+          </button>
+          <button type="submit" class="btn btn-primary"
+                  [disabled]="saving || !form.libelle.trim()">
+            <span *ngIf="saving" class="btn-spinner"></span>
+            <span *ngIf="!saving">💾 Enregistrer toutes les modifications</span>
+            <span *ngIf="saving">Enregistrement en cours...</span>
+          </button>
+        </div>
+  
+      </form>
+    </div>
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MODAL : Ajouter / Modifier un Risque                            -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="modal" *ngIf="showRisqueModal">
+    <div class="modal-overlay" (click)="showRisqueModal = false"></div>
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>{{ isEditingRisque ? 'Modifier' : 'Ajouter' }} un crédit</h3>
+        <button class="modal-close" (click)="showRisqueModal = false">✕</button>
+      </div>
+  
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Type de crédit <span class="required">*</span></label>
+          <select [(ngModel)]="risqueForm.type" class="form-control">
+            <option *ngFor="let type of risqueTypes" [value]="type.value">
+              {{ type.label }}
+            </option>
+          </select>
+        </div>
+  
+        <div class="form-row">
+          <div class="form-group flex-1">
+            <label>Montant initial (TND) <span class="required">*</span></label>
+            <input type="number" [(ngModel)]="risqueForm.montantInitial" class="form-control" min="0" step="1000" />
+          </div>
+          <div class="form-group flex-1">
+            <label>Montant impayé (TND) <span class="required">*</span></label>
+            <input type="number" [(ngModel)]="risqueForm.montantImpaye" class="form-control" min="0" step="1000" />
+          </div>
+        </div>
+  
+        <div class="form-group">
+          <label>Date d'échéance</label>
+          <input type="date" [(ngModel)]="risqueForm.dateEcheance" class="form-control" />
+        </div>
+  
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="risqueForm.description" rows="2" class="form-control" placeholder="Description optionnelle..."></textarea>
+        </div>
+  
+        <!-- SECTION GARANTIES DANS LA MODAL RISQUE -->
+        <div class="garanties-section-modal">
+          <div class="garanties-header">
+            <span class="garanties-title">🔒 Garanties (obligatoire)</span>
+            <button type="button" class="btn-link" (click)="openAddGarantieFromRisqueModal()">
+              + Ajouter une garantie
+            </button>
+          </div>
+  
+          <div *ngIf="risqueForm.garanties && risqueForm.garanties.length > 0">
+            <div *ngFor="let garantie of risqueForm.garanties; let j = index" class="garantie-item">
+              <div class="garantie-info">
+                <span class="garantie-type">{{ getGarantieTypeLabel(garantie.typeGarantie) }}</span>
+                <span class="garantie-value">{{ garantie.valeurEstimee | number }} TND</span>
+              </div>
+              <div class="garantie-actions">
+                <button type="button" class="btn-icon-small" (click)="editGarantieFromRisqueModal(j)" title="Modifier">
+                  ✏️
+                </button>
+                <button type="button" class="btn-icon-small delete" (click)="removeGarantieFromRisqueModal(j)" title="Supprimer">
+                  🗑️
+                </button>
+              </div>
+            </div>
+          </div>
+  
+          <div *ngIf="!risqueForm.garanties || risqueForm.garanties.length === 0" class="garanties-empty">
+            ⚠️ Aucune garantie - Un crédit doit avoir au moins une garantie
+          </div>
+        </div>
+      </div>
+  
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="showRisqueModal = false">Annuler</button>
+        <button class="btn-save" (click)="saveRisque()" 
+                [disabled]="!risqueForm.garanties || risqueForm.garanties.length === 0">
+          Enregistrer
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MODAL TEMPORAIRE: Ajouter/Modifier une Garantie (depuis la modal risque) -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="modal" *ngIf="showTempGarantieModal">
+    <div class="modal-overlay" (click)="showTempGarantieModal = false"></div>
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>{{ currentTempGarantieIndex !== null ? 'Modifier' : 'Ajouter' }} une garantie</h3>
+        <button class="modal-close" (click)="showTempGarantieModal = false">✕</button>
+      </div>
+  
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Type de garantie <span class="required">*</span></label>
+          <select [(ngModel)]="tempGarantieForm.typeGarantie" class="form-control">
+            <option value="">-- Sélectionner --</option>
+            <option *ngFor="let type of garantieTypes" [value]="type.value">
+              {{ type.label }}
+            </option>
+          </select>
+        </div>
+  
+        <div class="form-group">
+          <label>Valeur estimée (TND) <span class="required">*</span></label>
+          <input type="number" [(ngModel)]="tempGarantieForm.valeurEstimee" class="form-control" min="0" step="1000" />
+        </div>
+  
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="tempGarantieForm.description" rows="2" class="form-control" placeholder="Description..."></textarea>
+        </div>
+      </div>
+  
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="showTempGarantieModal = false">Annuler</button>
+        <button class="btn-save" (click)="saveTempGarantie()">Enregistrer</button>
+      </div>
+    </div>
+  </div>
+  
+<!-- MODAL : Ajouter / Modifier une Garantie -->
+<div class="modal" *ngIf="showGarantieModal">
+    <div class="modal-overlay" (click)="showGarantieModal = false"></div>
+    <div class="modal-container">
+      <div class="modal-header">
+        <h3>{{ currentGarantieIndex !== null ? 'Modifier' : 'Ajouter' }} une garantie</h3>
+        <button class="modal-close" (click)="showGarantieModal = false">✕</button>
+      </div>
+      
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Type de garantie <span class="required">*</span></label>
+          <select [(ngModel)]="garantieForm.typeGarantie" class="form-control">
+            <option value="">-- Sélectionner --</option>
+            <option *ngFor="let type of garantieTypes" [value]="type.value">
+              {{ type.label }}
+            </option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label>Valeur estimée (TND) <span class="required">*</span></label>
+          <input type="number" [(ngModel)]="garantieForm.valeurEstimee" 
+                 class="form-control" min="0" step="1000" />
+        </div>
+        
+        <div class="form-group">
+          <label>Description</label>
+          <textarea [(ngModel)]="garantieForm.description" rows="3"
+                    class="form-control" placeholder="Description de la garantie..."></textarea>
+        </div>
+      </div>
+      
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="showGarantieModal = false">Annuler</button>
+        <button class="btn-save" (click)="saveGarantie()" [disabled]="saving">
+          {{ saving ? 'Enregistrement...' : 'Enregistrer' }}
+        </button>
+      </div>
+    </div>
+  </div>

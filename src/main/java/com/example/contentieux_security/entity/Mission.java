@@ -6,6 +6,8 @@ import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
@@ -74,6 +76,7 @@ private String resultat; // "VALIDE" ou "REJETE"
      */
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "prestation_id")
+    @JsonIgnore
     private Prestation prestation;
 
     /**
@@ -82,6 +85,7 @@ private String resultat; // "VALIDE" ou "REJETE"
      */
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "prestataire_id")
+    @JsonIgnore
     private Prestataire prestataire;
 
     /**
@@ -89,6 +93,7 @@ private String resultat; // "VALIDE" ou "REJETE"
      * ✅ getAffaire() utilisé dans les templates.
      */
     @OneToOne(mappedBy = "mission", fetch = FetchType.EAGER)
+    @JsonIgnore
     private AffaireJudiciaire affaire;
 
 

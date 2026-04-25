@@ -97,6 +97,7 @@ public class DossierContentieux {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agent_id", nullable = false)
+    @JsonIgnore
     private AgentBancaire agentCreateur;
 
     @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, fetch = FetchType.LAZY ,orphanRemoval = true)

@@ -1,13 +1,15 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute, RouterModule, Router } from '@angular/router';
+import { ActivatedRoute, RouterModule, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { DossierService } from '../../../core/services/dossier.service';
+
+import { ActionValidationComponent } from '../action-validation/action-validation.component'; // ✅ AJOUTER
 
 @Component({
   selector: 'app-agent-dossier-detail',
   standalone: true,
-  imports: [CommonModule, RouterModule, FormsModule],
+  imports: [CommonModule, RouterModule, FormsModule, ActionValidationComponent],
   templateUrl: './agent-dossier-detail.component.html',
   styleUrls: ['./agent-dossier-detail.component.scss']
 })
@@ -20,88 +22,242 @@ export class AgentDossierDetailComponent implements OnInit {
   missionAvocat: any = null;
   loading = true;
 
+  affaireExiste = false;
+  prestationJudiciaire: any = null;
+
+  formAffaire = { tribunal: '', numeroRole: '', chambre: '' };
+
   // ── Modals ────────────────────────────────────────────────────────
   showModalValidateurs = false;
-  showModalRisque      = false;
+  showModalRisque = false;
+  showModalModifier = false;
+  showModalSupprimer = false;
 
   // ── Erreurs ───────────────────────────────────────────────────────
   erreurValidateurs = '';
-  erreurRisque      = '';
+  erreurRisque = '';
+  erreurModifier = '';
+  erreurSupprimer = '';
+  success = ''; // ✅ AJOUTER
+  error   = ''; // ✅ AJOUTER
+  // ── Flags ─────────────────────────────────────────────────────────
+  saving = false;
+  suppressing = false;
 
   // ── Formulaires ───────────────────────────────────────────────────
   formValidateurs = { validateurFinancier: '', validateurJuridique: '' };
+
   formRisque = {
-    type:           'CREDIT_IMMOBILIER',
+    type: 'CREDIT_IMMOBILIER',
     montantInitial: 0,
-    montantImpaye:  0,
-    dateEcheance:   '',
-    description:    ''
+    montantImpaye: 0,
+    dateEcheance: '',
+    description: ''
   };
 
+  // Types de crédits disponibles
+  risqueTypes = [
+    { value: 'CREDIT_IMMOBILIER', label: '🏠 Crédit Immobilier' },
+    { value: 'CREDIT_CONSOMMATION', label: '🛍️ Crédit Consommation' },
+    { value: 'CREDIT_AUTO', label: '🚗 Crédit Auto' },
+    { value: 'CREDIT_PROFESSIONNEL', label: '💼 Crédit Professionnel' },
+    { value: 'LEASING', label: '📋 Leasing' },
+    { value: 'DECOUVERT', label: '🏦 Découvert Bancaire' }
+  ];
+
+  formModifier = { libelle: '', description: '', notes: '' };
+
   constructor(
-    private route:         ActivatedRoute,
-    private router:        Router,
+    private route: ActivatedRoute,
+    private router: Router,
     private dossierService: DossierService
   ) {}
 
   ngOnInit() {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (id) this.chargerDossier(id);
+    
+    this.route.queryParams.subscribe(params => {
+      if (params['refresh']) {
+        console.log('🔄 Refresh détecté avec timestamp:', params['refresh']);
+        const currentId = Number(this.route.snapshot.paramMap.get('id'));
+        if (currentId) {
+          this.chargerDossier(currentId);
+        }
+      }
+    });
+    
+    this.router.events.subscribe(event => {
+      if (event instanceof NavigationEnd) {
+        const currentId = Number(this.route.snapshot.paramMap.get('id'));
+        if (currentId && currentId === this.dossier?.id) {
+          console.log('🔄 Retour de navigation, rechargement du dossier');
+          this.chargerDossier(currentId);
+        }
+      }
+    });
   }
-
-  // ════════════════════════════════════════════════════
-  //  CHARGEMENT
-  // ════════════════════════════════════════════════════
 
   chargerDossier(id: number) {
     this.loading = true;
+    console.log('📥 Chargement du dossier ID:', id);
+    
     this.dossierService.getDossierDetails(id).subscribe({
       next: (data: any) => {
-        const d = data.dossier || data;
-
-        // ── Reconstruire client depuis les champs plats du DTO ──────
+        console.log('📦 Données reçues:', data);
+        
+        let d = data.dossier || data;
+        
+        console.log('🔍 Structure du dossier reçu:', {
+          id: d.id,
+          numeroDossier: d.numeroDossier,
+          risques: d.risques,
+          clientType: d.clientType,
+          clientNom: d.clientNom
+        });
+        
+        // Gestion des risques
+        if (!d.risques) {
+          console.warn('⚠️ Aucun risque trouvé, initialisation d\'un tableau vide');
+          d.risques = [];
+        }
+        
+        if (d.risques && Array.isArray(d.risques)) {
+          d.risques = d.risques.map((risque: any) => ({
+            ...risque,
+            garanties: risque.garanties || []
+          }));
+          console.log('✅ Risques après traitement:', d.risques.length);
+        }
+        
+        // Gestion du client
         d.client = {
-          typeClient:    d.clientType || d.clientTypeClient || 'PARTICULIER',
-          nom:           d.clientNom           || null,
-          prenom:        d.clientPrenom         || null,
-          cin:           d.clientCin            || null,
-          email:         d.clientEmail          || null,
-          telephone:     d.clientTelephone      || null,
-          adresse:       d.clientAdresse        || null,
-          raisonSociale: d.clientRaisonSociale  || null,
-          rne:           d.clientRne            || null,
+          typeClient: d.clientType || d.clientTypeClient || 'PARTICULIER',
+          nom: d.clientNom || d.client?.nom || null,
+          prenom: d.clientPrenom || d.client?.prenom || null,
+          cin: d.clientCin || d.client?.cin || null,
+          email: d.clientEmail || d.client?.email || null,
+          telephone: d.clientTelephone || d.client?.telephone || null,
+          adresse: d.clientAdresse || d.client?.adresse || null,
+          raisonSociale: d.clientRaisonSociale || d.client?.raisonSociale || null,
+          rne: d.clientRne || d.client?.rne || null,
         };
-
-        // ── Reconstruire agence depuis les champs plats ─────────────
+        
+        // Gestion de l'agence
         d.agence = {
-          nom:   d.agenceNom   || null,
-          ville: d.agenceVille || null,
+          nom: d.agenceNom || d.agence?.nom || null,
+          ville: d.agenceVille || d.agence?.ville || null,
         };
-
-        this.dossier                = d;
-        this.historique             = data.historique             || [];
+        
+        this.dossier = d;
+        this.historique = data.historique || [];
         this.validateurs_financiers = data.validateurs_financiers || [];
         this.validateurs_juridiques = data.validateurs_juridiques || [];
-        this.missionAvocat          = data.missionAvocat          || null;
-
-        // Pré-remplir validateurs si déjà choisis
-        if (d.validateurFinancierChoisi)
+        this.missionAvocat = data.missionAvocat || null;
+        this.affaireExiste = data.affaireExiste ?? false;
+        this.prestationJudiciaire = data.prestationJudiciaire || null;
+        
+        if (d.validateurFinancierChoisi) {
           this.formValidateurs.validateurFinancier = d.validateurFinancierChoisi;
-        if (d.validateurJuridiqueChoisi)
+        }
+        if (d.validateurJuridiqueChoisi) {
           this.formValidateurs.validateurJuridique = d.validateurJuridiqueChoisi;
-
+        }
+        
+        console.log('✅ Dossier chargé - Nombre de risques:', this.dossier?.risques?.length || 0);
+        console.log('✅ Total impayé:', this.getMontantTotal());
+        
         this.loading = false;
       },
       error: (err: any) => {
-        console.error('Erreur chargement dossier', err);
+        console.error('❌ Erreur chargement dossier:', err);
         this.loading = false;
       }
     });
   }
 
-  // ════════════════════════════════════════════════════
-  //  HELPERS AFFICHAGE
-  // ════════════════════════════════════════════════════
+  // ==================== CRÉDITS (RISQUES) ====================
+  
+  openAddRisqueModal() {
+    this.formRisque = {
+      type: 'CREDIT_IMMOBILIER',
+      montantInitial: 0,
+      montantImpaye: 0,
+      dateEcheance: '',
+      description: ''
+    };
+    this.showModalRisque = true;
+  }
+  
+  ajouterRisque() {
+    this.erreurRisque = '';
+    if (!this.formRisque.montantInitial || this.formRisque.montantInitial <= 0) {
+      this.erreurRisque = 'Le montant initial est obligatoire';
+      return;
+    }
+    
+    if (this.formRisque.montantImpaye < 0) {
+      this.erreurRisque = 'Le montant impayé ne peut pas être négatif';
+      return;
+    }
+    
+    const riskData = {
+      type: this.formRisque.type,
+      montantInitial: this.formRisque.montantInitial,
+      montantImpaye: this.formRisque.montantImpaye,
+      dateEcheance: this.formRisque.dateEcheance || null,
+      description: this.formRisque.description || null
+    };
+    
+    this.dossierService.ajouterRisque(this.dossier.id, riskData).subscribe({
+      next: () => {
+        this.showModalRisque = false;
+        this.chargerDossier(this.dossier.id);
+      },
+      error: (err: any) => {
+        this.erreurRisque = err.error?.error || "Erreur lors de l'ajout.";
+      }
+    });
+  }
+  
+  modifierRisque(risque: any) {
+    const newMontantImpaye = prompt('Nouveau montant impayé:', risque.montantImpaye);
+    if (newMontantImpaye && !isNaN(Number(newMontantImpaye))) {
+      const updatedRisque = {
+        ...risque,
+        montantImpaye: Number(newMontantImpaye)
+      };
+      
+      this.dossierService.modifierRisque(this.dossier.id, risque.id, updatedRisque).subscribe({
+        next: () => {
+          this.chargerDossier(this.dossier.id);
+          alert('✅ Crédit modifié');
+        },
+        error: (err: any) => alert('❌ Erreur: ' + (err.error?.error))
+      });
+    }
+  }
+  
+  supprimerRisque(risqueId: number) {
+    if (confirm('Supprimer ce crédit ? Toutes les garanties associées seront également supprimées.')) {
+      this.dossierService.supprimerRisque(this.dossier.id, risqueId).subscribe({
+        next: () => {
+          this.chargerDossier(this.dossier.id);
+          alert('✅ Crédit supprimé');
+        },
+        error: (err: any) => alert('❌ Erreur: ' + (err.error?.error))
+      });
+    }
+  }
+  
+  toggleRisque(risque: any) {
+    this.dossierService.selectionnerRisque(this.dossier.id, risque.id, !risque.selectionne).subscribe({
+      next: () => this.chargerDossier(this.dossier.id),
+      error: (err: any) => alert('Erreur: ' + (err.error?.error))
+    });
+  }
+
+  // ==================== HELPERS AFFICHAGE ====================
 
   getClientName(): string {
     if (!this.dossier?.client) return '—';
@@ -112,53 +268,51 @@ export class AgentDossierDetailComponent implements OnInit {
 
   getStatutClass(statut: string): string {
     const map: Record<string, string> = {
-      'OUVERT':         'statut-ouvert',
-      'EN_TRAITEMENT':  'statut-en-traitement',
-      'VALIDE':         'statut-valide',
-      'REJETE':         'statut-rejete',
-      'CLOS':           'statut-clos'
+      'OUVERT': 'statut-ouvert',
+      'EN_TRAITEMENT': 'statut-en-traitement',
+      'VALIDE': 'statut-valide',
+      'REJETE': 'statut-rejete',
+      'CLOS': 'statut-clos'
     };
     return map[statut] || '';
   }
 
   formatStatut(statut: string): string {
     const map: Record<string, string> = {
-      'OUVERT':         'Ouvert',
-      'EN_TRAITEMENT':  'En traitement',
-      'VALIDE':         'Validé',
-      'REJETE':         'Rejeté',
-      'CLOS':           'Clos'
+      'OUVERT': 'Ouvert',
+      'EN_TRAITEMENT': 'En traitement',
+      'VALIDE': 'Validé',
+      'REJETE': 'Rejeté',
+      'CLOS': 'Clos'
     };
     return map[statut] || statut;
   }
 
   formatRisqueType(type: string): string {
     const map: Record<string, string> = {
-      'CREDIT_IMMOBILIER':    'Crédit Immobilier',
-      'CREDIT_CONSOMMATION':  'Crédit Consommation',
-      'CREDIT_AUTO':          'Crédit Auto',
+      'CREDIT_IMMOBILIER': 'Crédit Immobilier',
+      'CREDIT_CONSOMMATION': 'Crédit Consommation',
+      'CREDIT_AUTO': 'Crédit Auto',
       'CREDIT_PROFESSIONNEL': 'Crédit Professionnel',
-      'LEASING':              'Leasing',
-      'DECOUVERT':            'Découvert Bancaire',
+      'LEASING': 'Leasing',
+      'DECOUVERT': 'Découvert Bancaire',
     };
     return map[type] || type;
   }
 
   getMontantTotal(): number {
     if (!this.dossier?.risques) return 0;
-    return this.dossier.risques.reduce(
-      (sum: number, r: any) => sum + (r.montantImpaye || 0), 0
-    );
+    return this.dossier.risques.reduce((sum: number, r: any) => sum + (r.montantImpaye || 0), 0);
   }
 
   getValidIcon(val: boolean | null): string {
-    if (val === true)  return 'ok';
+    if (val === true) return 'ok';
     if (val === false) return 'ko';
     return 'pending';
   }
 
   getValidEmoji(val: boolean | null): string {
-    if (val === true)  return '✅';
+    if (val === true) return '✅';
     if (val === false) return '❌';
     return '⏳';
   }
@@ -168,21 +322,69 @@ export class AgentDossierDetailComponent implements OnInit {
   }
 
   canSoumettre(): boolean {
-    return this.canModifier() &&
-      this.dossier?.risques?.some((r: any) => r.selectionne);
+    return this.canModifier() && this.dossier?.risques?.some((r: any) => r.selectionne);
   }
 
-  // ════════════════════════════════════════════════════
-  //  ACTIONS
-  // ════════════════════════════════════════════════════
+  // ==================== ACTIONS ====================
+
+  ouvrirModificationDossier() {
+    if (this.canModifier() && this.dossier?.id) {
+      this.router.navigate(['/agent/dossiers', this.dossier.id, 'modifier']);
+    }
+  }
+  
+  fermerModalModifier() {
+    this.showModalModifier = false;
+    this.erreurModifier = '';
+    this.saving = false;
+  }
+
+  enregistrerModification() {
+    this.erreurModifier = '';
+    if (!this.formModifier.libelle?.trim()) {
+      this.erreurModifier = 'Le libellé est obligatoire.';
+      return;
+    }
+    this.saving = true;
+    this.dossierService.modifierDossier(this.dossier.id, this.formModifier as any).subscribe({
+      next: () => {
+        this.saving = false;
+        this.fermerModalModifier();
+        this.chargerDossier(this.dossier.id);
+      },
+      error: (err: any) => {
+        this.erreurModifier = err.error?.error || 'Erreur lors de la modification.';
+        this.saving = false;
+      }
+    });
+  }
+
+  supprimerDossier() {
+    this.erreurSupprimer = '';
+    this.showModalSupprimer = true;
+  }
+
+  fermerModalSupprimer() {
+    this.showModalSupprimer = false;
+    this.erreurSupprimer = '';
+    this.suppressing = false;
+  }
+
+  confirmerSuppression() {
+    this.erreurSupprimer = '';
+    this.suppressing = true;
+    this.dossierService.supprimerDossier(this.dossier.id).subscribe({
+      next: () => this.router.navigate(['/agent/dossiers']),
+      error: (err: any) => {
+        this.erreurSupprimer = err.error?.error || 'Erreur lors de la suppression.';
+        this.suppressing = false;
+      }
+    });
+  }
 
   ouvrirModalValidateurs() {
     this.erreurValidateurs = '';
     this.showModalValidateurs = true;
-  }
-
-  ouvrirModificationDossier() {
-    this.router.navigate(['/agent/dossiers', this.dossier.id, 'modifier']);
   }
 
   choisirEtSoumettre() {
@@ -192,7 +394,6 @@ export class AgentDossierDetailComponent implements OnInit {
       this.erreurValidateurs = 'Veuillez choisir les deux validateurs.';
       return;
     }
-
     this.dossierService.choisirValidateurs(this.dossier.id, this.formValidateurs).subscribe({
       next: () => {
         this.dossierService.soumettreAValidation(this.dossier.id).subscribe({
@@ -211,36 +412,6 @@ export class AgentDossierDetailComponent implements OnInit {
     });
   }
 
-  toggleRisque(risque: any) {
-    this.dossierService.selectionnerRisque(
-      this.dossier.id, risque.id, !risque.selectionne
-    ).subscribe({
-      next: () => this.chargerDossier(this.dossier.id),
-      error: (err: any) => alert(err.error?.error || 'Erreur sélection risque')
-    });
-  }
-
-  ajouterRisque() {
-    this.erreurRisque = '';
-    if (!this.formRisque.montantInitial || !this.formRisque.montantImpaye) {
-      this.erreurRisque = 'Les montants sont obligatoires.';
-      return;
-    }
-    this.dossierService.ajouterRisque(this.dossier.id, this.formRisque).subscribe({
-      next: () => {
-        this.showModalRisque = false;
-        this.formRisque = {
-          type: 'CREDIT_IMMOBILIER', montantInitial: 0,
-          montantImpaye: 0, dateEcheance: '', description: ''
-        };
-        this.chargerDossier(this.dossier.id);
-      },
-      error: (err: any) => {
-        this.erreurRisque = err.error?.error || "Erreur lors de l'ajout.";
-      }
-    });
-  }
-
   supprimerGarantie(garantieId: number) {
     if (!confirm('Supprimer cette garantie ?')) return;
     this.dossierService.supprimerGarantie(garantieId).subscribe({
@@ -249,25 +420,85 @@ export class AgentDossierDetailComponent implements OnInit {
     });
   }
 
-  supprimerDossier() {
-    if (!confirm('Supprimer définitivement ce dossier ?')) return;
-    this.dossierService.supprimerDossier(this.dossier.id).subscribe({
-      next: () => this.router.navigate(['/agent/dossiers']),
-      error: (err: any) => alert(err.error?.error || 'Erreur suppression')
-    });
-  }
-
   telechargerPdf() {
     this.dossierService.telechargerPdf(this.dossier.id).subscribe({
       next: (blob: Blob) => {
         const url = URL.createObjectURL(blob);
-        const a   = document.createElement('a');
-        a.href     = url;
+        const a = document.createElement('a');
+        a.href = url;
         a.download = `dossier-${this.dossier.numeroDossier}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
       },
       error: () => alert('Erreur lors du téléchargement du PDF.')
     });
+  }
+
+  voirMissions() {
+    this.router.navigate(['/agent/dossiers', this.dossier.id, 'missions']);
+  }
+
+  lancerProcedure() {
+    this.router.navigate(['/agent/dossiers', this.dossier.id, 'prestations', 'lancer']);
+  }
+
+  designerAvocat() {
+    this.router.navigate([
+      '/agent/dossiers', this.dossier.id,
+      'prestation', this.prestationJudiciaire.id, 'designer-avocat'
+    ]);
+  }
+
+  lancerAffaire() {
+    console.log('Lancer affaire', this.formAffaire);
+  }
+
+  voirAffaire() {
+    this.router.navigate(['/agent/dossiers', this.dossier.id, 'affaire']);
+  }
+
+  ressoumettreDossier() {
+    this.dossierService.soumettreAValidation(this.dossier.id).subscribe({
+      next: () => this.chargerDossier(this.dossier.id),
+      error: (err: any) => alert(err.error?.error || 'Erreur ressoumission')
+    });
+  }
+
+  refreshDossier() {
+    if (this.dossier?.id) {
+      console.log('🔄 Rafraîchissement manuel du dossier');
+      this.chargerDossier(this.dossier.id);
+    }
+  }
+
+  refreshRisques(): void {
+    if (!this.dossier?.id) return;
+    
+    console.log('🔄 Rechargement forcé des risques pour le dossier:', this.dossier.id);
+    
+    this.dossierService.getDossierDetails(this.dossier.id).subscribe({
+      next: (data: any) => {
+        const loadedDossier = data.dossier || data;
+        if (loadedDossier.risques) {
+          this.dossier.risques = loadedDossier.risques.map((risque: any) => ({
+            ...risque,
+            garanties: risque.garanties || []
+          }));
+          this.dossier = { ...this.dossier };
+          console.log('✅ Risques rechargés:', this.dossier.risques.length);
+        }
+      },
+      error: (err: any) => {
+        console.error('❌ Erreur rechargement risques:', err);
+      }
+    });
+  }
+
+  forceRefreshAfterModification() {
+    console.log('🔄 Force refresh after modification');
+    const currentId = this.dossier?.id;
+    if (currentId) {
+      this.chargerDossier(currentId);
+    }
   }
 }

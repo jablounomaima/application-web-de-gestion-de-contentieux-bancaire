@@ -415,29 +415,30 @@ public DossierContentieux getDossierById(Long id) {
     }
 
     @Transactional
-    public void ajouterRisque(Long dossierId, RisqueAjoutRequest request, String username) {
+    public Long ajouterRisque(Long dossierId, RisqueAjoutRequest request, String username) {
         DossierContentieux dossier = getDossierByIdAndAgent(dossierId, username);
-
+    
         if (dossier.getStatut() != DossierStatus.OUVERT
                 && dossier.getStatut() != DossierStatus.REJETE)
             throw new RuntimeException("Impossible d'ajouter un risque : dossier en cours de traitement");
-
+    
         Risque risque = new Risque();
         risque.setType(request.getType());
         risque.setMontantInitial(request.getMontantInitial());
         risque.setMontantImpaye(request.getMontantImpaye());
         risque.setDescription(request.getDescription());
-
+    
         if (request.getDateEcheance() != null && !request.getDateEcheance().isEmpty())
             risque.setDateEcheance(LocalDate.parse(request.getDateEcheance()));
-
+    
         risque.setDossier(dossier);
-        risqueRepository.save(risque);
-
+        Risque saved = risqueRepository.save(risque);  // ← capturer le retour
+    
         historiqueService.enregistrer(dossier, HistoriqueService.AJOUT_RISQUE,
                 "Ajout d'un crédit : " + request.getType(), username);
+    
+        return saved.getId();  // ← retourner l'ID
     }
-
     // ════════════════════════════════════════════════════
     //  MODIFICATION DOSSIER
     // ════════════════════════════════════════════════════

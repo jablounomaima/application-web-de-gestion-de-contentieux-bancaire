@@ -3,6 +3,8 @@ import com.example.contentieux_security.entity.DossierContentieux;
 import jakarta.persistence.*;
 import lombok.*;
 import java.time.LocalDateTime;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
@@ -30,5 +32,6 @@ public class HistoriqueDossier {
     // ── Relation ──────────────────────────────────────────────────
     @ManyToOne(fetch = FetchType.LAZY )
     @JoinColumn(name = "dossier_id", nullable = false)
+    @JsonIgnore
     private DossierContentieux dossier;
 }

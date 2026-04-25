@@ -42,18 +42,33 @@ export const routes: Routes = [
         .then(m => m.AgentDossiersComponent)
   },
   {
-    // Nouveau dossier = ouvrir le dashboard avec le modal
     path: 'agent/nouveau-dossier',
     redirectTo: 'agent/dashboard',
-    pathMatch: 'full' // Ajouté pour la cohérence
+    pathMatch: 'full'
+  },
+  
+  // ⚠️ IMPORTANT: Specific routes MUST come BEFORE generic ones
+  // AND they must be BEFORE the fallback route
+  {
+    path: 'agent/dossiers/:id/modifier',    // ← Modifier route (specific)
+    canActivate: [AuthGuard],
+    data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
+    loadComponent: () =>
+      import('./features/agent/agent-dossier-modifier/agent-dossier-modifier.component')
+        .then(m => m.AgentDossierModifierComponent)
   },
   {
-    path: 'agent/dossier/:id',
+    path: 'agent/dossiers/:id',             // ← Detail route (generic)
     canActivate: [AuthGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/agent-dossier-detail/agent-dossier-detail.component')
         .then(m => m.AgentDossierDetailComponent)
+  },
+  {
+    path: 'agent/dossier/:id',              // ← Keep old pattern for backward compatibility
+    redirectTo: 'agent/dossiers/:id',
+    pathMatch: 'full'
   },
 
   // ── PRESTATAIRE / EXPERT / HUISSIER ────────────────
@@ -68,12 +83,12 @@ export const routes: Routes = [
   {
     path: 'prestataire/missions',
     redirectTo: 'prestataire/dashboard',
-    pathMatch: 'full' // Ajouté pour la cohérence
+    pathMatch: 'full'
   },
   {
     path: 'prestataire/factures',
     redirectTo: 'prestataire/dashboard',
-    pathMatch: 'full' // Ajouté pour la cohérence
+    pathMatch: 'full'
   },
 
   // ── AVOCAT ─────────────────────────────────────────
@@ -88,7 +103,7 @@ export const routes: Routes = [
   {
     path: 'avocat/dossiers',
     redirectTo: 'avocat/dashboard',
-    pathMatch: 'full' // Ajouté pour la cohérence
+    pathMatch: 'full'
   },
 
   // ── ADMIN ──────────────────────────────────────────
@@ -111,7 +126,7 @@ export const routes: Routes = [
   {
     path: 'admin',
     redirectTo: 'admin/overview',
-    pathMatch: 'full' // Ajouté pour la cohérence
+    pathMatch: 'full'
   },
 
   // ── VALIDATEURS ────────────────────────────────────
@@ -126,7 +141,7 @@ export const routes: Routes = [
   {
     path: 'validateur/juridique/a-valider',
     redirectTo: 'validateur/juridique/dashboard',
-    pathMatch: 'full' // Ajouté pour la cohérence
+    pathMatch: 'full'
   },
   {
     path: 'validateur/financier/dashboard',
@@ -139,9 +154,9 @@ export const routes: Routes = [
   {
     path: 'validateur/financier/factures',
     redirectTo: 'validateur/financier/dashboard',
-    pathMatch: 'full' // Ajouté pour la cohérence
+    pathMatch: 'full'
   },
 
   // ── Fallback ───────────────────────────────────────
-  { path: '**', redirectTo: 'login', pathMatch: 'full' } // Ajouté pour la cohérence
+  { path: '**', redirectTo: 'login', pathMatch: 'full' }
 ];

@@ -3,9 +3,11 @@ package com.example.contentieux_security.entity;
 import com.example.contentieux_security.enums.TypeValidateur;
 import jakarta.persistence.*;
 import lombok.*;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler", "agence", "dossiers"})
 @Entity
 @Table(name = "validateurs")
 @Data
@@ -40,6 +42,7 @@ public class Validateur {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "agence_id")
+    @JsonIgnore
     private Agence agence;
 
     @Column(nullable = false)

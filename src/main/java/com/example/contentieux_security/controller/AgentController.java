@@ -110,39 +110,51 @@ public class AgentController {
     }
 
     @PutMapping("/clients/{id}")
-    public ResponseEntity<?> updateClient(@PathVariable Long id, @RequestBody Client client, Principal principal) {
-        try {
-            Client existing = clientService.findById(id);
-            if (existing == null) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Client non trouvé"));
-            }
-
-            client.setId(id);
-            client.setAgence(existing.getAgence());
-            client.setDateInscription(existing.getDateInscription());
-
-            Client updated = clientService.save(client);
-            return ResponseEntity.ok(Map.of("message", "Client mis à jour avec succès !", "client", updated));
-
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+@Transactional
+public ResponseEntity<?> updateClient(@PathVariable Long id, @RequestBody Client client, Principal principal) {
+    try {
+        Client existing = clientService.findById(id);
+        if (existing == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Client non trouvé"));
         }
-    }
 
-    @DeleteMapping("/clients/{id}")
-    public ResponseEntity<?> deleteClient(@PathVariable Long id) {
-        try {
-            List<DossierContentieux> dossiers = dossierService.findByClientId(id);
-            if (dossiers != null && !dossiers.isEmpty()) {
-                return ResponseEntity.badRequest().body(Map.of("error", "Impossible de supprimer ce client : il possède " + dossiers.size() + " dossier(s) contentieux."));
-            }
-            clientService.deleteById(id);
-            return ResponseEntity.ok(Map.of("message", "Client supprimé avec succès !"));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
-    }
+        if (client.getNom() != null) existing.setNom(client.getNom());
+        if (client.getPrenom() != null) existing.setPrenom(client.getPrenom());
+        if (client.getTypeClient() != null) existing.setTypeClient(client.getTypeClient());
+        if (client.getCin() != null) existing.setCin(client.getCin());
+        if (client.getRaisonSociale() != null) existing.setRaisonSociale(client.getRaisonSociale());
+        if (client.getRne() != null) existing.setRne(client.getRne());
+        if (client.getEmail() != null) existing.setEmail(client.getEmail());
+        if (client.getTelephone() != null) existing.setTelephone(client.getTelephone());
+        if (client.getAdresse() != null) existing.setAdresse(client.getAdresse());
 
+        Client updated = clientService.save(existing);
+
+        // ✅ HashMap accepte les valeurs null, contrairement à Map.of()
+        Map<String, Object> clientResponse = new HashMap<>();
+        clientResponse.put("id",            updated.getId());
+        clientResponse.put("nom",           updated.getNom());
+        clientResponse.put("prenom",        updated.getPrenom());
+        clientResponse.put("typeClient",    updated.getTypeClient());
+        clientResponse.put("cin",           updated.getCin());
+        clientResponse.put("raisonSociale", updated.getRaisonSociale());
+        clientResponse.put("rne",           updated.getRne());
+        clientResponse.put("email",         updated.getEmail());
+        clientResponse.put("telephone",     updated.getTelephone());
+        clientResponse.put("adresse",       updated.getAdresse());
+
+        Map<String, Object> response = new HashMap<>();
+        response.put("message", "Client mis à jour avec succès !");
+        response.put("client",  clientResponse);
+
+        return ResponseEntity.ok(response);
+
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+}
+    
+    
     @GetMapping("/clients/{id}/dossiers")
     public ResponseEntity<?> voirDossiersClient(@PathVariable Long id, Principal principal) {
         try {

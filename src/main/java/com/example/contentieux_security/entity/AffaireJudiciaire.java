@@ -6,6 +6,8 @@ import lombok.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
@@ -118,28 +120,33 @@ public class AffaireJudiciaire {
     // ✔ Relation avec le dossier contentieux
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "dossier_id", nullable = false)
+    @JsonIgnore
     private DossierContentieux dossier;
 
     // ✔ Relation avec mission (1 affaire = 1 mission)
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "mission_id")
+    @JsonIgnore
     private Mission mission;
 
     // ✔ Liste des audiences
     @OneToMany(mappedBy = "affaire", cascade = CascadeType.ALL,
                orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
+    @JsonIgnore
     private List<Audience> audiences = new ArrayList<>();
 
     // ✔ Liste des documents
     @OneToMany(mappedBy = "affaire", cascade = CascadeType.ALL,
                orphanRemoval = true, fetch = FetchType.EAGER)
     @Builder.Default
+    @JsonIgnore
     private List<DocumentAffaire> documents = new ArrayList<>();
 
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "avocat_id")
+    @JsonIgnore
     private Prestataire avocat;
 
 }
