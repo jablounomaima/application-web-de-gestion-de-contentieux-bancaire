@@ -123,6 +123,8 @@ export const routes: Routes = [
       import('./features/admin/admin-dashboard/admin-dashboard.component')
         .then(m => m.AdminDashboardComponent)
   },
+
+  
   {
     path: 'admin',
     redirectTo: 'admin/overview',
@@ -130,6 +132,10 @@ export const routes: Routes = [
   },
 
   // ── VALIDATEURS ────────────────────────────────────
+  
+  
+  
+  
   {
     path: 'validateur/juridique/dashboard',
     canActivate: [AuthGuard],
@@ -137,6 +143,17 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/validateur-juridique/validateur-juridique-dashboard/validateur-juridique-dashboard.component')
         .then(m => m.ValidateurJuridiqueDashboardComponent)
+  },
+
+
+
+  {
+    path: 'validateur/juridique/liste',
+    canActivate: [AuthGuard],
+    data: { roles: ['ROLE_VALIDATEUR_JURIDIQUE'] },
+    loadComponent: () =>
+      import('./features/validateur-juridique/validateur-juridique-liste/validateur-juridique-liste.component')
+        .then(m => m.ValidateurJuridiqueListeComponent)
   },
   {
     path: 'validateur/juridique/a-valider',
@@ -150,6 +167,16 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/validateur-financier/validateur-financier-dashboard/validateur-financier-dashboard.component')
         .then(m => m.ValidateurFinancierDashboardComponent)
+  },
+
+
+  {
+    path: 'validateur/financier/liste',
+    canActivate: [AuthGuard],
+    data: { roles: ['ROLE_VALIDATEUR_FINANCIER'] },
+    loadComponent: () =>
+      import('./features/validateur-financier/validateur-financier-liste/validateur-financier-liste.component')
+        .then(m => m.ValidateurFinancierListeComponent)
   },
   {
     path: 'validateur/financier/factures',

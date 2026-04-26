@@ -1,7 +1,7 @@
 .sidebar {
   width: 280px;
-  background-color: #ffffff;
-  border-right: 1px solid #eaeaea;
+  background-color: #0b2b4a;  /* Changé : bleu principal */
+  border-right: 1px solid #011832;  /* Bordure plus foncée pour contraster */
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
@@ -14,14 +14,14 @@
 
 .sidebar-header {
   padding: 20px;
-  border-bottom: 1px solid #f1f1f1;
-  background: #fafafa;
+  border-bottom: 1px solid #00162e;  /* Bordure bleue plus foncée */
+  background: #02213e;  /* Bleu légèrement plus clair pour le header */
 }
 
 .role-badge {
   display: inline-block;
-  background: #e3f2fd;
-  color: #1976d2;
+  background: #ffffff;  /* Fond blanc pour contraster sur le bleu */
+  color: #1976d2;  /* Texte bleu */
   padding: 6px 12px;
   border-radius: 20px;
   font-size: 0.8rem;
@@ -34,17 +34,17 @@
 .user-name-small {
   margin: 5px 0 0 0;
   font-size: 0.85rem;
-  color: #666;
+  color: #e3f2fd;  /* Texte blanc-bleuté pour meilleur contraste */
 }
 
 .menu-section {
   padding: 20px 0;
-  border-bottom: 1px solid #f1f1f1;
+  border-bottom: 1px solid #1565c0;  /* Bordure bleue foncée */
 }
 
 .menu-label {
   padding: 0 25px;
-  color: #999;
+  color: #e3f2fd;  /* Texte clair pour contraster avec le fond bleu */
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
@@ -63,7 +63,7 @@ li a {
   align-items: center;
   gap: 12px;
   padding: 12px 25px;
-  color: #444;
+  color: #ffffff;  /* Texte blanc pour meilleure lisibilité */
   text-decoration: none;
   font-size: 0.95rem;
   transition: all 0.2s ease;
@@ -79,17 +79,17 @@ li a {
   }
 
   &:hover {
-    background-color: #f8f9fa;
-    color: #007bff;
+    background-color: #001833;  /* Bleu plus foncé au survol */
+    color: #ffffff;  /* Maintient le texte blanc */
 
     .icon { opacity: 1; }
   }
 
   &.active-link {
-    background-color: #f0f7ff;
-    color: #007bff;
+    background-color: #021e4a;  /* Bleu très foncé pour l'élément actif */
+    color: #ffffff;
     font-weight: 600;
-    border-left-color: #007bff;
+    border-left-color: #ffffff;  /* Bordure blanche pour l'élément actif */
 
     .icon { opacity: 1; }
   }
@@ -99,7 +99,7 @@ li a {
   padding: 10px 25px;
 
   small {
-    color: #aaa;
+    color: #bbdefb;  /* Bleu clair pour le texte debug */
     font-size: 0.75rem;
     font-style: italic;
   }

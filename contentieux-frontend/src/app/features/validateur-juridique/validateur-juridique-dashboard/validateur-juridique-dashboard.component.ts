@@ -2,11 +2,12 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ValidateurService } from '../../../core/services/validateur.service';
+import { ValidateurJuridiqueListeComponent } from '../validateur-juridique-liste/validateur-juridique-liste.component';
 
 @Component({
   selector: 'app-validateur-juridique-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule,ValidateurJuridiqueListeComponent],
   templateUrl: './validateur-juridique-dashboard.component.html',
   styleUrls: ['./validateur-juridique-dashboard.component.scss']
 })
