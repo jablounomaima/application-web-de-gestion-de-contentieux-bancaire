@@ -33,6 +33,17 @@ export const routes: Routes = [
       import('./features/agent/agent-dashboard/agent-dashboard.component')
         .then(m => m.AgentDashboardComponent)
   },
+
+  {
+    path: 'agent/liste',
+    canActivate: [AuthGuard],
+    data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
+    loadComponent: () =>
+      import('./features/agent/agent-dossiers-liste/agent-dossiers-liste.component')
+        .then(m => m.AgentDossiersListeComponent)
+  },
+
+
   {
     path: 'agent/dossiers',
     canActivate: [AuthGuard],
@@ -123,6 +134,8 @@ export const routes: Routes = [
       import('./features/admin/admin-dashboard/admin-dashboard.component')
         .then(m => m.AdminDashboardComponent)
   },
+
+  
 
   
   {

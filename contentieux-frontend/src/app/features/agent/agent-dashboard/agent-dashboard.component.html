@@ -67,55 +67,8 @@
   </div>
   
   <!-- ── Tableau des dossiers ── -->
-  <div class="dossiers-section" *ngIf="!loading && dossiers.length > 0">
-    <div class="section-header">
-      <h2>Dossiers récents</h2>
-      <a routerLink="/agent/dossiers" class="voir-tous">Voir tous →</a>
-    </div>
-  
-    <div class="table-wrapper">
-      <table class="dossiers-table">
-        <thead>
-          <tr>
-            <th>Client</th>
-            <th>N° Dossier</th>
-            <th>Statut</th>
-            <th>Date création</th>
-            <th>Montant (TND)</th>
-            <th>Actions</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr *ngFor="let d of dossiers" (click)="voirDetails(d.id)" class="dossier-row">
-            <td class="client-cell">
-              <div class="client-avatar">{{ getClientInitial(d) }}</div>
-              <span>{{ getClientName(d) }}</span>
-            </td>
-            <td class="numero-cell">{{ d.numeroDossier || '—' }}</td>
-            <td>
-              <span class="statut-badge" [ngClass]="getStatutClass(d.statut)">
-                {{ d.statut }}
-              </span>
-            </td>
-            <td>
-              {{ d.montantTotalEngagement != null 
-                 ? (d.montantTotalEngagement | number:'1.2-2') 
-                 : '—' }}
-            </td>
-            
-            <td class="actions-cell">
-              <button class="btn-details"
-                      (click)="voirDetails(d.id); $event.stopPropagation()">
-                👁 Détails
-              </button>
-            </td>        
-              
-          
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
+ <!-- ── Liste complète des dossiers ── -->
+<app-agent-dossiers-liste></app-agent-dossiers-liste>
   
   
   <!-- ════════════════════════════════════════════════════════════════════════ -->

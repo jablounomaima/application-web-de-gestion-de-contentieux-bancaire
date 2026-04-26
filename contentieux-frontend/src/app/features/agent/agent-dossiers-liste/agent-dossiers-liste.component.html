@@ -1,0 +1,215 @@
+<div class="liste-container">
+
+    <!-- ═══ HEADER ═══ -->
+    <div class="liste-header">
+      <div>
+        <h1>📁 Mes Dossiers</h1>
+        <p class="subtitle">Liste complète de vos dossiers contentieux</p>
+      </div>
+      <div class="header-actions">
+        <button class="btn-refresh" (click)="charger()" title="Rafraîchir">🔄 Rafraîchir</button>
+        <a routerLink="/agent/dashboard" class="btn-back">← Tableau de bord</a>
+      </div>
+    </div>
+  
+    <!-- ═══ FILTRES ═══ -->
+    <div class="filters-bar">
+      <input type="text"
+             [(ngModel)]="recherche"
+             (ngModelChange)="appliquerFiltres()"
+             placeholder="🔍 Rechercher par N°, libellé ou client..."
+             class="search-input">
+  
+      <select [(ngModel)]="filtreStatut"
+              (ngModelChange)="appliquerFiltres()"
+              class="statut-select">
+        <option *ngFor="let s of statuts" [value]="s.value">{{ s.label }}</option>
+      </select>
+  
+      <span class="result-count" *ngIf="!loading">
+        {{ dossiersFiltres.length }} dossier(s)
+      </span>
+    </div>
+  
+    <!-- ═══ LOADING ═══ -->
+    <div class="loading-state" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Chargement des dossiers…</p>
+    </div>
+  
+    <!-- ═══ VIDE ═══ -->
+    <div class="empty-card" *ngIf="!loading && dossiersFiltres.length === 0">
+      <div class="empty-icon">📂</div>
+      <p *ngIf="dossiers.length === 0">Aucun dossier créé pour le moment.</p>
+      <p *ngIf="dossiers.length > 0">Aucun dossier ne correspond à votre recherche.</p>
+      <button class="btn-reset" *ngIf="dossiers.length > 0"
+              (click)="recherche = ''; filtreStatut = ''; appliquerFiltres()">
+        Réinitialiser les filtres
+      </button>
+    </div>
+  
+    <!-- ═══ LISTE ═══ -->
+    <div class="dossiers-list" *ngIf="!loading && dossiersFiltres.length > 0">
+      <div class="dossier-card"
+           *ngFor="let d of dossiersFiltres"
+           [class.expanded]="dossierExpanded === d.id">
+  
+        <!-- EN-TÊTE -->
+        <div class="dossier-card-header" (click)="toggleExpand(d)">
+          <div class="dossier-left">
+            <div class="client-avatar">{{ getClientInitial(d) }}</div>
+            <div class="dossier-info">
+              <div class="dossier-top">
+                <span class="num-tag">{{ d.numeroDossier }}</span>
+                <span class="dossier-libelle">{{ d.libelle || 'Sans titre' }}</span>
+              </div>
+              <span class="dossier-client">👤 {{ getClientName(d) }}</span>
+            </div>
+          </div>
+          <div class="dossier-right">
+            <span class="statut-badge" [ngClass]="getStatutClass(d.statut)">
+              {{ getStatutLabel(d.statut) }}
+            </span>
+            <div class="validation-badges">
+              <span class="v-badge" title="Validation financière">
+                💰 {{ getValidationLabel(d.validationFinanciere) }}
+              </span>
+              <span class="v-badge" title="Validation juridique">
+                ⚖️ {{ getValidationLabel(d.validationJuridique) }}
+              </span>
+            </div>
+            <span class="montant-badge">
+              {{ (d.montantTotalEngagement || getMontantTotal(d)) | number:'1.0-0' }} TND
+            </span>
+            <span class="date-label">{{ d.dateCreation | date:'dd/MM/yyyy' }}</span>
+            <span class="expand-icon">{{ dossierExpanded === d.id ? '▲' : '▼' }}</span>
+          </div>
+        </div>
+  
+        <!-- ═══ DÉTAIL EXPANSIBLE ═══ -->
+        <div class="dossier-detail" *ngIf="dossierExpanded === d.id">
+  
+          <!-- Grille infos -->
+          <div class="detail-grid">
+  
+            <!-- Informations générales -->
+            <div class="detail-section">
+              <h3 class="section-title">📋 Informations générales</h3>
+              <div class="info-row">
+                <span class="info-lbl">Référence</span>
+                <span class="info-val mono">{{ d.numeroDossier }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-lbl">Libellé</span>
+                <span class="info-val">{{ d.libelle || '—' }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-lbl">Statut</span>
+                <span class="info-val">
+                  <span class="statut-badge" [ngClass]="getStatutClass(d.statut)">
+                    {{ getStatutLabel(d.statut) }}
+                  </span>
+                </span>
+              </div>
+             
+
+
+              
+              <div class="info-row">
+                <span class="info-lbl">Date création</span>
+                <span class="info-val">{{ d.dateCreation | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+              <div class="info-row" *ngIf="d.description">
+                <span class="info-lbl">Description</span>
+                <span class="info-val">{{ d.description }}</span>
+              </div>
+              <div class="info-row" *ngIf="d.notes">
+                <span class="info-lbl">Notes</span>
+                <span class="info-val">{{ d.notes }}</span>
+              </div>
+            </div>
+  
+            <!-- Informations client -->
+            <div class="detail-section">
+              <h3 class="section-title">👤 Informations Client</h3>
+              <div class="info-row">
+                <span class="info-lbl">Type</span>
+                <span class="info-val">
+                  {{ d.client?.typeClient || d.clientTypeClient || d.clientType || '—' }}
+                </span>
+              </div>
+  
+              <ng-container *ngIf="(d.client?.typeClient || d.clientTypeClient || d.clientType) === 'PARTICULIER'">
+                <div class="info-row">
+                  <span class="info-lbl">Nom complet</span>
+                  <span class="info-val">
+                    {{ d.client?.nom || d.clientNom || '—' }}
+                    {{ d.client?.prenom || d.clientPrenom || '' }}
+                  </span>
+                </div>
+                <div class="info-row" *ngIf="d.client?.cin || d.clientCin">
+                  <span class="info-lbl">CIN</span>
+                  <span class="info-val mono">{{ d.client?.cin || d.clientCin }}</span>
+                </div>
+              </ng-container>
+  
+              <ng-container *ngIf="(d.client?.typeClient || d.clientTypeClient || d.clientType) === 'ENTREPRISE'">
+                <div class="info-row">
+                  <span class="info-lbl">Raison sociale</span>
+                  <span class="info-val">
+                    {{ d.client?.raisonSociale || d.clientRaisonSociale || '—' }}
+                  </span>
+                </div>
+                <div class="info-row" *ngIf="d.client?.rne || d.clientRne">
+                  <span class="info-lbl">RNE</span>
+                  <span class="info-val mono">{{ d.client?.rne || d.clientRne }}</span>
+                </div>
+              </ng-container>
+  
+              <div class="info-row" *ngIf="d.client?.email || d.clientEmail">
+                <span class="info-lbl">Email</span>
+                <span class="info-val">{{ d.client?.email || d.clientEmail }}</span>
+              </div>
+              <div class="info-row" *ngIf="d.client?.telephone || d.clientTelephone">
+                <span class="info-lbl">Téléphone</span>
+                <span class="info-val mono">{{ d.client?.telephone || d.clientTelephone }}</span>
+              </div>
+              <div class="info-row" *ngIf="d.client?.adresse || d.clientAdresse">
+                <span class="info-lbl">Adresse</span>
+                <span class="info-val">{{ d.client?.adresse || d.clientAdresse }}</span>
+              </div>
+  
+              <!-- Validation -->
+              <div class="validation-section">
+                <h3 class="section-title" style="margin-top: 16px">🔐 Validation</h3>
+                <div class="info-row">
+                  <span class="info-lbl">Financière</span>
+                  <span class="info-val">{{ getValidationLabel(d.validationFinanciere) }}
+                    <span *ngIf="d.validateurFinancierChoisi"> — {{ d.validateurFinancierChoisi }}</span>
+                  </span>
+                </div>
+                <div class="info-row">
+                  <span class="info-lbl">Juridique</span>
+                  <span class="info-val">{{ getValidationLabel(d.validationJuridique) }}
+                    <span *ngIf="d.validateurJuridiqueChoisi"> — {{ d.validateurJuridiqueChoisi }}</span>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <!-- Crédits & Risques -->
+         
+  
+          <!-- Actions -->
+          <div class="detail-actions">
+            <button class="btn-details" (click)="voirDetails(d.id)">
+              👁 Voir le détail complet
+            </button>
+          </div>
+  
+        </div><!-- /dossier-detail -->
+      </div><!-- /dossier-card -->
+    </div><!-- /dossiers-list -->
+  
+  </div>

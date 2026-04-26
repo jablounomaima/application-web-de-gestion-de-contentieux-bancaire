@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
 import { DossierService } from '../../../core/services/dossier.service';
+import { AgentDossiersListeComponent } from '../agent-dossiers-liste/agent-dossiers-liste.component';
+import { ActivatedRoute} from '@angular/router';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -43,7 +45,7 @@ interface DossierForm {
 @Component({
   selector: 'app-agent-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule,AgentDossiersListeComponent],
   templateUrl: './agent-dashboard.component.html',
   styleUrls: ['./agent-dashboard.component.scss']
 })
@@ -68,6 +70,7 @@ export class AgentDashboardComponent implements OnInit {
 
   constructor(
     private dossierService: DossierService,
+    private route: ActivatedRoute,
     private router: Router,
   ) {}
 
@@ -76,6 +79,17 @@ export class AgentDashboardComponent implements OnInit {
     this.newRisque   = this.emptyRisque();
     this.newGarantie = this.emptyGarantie();
     this.chargerDossiers();
+
+    this.route.queryParams.subscribe(params => {
+      if (params['action'] === 'nouveau-dossier') {
+        this.ouvrirNouveauDossier();
+        // Nettoyer l'URL après ouverture (optionnel mais propre)
+        this.router.navigate([], { 
+          queryParams: {}, 
+          replaceUrl: true 
+        });
+      }
+    });
   }
 
   // ─── Chargement ───────────────────────────────────────────────────────────

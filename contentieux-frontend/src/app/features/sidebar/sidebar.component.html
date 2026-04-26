@@ -9,8 +9,16 @@
     <p class="menu-label">ESPACE AGENT</p>
     <ul>
       <li><a routerLink="/agent/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Tableau de Bord</a></li>
-      <li><a routerLink="/agent/dossiers" routerLinkActive="active-link"><i class="icon">📁</i> Tous les Dossiers</a></li>
-      <li><a routerLink="/agent/nouveau-dossier" routerLinkActive="active-link"><i class="icon">➕</i> Nouveau Dossier</a></li>
+      <li><a routerLink="/agent/liste" routerLinkActive="active-link"><i class="icon">📁</i> Tous les Dossiers</a></li>
+
+      <li>
+        <a routerLink="/agent/dashboard" 
+           [queryParams]="{action: 'nouveau-dossier'}" 
+           routerLinkActive="active-link">
+          <i class="icon">➕</i> Nouveau Dossier
+        </a>
+      </li>
+    
     </ul>
   </div>
 
