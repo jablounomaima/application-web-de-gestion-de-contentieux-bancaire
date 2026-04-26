@@ -76,32 +76,34 @@ public interface DossierRepository extends JpaRepository<DossierContentieux, Lon
         SELECT DISTINCT d FROM DossierContentieux d
         LEFT JOIN FETCH d.client
         LEFT JOIN FETCH d.agence
-        WHERE d.statut = 'EN_TRAITEMENT'
-        AND d.validateurFinancierChoisi = :username
+        WHERE d.validateurFinancierChoisi = :username
         AND (
-            d.validationFinanciere IS NULL
-            OR d.validationFinanciere = false
+            (d.statut = 'EN_TRAITEMENT' AND (d.validationFinanciere IS NULL OR d.validationFinanciere = false))
+            OR
+            (d.validateurFinancierUsername = :username)
         )
     """)
     List<DossierContentieux> findEnAttenteValidationFinanciereParValidateur(
             @Param("username") String username);
-    // =====================================================
+    
+            // =====================================================
     // 📌 VALIDATION JURIDIQUE (par validateur)
     // =====================================================
     @Query("""
         SELECT DISTINCT d FROM DossierContentieux d
         LEFT JOIN FETCH d.client
         LEFT JOIN FETCH d.agence
-        WHERE d.statut = 'EN_TRAITEMENT'
-        AND d.validateurJuridiqueChoisi = :username
+        WHERE d.validateurJuridiqueChoisi = :username
         AND (
-            d.validationJuridique IS NULL
-            OR d.validationJuridique = false
+            (d.statut = 'EN_TRAITEMENT' AND (d.validationJuridique IS NULL OR d.validationJuridique = false))
+            OR
+            (d.validateurJuridiqueUsername = :username)
         )
     """)
     List<DossierContentieux> findEnAttenteValidationJuridiqueParValidateur(
             @Param("username") String username);
-    // =====================================================
+            
+            // =====================================================
     // 📌 VALIDATION GLOBALE
     // =====================================================
     @Query("""

@@ -1,51 +1,68 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class ValidateurService {
-  private api = `${environment.apiUrl}/validateur`;
+
+  private readonly apiUrl = `${environment.apiUrl}/api/validateur`;
 
   constructor(private http: HttpClient) {}
 
-  // Financier
+  // ═══════════════════════════════
+  //  FINANCIER
+  // ═══════════════════════════════
+
   getDashboardFinancier(): Observable<any> {
-    return this.http.get(`${this.api}/dashboard-financier`);
+    return this.http.get(`${this.apiUrl}/dashboard-financier`);
   }
 
-  getDossiersFinancier(recherche?: string): Observable<any> {
-    const params = recherche ? `?recherche=${recherche}` : '';
-    return this.http.get(`${this.api}/financier/dossiers${params}`);
+  getDossiersFinancier(recherche: string = ''): Observable<any> {
+    let params = new HttpParams();
+    if (recherche.trim()) {
+      params = params.set('recherche', recherche.trim());
+    }
+    return this.http.get(`${this.apiUrl}/financier/dossiers`, { params });
   }
 
-  getDossierDetailFinancier(dossierId: number): Observable<any> {
-    return this.http.get(`${this.api}/financier/dossiers/${dossierId}`);
+  getDossierDetailFinancier(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/financier/dossiers/${id}`);
   }
 
-  validerFinancier(dossierId: number, commentaire: string): Observable<any> {
-    return this.http.post(`${this.api}/financier/dossiers/${dossierId}/valider`, { commentaire });
+  validerFinancier(id: number, commentaire: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/financier/dossiers/${id}/valider`, { commentaire });
   }
 
-  rejeterFinancier(dossierId: number, motif: string): Observable<any> {
-    return this.http.post(`${this.api}/financier/dossiers/${dossierId}/rejeter`, { motif });
+  rejeterFinancier(id: number, commentaire: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/financier/dossiers/${id}/rejeter`, { commentaire });
   }
 
-  // Juridique
+  // ═══════════════════════════════
+  //  JURIDIQUE
+  // ═══════════════════════════════
+
   getDashboardJuridique(): Observable<any> {
-    return this.http.get(`${this.api}/dashboard-juridique`);
+    return this.http.get(`${this.apiUrl}/dashboard-juridique`);
   }
 
-  getDossiersJuridique(recherche?: string): Observable<any> {
-    const params = recherche ? `?recherche=${recherche}` : '';
-    return this.http.get(`${this.api}/juridique/dossiers${params}`);
+  getDossiersJuridique(recherche: string = ''): Observable<any> {
+    let params = new HttpParams();
+    if (recherche.trim()) {
+      params = params.set('recherche', recherche.trim());
+    }
+    return this.http.get(`${this.apiUrl}/juridique/dossiers-juridique`, { params });
   }
 
-  validerJuridique(dossierId: number, commentaire: string): Observable<any> {
-    return this.http.post(`${this.api}/juridique/dossiers/${dossierId}/valider`, { commentaire });
+  getDossierDetailJuridique(id: number): Observable<any> {
+    return this.http.get(`${this.apiUrl}/juridique/dossiers/${id}`);
   }
 
-  rejeterJuridique(dossierId: number, motif: string): Observable<any> {
-    return this.http.post(`${this.api}/juridique/dossiers/${dossierId}/rejeter`, { motif });
+  validerJuridique(id: number, commentaire: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/juridique/dossiers/${id}/valider`, { commentaire });
+  }
+
+  rejeterJuridique(id: number, commentaire: string): Observable<any> {
+    return this.http.post(`${this.apiUrl}/juridique/dossiers/${id}/rejeter`, { commentaire });
   }
 }

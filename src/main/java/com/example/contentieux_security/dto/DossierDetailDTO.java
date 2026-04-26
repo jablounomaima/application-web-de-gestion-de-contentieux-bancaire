@@ -1,46 +1,39 @@
 package com.example.contentieux_security.dto;
 
 import com.example.contentieux_security.entity.*;
-import com.example.contentieux_security.enums.DossierStatus;
 import com.example.contentieux_security.enums.TypeClient;
-import com.itextpdf.text.pdf.draw.LineSeparator;
 import lombok.*;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
-/**
- * DTO de lecture pour l'affichage complet d'un dossier.
- * Évite les LazyInitializationException dans les templates Thymeleaf.
- */
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class DossierDetailDTO {
 
-    private Long id;
+    private Long   id;
     private String numeroDossier;
     private String libelle;
-    private String description;         // ← ajouté
+    private String description;
     private String statut;
     private LocalDateTime dateCreation;
     private String creePar;
     private String notes;
 
-    // 🔥 CORRECTION : Ce champ existe mais n'était pas mappé dans la méthode from()
-   private String clientTypeClient;
+    // ── Client (objet imbriqué — lu par le template Angular) ──
+    private ClientDTO client;
 
-    // ── Client ────────────────────────────────────────────────
-    private Long clientId;
+    // ── Champs plats conservés pour rétrocompatibilité ────────
+    private Long   clientId;
     private String clientType;
-
+    private String clientTypeClient;
     private String clientNom;
     private String clientPrenom;
     private String clientCin;
     private String clientEmail;
     private String clientTelephone;
-    private String clientAdresse;    // ← ajouté (existe dans l'entité mais pas mappé)
-    
-    // 🔥 CORRECTION : Ajout des champs manquants pour les entreprises
-    private String clientRaisonSociale;  // ← AJOUTÉ : Raison sociale pour les entreprises
-    private String clientRne;            // ← AJOUTÉ : Registre national des entreprises
+    private String clientAdresse;
+    private String clientRaisonSociale;
+    private String clientRne;
 
     // ── Agence ────────────────────────────────────────────────
     private String agenceNom;
@@ -49,13 +42,13 @@ public class DossierDetailDTO {
     // ── Validation ────────────────────────────────────────────
     private Boolean validationFinanciere;
     private Boolean validationJuridique;
-    private String commentaireFinancier;
-    private String commentaireJuridique;
-    private String validateurFinancierUsername;
-    private String validateurJuridiqueUsername;
-    private String validateurFinancierChoisi;    // ← ajouter
-    private String validateurJuridiqueChoisi;    // ← ajouter
-    
+    private String  commentaireFinancier;
+    private String  commentaireJuridique;
+    private String  validateurFinancierUsername;
+    private String  validateurJuridiqueUsername;
+    private String  validateurFinancierChoisi;
+    private String  validateurJuridiqueChoisi;
+
     // ── Risques ───────────────────────────────────────────────
     private List<RisqueDTO> risques;
     private Double montantTotalEngagement;
@@ -63,10 +56,27 @@ public class DossierDetailDTO {
     // ── Historique ────────────────────────────────────────────
     private List<HistoriqueEntryDTO> historique;
 
+    // ══════════════════════════════════════════════════════════
+    //  Sous-DTO Client (objet imbriqué)
+    // ══════════════════════════════════════════════════════════
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class ClientDTO {
+        private Long   id;
+        private String typeClient;       // "PARTICULIER" | "ENTREPRISE"
+        private String nom;
+        private String prenom;
+        private String cin;
+        private String raisonSociale;
+        private String rne;
+        private String email;
+        private String telephone;
+        private String adresse;
+    }
+
     // ── Sous-DTO Risque ───────────────────────────────────────
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class RisqueDTO {
-        private Long id;
+        private Long   id;
         private String type;
         private Double montantInitial;
         private Double montantImpaye;
@@ -79,7 +89,7 @@ public class DossierDetailDTO {
     // ── Sous-DTO Garantie ─────────────────────────────────────
     @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
     public static class GarantieDTO {
-        private Long id;
+        private Long   id;
         private String typeGarantie;
         private String description;
         private Double valeurEstimee;
@@ -96,14 +106,17 @@ public class DossierDetailDTO {
         private String utilisateur;
     }
 
-    // ── Factory method depuis l'entité ────────────────────────
+    // ══════════════════════════════════════════════════════════
+    //  Factory
+    // ══════════════════════════════════════════════════════════
     public static DossierDetailDTO from(DossierContentieux d,
                                         List<HistoriqueDossier> historique) {
+
         DossierDetailDTOBuilder b = DossierDetailDTO.builder()
                 .id(d.getId())
                 .numeroDossier(d.getNumeroDossier())
                 .libelle(d.getLibelle())
-                .description(d.getDescription())         // ← ajouté
+                .description(d.getDescription())
                 .statut(d.getStatut() != null ? d.getStatut().name() : null)
                 .dateCreation(d.getDateCreation())
                 .creePar(d.getCreePar())
@@ -114,83 +127,91 @@ public class DossierDetailDTO {
                 .commentaireJuridique(d.getCommentaireJuridique())
                 .validateurFinancierUsername(d.getValidateurFinancierUsername())
                 .validateurJuridiqueUsername(d.getValidateurJuridiqueUsername())
-                .validateurFinancierChoisi(d.getValidateurFinancierChoisi())   
-                .validateurJuridiqueChoisi(d.getValidateurJuridiqueChoisi());   
+                .validateurFinancierChoisi(d.getValidateurFinancierChoisi())
+                .validateurJuridiqueChoisi(d.getValidateurJuridiqueChoisi());
 
-        // 🔥 CORRECTION COMPLÈTE DU MAPPING CLIENT
-       // Dans DossierDetailDTO.from(), remplace le bloc client par :
-// Dans DossierDetailDTO.from(), remplace le bloc client par :
+        // ── Client ────────────────────────────────────────────
+        if (d.getClient() != null) {
+            Client c = d.getClient();
 
-if (d.getClient() != null) {
-    // 🔥 DEBUG
-    System.out.println("🔍 DTO - Client from DB:");
-    System.out.println("  - ID: " + d.getClient().getId());
-    System.out.println("  - typeClient enum: " + d.getClient().getTypeClient());
-    System.out.println("  - raisonSociale: " + d.getClient().getRaisonSociale());
-    
-    // Détermination du type avec fallback
-    String typeClientStr;
-    TypeClient typeClient = d.getClient().getTypeClient();
-    
-    if (typeClient != null) {
-        typeClientStr = typeClient.name();
-        System.out.println("  - Utilisation typeClient DB: " + typeClientStr);
-    } else if (d.getClient().getRaisonSociale() != null 
-               && !d.getClient().getRaisonSociale().trim().isEmpty()) {
-        typeClientStr = "ENTREPRISE";
-        System.out.println("  - FALLBACK ENTREPRISE (raison sociale)");
-    } else {
-        typeClientStr = "PARTICULIER";
-        System.out.println("  - FALLBACK PARTICULIER");
-    }
-    
-    System.out.println("  - FINAL typeClientStr: " + typeClientStr);
-    
-    b.clientId(d.getClient().getId())
-     .clientNom(d.getClient().getNom())
-     .clientPrenom(d.getClient().getPrenom())
-     .clientCin(d.getClient().getCin())
-     .clientEmail(d.getClient().getEmail())
-     .clientTelephone(d.getClient().getTelephone())
-     .clientAdresse(d.getClient().getAdresse())
-    .clientTypeClient(typeClientStr)  // ✅ déjà rempli
+            String typeStr = c.getTypeClient() != null
+                    ? c.getTypeClient().name()
+                    : (c.getRaisonSociale() != null
+                            && !c.getRaisonSociale().isBlank()
+                            ? "ENTREPRISE"
+                            : "PARTICULIER");
 
-    .clientType(typeClientStr)
-     .clientRaisonSociale(d.getClient().getRaisonSociale())
-     .clientRne(d.getClient().getRne());
-}
-   
-        
+            // Objet imbriqué — utilisé par le template Angular
+            ClientDTO clientDTO = ClientDTO.builder()
+                    .id(c.getId())
+                    .typeClient(typeStr)
+                    .nom(c.getNom())
+                    .prenom(c.getPrenom())
+                    .cin(c.getCin())
+                    .raisonSociale(c.getRaisonSociale())
+                    .rne(c.getRne())
+                    .email(c.getEmail())
+                    .telephone(c.getTelephone())
+                    .adresse(c.getAdresse())
+                    .build();
+
+            // Champs plats — rétrocompatibilité
+            b.client(clientDTO)
+             .clientId(c.getId())
+             .clientType(typeStr)
+             .clientTypeClient(typeStr)
+             .clientNom(c.getNom())
+             .clientPrenom(c.getPrenom())
+             .clientCin(c.getCin())
+             .clientRaisonSociale(c.getRaisonSociale())
+             .clientRne(c.getRne())
+             .clientEmail(c.getEmail())
+             .clientTelephone(c.getTelephone())
+             .clientAdresse(c.getAdresse());
+        }
+
+        // ── Agence ────────────────────────────────────────────
         if (d.getAgence() != null) {
             b.agenceNom(d.getAgence().getNom())
              .agenceVille(d.getAgence().getVille());
         }
 
+        // ── Risques & Garanties ───────────────────────────────
         if (d.getRisques() != null) {
             double total = 0.0;
-            java.util.List<RisqueDTO> risqueDTOs = new java.util.ArrayList<>();
+            List<RisqueDTO> risqueDTOs = new ArrayList<>();
             for (Risque r : d.getRisques()) {
                 total += r.getMontantImpaye() != null ? r.getMontantImpaye() : 0;
-                java.util.List<GarantieDTO> garantieDTOs = new java.util.ArrayList<>();
+
+                List<GarantieDTO> garantieDTOs = new ArrayList<>();
                 if (r.getGaranties() != null) {
                     for (Garantie g : r.getGaranties()) {
                         garantieDTOs.add(GarantieDTO.builder()
-                                .id(g.getId()).typeGarantie(g.getTypeGarantie())
-                                .description(g.getDescription()).valeurEstimee(g.getValeurEstimee())
-                                .documentRef(g.getDocumentRef()).statut(g.getStatut())
+                                .id(g.getId())
+                                .typeGarantie(g.getTypeGarantie())
+                                .description(g.getDescription())
+                                .valeurEstimee(g.getValeurEstimee())
+                                .documentRef(g.getDocumentRef())
+                                .statut(g.getStatut())
                                 .build());
                     }
                 }
                 risqueDTOs.add(RisqueDTO.builder()
-                        .id(r.getId()).type(r.getType())
-                        .montantInitial(r.getMontantInitial()).montantImpaye(r.getMontantImpaye())
-                        .dateEcheance(r.getDateEcheance() != null ? r.getDateEcheance().toString() : null)
-                        .description(r.getDescription()).selectionne(r.isSelectionne())
-                        .garanties(garantieDTOs).build());
+                        .id(r.getId())
+                        .type(r.getType())
+                        .montantInitial(r.getMontantInitial())
+                        .montantImpaye(r.getMontantImpaye())
+                        .dateEcheance(r.getDateEcheance() != null
+                                ? r.getDateEcheance().toString() : null)
+                        .description(r.getDescription())
+                        .selectionne(r.isSelectionne())
+                        .garanties(garantieDTOs)
+                        .build());
             }
             b.risques(risqueDTOs).montantTotalEngagement(total);
         }
 
+        // ── Historique ────────────────────────────────────────
         if (historique != null) {
             b.historique(historique.stream()
                     .map(h -> HistoriqueEntryDTO.builder()
