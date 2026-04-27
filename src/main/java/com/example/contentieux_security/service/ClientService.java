@@ -70,4 +70,56 @@ public class ClientService {
         // Puis supprimer le client
         clientRepository.deleteById(id);
     }
+
+    // ════════════════════════════════════════════════════════════════════
+// À AJOUTER dans ClientService.java
+// Placer après la méthode findById()
+// ════════════════════════════════════════════════════════════════════
+
+@Transactional
+public Client modifierClient(Long id, Client nouvellesDonnees) {
+
+    // 1. Récupération du client existant (lève une exception si absent)
+    Client existing = clientRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Client introuvable : id=" + id));
+
+    // 2. Mise à jour uniquement des champs non-null fournis
+    if (nouvellesDonnees.getNom() != null)
+        existing.setNom(clean(nouvellesDonnees.getNom()));
+
+    if (nouvellesDonnees.getPrenom() != null)
+        existing.setPrenom(clean(nouvellesDonnees.getPrenom()));
+
+    if (nouvellesDonnees.getRaisonSociale() != null)
+        existing.setRaisonSociale(clean(nouvellesDonnees.getRaisonSociale()));
+
+    if (nouvellesDonnees.getTypeClient() != null)
+        existing.setTypeClient(nouvellesDonnees.getTypeClient());
+
+    if (nouvellesDonnees.getCin() != null)
+        existing.setCin(clean(nouvellesDonnees.getCin()));
+
+    if (nouvellesDonnees.getRne() != null)
+        existing.setRne(clean(nouvellesDonnees.getRne()));
+
+    if (nouvellesDonnees.getEmail() != null)
+        existing.setEmail(clean(nouvellesDonnees.getEmail()));
+
+    if (nouvellesDonnees.getTelephone() != null)
+        existing.setTelephone(clean(nouvellesDonnees.getTelephone()));
+
+    if (nouvellesDonnees.getAdresse() != null)
+        existing.setAdresse(clean(nouvellesDonnees.getAdresse()));
+
+    // 3. Cohérence métier (même logique que save())
+    if (existing.getTypeClient() == TypeClient.ENTREPRISE) {
+        existing.setCin(null);
+        existing.setPrenom(null);
+    } else {
+        existing.setRne(null);
+        existing.setRaisonSociale(null);
+    }
+
+    return clientRepository.save(existing);
+}
 }

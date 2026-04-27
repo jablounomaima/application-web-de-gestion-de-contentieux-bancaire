@@ -1,0 +1,425 @@
+/* designer-avocat.component.scss */
+
+/* ── Palette ────────────────────────────────────────────────── */
+:host {
+    --da-bg:          #f4f6fb;
+    --da-surface:     #ffffff;
+    --da-border:      #e2e8f4;
+    --da-accent:      #1a56db;
+    --da-accent-dark: #1240a8;
+    --da-accent-light:#e8effd;
+    --da-success:     #0a7c42;
+    --da-success-bg:  #e6f4ee;
+    --da-danger:      #b91c1c;
+    --da-danger-bg:   #fef2f2;
+    --da-text:        #1e2a45;
+    --da-muted:       #6b7a99;
+    --da-radius:      12px;
+    --da-radius-sm:   8px;
+    --da-shadow:      0 2px 12px rgba(26,86,219,0.08);
+    --da-shadow-card: 0 4px 20px rgba(26,86,219,0.12);
+  }
+  
+  /* ── Page wrapper ───────────────────────────────────────────── */
+  .da-page {
+    min-height: 100vh;
+    background: var(--da-bg);
+    padding: 2rem 1.5rem 4rem;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--da-text);
+  }
+  
+  /* ── En-tête ────────────────────────────────────────────────── */
+  .da-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    max-width: 780px;
+    margin: 0 auto 2rem;
+  }
+  
+  .da-back-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    border: 1.5px solid var(--da-border);
+    border-radius: 50%;
+    background: var(--da-surface);
+    color: var(--da-text);
+    font-size: 1.1rem;
+    cursor: pointer;
+    transition: border-color .2s, box-shadow .2s;
+    flex-shrink: 0;
+  
+    &:hover {
+      border-color: var(--da-accent);
+      box-shadow: 0 0 0 3px var(--da-accent-light);
+    }
+  }
+  
+  .da-header-text { flex: 1; }
+  
+  .da-title {
+    font-size: 1.55rem;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    margin: 0 0 .2rem;
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  
+  .da-title-icon { font-size: 1.4rem; }
+  
+  .da-subtitle {
+    font-size: .875rem;
+    color: var(--da-muted);
+    margin: 0;
+  }
+  .da-sep { margin: 0 .4rem; opacity: .5; }
+  
+  /* ── Chargement ─────────────────────────────────────────────── */
+  .da-loading {
+    max-width: 780px;
+    margin: 4rem auto;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    color: var(--da-muted);
+    font-size: .95rem;
+  }
+  
+  /* ── Alertes ────────────────────────────────────────────────── */
+  .da-alert {
+    max-width: 780px;
+    margin: 0 auto 1.5rem;
+    padding: .9rem 1.2rem;
+    border-radius: var(--da-radius-sm);
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+    font-size: .9rem;
+    font-weight: 500;
+  
+    &--error {
+      background: var(--da-danger-bg);
+      color: var(--da-danger);
+      border: 1px solid #fca5a5;
+    }
+  
+    &--success {
+      background: var(--da-success-bg);
+      color: var(--da-success);
+      border: 1px solid #6ee7b7;
+    }
+  }
+  .da-redirect-note {
+    margin-left: auto;
+    font-size: .8rem;
+    opacity: .75;
+  }
+  
+  /* ── Body ───────────────────────────────────────────────────── */
+  .da-body {
+    max-width: 780px;
+    margin: 0 auto;
+  }
+  
+  /* ── Vide ───────────────────────────────────────────────────── */
+  .da-empty {
+    background: var(--da-surface);
+    border: 1.5px dashed var(--da-border);
+    border-radius: var(--da-radius);
+    padding: 3rem 2rem;
+    text-align: center;
+    color: var(--da-muted);
+  }
+  .da-empty-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+  .da-empty-title { font-size: 1.1rem; font-weight: 600; color: var(--da-text); margin: 0 0 .4rem; }
+  .da-empty-sub { font-size: .875rem; margin: 0; }
+  
+  /* ── Formulaire ─────────────────────────────────────────────── */
+  .da-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+  }
+  
+  /* ── Section ────────────────────────────────────────────────── */
+  .da-section {
+    background: var(--da-surface);
+    border: 1px solid var(--da-border);
+    border-radius: var(--da-radius);
+    padding: 1.5rem;
+    box-shadow: var(--da-shadow);
+  }
+  
+  .da-section-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--da-text);
+    margin: 0 0 1.25rem;
+    display: flex;
+    align-items: center;
+    gap: .6rem;
+  }
+  
+  .da-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--da-accent);
+    color: #fff;
+    font-size: .78rem;
+    font-weight: 800;
+    flex-shrink: 0;
+  }
+  
+  /* ── Grille avocats ─────────────────────────────────────────── */
+  .da-avocat-grid {
+    display: flex;
+    flex-direction: column;
+    gap: .75rem;
+  }
+  
+  .da-avocat-card {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .9rem 1rem;
+    border: 1.5px solid var(--da-border);
+    border-radius: var(--da-radius-sm);
+    background: #fff;
+    cursor: pointer;
+    text-align: left;
+    transition: border-color .18s, background .18s, box-shadow .18s;
+    position: relative;
+  
+    &:hover {
+      border-color: var(--da-accent);
+      background: var(--da-accent-light);
+    }
+  
+    &--selected {
+      border-color: var(--da-accent);
+      background: var(--da-accent-light);
+      box-shadow: 0 0 0 3px rgba(26,86,219,.15);
+    }
+  }
+  
+  .da-avocat-avatar {
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--da-accent), #4f7cde);
+    color: #fff;
+    font-size: .95rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    letter-spacing: .03em;
+  }
+  
+  .da-avocat-info {
+    display: flex;
+    flex-direction: column;
+    gap: .18rem;
+    flex: 1;
+    min-width: 0;
+  }
+  
+  .da-avocat-nom {
+    font-weight: 600;
+    font-size: .95rem;
+    color: var(--da-text);
+  }
+  
+  .da-avocat-meta {
+    font-size: .78rem;
+    color: var(--da-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  
+  .da-avocat-check {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--da-accent);
+    color: #fff;
+    font-size: .85rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    animation: da-pop .2s cubic-bezier(.34,1.56,.64,1) both;
+  }
+  
+  @keyframes da-pop {
+    from { transform: scale(0); opacity: 0; }
+    to   { transform: scale(1); opacity: 1; }
+  }
+  
+  /* ── Champs ─────────────────────────────────────────────────── */
+  .da-field {
+    display: flex;
+    flex-direction: column;
+    gap: .45rem;
+  
+    & + .da-field { margin-top: 1rem; }
+  }
+  
+  .da-label {
+    font-size: .85rem;
+    font-weight: 600;
+    color: var(--da-text);
+  }
+  
+  .da-required { color: var(--da-danger); margin-left: .2rem; }
+  .da-optional { color: var(--da-muted); font-weight: 400; margin-left: .3rem; font-size: .8rem; }
+  
+  .da-textarea,
+  .da-input {
+    width: 100%;
+    padding: .7rem .9rem;
+    border: 1.5px solid var(--da-border);
+    border-radius: var(--da-radius-sm);
+    font-size: .9rem;
+    font-family: inherit;
+    color: var(--da-text);
+    background: #fff;
+    transition: border-color .18s, box-shadow .18s;
+    box-sizing: border-box;
+    resize: vertical;
+  
+    &:focus {
+      outline: none;
+      border-color: var(--da-accent);
+      box-shadow: 0 0 0 3px rgba(26,86,219,.12);
+    }
+  
+    &::placeholder { color: #b0bcd4; }
+  }
+  
+  /* ── Récapitulatif ──────────────────────────────────────────── */
+  .da-recap {
+    background: var(--da-accent-light);
+    border: 1.5px solid rgba(26,86,219,.2);
+    border-radius: var(--da-radius-sm);
+    padding: 1rem 1.2rem;
+  }
+  
+  .da-recap-label {
+    font-size: .72rem;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    color: var(--da-accent);
+    font-weight: 700;
+    margin-bottom: .6rem;
+  }
+  
+  .da-recap-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: .875rem;
+    padding: .25rem 0;
+  
+    & + .da-recap-row {
+      border-top: 1px solid rgba(26,86,219,.12);
+      margin-top: .25rem;
+      padding-top: .5rem;
+    }
+  }
+  
+  .da-recap-key { color: var(--da-muted); }
+  .da-recap-val { font-weight: 600; color: var(--da-text); }
+  
+  /* ── Actions ────────────────────────────────────────────────── */
+  .da-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: .75rem;
+  }
+  
+  .da-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .65rem 1.4rem;
+    border-radius: var(--da-radius-sm);
+    font-size: .9rem;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: background .18s, box-shadow .18s, opacity .18s;
+  
+    &--ghost {
+      background: transparent;
+      border: 1.5px solid var(--da-border);
+      color: var(--da-muted);
+  
+      &:hover { background: var(--da-bg); color: var(--da-text); }
+    }
+  
+    &--primary {
+      background: var(--da-accent);
+      color: #fff;
+      box-shadow: 0 2px 8px rgba(26,86,219,.3);
+  
+      &:hover:not(:disabled) {
+        background: var(--da-accent-dark);
+        box-shadow: 0 4px 16px rgba(26,86,219,.4);
+      }
+  
+      &:disabled {
+        opacity: .5;
+        cursor: not-allowed;
+      }
+    }
+  }
+  
+  .da-btn-spinner {
+    display: flex;
+    align-items: center;
+    gap: .5rem;
+  }
+  
+  /* ── Spinner ────────────────────────────────────────────────── */
+  .da-spinner {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--da-accent-light);
+    border-top-color: var(--da-accent);
+    border-radius: 50%;
+    animation: da-spin .75s linear infinite;
+  
+    &--sm {
+      width: 16px;
+      height: 16px;
+      border-width: 2px;
+    }
+  }
+  
+  @keyframes da-spin {
+    to { transform: rotate(360deg); }
+  }
+  
+  /* ── Responsive ─────────────────────────────────────────────── */
+  @media (max-width: 600px) {
+    .da-page { padding: 1.25rem 1rem 3rem; }
+    .da-title { font-size: 1.25rem; }
+    .da-actions { flex-direction: column-reverse; }
+    .da-btn { width: 100%; justify-content: center; }
+  }

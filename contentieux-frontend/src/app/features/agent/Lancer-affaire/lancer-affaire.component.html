@@ -1,0 +1,158 @@
+<!-- lancer-affaire.component.html -->
+<div class="la-page">
+
+    <!-- ── En-tête ─────────────────────────────────────────────── -->
+    <div class="la-header">
+      <button class="la-back-btn" (click)="annuler()" title="Retour au dossier">←</button>
+      <div class="la-header-text">
+        <h1 class="la-title">
+          <span class="la-title-icon">⚖️</span>
+          Lancer l'affaire judiciaire
+        </h1>
+        <p class="la-subtitle">
+          Dossier <strong>#{{ dossierId }}</strong>
+        </p>
+      </div>
+    </div>
+  
+    <!-- ── Chargement ──────────────────────────────────────────── -->
+    <div *ngIf="chargement" class="la-loading">
+      <div class="la-spinner"></div>
+      <p>Chargement…</p>
+    </div>
+  
+    <!-- ── Erreur globale ──────────────────────────────────────── -->
+    <div *ngIf="erreur && !chargement" class="la-alert la-alert--error">
+      <span>⚠️</span> {{ erreur }}
+    </div>
+  
+    <!-- ── Succès ──────────────────────────────────────────────── -->
+    <div *ngIf="succes" class="la-alert la-alert--success">
+      <span>✅</span> {{ succes }}
+      <span class="la-redirect">Redirection…</span>
+    </div>
+  
+    <!-- ── Contenu ─────────────────────────────────────────────── -->
+    <div *ngIf="!chargement && !succes" class="la-body">
+  
+      <!-- ── Carte récapitulative ─────────────────────────────── -->
+      <div class="la-info-grid">
+  
+        <!-- Avocat désigné -->
+        <div class="la-info-card la-info-card--avocat">
+          <div class="la-info-card-label">Avocat désigné</div>
+          <div class="la-avocat-row">
+            <div class="la-avocat-avatar">{{ initialesAvocat() }}</div>
+            <div class="la-avocat-detail">
+              <span class="la-avocat-nom">{{ nomAvocat() }}</span>
+              <span *ngIf="avocat.email"     class="la-avocat-meta">✉ {{ avocat.email }}</span>
+              <span *ngIf="avocat.telephone" class="la-avocat-meta">📞 {{ avocat.telephone }}</span>
+            </div>
+          </div>
+        </div>
+  
+        <!-- Mission -->
+        <div *ngIf="mission" class="la-info-card">
+          <div class="la-info-card-label">Mission</div>
+          <div class="la-mission-rows">
+            <div class="la-mission-row" *ngIf="mission.description">
+              <span class="la-mkey">Description</span>
+              <span class="la-mval">{{ mission.description }}</span>
+            </div>
+            <div class="la-mission-row" *ngIf="mission.statut">
+              <span class="la-mkey">Statut</span>
+              <span class="la-badge">{{ mission.statut }}</span>
+            </div>
+            <div class="la-mission-row" *ngIf="mission.dateFinPrevue">
+              <span class="la-mkey">Fin prévue</span>
+              <span class="la-mval">{{ mission.dateFinPrevue }}</span>
+            </div>
+          </div>
+        </div>
+  
+      </div>
+  
+      <!-- ── Formulaire ────────────────────────────────────────── -->
+     <!-- lancer-affaire.component.html -->
+<div class="la-page">
+
+    <div class="la-header">
+      <button class="la-back-btn" (click)="annuler()">←</button>
+      <div class="la-header-text">
+        <h1 class="la-title"><span>⚖️</span> Lancer l'affaire judiciaire</h1>
+        <p class="la-subtitle">Dossier <strong>#{{ dossierId }}</strong></p>
+      </div>
+    </div>
+  
+    <div *ngIf="chargement" class="la-loading">
+      <div class="la-spinner"></div>
+      <p>Chargement…</p>
+    </div>
+  
+    <div *ngIf="erreur && !chargement" class="la-alert la-alert--error">
+      <span>⚠️</span> {{ erreur }}
+    </div>
+  
+    <div *ngIf="succes" class="la-alert la-alert--success">
+      <span>✅</span> {{ succes }}
+      <span class="la-redirect">Redirection…</span>
+    </div>
+  
+    <div *ngIf="!chargement && !succes" class="la-body">
+  
+      <!-- Cartes info : avocat + mission (inchangées) -->
+      <div class="la-info-grid">
+        <div class="la-info-card la-info-card--avocat">
+          <div class="la-info-card-label">Avocat désigné</div>
+          <div class="la-avocat-row">
+            <div class="la-avocat-avatar">{{ initialesAvocat() }}</div>
+            <div class="la-avocat-detail">
+              <span class="la-avocat-nom">{{ nomAvocat() }}</span>
+              <span *ngIf="avocat?.email"     class="la-avocat-meta">✉ {{ avocat.email }}</span>
+              <span *ngIf="avocat?.telephone" class="la-avocat-meta">📞 {{ avocat.telephone }}</span>
+            </div>
+          </div>
+        </div>
+  
+        <div *ngIf="mission" class="la-info-card">
+          <div class="la-info-card-label">Mission</div>
+          <div class="la-mission-rows">
+            <div class="la-mission-row" *ngIf="mission.description">
+              <span class="la-mkey">Description</span>
+              <span class="la-mval">{{ mission.description }}</span>
+            </div>
+            <div class="la-mission-row" *ngIf="mission.statut">
+              <span class="la-mkey">Statut</span>
+              <span class="la-badge">{{ mission.statut }}</span>
+            </div>
+            <div class="la-mission-row" *ngIf="mission.dateFinPrevue">
+              <span class="la-mkey">Fin prévue</span>
+              <span class="la-mval">{{ mission.dateFinPrevue }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- Actions — plus de formulaire, juste confirmation -->
+      <div class="la-actions">
+        <button class="la-btn la-btn--ghost" (click)="annuler()" type="button">
+          Annuler
+        </button>
+        <button
+          class="la-btn la-btn--primary"
+          [disabled]="!formulaireValide() || envoi"
+          (click)="soumettre()"
+          type="button"
+        >
+          <ng-container *ngIf="!envoi">⚖️ Confirmer le lancement</ng-container>
+          <ng-container *ngIf="envoi">
+            <span class="la-spinner la-spinner--sm"></span> Envoi…
+          </ng-container>
+        </button>
+      </div>
+  
+    </div>
+  </div>
+    </div><!-- /la-body -->
+  
+  </div><!-- /la-page -->

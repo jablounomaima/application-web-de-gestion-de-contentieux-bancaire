@@ -5,9 +5,10 @@ import { environment } from '../../../environments/environment';
 
 @Injectable({ providedIn: 'root' })
 export class AvocatService {
-  private api = `${environment.apiUrl}/avocat/affaires`;
-
+  private api = `${environment.apiUrl}/api/avocat/affaires`;
   constructor(private http: HttpClient) {}
+
+
 
   getDashboard(): Observable<any> {
     return this.http.get(`${this.api}/dashboard`);
@@ -52,4 +53,11 @@ export class AvocatService {
   modifierTribunal(affaireId: number, body: any): Observable<any> {
     return this.http.post(`${this.api}/${affaireId}/tribunal`, body);
   }
+
+
+
+  getDossierAffaire(affaireId: number): Observable<any> {
+    return this.http.get(`${this.api}/${affaireId}/dossier`);
+  }
+   
 }

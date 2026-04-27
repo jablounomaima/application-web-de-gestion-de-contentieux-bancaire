@@ -1,0 +1,350 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- LOADING                                                          -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<div class="loading-screen" *ngIf="loading">
+    <div class="loader-ring"></div>
+    <p>Chargement du dossier…</p>
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- ERROR                                                            -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="error-screen" *ngIf="!loading && !dossier">
+    <div class="error-icon">⚠️</div>
+    <h2>Dossier introuvable</h2>
+    <p>Ce dossier n'existe pas ou vous n'y avez pas accès.</p>
+    <a routerLink="/agent/dossiers" class="btn-back">← Retour aux dossiers</a>
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- PAGE PRINCIPALE                                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="page" *ngIf="!loading && dossier">
+  
+    <!-- ── Breadcrumb ── -->
+    <nav class="breadcrumb">
+      <a routerLink="/agent/dashboard">Tableau de bord</a>
+      <span class="sep">›</span>
+      <a routerLink="/agent/dossiers">Dossiers</a>
+      <span class="sep">›</span>
+      <a [routerLink]="['/agent/dossiers', dossier.id]">{{ dossier.numeroDossier }}</a>
+      <span class="sep">›</span>
+      <span class="current">Lancer une procédure</span>
+    </nav>
+  
+    <!-- ═══════════════ HEADER ═══════════════ -->
+    <header class="page-header">
+      <div class="header-icon-wrap">
+        <span class="header-icon">⚖️</span>
+      </div>
+      <div class="header-text">
+        <h1>Lancer une Procédure Judiciaire</h1>
+        <p class="header-sub">
+          Dossier <strong>{{ dossier.numeroDossier }}</strong> —
+          {{ getClientName() }}
+        </p>
+      </div>
+      <div class="header-badge" [ngClass]="getStatutClass(dossier.statut)">
+        {{ formatStatut(dossier.statut) }}
+      </div>
+    </header>
+  
+    <!-- ═══════════════ ALERTES ═══════════════ -->
+    <div class="alert success" *ngIf="successMessage">
+      <span class="alert-icon">✅</span>
+      {{ successMessage }}
+    </div>
+  
+    <div class="alert danger" *ngIf="errorMessage">
+      <span class="alert-icon">❌</span>
+      {{ errorMessage }}
+    </div>
+  
+    <!-- ═══════════════ GRILLE PRINCIPALE ═══════════════ -->
+    <div class="main-grid">
+  
+      <!-- ───────────── COLONNE GAUCHE : FORMULAIRE ───────────── -->
+      <div class="col-left">
+  
+        <!-- ══ RÉSUMÉ DOSSIER ══ -->
+        <section class="card recap-card">
+          <div class="card-head">
+            <h2><span class="card-icon">📁</span> Récapitulatif du dossier</h2>
+          </div>
+          <div class="card-body">
+            <div class="recap-grid">
+              <div class="recap-item">
+                <span class="recap-label">Référence</span>
+                <span class="recap-val mono">{{ dossier.numeroDossier }}</span>
+              </div>
+              <div class="recap-item">
+                <span class="recap-label">Client</span>
+                <span class="recap-val">{{ getClientName() }}</span>
+              </div>
+              <div class="recap-item">
+                <span class="recap-label">Agence</span>
+                <span class="recap-val">{{ dossier.agence?.nom || '—' }}</span>
+              </div>
+              <div class="recap-item">
+                <span class="recap-label">Montant impayé total</span>
+                <span class="recap-val accent">
+                  {{ getMontantTotal() | number:'1.0-0' }} <small>TND</small>
+                </span>
+              </div>
+              <div class="recap-item" *ngIf="dossier.validateurFinancierUsername">
+                <span class="recap-label">Validateur financier</span>
+                <span class="recap-val">{{ dossier.validateurFinancierUsername }}</span>
+              </div>
+              <div class="recap-item" *ngIf="dossier.validateurJuridiqueUsername">
+                <span class="recap-label">Validateur juridique</span>
+                <span class="recap-val">{{ dossier.validateurJuridiqueUsername }}</span>
+              </div>
+            </div>
+          </div>
+        </section>
+  
+        <!-- ══ FORMULAIRE PROCÉDURE ══ -->
+        <section class="card form-card">
+          <div class="card-head">
+            <h2><span class="card-icon">📋</span> Détails de la procédure</h2>
+          </div>
+          <div class="card-body">
+  
+            <div class="form-group">
+              <label class="form-label">
+                Type de procédure <span class="req">*</span>
+              </label>
+              <div class="type-grid">
+                <div class="type-card"
+                     *ngFor="let t of procedureTypes"
+                     [class.selected]="form.typeProcedure === t.value"
+                     (click)="form.typeProcedure = t.value">
+                  <span class="type-emoji">{{ t.emoji }}</span>
+                  <span class="type-label">{{ t.label }}</span>
+                  <div class="type-check" *ngIf="form.typeProcedure === t.value">✓</div>
+                </div>
+              </div>
+            </div>
+  
+  
+            <div class="form-group">
+              <label class="form-label">Motif / Objet de la procédure <span class="req">*</span></label>
+              <textarea
+                [(ngModel)]="form.motif"
+                name="motif"
+                rows="3"
+                class="form-input"
+                placeholder="Décrivez brièvement l'objet et le motif de la procédure judiciaire…"
+                [disabled]="submitting"
+              ></textarea>
+            </div>
+  
+            <div class="form-group">
+              <label class="form-label">Observations / Notes internes</label>
+              <textarea
+                [(ngModel)]="form.observations"
+                name="observations"
+                rows="2"
+                class="form-input"
+                placeholder="Informations complémentaires à usage interne…"
+                [disabled]="submitting"
+              ></textarea>
+            </div>
+  
+            <div class="error-banner" *ngIf="formError">
+              <span>⚠️</span> {{ formError }}
+            </div>
+  
+          </div>
+        </section>
+  
+        <!-- ══ CRÉDITS CONCERNÉS ══ -->
+        <section class="card" *ngIf="dossier.risques && dossier.risques.length > 0">
+          <div class="card-head">
+            <h2><span class="card-icon">💳</span> Crédits concernés par la procédure</h2>
+          </div>
+          <div class="card-body">
+            <p class="credits-hint">Sélectionnez les crédits à inclure dans la procédure judiciaire :</p>
+            <div class="risque-list">
+              <div class="risque-row"
+                   *ngFor="let r of dossier.risques"
+                   [class.selected]="r._inclus"
+                   (click)="toggleRisqueInclus(r)">
+                <div class="risque-check">
+                  <span class="check-box" [class.checked]="r._inclus">
+                    {{ r._inclus ? '✓' : '' }}
+                  </span>
+                </div>
+                <div class="risque-info">
+                  <span class="risque-type">{{ formatRisqueType(r.type) }}</span>
+                  <div class="risque-montants">
+                    <span class="montant-init">Initial : {{ r.montantInitial | number:'1.0-0' }} TND</span>
+                    <span class="montant-sep">·</span>
+                    <span class="montant-impaye">Impayé : {{ r.montantImpaye | number:'1.0-0' }} TND</span>
+                  </div>
+                  <span class="risque-echeance" *ngIf="r.dateEcheance">
+                    Échéance : {{ r.dateEcheance | date:'dd/MM/yyyy' }}
+                  </span>
+                </div>
+                <div class="risque-badge">
+                  {{ r.montantImpaye | number:'1.0-0' }} TND
+                </div>
+              </div>
+            </div>
+  
+            <div class="selected-total" *ngIf="getMontantSelectionne() > 0">
+              <span>Total sélectionné :</span>
+              <strong>{{ getMontantSelectionne() | number:'1.0-0' }} TND</strong>
+            </div>
+          </div>
+        </section>
+  
+      </div>
+  
+      <!-- ───────────── COLONNE DROITE ───────────── -->
+      <div class="col-right">
+  
+        <!-- ══ ACTIONS ══ -->
+        <section class="card actions-card">
+          <div class="card-head">
+            <h2><span class="card-icon">⚡</span> Actions</h2>
+          </div>
+          <div class="card-body actions-list">
+  
+            <button
+              class="action-btn primary"
+              (click)="lancerProcedure()"
+              [disabled]="submitting">
+              <span class="btn-spin" *ngIf="submitting"></span>
+              {{ submitting ? 'Lancement…' : '🚀 Lancer la procédure' }}
+            </button>
+  
+            <button
+              class="action-btn secondary"
+              (click)="reinitialiserFormulaire()"
+              [disabled]="submitting">
+              🔄 Réinitialiser
+            </button>
+  
+            <a [routerLink]="['/agent/dossiers', dossier.id]" class="action-btn back">
+              ← Retour au dossier
+            </a>
+          </div>
+        </section>
+  
+        <!-- ══ CHECKLIST ══ -->
+        <section class="card checklist-card">
+          <div class="card-head">
+            <h2><span class="card-icon">✅</span> Vérifications préalables</h2>
+          </div>
+          <div class="card-body">
+            <ul class="checklist">
+              <li [class.ok]="dossier.validationFinanciere === true">
+                <span class="check-ico">{{ dossier.validationFinanciere === true ? '✅' : '⏳' }}</span>
+                Validation financière confirmée
+              </li>
+              <li [class.ok]="dossier.validationJuridique === true">
+                <span class="check-ico">{{ dossier.validationJuridique === true ? '✅' : '⏳' }}</span>
+                Validation juridique confirmée
+              </li>
+              <li [class.ok]="dossier.statut === 'VALIDE'">
+                <span class="check-ico">{{ dossier.statut === 'VALIDE' ? '✅' : '⚠️' }}</span>
+                Dossier au statut VALIDÉ
+              </li>
+              <li [class.ok]="getMontantTotal() > 0">
+                <span class="check-ico">{{ getMontantTotal() > 0 ? '✅' : '❌' }}</span>
+                Montant impayé renseigné
+              </li>
+              <li [class.ok]="!!form.typeProcedure">
+                <span class="check-ico">{{ form.typeProcedure ? '✅' : '⭕' }}</span>
+                Type de procédure choisi
+              </li>
+              
+              <li [class.ok]="!!form.datePremierAudience">
+                <span class="check-ico">{{ form.datePremierAudience ? '✅' : '⭕' }}</span>
+                Date de première audience fixée
+              </li>
+              <li [class.ok]="!!form.motif.trim()">
+                <span class="check-ico">{{ form.motif.trim() ? '✅' : '⭕' }}</span>
+                Motif de la procédure renseigné
+              </li>
+            </ul>
+            <div class="checklist-score">
+              <div class="score-bar">
+                <div class="score-fill" [style.width.%]="getChecklistScore()"></div>
+              </div>
+              <span class="score-label">{{ getChecklistScore() }}% complété</span>
+            </div>
+          </div>
+        </section>
+  
+        <!-- ══ INFO LÉGALE ══ -->
+        <section class="card info-card">
+          <div class="card-head">
+            <h2><span class="card-icon">ℹ️</span> Informations</h2>
+          </div>
+          <div class="card-body">
+            <ul class="info-list">
+              <li>Le lancement d'une procédure est <strong>irréversible</strong>.</li>
+              <li>Un avocat devra être désigné après le lancement.</li>
+              <li>Toutes les actions seront <strong>tracées</strong> dans l'historique.</li>
+              <li>Le client sera notifié conformément à la procédure réglementaire.</li>
+            </ul>
+          </div>
+        </section>
+  
+      </div>
+    </div>
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MODAL : Confirmation lancement procédure                         -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="modal-overlay" *ngIf="showModalConfirm" (click)="showModalConfirm = false">
+    <div class="modal-box modal-confirm" (click)="$event.stopPropagation()">
+  
+      <div class="modal-head modal-head-warning">
+        <h3>⚖️ Confirmer le lancement</h3>
+        <button class="modal-close" (click)="showModalConfirm = false">✕</button>
+      </div>
+  
+      <div class="modal-body">
+        <div class="confirm-icon-wrap">⚖️</div>
+        <p class="confirm-msg">
+          Vous êtes sur le point de lancer une <strong>procédure judiciaire</strong>
+          pour le dossier <strong>{{ dossier?.numeroDossier }}</strong>.
+          Cette action est <strong>irréversible</strong>.
+        </p>
+  
+        <div class="confirm-recap">
+          <div class="recap-line">
+            <span class="recap-lbl">Type</span>
+            <span class="recap-val">{{ getLabelType(form.typeProcedure) }}</span>
+          </div>
+          
+          
+          <div class="recap-line">
+            <span class="recap-lbl">1ère audience</span>
+            <span class="recap-val">{{ form.datePremierAudience | date:'dd/MM/yyyy' }}</span>
+          </div>
+          <div class="recap-line">
+            <span class="recap-lbl">Montant engagé</span>
+            <span class="recap-val accent">{{ getMontantSelectionne() | number:'1.0-0' }} TND</span>
+          </div>
+        </div>
+  
+        <div class="error-banner" *ngIf="submitError">{{ submitError }}</div>
+      </div>
+  
+      <div class="modal-foot">
+        <button class="btn-cancel" (click)="showModalConfirm = false" [disabled]="submitting">
+          Annuler
+        </button>
+        <button class="btn-warning" (click)="confirmerLancement()" [disabled]="submitting">
+          <span class="btn-spin btn-spin-white" *ngIf="submitting"></span>
+          {{ submitting ? 'Lancement en cours…' : '⚖️ Confirmer le lancement' }}
+        </button>
+      </div>
+  
+    </div>
+  </div>

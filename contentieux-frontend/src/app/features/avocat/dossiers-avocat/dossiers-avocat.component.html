@@ -1,0 +1,487 @@
+<div class="dossiers-container">
+
+  <!-- ── Header ── -->
+  <header class="page-header">
+    <div class="header-left">
+      <h1><i class="fas fa-briefcase"></i> Mes Dossiers</h1>
+      <p class="subtitle">Gérez vos affaires judiciaires assignées</p>
+    </div>
+    <div class="header-actions">
+      <button class="btn-refresh" (click)="chargerDossiers()" [disabled]="chargement">
+        <i class="fas" [class.fa-sync]="!chargement" [class.fa-spin]="chargement" [class.fa-spinner]="chargement"></i>
+        Actualiser
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Statistiques ── -->
+  <section class="stats-grid">
+    <div class="stat-card stat-total">
+      <div class="stat-icon"><i class="fas fa-folder-open"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.total }}</span>
+        <span class="stat-label">Total dossiers</span>
+      </div>
+    </div>
+    <div class="stat-card stat-en-cours">
+      <div class="stat-icon"><i class="fas fa-gavel"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.enCours }}</span>
+        <span class="stat-label">En cours</span>
+      </div>
+    </div>
+    <div class="stat-card stat-audience">
+      <div class="stat-icon"><i class="fas fa-calendar-check"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.audienceProchaine }}</span>
+        <span class="stat-label">Audience à venir</span>
+      </div>
+    </div>
+    <div class="stat-card stat-pv">
+      <div class="stat-icon"><i class="fas fa-file-alt"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.pvSoumis }}</span>
+        <span class="stat-label">PV en attente</span>
+      </div>
+    </div>
+    <div class="stat-card stat-facture">
+      <div class="stat-icon"><i class="fas fa-file-invoice"></i></div>
+      <div class="stat-info">
+        <span class="stat-value">{{ stats.factureSoumise }}</span>
+        <span class="stat-label">Factures</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── Erreur ── -->
+  <div class="alert alert-danger" *ngIf="erreur">
+    <i class="fas fa-exclamation-circle"></i>
+    {{ erreur }}
+    <button class="btn-close" (click)="erreur = null"><i class="fas fa-times"></i></button>
+  </div>
+
+  <!-- ── Barre d'outils ── -->
+  <section class="toolbar">
+    <div class="filtres-statut">
+      <button 
+        *ngFor="let s of statutsFiltre"
+        class="btn-filtre"
+        [class.actif]="statutFiltre === s.value"
+        [style.--couleur]="s.color"
+        (click)="filtrerParStatut(s.value)">
+        <i class="fas" [class]="s.icon"></i>
+        <span>{{ s.label }}</span>
+        <span class="badge-compte" *ngIf="s.value !== 'TOUS'">
+          {{ s.value === 'EN_COURS' ? stats.enCours :
+             s.value === 'JUGEMENT_RENDU' ? stats.jugementRendu :
+             s.value === 'PV_SOUMIS' ? stats.pvSoumis :
+             s.value === 'FACTURE_SOUMISE' ? stats.factureSoumise : 0 }}
+        </span>
+      </button>
+    </div>
+
+    <div class="recherche-box">
+      <i class="fas fa-search"></i>
+      <input 
+        type="text" 
+        placeholder="Rechercher par n° affaire, dossier, client..."
+        [(ngModel)]="recherche"
+        (input)="onRechercheChange($any($event).target.value)">
+      <button class="btn-clear" *ngIf="recherche" (click)="onRechercheChange('')">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+  </section>
+
+  <!-- ── Chargement ── -->
+  <div class="loading-overlay" *ngIf="chargement && dossiersFiltres.length === 0">
+    <div class="spinner"></div>
+    <p>Chargement de vos dossiers...</p>
+  </div>
+
+  <!-- ── Liste vide ── -->
+  <div class="empty-state" *ngIf="!chargement && dossiersFiltres.length === 0">
+    <div class="empty-icon">
+      <i class="fas fa-folder-open"></i>
+    </div>
+    <h3>Aucun dossier trouvé</h3>
+    <p *ngIf="recherche || statutFiltre !== 'TOUS'">
+      Essayez de modifier vos filtres ou votre recherche.
+    </p>
+    <p *ngIf="!recherche && statutFiltre === 'TOUS'">
+      Vous n'avez aucune affaire assignée pour le moment.
+    </p>
+  </div>
+
+  <!-- ── Tableau des dossiers ── -->
+  <div class="table-container" *ngIf="dossiersFiltres.length > 0">
+    <table class="dossiers-table">
+      <thead>
+        <tr>
+          <th class="col-client">Client</th>
+          <th class="col-affaire" (click)="trierPar('numeroAffaire')">
+            N° Affaire
+            <i class="fas" [class.fa-sort-up]="triColonne === 'numeroAffaire' && triAscendant"
+                          [class.fa-sort-down]="triColonne === 'numeroAffaire' && !triAscendant"
+                          [class.fa-sort]="triColonne !== 'numeroAffaire'"></i>
+          </th>
+          <th class="col-dossier">N° Dossier</th>
+          <th class="col-type">Type</th>
+          <th class="col-montant" (click)="trierPar('montantReclame')">
+            Montant
+            <i class="fas" [class.fa-sort-up]="triColonne === 'montantReclame' && triAscendant"
+                          [class.fa-sort-down]="triColonne === 'montantReclame' && !triAscendant"
+                          [class.fa-sort]="triColonne !== 'montantReclame'"></i>
+          </th>
+          <th class="col-tribunal">Tribunal</th>
+          <th class="col-audience" (click)="trierPar('dateProchainAudience')">
+            Prochaine audience
+            <i class="fas" [class.fa-sort-up]="triColonne === 'dateProchainAudience' && triAscendant"
+                          [class.fa-sort-down]="triColonne === 'dateProchainAudience' && !triAscendant"
+                          [class.fa-sort]="triColonne !== 'dateProchainAudience'"></i>
+          </th>
+          <th class="col-statut">Statut</th>
+          <th class="col-actions">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let dossier of dossiersFiltres" 
+            [class.urgent]="estUrgent(dossier)"
+            [class.en-retard]="estEnRetard(dossier)">
+          
+          <td class="col-client">
+            <div class="client-cell">
+              <div class="avatar" [style.background-color]="getAvatarColor(dossier.clientNom)">
+                {{ getInitials(dossier.clientNom, dossier.clientPrenom) }}
+              </div>
+              <div class="client-info">
+                <span class="client-nom">{{ dossier.clientPrenom }} {{ dossier.clientNom }}</span>
+                <span class="client-tel"><i class="fas fa-phone"></i> {{ dossier.clientTelephone }}</span>
+              </div>
+            </div>
+          </td>
+
+          <td class="col-affaire">
+            <span class="numero-affaire">{{ dossier.numeroAffaire }}</span>
+            <span class="date-lancement">{{ formatDate(dossier.dateLancement) }}</span>
+          </td>
+
+          <td class="col-dossier">
+            <span class="numero-dossier">{{ dossier.numeroDossier }}</span>
+          </td>
+
+          <td class="col-type">
+            <span class="type-badge">{{ dossier.typeDossier }}</span>
+          </td>
+
+          <td class="col-montant">
+            <span class="montant">{{ formatMontant(dossier.montantReclame) }}</span>
+          </td>
+
+          <td class="col-tribunal">
+            <span *ngIf="dossier.tribunal" class="tribunal-info">
+              <i class="fas fa-landmark"></i>
+              {{ dossier.tribunal }}
+              <span *ngIf="dossier.chambre" class="chambre">— {{ dossier.chambre }}</span>
+            </span>
+            <span *ngIf="!dossier.tribunal" class="non-renseigne">Non renseigné</span>
+          </td>
+
+          <td class="col-audience">
+            <div *ngIf="dossier.dateProchainAudience" class="audience-info">
+              <i class="fas fa-calendar-day"></i>
+              <span>{{ formatDate(dossier.dateProchainAudience) }}</span>
+              <span class="audience-count" *ngIf="dossier.nombreAudiences > 0">
+                ({{ dossier.nombreAudiences }} audience{{ dossier.nombreAudiences > 1 ? 's' : '' }})
+              </span>
+            </div>
+            <span *ngIf="!dossier.dateProchainAudience" class="non-renseigne">—</span>
+          </td>
+
+          <td class="col-statut">
+            <span class="badge" [class]="getBadgeClass(dossier.statutAffaire)">
+              {{ getStatutLabel(dossier.statutAffaire) }}
+            </span>
+            <span class="badge badge-mission" *ngIf="dossier.pvSoumis && !dossier.factureSoumise">
+              PV soumis
+            </span>
+            <span class="badge badge-facture" *ngIf="dossier.factureSoumise">
+              Facture soumise
+            </span>
+          </td>
+
+          <td class="col-actions">
+            <div class="actions-group">
+              <button class="btn-action btn-detail" 
+                      (click)="ouvrirModal(dossier, 'DETAIL')"
+                      title="Voir le détail">
+                <i class="fas fa-eye"></i>
+              </button>
+              
+              <button class="btn-action btn-pv" 
+                      *ngIf="!dossier.pvSoumis"
+                      (click)="ouvrirModal(dossier, 'PV')"
+                      title="Soumettre le PV">
+                <i class="fas fa-file-alt"></i>
+              </button>
+              
+              <button class="btn-action btn-facture" 
+                      *ngIf="dossier.pvSoumis && !dossier.factureSoumise"
+                      (click)="ouvrirModal(dossier, 'FACTURE')"
+                      title="Soumettre la facture">
+                <i class="fas fa-file-invoice-dollar"></i>
+              </button>
+              
+              <button class="btn-action btn-audiences" 
+                      (click)="ouvrirModal(dossier, 'AUDIENCES')"
+                      title="Voir les audiences">
+                <i class="fas fa-gavel"></i>
+                <span class="action-badge" *ngIf="dossier.nombreAudiences > 0">{{ dossier.nombreAudiences }}</span>
+              </button>
+              
+              <button class="btn-action btn-docs" 
+                      (click)="ouvrirModal(dossier, 'DOCUMENTS')"
+                      title="Voir les documents">
+                <i class="fas fa-paperclip"></i>
+                <span class="action-badge" *ngIf="dossier.nombreDocuments > 0">{{ dossier.nombreDocuments }}</span>
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="results-info" *ngIf="dossiersFiltres.length > 0">
+    <span>{{ dossiersFiltres.length }} dossier{{ dossiersFiltres.length > 1 ? 's' : '' }} affiché{{ dossiersFiltres.length > 1 ? 's' : '' }}</span>
+    <span *ngIf="dossiersFiltres.length !== dossiers.length"> sur {{ dossiers.length }} total</span>
+  </div>
+
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════
+     MODAL
+     ═══════════════════════════════════════════════════════════════ -->
+
+<div class="modal-overlay" *ngIf="modalOuvert" (click)="fermerModal()">
+  <div class="modal-content" (click)="$event.stopPropagation()">
+    
+    <div class="modal-header">
+      <h2>
+        <i class="fas" [class.fa-eye]="modalType === 'DETAIL'"
+                      [class.fa-file-alt]="modalType === 'PV'"
+                      [class.fa-file-invoice-dollar]="modalType === 'FACTURE'"
+                      [class.fa-gavel]="modalType === 'AUDIENCES'"
+                      [class.fa-paperclip]="modalType === 'DOCUMENTS'"></i>
+        {{ modalType === 'DETAIL' ? 'Détail de l\'affaire' :
+           modalType === 'PV' ? 'Soumettre le PV' :
+           modalType === 'FACTURE' ? 'Soumettre la facture' :
+           modalType === 'AUDIENCES' ? 'Audiences' : 'Documents' }}
+      </h2>
+      <button class="btn-close-modal" (click)="fermerModal()">
+        <i class="fas fa-times"></i>
+      </button>
+    </div>
+
+    <!-- ── Contenu : DÉTAIL ── -->
+    <div class="modal-body" *ngIf="modalType === 'DETAIL' && affaireDetail">
+      
+      <div class="detail-section">
+        <h3><i class="fas fa-info-circle"></i> Informations générales</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>N° Affaire</label>
+            <span>{{ affaireDetail.numeroAffaire }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Statut</label>
+            <span class="badge" [class]="getBadgeClass(affaireDetail.statut)">
+              {{ getStatutLabel(affaireDetail.statut) }}
+            </span>
+          </div>
+          <div class="detail-item">
+            <label>Date de lancement</label>
+            <span>{{ formatDate(affaireDetail.dateLancement) }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Tribunal</label>
+            <span>{{ affaireDetail.tribunal || 'Non renseigné' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Chambre</label>
+            <span>{{ affaireDetail.chambre || 'Non renseigné' }}</span>
+          </div>
+          <div class="detail-item">
+            <label>N° de rôle</label>
+            <span>{{ affaireDetail.numeroRole || 'Non renseigné' }}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="detail-section" *ngIf="affaireDetail.typeJugement">
+        <h3><i class="fas fa-balance-scale"></i> Jugement</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>Type de jugement</label>
+            <span>{{ affaireDetail.typeJugement }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Date du jugement</label>
+            <span>{{ formatDate(affaireDetail.dateJugement) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ✅ CORRIGÉ : optional chaining sur client -->
+      <!-- ── Client ── -->
+<div class="detail-section" *ngIf="affaireDetail.dossier?.client as client">
+  <h3><i class="fas fa-user"></i> Client</h3>
+  <div class="detail-grid">
+    <div class="detail-item">
+      <label>Nom</label>
+      <span>{{ client.prenom }} {{ client.nom }}</span>
+    </div>
+    <div class="detail-item">
+      <label>Email</label>
+      <span>{{ client.email }}</span>
+    </div>
+    <div class="detail-item">
+      <label>Téléphone</label>
+      <span>{{ client.telephone }}</span>
+    </div>
+  </div>
+</div>
+
+      <div class="detail-section" *ngIf="affaireDetail.mission">
+        <h3><i class="fas fa-briefcase"></i> Mission</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <label>N° Mission</label>
+            <span>{{ affaireDetail.mission.numeroMission }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Statut mission</label>
+            <span>{{ affaireDetail.mission.statut }}</span>
+          </div>
+          <div class="detail-item">
+            <label>Date d'échéance</label>
+            <span>{{ formatDate(affaireDetail.mission.dateEcheance) }}</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ── Contenu : SOUMETTRE PV ── -->
+    <div class="modal-body" *ngIf="modalType === 'PV'">
+      <div class="form-group">
+        <label for="pvTexte">Contenu du PV <span class="required">*</span></label>
+        <textarea 
+          id="pvTexte" 
+          [(ngModel)]="pvTexte" 
+          rows="10" 
+          placeholder="Rédigez votre rapport de mission (PV) ici..."
+          [disabled]="chargement"></textarea>
+        <small class="help-text">Décrivez les actions effectuées, les résultats obtenus, et vos recommandations.</small>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="fermerModal()" [disabled]="chargement">Annuler</button>
+        <button class="btn btn-primary" (click)="soumettrePV()" [disabled]="!pvTexte.trim() || chargement">
+          <i class="fas" [class.fa-spinner]="chargement" [class.fa-spin]="chargement" [class.fa-paper-plane]="!chargement"></i>
+          {{ chargement ? 'Envoi...' : 'Soumettre le PV' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Contenu : SOUMETTRE FACTURE ── -->
+    <div class="modal-body" *ngIf="modalType === 'FACTURE'">
+      <div class="form-group">
+        <label for="factureRef">Référence facture <span class="required">*</span></label>
+        <input 
+          type="text" 
+          id="factureRef" 
+          [(ngModel)]="factureRef" 
+          placeholder="Ex: FACT-2024-001"
+          [disabled]="chargement">
+      </div>
+      <div class="form-group">
+        <label for="montantFacture">Montant (TND) <span class="required">*</span></label>
+        <input 
+          type="number" 
+          id="montantFacture" 
+          [(ngModel)]="montantFacture" 
+          placeholder="0.000"
+          min="0"
+          step="0.001"
+          [disabled]="chargement">
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" (click)="fermerModal()" [disabled]="chargement">Annuler</button>
+        <button class="btn btn-primary" 
+                (click)="soumettreFacture()" 
+                [disabled]="!factureRef.trim() || !montantFacture || montantFacture <= 0 || chargement">
+          <i class="fas" [class.fa-spinner]="chargement" [class.fa-spin]="chargement" [class.fa-paper-plane]="!chargement"></i>
+          {{ chargement ? 'Envoi...' : 'Soumettre la facture' }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Contenu : AUDIENCES ── -->
+    <div class="modal-body" *ngIf="modalType === 'AUDIENCES' && affaireDetail">
+      <div class="audiences-list" *ngIf="affaireDetail.audiences?.length; else noAudiences">
+        <div class="audience-card" *ngFor="let audience of affaireDetail.audiences">
+          <div class="audience-header">
+            <span class="audience-date">
+              <i class="fas fa-calendar"></i> {{ formatDate(audience.dateAudience) }}
+            </span>
+            <span class="audience-heure"><i class="fas fa-clock"></i> {{ audience.heure }}</span>
+            <span class="badge" [class]="'badge-' + (audience.statut | lowercase)">
+              {{ audience.statut }}
+            </span>
+          </div>
+          <div class="audience-body">
+            <p><strong>Salle :</strong> {{ audience.salle }}</p>
+            <p><strong>Motif :</strong> {{ audience.motif }}</p>
+            <p *ngIf="audience.resultat"><strong>Résultat :</strong> {{ audience.resultat }}</p>
+            <p *ngIf="audience.prochaineAudience">
+              <strong>Prochaine audience :</strong> {{ formatDate(audience.prochaineAudience) }}
+            </p>
+          </div>
+        </div>
+      </div>
+      <ng-template #noAudiences>
+        <div class="empty-state small">
+          <i class="fas fa-gavel"></i>
+          <p>Aucune audience enregistrée pour cette affaire.</p>
+        </div>
+      </ng-template>
+    </div>
+
+    <!-- ── Contenu : DOCUMENTS ── -->
+    <div class="modal-body" *ngIf="modalType === 'DOCUMENTS' && affaireDetail">
+      <div class="documents-list" *ngIf="affaireDetail.documents?.length; else noDocuments">
+        <div class="document-card" *ngFor="let doc of affaireDetail.documents">
+          <div class="doc-icon">
+            <i class="fas" [class.fa-file-pdf]="doc.typeMime?.includes('pdf')"
+                          [class.fa-file-word]="doc.typeMime?.includes('word') || doc.typeMime?.includes('document')"
+                          [class.fa-file-excel]="doc.typeMime?.includes('excel') || doc.typeMime?.includes('sheet')"
+                          [class.fa-file-image]="doc.typeMime?.includes('image')"
+                          [class.fa-file]="true"></i>
+          </div>
+          <div class="doc-info">
+            <span class="doc-name">{{ doc.nomFichierOriginal }}</span>
+            <span class="doc-meta">{{ doc.typeDocument }} — {{ doc.uploadeePar }} — {{ formatDate(doc.dateUpload) }}</span>
+            <p class="doc-desc" *ngIf="doc.description">{{ doc.description }}</p>
+          </div>
+        </div>
+      </div>
+      <ng-template #noDocuments>
+        <div class="empty-state small">
+          <i class="fas fa-paperclip"></i>
+          <p>Aucun document attaché à cette affaire.</p>
+        </div>
+      </ng-template>
+    </div>
+
+  </div>
+</div>

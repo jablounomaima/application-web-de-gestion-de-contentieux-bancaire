@@ -243,35 +243,53 @@
         </section>
   
         <!-- ══ PROCÉDURE JUDICIAIRE ══ -->
-        <section class="card procedure-card"
-                 *ngIf="dossier.statut === 'VALIDE' || dossier.statut === 'EN_PROCEDURE'">
-          <div class="card-head">
-            <h2><span class="card-icon">⚖️</span> Procédure Judiciaire</h2>
-          </div>
-          <div class="card-body">
-            <div *ngIf="!prestationJudiciaire">
-              <p class="procedure-desc">Aucune procédure lancée.</p>
-              <button class="btn-procedure" (click)="lancerProcedure()">🚀 Lancer la procédure</button>
-            </div>
-            <div *ngIf="prestationJudiciaire && !missionAvocat">
-              <div class="procedure-warn">⚠️ Avocat non encore désigné</div>
-              <button class="btn-procedure" (click)="designerAvocat()">👨‍⚖️ Désigner un avocat</button>
-            </div>
-            <div *ngIf="missionAvocat && !affaireExiste">
-              <p class="procedure-desc">Avocat : <strong>{{ missionAvocat?.prestataire?.nom }}</strong></p>
-              <div class="affaire-form">
-                <input type="text" [(ngModel)]="formAffaire.tribunal" placeholder="Tribunal" class="affaire-input">
-                <input type="text" [(ngModel)]="formAffaire.numeroRole" placeholder="N° Rôle" class="affaire-input">
-                <input type="text" [(ngModel)]="formAffaire.chambre" placeholder="Chambre" class="affaire-input">
-              </div>
-              <button class="btn-procedure" (click)="lancerAffaire()">⚖️ Lancer l'affaire</button>
-            </div>
-            <div *ngIf="affaireExiste">
-              <div class="procedure-ok">✅ Affaire lancée</div>
-              <button class="btn-procedure secondary" (click)="voirAffaire()">👁 Voir l'affaire</button>
-            </div>
-          </div>
-        </section>
+       <!-- ══ PROCÉDURE JUDICIAIRE ══ -->
+<section class="card procedure-card"
+*ngIf="dossier.statut === 'VALIDE' || dossier.statut === 'EN_PROCEDURE'">
+<div class="card-head">
+<h2><span class="card-icon">⚖️</span> Procédure Judiciaire</h2>
+</div>
+<div class="card-body">
+
+<!-- ÉTAPE 0 : Aucune procédure lancée -->
+<div *ngIf="!prestationJudiciaire">
+<p class="procedure-desc">Aucune procédure lancée.</p>
+<button class="btn-procedure" (click)="lancerProcedure()">
+🚀 Lancer la procédure
+</button>
+</div>
+
+<!-- ÉTAPE 1 : Procédure lancée mais PAS encore d'avocat -->
+<div *ngIf="prestationJudiciaire && !missionAvocat && !affaireExiste">
+<div class="procedure-warn">⚠️ Avocat non encore désigné</div>
+<p class="procedure-desc procedure-desc--sm">
+Procédure : <strong>{{ prestationJudiciaire.numeroPrestation }}</strong>
+</p>
+<button class="btn-procedure" (click)="designerAvocat()">
+👨‍⚖️ Désigner un avocat
+</button>
+</div>
+
+<!-- ÉTAPE 2 : Avocat désigné mais affaire pas encore lancée -->
+<div *ngIf="prestationJudiciaire && missionAvocat && !affaireExiste">
+<p class="procedure-desc">
+Avocat : <strong>{{ missionAvocat?.prestataire?.nom }}</strong>
+</p>
+<button class="btn-procedure" (click)="lancerAffaire()">
+⚖️ Lancer l'affaire
+</button>
+</div>
+
+<!-- ÉTAPE 3 : Affaire lancée -->
+<div *ngIf="affaireExiste">
+<div class="procedure-ok">✅ Affaire lancée</div>
+<button class="btn-procedure secondary" (click)="voirAffaire()">
+👁 Voir l'affaire
+</button>
+</div>
+
+</div>
+</section>
   
       </div>
   

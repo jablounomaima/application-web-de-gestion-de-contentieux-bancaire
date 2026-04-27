@@ -1,0 +1,153 @@
+<!-- designer-avocat.component.html -->
+<div class="da-page">
+
+    <!-- ── En-tête ─────────────────────────────────────────────── -->
+    <div class="da-header">
+      <button class="da-back-btn" (click)="annuler()" title="Retour au dossier">
+        <span class="da-back-icon">←</span>
+      </button>
+      <div class="da-header-text">
+        <h1 class="da-title">
+          <span class="da-title-icon">👨‍⚖️</span>
+          Désigner un Avocat
+        </h1>
+        <p class="da-subtitle">
+          Dossier #{{ dossierId }}
+          <span class="da-sep">·</span>
+          Prestation #{{ prestationId }}
+        </p>
+      </div>
+    </div>
+  
+    <!-- ── Chargement ──────────────────────────────────────────── -->
+    <div *ngIf="chargement" class="da-loading">
+      <div class="da-spinner"></div>
+      <p>Chargement des avocats…</p>
+    </div>
+  
+    <!-- ── Erreur globale ──────────────────────────────────────── -->
+    <div *ngIf="erreur && !chargement" class="da-alert da-alert--error">
+      <span class="da-alert-icon">⚠️</span>
+      {{ erreur }}
+    </div>
+  
+    <!-- ── Succès ──────────────────────────────────────────────── -->
+    <div *ngIf="succes" class="da-alert da-alert--success">
+      <span class="da-alert-icon">✅</span>
+      {{ succes }}
+      <span class="da-redirect-note">Redirection en cours…</span>
+    </div>
+  
+    <!-- ── Contenu principal ───────────────────────────────────── -->
+    <div *ngIf="!chargement && !succes" class="da-body">
+  
+      <!-- ── Aucun avocat ──────────────────────────────────────── -->
+      <div *ngIf="avocats.length === 0 && !erreur" class="da-empty">
+        <div class="da-empty-icon">🔍</div>
+        <p class="da-empty-title">Aucun avocat disponible</p>
+        <p class="da-empty-sub">Aucun avocat n'est rattaché à votre portefeuille.</p>
+      </div>
+  
+      <!-- ── Formulaire ────────────────────────────────────────── -->
+      <div *ngIf="avocats.length > 0" class="da-form">
+  
+        <!-- Étape 1 : choix de l'avocat -->
+        <section class="da-section">
+          <h2 class="da-section-title">
+            <span class="da-step">1</span>
+            Choisir un avocat
+          </h2>
+  
+          <div class="da-avocat-grid">
+            <button
+              *ngFor="let av of avocats"
+              class="da-avocat-card"
+              [class.da-avocat-card--selected]="avocatSelectionne?.id === av.id"
+              (click)="selectionnerAvocat(av)"
+              type="button"
+            >
+              <div class="da-avocat-avatar">{{ initiales(av) }}</div>
+              <div class="da-avocat-info">
+                <span class="da-avocat-nom">{{ nomComplet(av) }}</span>
+                <span *ngIf="av.specialite" class="da-avocat-meta">{{ av.specialite }}</span>
+                <span *ngIf="av.email" class="da-avocat-meta">✉ {{ av.email }}</span>
+                <span *ngIf="av.telephone" class="da-avocat-meta">📞 {{ av.telephone }}</span>
+              </div>
+              <div class="da-avocat-check" *ngIf="avocatSelectionne?.id === av.id">✓</div>
+            </button>
+          </div>
+        </section>
+  
+        <!-- Étape 2 : détails de la mission -->
+        <section class="da-section">
+          <h2 class="da-section-title">
+            <span class="da-step">2</span>
+            Détails de la mission
+          </h2>
+  
+          <div class="da-field">
+            <label class="da-label" for="description">
+              Description de la mission
+              <span class="da-required">*</span>
+            </label>
+            <textarea
+              id="description"
+              class="da-textarea"
+              [(ngModel)]="description"
+              rows="4"
+              placeholder="Décrivez les actions attendues de l'avocat pour cette procédure…"
+            ></textarea>
+          </div>
+  
+          <div class="da-field">
+            <label class="da-label" for="dateFinPrevue">
+              Date de fin prévisionnelle
+              <span class="da-optional">(optionnel)</span>
+            </label>
+            <input
+              id="dateFinPrevue"
+              type="date"
+              class="da-input"
+              [(ngModel)]="dateFinPrevue"
+            />
+          </div>
+        </section>
+  
+        <!-- Récapitulatif -->
+        <div *ngIf="avocatSelectionne" class="da-recap">
+          <div class="da-recap-label">Récapitulatif</div>
+          <div class="da-recap-row">
+            <span class="da-recap-key">Avocat désigné</span>
+            <span class="da-recap-val">{{ nomComplet(avocatSelectionne) }}</span>
+          </div>
+          <div *ngIf="dateFinPrevue" class="da-recap-row">
+            <span class="da-recap-key">Fin prévisionnelle</span>
+            <span class="da-recap-val">{{ dateFinPrevue }}</span>
+          </div>
+        </div>
+  
+        <!-- Actions -->
+        <div class="da-actions">
+          <button class="da-btn da-btn--ghost" (click)="annuler()" type="button">
+            Annuler
+          </button>
+          <button
+            class="da-btn da-btn--primary"
+            [disabled]="!formulaireValide() || envoi"
+            (click)="soumettre()"
+            type="button"
+          >
+            <span *ngIf="!envoi">
+              👨‍⚖️ Confirmer la désignation
+            </span>
+            <span *ngIf="envoi" class="da-btn-spinner">
+              <span class="da-spinner da-spinner--sm"></span>
+              Envoi en cours…
+            </span>
+          </button>
+        </div>
+  
+      </div><!-- /da-form -->
+    </div><!-- /da-body -->
+  
+  </div><!-- /da-page -->

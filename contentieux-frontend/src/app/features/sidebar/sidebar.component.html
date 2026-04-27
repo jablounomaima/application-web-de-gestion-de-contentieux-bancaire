@@ -36,8 +36,17 @@
   <div class="menu-section" *ngIf="hasRole('AVOCAT')">
     <p class="menu-label">ESPACE AVOCAT</p>
     <ul>
-      <li><a routerLink="/avocat/dashboard" routerLinkActive="active-link"><i class="icon">⚖️</i> Dashboard</a></li>
-      <li><a routerLink="/avocat/dossiers" routerLinkActive="active-link"><i class="icon">📁</i> Dossiers Assignés</a></li>
+      <li>
+        <a routerLink="/avocat/dashboard" routerLinkActive="active-link">
+          <i class="icon">⚖️</i> Dashboard
+        </a>
+      </li>
+      <li>
+        <a routerLink="/avocat/affaires" routerLinkActive="active-link">
+          <i class="icon">📋</i> Mes Affaires
+        </a>
+      </li>
+      
     </ul>
   </div>
 

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AvocatService } from '../../../core/services/avocat.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-avocat-dashboard',
@@ -12,7 +13,7 @@ import { AvocatService } from '../../../core/services/avocat.service';
       <div class="page-header">
         <div class="title-group">
           <span class="role-badge">AVOCAT</span>
-          <h1>Espace de Gestion Judiciaire</h1>
+          <h1>Espace d'avocat</h1>
           <p class="subtitle">Pilotez vos affaires, planifiez vos audiences et soumettez vos honoraires</p>
         </div>
       </div>
@@ -49,63 +50,10 @@ import { AvocatService } from '../../../core/services/avocat.service';
         </div>
       </div>
 
-      <div class="main-content">
-        <div class="content-card">
-          <div class="card-header">
-            <h2>Mes Affaires Judiciaires</h2>
-            <div class="search-box">
-              <input type="text" [(ngModel)]="search" placeholder="🔍 Rechercher une affaire..." (ngModelChange)="filtrer()">
-            </div>
-          </div>
-          
-          <div class="table-wrapper">
-            <table class="premium-table">
-              <thead>
-                <tr>
-                  <th>N° Affaire / Dossier</th>
-                  <th>Client & Adversaire</th>
-                  <th>Tribunal / Chambre</th>
-                  <th>N° Rôle</th>
-                  <th>Statut Affaire</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr *ngIf="loading"><td colspan="6" class="loading-state">Récupération des données...</td></tr>
-                <tr *ngIf="!loading && affairesFiltrees.length === 0"><td colspan="6" class="empty-state">Aucune affaire trouvée.</td></tr>
-                <tr *ngFor="let aff of affairesFiltrees" class="data-row">
-                  <td>
-                    <div class="aff-ref">
-                      <span class="aff-id">#{{ aff.id }}</span>
-                      <strong>{{ aff.dossier?.numeroDossier || 'N/A' }}</strong>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="people-info">
-                      <strong>{{ aff.dossier?.client?.nom || aff.dossier?.client?.raisonSociale || 'Client Inconnu' }}</strong>
-                      <span class="vs">vs</span>
-                      <strong>{{ aff.adversaire || 'N/A' }}</strong>
-                    </div>
-                  </td>
-                  <td>
-                    <div class="court-info">
-                      <span>{{ aff.tribunal || 'Non défini' }}</span>
-                      <small>{{ aff.chambre || '-' }}</small>
-                    </div>
-                  </td>
-                  <td><code>{{ aff.numeroRole || '-' }}</code></td>
-                  <td>
-                    <span class="status-pill" [class]="aff.statut?.toLowerCase()">{{ aff.statut }}</span>
-                  </td>
-                  <td>
-                    <button class="btn-manage" (click)="ouvrirGestion(aff)">Gérer l\\'Affaire</button>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
+       <button class="btn-manage" (click)="voirMesAffaires()">
+   ⚖️ Voir mes affaires
+ </button>
+
     </div>
 
     <!-- MODAL GESTION AFFAIRE -->
@@ -120,118 +68,28 @@ import { AvocatService } from '../../../core/services/avocat.service';
         </div>
 
         <div class="modal-tabs">
-          <button [class.active]="modalTab === 'audiences'" (click)="modalTab = 'audiences'">🗓️ Audiences</button>
-          <button [class.active]="modalTab === 'jugement'" (click)="modalTab = 'jugement'">⚖️ Jugement</button>
-          <button [class.active]="modalTab === 'honoraires'" (click)="modalTab = 'honoraires'">💰 Honoraires</button>
-          <button [class.active]="modalTab === 'tribunal'" (click)="modalTab = 'tribunal'">🏛️ Tribunal</button>
+        <button class="btn-manage" (click)="gererAudiences(selectedAffaire)">🗓️ Audiences</button>
+
+        <button class="btn-manage" (click)="gererJugement(selectedAffaire)">⚖️ Jugement</button>  <!-- ← remplace l'ancien tab -->
+        <!-- ← remplace l'ancien tab -->
+        <button class="btn-manage" (click)="gererHonoraires(selectedAffaire)">💰 Honoraires</button>
+
+          <button class="btn-manage" (click)="gererTribunal(selectedAffaire)">🏛️ Tribunal</button>
+
+
+
         </div>
 
         <div class="modal-body scrollable">
           
           <!-- TAB AUDIENCES -->
-          <div *ngIf="modalTab === 'audiences'">
-            <div class="section-header">
-              <h4>Chronologie des Audiences</h4>
-              <button class="btn-small-add" (click)="showAddAudience = !showAddAudience">+ Ajouter</button>
-            </div>
+         
 
-            <!-- Formulaire ajout audience -->
-            <div class="mini-form" *ngIf="showAddAudience">
-              <div class="form-grid">
-                <div class="field"><label>Date</label><input type="date" [(ngModel)]="newAudience.dateAudience"></div>
-                <div class="field"><label>Heure</label><input type="time" [(ngModel)]="newAudience.heure"></div>
-                <div class="field"><label>Salle</label><input type="text" [(ngModel)]="newAudience.salle"></div>
-                <div class="field"><label>Statut</label>
-                  <select [(ngModel)]="newAudience.statut">
-                    <option value="A_VENIR">À Venir</option>
-                    <option value="EN_COURS">En Cours</option>
-                    <option value="REALISEE">Réalisée</option>
-                    <option value="REPORTEE">Reportée</option>
-                  </select>
-                </div>
-              </div>
-              <div class="field"><label>Motif / Objet</label><textarea [(ngModel)]="newAudience.motif"></textarea></div>
-              <div class="form-actions">
-                <button class="btn-primary" (click)="ajouterAudience()">Enregistrer l\\'audience</button>
-              </div>
-            </div>
+       
 
-            <div class="timeline">
-              <div *ngFor="let aud of selectedAffaire.audiences" class="timeline-item">
-                <div class="time-meta">
-                  <span class="date">{{ aud.dateAudience | date:'dd MMM yyyy' }}</span>
-                  <span class="hour">{{ aud.heure }}</span>
-                </div>
-                <div class="time-content">
-                  <div class="content-top">
-                    <strong>{{ aud.motif }}</strong>
-                    <span class="aud-status" [class]="aud.statut?.toLowerCase()">{{ aud.statut }}</span>
-                  </div>
-                  <p *ngIf="aud.resultat"><strong>Résultat:</strong> {{ aud.resultat }}</p>
-                  <div class="actions">
-                    <button (click)="supprimerAudience(aud.id)" class="text-danger">Supprimer</button>
-                  </div>
-                </div>
-              </div>
-              <div *ngIf="!selectedAffaire.audiences?.length" class="empty-mini">Aucune audience planifiée.</div>
-            </div>
-          </div>
+        
 
-          <!-- TAB JUGEMENT -->
-          <div *ngIf="modalTab === 'jugement'">
-            <div class="section-header"><h4>Saisie du Jugement</h4></div>
-            <div class="standard-form">
-              <div class="form-grid">
-                <div class="field"><label>Type de Jugement</label>
-                  <select [(ngModel)]="jugement.typeJugement">
-                    <option value="FINAL">Final</option>
-                    <option value="INTERLOCUTOIRE">Interlocutoire</option>
-                    <option value="PREPARATOIRE">Préparatoire</option>
-                  </select>
-                </div>
-                <div class="field"><label>Date du Jugement</label><input type="date" [(ngModel)]="jugement.dateJugement"></div>
-                <div class="field"><label>Montant Jugé</label><input type="text" [(ngModel)]="jugement.montantJuge"></div>
-              </div>
-              <div class="field"><label>Description / Dispositif</label><textarea rows="5" [(ngModel)]="jugement.descriptionJugement"></textarea></div>
-              <button class="btn-primary full" (click)="enregistrerJugement()">Enregistrer le Jugement Officiel</button>
-            </div>
-          </div>
-
-          <!-- TAB HONORAIRES -->
-          <div *ngIf="modalTab === 'honoraires'">
-            <div class="section-header"><h4>Soumission des Prestations</h4></div>
-            <div class="info-banner" *ngIf="selectedAffaire.mission">
-              Statut Mission: <strong>{{ selectedAffaire.mission.statut }}</strong>
-            </div>
-            
-            <div class="honoraires-form">
-              <h5>1. Rapport de Mission (PV)</h5>
-              <textarea placeholder="Détaillez vos diligences..." rows="4" [(ngModel)]="pvTexte"></textarea>
-              <button class="btn-secondary" (click)="soumettrePV()" [disabled]="!selectedAffaire.mission">Soumettre le PV</button>
-
-              <hr>
-
-              <h5>2. Facture d\\'Honoraires</h5>
-              <div class="form-grid">
-                <div class="field"><label>Référence Facture</label><input type="text" [(ngModel)]="facture.ref"></div>
-                <div class="field"><label>Montant (TND)</label><input type="number" [(ngModel)]="facture.montant"></div>
-              </div>
-              <button class="btn-primary" (click)="soumettreFacture()" [disabled]="!selectedAffaire.mission">Soumettre la Facture</button>
-            </div>
-          </div>
-
-          <!-- TAB TRIBUNAL -->
-          <div *ngIf="modalTab === 'tribunal'">
-            <div class="section-header"><h4>Informations Tribunal</h4></div>
-            <div class="standard-form">
-              <div class="field"><label>Tribunal</label><input type="text" [(ngModel)]="tribunal.nom"></div>
-              <div class="form-grid">
-                <div class="field"><label>Chambre</label><input type="text" [(ngModel)]="tribunal.chambre"></div>
-                <div class="field"><label>Numéro de Rôle</label><input type="text" [(ngModel)]="tribunal.role"></div>
-              </div>
-              <button class="btn-primary" (click)="modifierTribunal()">Mettre à jour</button>
-            </div>
-          </div>
+        
 
         </div>
       </div>
@@ -314,9 +172,10 @@ import { AvocatService } from '../../../core/services/avocat.service';
     .time-content { background: #f8fafc; padding: 15px 20px; border-radius: 12px; }
     .content-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
     .aud-status { font-size: 0.65rem; font-weight: 800; padding: 3px 8px; border-radius: 6px; text-transform: uppercase; }
-    .aud-status.a_venir { background: #e0f2fe; color: #0369a1; }
-    .aud-status.realisee { background: #dcfce7; color: #15803d; }
-
+    .aud-status.programmee { background: #e0f2fe; color: #0369a1; }
+.aud-status.tenue      { background: #dcfce7; color: #15803d; }
+.aud-status.reportee   { background: #fef3c7; color: #92400e; }
+.aud-status.annulee    { background: #fee2e2; color: #b91c1c; }
     .info-banner { background: #eff6ff; color: #1e40af; padding: 12px 20px; border-radius: 10px; margin-bottom: 20px; font-size: 0.9rem; }
     .honoraires-form h5 { margin: 20px 0 10px; color: #1e293b; }
     .btn-secondary { background: #f1f5f9; color: #1e293b; border: 1px solid #e2e8f0; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
@@ -332,16 +191,18 @@ export class AvocatDashboardComponent implements OnInit {
   search = '';
 
   selectedAffaire: any = null;
-  modalTab: 'audiences' | 'jugement' | 'honoraires' | 'tribunal' = 'audiences';
+  modalTab: 'jugement' | 'honoraires' | 'tribunal' = 'jugement';
+
   showAddAudience = false;
 
-  newAudience = { dateAudience: '', heure: '', salle: '', motif: '', statut: 'A_VENIR' };
+  newAudience = { dateAudience: '', heure: '', salle: '', motif: '', statut: 'PROGRAMMEE' };
+
   jugement = { typeJugement: 'FINAL', dateJugement: '', montantJuge: '', descriptionJugement: '' };
   tribunal = { nom: '', chambre: '', role: '' };
   pvTexte = '';
   facture = { ref: '', montant: 0 };
 
-  constructor(private avocatService: AvocatService) {}
+  constructor(private avocatService: AvocatService,private router: Router) {}
 
   ngOnInit() {
     this.chargerStats();
@@ -374,11 +235,12 @@ export class AvocatDashboardComponent implements OnInit {
 
   ouvrirGestion(aff: any) {
     this.selectedAffaire = aff;
-    this.modalTab = 'audiences';
+    this.modalTab = 'jugement';
+
     this.showAddAudience = false;
     
     // Reset forms
-    this.newAudience = { dateAudience: '', heure: '', salle: '', motif: '', statut: 'A_VENIR' };
+    this.newAudience = { dateAudience: '', heure: '', salle: '', motif: '', statut: 'PROGRAMMEE' };
     this.jugement = { 
       typeJugement: aff.typeJugement || 'FINAL', 
       dateJugement: aff.dateJugement || '', 
@@ -392,32 +254,64 @@ export class AvocatDashboardComponent implements OnInit {
 
   fermerModal() {
     this.selectedAffaire = null;
-    this.chargerStats();
     this.chargerAffaires();
+    this.chargerStats();
   }
 
+// Remplacez cette méthode helper (ajoutez-la)
+private rafraichirAffaire() {
+  this.avocatService.getAffaireDetail(this.selectedAffaire.id).subscribe({
+    next: (aff: any) => {
+      this.selectedAffaire = aff; // le backend retourne AffaireJudiciaire directement
+    },
+    error: (e) => console.error('Erreur refresh:', e)
+  });
+}
   ajouterAudience() {
-    this.avocatService.ajouterAudience(this.selectedAffaire.id, this.newAudience).subscribe({
+    if (!this.newAudience.dateAudience || !this.newAudience.motif) {
+      alert('La date et le motif sont obligatoires.');
+      return;
+    }
+  
+    const body = {
+      dateAudience: this.newAudience.dateAudience,
+      heure: this.newAudience.heure || null,
+      salle: this.newAudience.salle || null,
+      motif: this.newAudience.motif,
+      statut: this.newAudience.statut,
+      resultat: null,
+      prochaineAudience: null
+    };
+  
+    this.avocatService.ajouterAudience(this.selectedAffaire.id, body).subscribe({
       next: () => {
-        alert('Audience ajoutée !');
-        this.avocatService.getAffaireDetail(this.selectedAffaire.id).subscribe(aff => this.selectedAffaire = aff);
         this.showAddAudience = false;
+        this.newAudience = { dateAudience: '', heure: '', salle: '', motif: '', statut: 'PROGRAMMEE' };
+        this.rafraichirAffaire();
       },
-      error: (e) => alert(e.error?.error || 'Erreur')
+      error: (e) => alert(e.error?.error || e.error?.message || 'Erreur')
     });
   }
 
   supprimerAudience(id: number) {
     if (confirm('Supprimer cette audience ?')) {
-      this.avocatService.supprimerAudience(this.selectedAffaire.id, id).subscribe(() => {
-        this.avocatService.getAffaireDetail(this.selectedAffaire.id).subscribe(aff => this.selectedAffaire = aff);
+      this.avocatService.supprimerAudience(this.selectedAffaire.id, id).subscribe({
+        next: () => this.rafraichirAffaire(),
+        error: (e) => alert(e.error?.error || 'Erreur suppression')
       });
     }
   }
 
   enregistrerJugement() {
+    if (!this.jugement.dateJugement) {
+      alert('La date du jugement est obligatoire.');
+      return;
+    }
     this.avocatService.enregistrerJugement(this.selectedAffaire.id, this.jugement).subscribe({
-      next: () => alert('Jugement enregistré !'),
+      next: () => {
+        alert('Jugement enregistré !');
+        this.rafraichirAffaire();
+      },
       error: (e) => alert(e.error?.error || 'Erreur')
     });
   }
@@ -444,4 +338,29 @@ export class AvocatDashboardComponent implements OnInit {
       error: (e) => alert(e.error?.error || 'Erreur')
     });
   }
+//-----------------------------------------
+  // Dans avocat-dashboard.component.ts
+
+
+  voirMesAffaires(): void {
+    this.router.navigate(['/avocat/affaires']);
+  }
+gererAudiences(aff: any) {
+  this.router.navigate(['/avocat/affaires', aff.id, 'audiences']);
+}
+
+gererJugement(aff: any) {
+  this.router.navigate(['/avocat/affaires', aff.id, 'jugement']);
+}
+
+
+gererTribunal(aff: any) {
+  this.router.navigate(['/avocat/affaires', aff.id, 'tribunal']);
+}
+gererHonoraires(aff: any) {
+  this.router.navigate(['/avocat/affaires', aff.id, 'honoraires']);
+}
+
+
+  
 }

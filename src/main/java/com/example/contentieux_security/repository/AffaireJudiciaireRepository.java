@@ -167,4 +167,19 @@ List<AffaireJudiciaire> findByAvocatUsernameWithMission(
                          @Query("SELECT a FROM AffaireJudiciaire a LEFT JOIN FETCH a.mission m LEFT JOIN FETCH m.prestation WHERE a.id = :id")
                          Optional<AffaireJudiciaire> findByIdWithMission(@Param("id") Long id);
               
+
+
+
+
+
+                         @Query("""
+    SELECT DISTINCT a FROM AffaireJudiciaire a
+    LEFT JOIN FETCH a.mission m
+    LEFT JOIN FETCH m.prestataire pr
+    LEFT JOIN FETCH a.dossier d
+    LEFT JOIN FETCH d.client
+    WHERE pr.username = :username
+    ORDER BY a.dateLancement DESC
+""")
+List<AffaireJudiciaire> findAffairesByAvocat(@Param("username") String username);
                      }          

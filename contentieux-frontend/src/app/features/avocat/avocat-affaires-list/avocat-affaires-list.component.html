@@ -1,0 +1,212 @@
+<!-- avocat-affaires-list.component.html -->
+<div class="al-page">
+
+    <!-- ══ En-tête ════════════════════════════════════════════════ -->
+    <div class="al-header">
+      <div class="al-header-text">
+        <span class="al-role-badge">AVOCAT</span>
+        <h1 class="al-title">Mes Affaires Judiciaires</h1>
+        <p class="al-subtitle">Gérez vos audiences, jugements, honoraires et informations tribunal</p>
+      </div>
+    </div>
+  
+    <!-- ══ Métriques rapides ══════════════════════════════════════ -->
+    <div class="al-metrics" *ngIf="stats">
+      <div class="al-metric al-metric--blue">
+        <div class="al-metric-icon">📁</div>
+        <div class="al-metric-body">
+          <span class="al-metric-val">{{ stats.totalAffaires || 0 }}</span>
+          <span class="al-metric-lbl">Total affaires</span>
+        </div>
+      </div>
+      <div class="al-metric al-metric--indigo">
+        <div class="al-metric-icon">⚖️</div>
+        <div class="al-metric-body">
+          <span class="al-metric-val">{{ stats.affairesEnCours || 0 }}</span>
+          <span class="al-metric-lbl">En cours</span>
+        </div>
+      </div>
+      <div class="al-metric al-metric--amber">
+        <div class="al-metric-icon">🗓️</div>
+        <div class="al-metric-body">
+          <span class="al-metric-val">{{ stats.audiencesAVenir || 0 }}</span>
+          <span class="al-metric-lbl">Audiences à venir</span>
+        </div>
+      </div>
+      <div class="al-metric al-metric--green">
+        <div class="al-metric-icon">💰</div>
+        <div class="al-metric-body">
+          <span class="al-metric-val">{{ stats.totalHonoraires | number:'1.0-0' }}</span>
+          <span class="al-metric-lbl">Honoraires TND</span>
+        </div>
+      </div>
+      <div class="al-metric al-metric--purple">
+        <div class="al-metric-icon">📜</div>
+        <div class="al-metric-body">
+          <span class="al-metric-val">{{ stats.jugementRendu || 0 }}</span>
+          <span class="al-metric-lbl">Jugements rendus</span>
+        </div>
+      </div>
+    </div>
+  
+    <!-- ══ Filtres statut ═════════════════════════════════════════ -->
+    <div class="al-filters">
+      <button
+        *ngFor="let s of statuts"
+        class="al-filter-btn"
+        [class.al-filter-btn--active]="filtreStatut === s.key"
+        (click)="setFiltreStatut(s.key)"
+      >
+        <span>{{ s.icon }}</span>
+        {{ s.label }}
+        <span class="al-filter-count">{{ compterParStatut(s.key) }}</span>
+      </button>
+    </div>
+  
+    <!-- ══ Barre de recherche ════════════════════════════════════ -->
+    <div class="al-toolbar">
+      <div class="al-search">
+        <span class="al-search-icon">🔍</span>
+        <input
+          type="text"
+          [(ngModel)]="search"
+          (ngModelChange)="appliquerFiltres()"
+          placeholder="Rechercher par N° affaire, tribunal, statut…"
+          class="al-search-input"
+        />
+      </div>
+      <span class="al-result-count">
+        {{ filtrees.length }} affaire{{ filtrees.length > 1 ? 's' : '' }}
+      </span>
+    </div>
+  
+    <!-- ══ Chargement ════════════════════════════════════════════ -->
+    <div *ngIf="loading" class="al-loading">
+      <div class="al-spinner"></div>
+      <p>Chargement des affaires…</p>
+    </div>
+  
+    <!-- ══ Vide ══════════════════════════════════════════════════ -->
+    <div *ngIf="!loading && filtrees.length === 0" class="al-empty">
+      <div class="al-empty-icon">⚖️</div>
+      <p class="al-empty-title">Aucune affaire trouvée</p>
+      <p class="al-empty-sub">Modifiez vos filtres ou votre recherche.</p>
+    </div>
+  
+    <!-- ══ Liste des affaires ════════════════════════════════════ -->
+    <div *ngIf="!loading && filtrees.length > 0" class="al-list">
+  
+      <div class="al-card" *ngFor="let aff of filtrees">
+  
+        <!-- ── Header carte ──────────────────────────────────── -->
+        <div class="al-card-head">
+          <div class="al-card-head-left">
+            <div class="al-affaire-avatar">⚖️</div>
+            <div class="al-affaire-ref">
+              <span class="al-affaire-num">{{ aff.numeroAffaire }}</span>
+              <span class="al-affaire-date" *ngIf="aff.dateLancement">
+                Lancée le {{ aff.dateLancement | date:'dd/MM/yyyy' }}
+              </span>
+            </div>
+          </div>
+          <div class="al-card-head-right">
+            <span class="al-pill" [ngClass]="statutClass(aff.statut)">
+              {{ statutLabel(aff.statut) }}
+            </span>
+            <span *ngIf="aff.missionStatut" class="al-pill al-pill--sm" [ngClass]="missionStatutClass(aff.missionStatut)">
+              Mission : {{ aff.missionStatut }}
+            </span>
+          </div>
+        </div>
+  
+        <!-- ── Body carte ────────────────────────────────────── -->
+        <div class="al-card-body">
+  
+          <!-- Tribunal -->
+          <div class="al-info-row" *ngIf="aff.tribunal">
+            <span class="al-info-icon">🏛️</span>
+            <div class="al-info-content">
+              <span class="al-info-label">Tribunal</span>
+              <span class="al-info-val">
+                {{ aff.tribunal }}
+                <span *ngIf="aff.chambre" class="al-info-sub"> — {{ aff.chambre }}</span>
+              </span>
+            </div>
+            <span *ngIf="aff.numeroRole" class="al-info-code">{{ aff.numeroRole }}</span>
+          </div>
+          <div class="al-info-row al-info-row--empty" *ngIf="!aff.tribunal">
+            <span class="al-info-icon">🏛️</span>
+            <span class="al-info-empty">Tribunal non renseigné</span>
+          </div>
+  
+          <!-- Prochaine audience -->
+          <div class="al-info-row" *ngIf="aff.dateProchainAudience">
+            <span class="al-info-icon">📅</span>
+            <div class="al-info-content">
+              <span class="al-info-label">Prochaine audience</span>
+              <span class="al-info-val al-accent">
+                {{ aff.dateProchainAudience | date:'dd MMMM yyyy':'':'fr' }}
+              </span>
+            </div>
+          </div>
+  
+          <!-- Jugement -->
+          <div class="al-info-row" *ngIf="aff.typeJugement">
+            <span class="al-info-icon">📜</span>
+            <div class="al-info-content">
+              <span class="al-info-label">Jugement</span>
+              <span class="al-info-val">{{ aff.typeJugement }}</span>
+            </div>
+            <span *ngIf="aff.montantJuge" class="al-info-code al-accent">
+              {{ aff.montantJuge }} TND
+            </span>
+          </div>
+  
+        </div>
+  
+        <!-- ── Actions carte ─────────────────────────────────── -->
+        <div class="al-card-actions">
+  
+          <button class="al-action-btn al-action-btn--audiences"
+                  (click)="gererAudiences(aff)"
+                  title="Gérer les audiences">
+            <span>🗓️</span>
+            Audiences
+          </button>
+  
+          <button class="al-action-btn al-action-btn--jugement"
+                  (click)="gererJugement(aff)"
+                  title="Saisir le jugement">
+            <span>⚖️</span>
+            Jugement
+          </button>
+  
+          <button class="al-action-btn al-action-btn--tribunal"
+                  (click)="gererTribunal(aff)"
+                  title="Modifier le tribunal">
+            <span>🏛️</span>
+            Tribunal
+          </button>
+  
+          <button class="al-action-btn al-action-btn--honoraires"
+                  (click)="gererHonoraires(aff)"
+                  title="PV & Facture">
+            <span>💰</span>
+            Honoraires
+          </button>
+
+
+         <button class="al-action-btn al-action-btn--dossier"
+         (click)="voirDossier(aff)"
+         title="Voir le dossier complet">
+   <span>📁</span>
+   Dossier
+ </button>
+  
+        </div>
+  
+      </div><!-- /al-card -->
+  
+    </div><!-- /al-list -->
+  
+  </div><!-- /al-page -->

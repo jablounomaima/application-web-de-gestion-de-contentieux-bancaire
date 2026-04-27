@@ -1,0 +1,378 @@
+/* avocat-affaires-list.component.scss */
+
+:host {
+    /* Palette */
+    --al-bg:        #f0f4f9;
+    --al-surface:   #ffffff;
+    --al-border:    #e2e8f4;
+    --al-text:      #1e2a45;
+    --al-muted:     #6b7a99;
+    --al-radius:    14px;
+    --al-radius-sm: 9px;
+    --al-shadow:    0 2px 14px rgba(0,0,0,.06);
+    --al-shadow-lg: 0 8px 32px rgba(0,0,0,.1);
+  
+    /* Accent bleu */
+    --al-blue:      #1a56db;
+    --al-blue-lite: #e8effd;
+  
+    /* Pills */
+    --pill-blue-bg:   #dbeafe; --pill-blue-c:   #1d4ed8;
+    --pill-green-bg:  #dcfce7; --pill-green-c:  #166534;
+    --pill-orange-bg: #ffedd5; --pill-orange-c: #9a3412;
+    --pill-red-bg:    #fee2e2; --pill-red-c:    #991b1b;
+    --pill-purple-bg: #f3e8ff; --pill-purple-c: #6b21a8;
+    --pill-grey-bg:   #f1f5f9; --pill-grey-c:   #475569;
+  
+    /* Actions */
+    --act-aud-bg:  #eff6ff; --act-aud-c:  #1d4ed8; --act-aud-brd: #bfdbfe;
+    --act-jug-bg:  #f0fdf4; --act-jug-c:  #15803d; --act-jug-brd: #bbf7d0;
+    --act-tri-bg:  #fefce8; --act-tri-c:  #854d0e; --act-tri-brd: #fde68a;
+    --act-hon-bg:  #faf5ff; --act-hon-c:  #7e22ce; --act-hon-brd: #e9d5ff;
+  }
+  
+  /* ── Page ───────────────────────────────────────────────────── */
+  .al-page {
+    min-height: 100vh;
+    background: var(--al-bg);
+    padding: 2rem 2rem 4rem;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    color: var(--al-text);
+    max-width: 1100px;
+    margin: 0 auto;
+  }
+  
+  /* ── Header ─────────────────────────────────────────────────── */
+  .al-header { margin-bottom: 2rem; }
+  
+  .al-role-badge {
+    display: inline-block;
+    background: #e0e7ff; color: #4338ca;
+    padding: .25rem .75rem; border-radius: 6px;
+    font-size: .7rem; font-weight: 800;
+    letter-spacing: .1em; margin-bottom: .6rem;
+  }
+  
+  .al-title {
+    font-size: 1.75rem; font-weight: 800;
+    margin: 0 0 .3rem; letter-spacing: -.02em;
+    color: var(--al-text);
+  }
+  
+  .al-subtitle { font-size: .9rem; color: var(--al-muted); margin: 0; }
+  
+  /* ── Métriques ───────────────────────────────────────────────── */
+  .al-metrics {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.75rem;
+  
+    @media (max-width: 900px) { grid-template-columns: repeat(3, 1fr); }
+    @media (max-width: 560px) { grid-template-columns: repeat(2, 1fr); }
+  }
+  
+  .al-metric {
+    background: var(--al-surface);
+    border: 1px solid var(--al-border);
+    border-radius: var(--al-radius);
+    padding: 1.1rem 1.2rem;
+    display: flex; align-items: center; gap: .9rem;
+    box-shadow: var(--al-shadow);
+    transition: transform .18s;
+  
+    &:hover { transform: translateY(-2px); }
+  }
+  
+  .al-metric-icon {
+    font-size: 1.5rem;
+    width: 44px; height: 44px;
+    display: flex; align-items: center; justify-content: center;
+    border-radius: 10px; flex-shrink: 0;
+  }
+  
+  .al-metric--blue   .al-metric-icon { background: #dbeafe; }
+  .al-metric--indigo .al-metric-icon { background: #e0e7ff; }
+  .al-metric--amber  .al-metric-icon { background: #fef3c7; }
+  .al-metric--green  .al-metric-icon { background: #dcfce7; }
+  .al-metric--purple .al-metric-icon { background: #f3e8ff; }
+  
+  .al-metric-body { display: flex; flex-direction: column; gap: .1rem; }
+  
+  .al-metric-val {
+    font-size: 1.4rem; font-weight: 800; line-height: 1;
+    color: var(--al-text);
+  }
+  
+  .al-metric-lbl {
+    font-size: .72rem; color: var(--al-muted);
+    text-transform: uppercase; letter-spacing: .05em; font-weight: 600;
+  }
+  
+  /* ── Filtres statut ──────────────────────────────────────────── */
+  .al-filters {
+    display: flex; flex-wrap: wrap; gap: .5rem;
+    margin-bottom: 1.25rem;
+  }
+  
+  .al-filter-btn {
+    display: inline-flex; align-items: center; gap: .35rem;
+    padding: .45rem 1rem;
+    border: 1.5px solid var(--al-border);
+    border-radius: 99px;
+    background: var(--al-surface);
+    font-size: .8rem; font-weight: 600;
+    color: var(--al-muted); cursor: pointer;
+    transition: all .18s;
+  
+    &:hover { border-color: var(--al-blue); color: var(--al-blue); }
+  
+    &--active {
+      background: var(--al-blue);
+      border-color: var(--al-blue);
+      color: #fff;
+  
+      .al-filter-count { background: rgba(255,255,255,.25); color: #fff; }
+    }
+  }
+  
+  .al-filter-count {
+    background: var(--al-bg);
+    color: var(--al-muted);
+    border-radius: 99px;
+    padding: .05rem .45rem;
+    font-size: .7rem; font-weight: 700;
+    min-width: 18px; text-align: center;
+  }
+  
+  /* ── Toolbar ─────────────────────────────────────────────────── */
+  .al-toolbar {
+    display: flex; align-items: center; gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .al-search {
+    flex: 1; position: relative;
+  }
+  
+  .al-search-icon {
+    position: absolute; left: .9rem; top: 50%;
+    transform: translateY(-50%);
+    font-size: .95rem; pointer-events: none;
+  }
+  
+  .al-search-input {
+    width: 100%; padding: .7rem .9rem .7rem 2.4rem;
+    border: 1.5px solid var(--al-border);
+    border-radius: var(--al-radius-sm);
+    font-size: .9rem; font-family: inherit;
+    color: var(--al-text); background: var(--al-surface);
+    transition: border-color .18s, box-shadow .18s;
+    box-sizing: border-box;
+  
+    &:focus {
+      outline: none;
+      border-color: var(--al-blue);
+      box-shadow: 0 0 0 3px rgba(26,86,219,.1);
+    }
+    &::placeholder { color: #b0bcd4; }
+  }
+  
+  .al-result-count {
+    font-size: .82rem; color: var(--al-muted);
+    white-space: nowrap; font-weight: 500;
+  }
+  
+  /* ── Chargement ─────────────────────────────────────────────── */
+  .al-loading {
+    display: flex; flex-direction: column; align-items: center;
+    gap: 1rem; padding: 4rem 0; color: var(--al-muted);
+  }
+  
+  /* ── Vide ────────────────────────────────────────────────────── */
+  .al-empty {
+    background: var(--al-surface);
+    border: 1.5px dashed var(--al-border);
+    border-radius: var(--al-radius);
+    padding: 3.5rem 2rem; text-align: center;
+    color: var(--al-muted);
+  }
+  
+  .al-empty-icon { font-size: 2.5rem; margin-bottom: .75rem; }
+  .al-empty-title { font-size: 1.05rem; font-weight: 600; color: var(--al-text); margin: 0 0 .3rem; }
+  .al-empty-sub { font-size: .875rem; margin: 0; }
+  
+  /* ── Liste ───────────────────────────────────────────────────── */
+  .al-list {
+    display: flex; flex-direction: column; gap: 1rem;
+  }
+  
+  /* ── Carte affaire ───────────────────────────────────────────── */
+  .al-card {
+    background: var(--al-surface);
+    border: 1px solid var(--al-border);
+    border-radius: var(--al-radius);
+    box-shadow: var(--al-shadow);
+    overflow: hidden;
+    transition: box-shadow .2s, transform .2s;
+  
+    &:hover {
+      box-shadow: var(--al-shadow-lg);
+      transform: translateY(-2px);
+    }
+  }
+  
+  /* Head */
+  .al-card-head {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 1.1rem 1.4rem;
+    background: #fafbfd;
+    border-bottom: 1px solid var(--al-border);
+    gap: 1rem; flex-wrap: wrap;
+  }
+  
+  .al-card-head-left {
+    display: flex; align-items: center; gap: .85rem;
+  }
+  
+  .al-affaire-avatar {
+    width: 42px; height: 42px;
+    background: var(--al-blue-lite);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.2rem; flex-shrink: 0;
+  }
+  
+  .al-affaire-ref { display: flex; flex-direction: column; gap: .15rem; }
+  
+  .al-affaire-num {
+    font-size: .95rem; font-weight: 700;
+    color: var(--al-text); font-family: 'Courier New', monospace;
+  }
+  
+  .al-affaire-date { font-size: .75rem; color: var(--al-muted); }
+  
+  .al-card-head-right {
+    display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  }
+  
+  /* Body */
+  .al-card-body {
+    padding: 1rem 1.4rem;
+    display: flex; flex-direction: column; gap: .65rem;
+  }
+  
+  .al-info-row {
+    display: flex; align-items: center; gap: .75rem;
+    font-size: .875rem;
+  
+    &--empty { color: var(--al-muted); font-style: italic; }
+  }
+  
+  .al-info-icon { font-size: 1rem; flex-shrink: 0; }
+  
+  .al-info-content {
+    flex: 1; display: flex; flex-direction: column; gap: .08rem;
+  }
+  
+  .al-info-label {
+    font-size: .68rem; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--al-muted); font-weight: 700;
+  }
+  
+  .al-info-val { font-weight: 500; color: var(--al-text); }
+  .al-info-sub { color: var(--al-muted); }
+  .al-info-empty { color: var(--al-muted); font-size: .82rem; }
+  
+  .al-info-code {
+    font-family: 'Courier New', monospace;
+    font-size: .8rem;
+    background: var(--al-bg);
+    padding: .2rem .6rem;
+    border-radius: 6px;
+    color: var(--al-text);
+    flex-shrink: 0;
+  }
+  
+  .al-accent { color: var(--al-blue); font-weight: 600; }
+  
+  /* Actions */
+  .al-card-actions {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border-top: 1px solid var(--al-border);
+  
+    @media (max-width: 560px) { grid-template-columns: repeat(2, 1fr); }
+  }
+
+
+  .al-action-btn--dossier { color: var(--act-dos-c); &:hover { background: var(--act-dos-bg); } }
+  
+  .al-action-btn {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: .3rem;
+    padding: .9rem .5rem;
+    border: none; background: transparent;
+    font-size: .78rem; font-weight: 700;
+    cursor: pointer;
+    transition: background .18s;
+    border-right: 1px solid var(--al-border);
+  
+    &:last-child { border-right: none; }
+  
+    span { font-size: 1.1rem; }
+  
+    &--audiences {
+      color: var(--act-aud-c);
+      &:hover { background: var(--act-aud-bg); }
+    }
+    &--jugement {
+      color: var(--act-jug-c);
+      &:hover { background: var(--act-jug-bg); }
+    }
+    &--tribunal {
+      color: var(--act-tri-c);
+      &:hover { background: var(--act-tri-bg); }
+    }
+    &--honoraires {
+      color: var(--act-hon-c);
+      &:hover { background: var(--act-hon-bg); }
+    }
+  }
+  
+  /* ── Pills ───────────────────────────────────────────────────── */
+  .al-pill {
+    display: inline-flex; align-items: center;
+    padding: .25rem .75rem; border-radius: 99px;
+    font-size: .72rem; font-weight: 700;
+    letter-spacing: .03em; white-space: nowrap;
+  
+    &--sm { padding: .15rem .55rem; font-size: .65rem; }
+  
+    &--blue   { background: var(--pill-blue-bg);   color: var(--pill-blue-c); }
+    &--green  { background: var(--pill-green-bg);  color: var(--pill-green-c); }
+    &--orange { background: var(--pill-orange-bg); color: var(--pill-orange-c); }
+    &--red    { background: var(--pill-red-bg);    color: var(--pill-red-c); }
+    &--purple { background: var(--pill-purple-bg); color: var(--pill-purple-c); }
+    &--grey   { background: var(--pill-grey-bg);   color: var(--pill-grey-c); }
+  }
+  
+  /* ── Spinner ─────────────────────────────────────────────────── */
+  .al-spinner {
+    width: 36px; height: 36px;
+    border: 3px solid var(--al-blue-lite);
+    border-top-color: var(--al-blue);
+    border-radius: 50%;
+    animation: al-spin .75s linear infinite;
+  }
+  @keyframes al-spin { to { transform: rotate(360deg); } }
+  
+  /* ── Responsive ──────────────────────────────────────────────── */
+  @media (max-width: 640px) {
+    .al-page { padding: 1.25rem 1rem 3rem; }
+    .al-title { font-size: 1.35rem; }
+    .al-card-head { flex-direction: column; align-items: flex-start; }
+  }
+
+
+  

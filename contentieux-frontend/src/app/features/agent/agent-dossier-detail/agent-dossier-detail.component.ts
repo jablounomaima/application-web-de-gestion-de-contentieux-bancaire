@@ -5,7 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { DossierService } from '../../../core/services/dossier.service';
 
 import { ActionValidationComponent } from '../action-validation/action-validation.component'; // ✅ AJOUTER
-
+import { LancerAffaireComponent } from '../lancer-affaire/lancer-affaire.component';
 @Component({
   selector: 'app-agent-dossier-detail',
   standalone: true,
@@ -438,24 +438,26 @@ export class AgentDossierDetailComponent implements OnInit {
     this.router.navigate(['/agent/dossiers', this.dossier.id, 'missions']);
   }
 
-  lancerProcedure() {
-    this.router.navigate(['/agent/dossiers', this.dossier.id, 'prestations', 'lancer']);
-  }
+// agent-dossier-detail.component.ts
+lancerProcedure() {
+  this.router.navigate(['/agent/dossiers', this.dossier.id, 'prestations', 'lancer']);
+}
 
   designerAvocat() {
     this.router.navigate([
       '/agent/dossiers', this.dossier.id,
-      'prestation', this.prestationJudiciaire.id, 'designer-avocat'
+      'prestation', this.prestationJudiciaire.id,
+      'designer-avocat'
     ]);
   }
 
-  lancerAffaire() {
-    console.log('Lancer affaire', this.formAffaire);
+  lancerAffaire(): void {
+    this.router.navigate(['/agent/dossiers', this.dossier.id, 'affaire', 'lancer']);
   }
-
   voirAffaire() {
     this.router.navigate(['/agent/dossiers', this.dossier.id, 'affaire']);
   }
+   
 
   ressoumettreDossier() {
     this.dossierService.soumettreAValidation(this.dossier.id).subscribe({

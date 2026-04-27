@@ -1,0 +1,242 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- AVOCAT — GESTION DES AUDIENCES                                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="aud-page">
+
+    <!-- ── Loading ─────────────────────────────────────────────────── -->
+    <div class="aud-loading" *ngIf="loading">
+      <div class="aud-spinner"></div>
+      <p>Chargement des audiences…</p>
+    </div>
+  
+    <!-- ── Contenu principal ────────────────────────────────────────── -->
+    <div *ngIf="!loading">
+  
+      <!-- ── Header ──────────────────────────────────────────────────── -->
+      <div class="aud-header">
+        <button class="aud-back-btn" (click)="retour()" title="Retour">
+          <span>←</span>
+        </button>
+        <div class="aud-header-info">
+          <div class="aud-header-top">
+            <span class="aud-tag">AUDIENCES</span>
+            <span class="aud-affaire-ref" *ngIf="affaire">
+              Affaire #{{ affaire.id }} — {{ affaire.dossier?.numeroDossier || 'N/A' }}
+            </span>
+          </div>
+          <h1 class="aud-title">Gestion des Audiences</h1>
+          <p class="aud-subtitle" *ngIf="affaire">
+            {{ affaire.tribunal || 'Tribunal non défini' }}
+            <span *ngIf="affaire.chambre"> · {{ affaire.chambre }}</span>
+          </p>
+        </div>
+        <button class="aud-add-btn" (click)="ouvrirFormulaire()">
+          <span class="aud-add-icon">+</span>
+          Nouvelle audience
+        </button>
+      </div>
+  
+      <!-- ── Alertes ──────────────────────────────────────────────────── -->
+      <div class="aud-alert aud-alert--success" *ngIf="successMsg">
+        <span>✅</span> {{ successMsg }}
+      </div>
+      <div class="aud-alert aud-alert--error" *ngIf="errorMsg">
+        <span>⚠️</span> {{ errorMsg }}
+      </div>
+  
+      <!-- ── Stats ────────────────────────────────────────────────────── -->
+      <div class="aud-stats" *ngIf="audiences.length > 0">
+        <div class="aud-stat-card" *ngFor="let s of statsAudiences">
+          <span class="aud-stat-dot" [style.background]="s.color"></span>
+          <div>
+            <div class="aud-stat-val">{{ s.count }}</div>
+            <div class="aud-stat-label">{{ s.label }}</div>
+          </div>
+        </div>
+      </div>
+  
+      <!-- ── Filtres ──────────────────────────────────────────────────── -->
+      <div class="aud-filters" *ngIf="audiences.length > 0">
+        <button
+          class="aud-filter-btn"
+          [class.active]="filtreStatut === null"
+          (click)="filtrerParStatut(null)">
+          Toutes ({{ audiences.length }})
+        </button>
+        <button
+          class="aud-filter-btn"
+          *ngFor="let s of statutOptions"
+          [class.active]="filtreStatut === s.value"
+          (click)="filtrerParStatut(s.value)">
+          {{ s.label }} ({{ countByStatut(s.value) }})
+        </button>
+      </div>
+  
+      <!-- ── Timeline audiences ───────────────────────────────────────── -->
+      <div class="aud-body">
+  
+        <!-- Vide -->
+        <div class="aud-empty" *ngIf="audiencesFiltrees.length === 0 && !loading">
+          <div class="aud-empty-icon">🗓️</div>
+          <h3>Aucune audience</h3>
+          <p>Planifiez votre première audience pour cette affaire.</p>
+          <button class="aud-add-btn" (click)="ouvrirFormulaire()">+ Ajouter une audience</button>
+        </div>
+  
+        <!-- Timeline -->
+        <div class="aud-timeline" *ngIf="audiencesFiltrees.length > 0">
+          <div
+            class="aud-timeline-item"
+            *ngFor="let aud of audiencesFiltrees; trackBy: trackById"
+            [class.aud-tl--programmee]="aud.statut === 'PLANIFIEE'"
+            [class.aud-tl--tenue]="aud.statut === 'TENUE'"
+            [class.aud-tl--reportee]="aud.statut === 'RENVOYEE'"
+            [class.aud-tl--annulee]="aud.statut === 'ANNULEE'">
+  
+            <!-- Point timeline -->
+            <div class="aud-tl-dot">
+              <span class="aud-tl-dot-inner">{{ getStatutEmoji(aud.statut) }}</span>
+            </div>
+  
+            <!-- Carte audience -->
+            <div class="aud-card">
+              <div class="aud-card-head">
+                <div class="aud-card-date-block">
+                  <span class="aud-card-day">{{ aud.dateAudience | date:'dd' }}</span>
+                  <span class="aud-card-month">{{ aud.dateAudience | date:'MMM yyyy' : '' : 'fr' }}</span>
+                </div>
+                <div class="aud-card-meta">
+                  <div class="aud-card-time" *ngIf="aud.heure">
+                    <span class="aud-meta-icon">🕐</span> {{ aud.heure }}
+                  </div>
+                  <div class="aud-card-salle" *ngIf="aud.salle">
+                    <span class="aud-meta-icon">📍</span> {{ aud.salle }}
+                  </div>
+                </div>
+                <span class="aud-badge" [class]="'aud-badge--' + aud.statut?.toLowerCase()">
+                  {{ getStatutLabel(aud.statut) }}
+                </span>
+                <div class="aud-card-actions">
+                  <button class="aud-icon-btn aud-icon-btn--edit" (click)="ouvrirEdition(aud)" title="Modifier">✏️</button>
+                  <button class="aud-icon-btn aud-icon-btn--del" (click)="confirmerSuppression(aud)" title="Supprimer">🗑️</button>
+                </div>
+              </div>
+  
+              <div class="aud-card-body">
+                <p class="aud-motif">{{ aud.motif }}</p>
+                <div class="aud-resultat" *ngIf="aud.resultat">
+                  <span class="aud-resultat-label">Résultat :</span>
+                  <span>{{ aud.resultat }}</span>
+                </div>
+                <div class="aud-prochaine" *ngIf="aud.prochaineAudience">
+                  <span class="aud-prochaine-label">📅 Prochaine audience :</span>
+                  <span>{{ aud.prochaineAudience | date:'dd/MM/yyyy' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MODAL : Ajouter / Modifier une audience                          -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="aud-modal-overlay" *ngIf="showForm" (click)="fermerFormulaire()">
+    <div class="aud-modal" (click)="$event.stopPropagation()">
+  
+      <div class="aud-modal-head">
+        <h3>{{ modeEdition ? '✏️ Modifier l\'audience' : '+ Nouvelle audience' }}</h3>
+        <button class="aud-modal-close" (click)="fermerFormulaire()">✕</button>
+      </div>
+  
+      <div class="aud-modal-body">
+  
+        <div class="aud-form-row">
+          <div class="aud-field">
+            <label class="aud-label">Date <span class="aud-req">*</span></label>
+            <input type="date" class="aud-input" [(ngModel)]="form.dateAudience" [min]="today" />
+          </div>
+          <div class="aud-field">
+            <label class="aud-label">Heure</label>
+            <input type="time" class="aud-input" [(ngModel)]="form.heure" />
+          </div>
+        </div>
+  
+        <div class="aud-form-row">
+          <div class="aud-field">
+            <label class="aud-label">Salle</label>
+            <input type="text" class="aud-input" [(ngModel)]="form.salle" placeholder="Ex: Salle A, Bureau 12…" />
+          </div>
+          <div class="aud-field">
+            <label class="aud-label">Statut <span class="aud-req">*</span></label>
+            <select class="aud-input" [(ngModel)]="form.statut">
+              <option *ngFor="let s of statutOptions" [value]="s.value">{{ s.label }}</option>
+            </select>
+          </div>
+        </div>
+  
+        <div class="aud-field">
+          <label class="aud-label">Motif / Objet <span class="aud-req">*</span></label>
+          <textarea class="aud-input aud-textarea" [(ngModel)]="form.motif" rows="3"
+            placeholder="Objet de l'audience, points à débattre…"></textarea>
+        </div>
+  
+        <div class="aud-field" *ngIf="modeEdition || form.statut === 'TENUE' || form.statut === 'REPORTEE'">
+          <label class="aud-label">Résultat</label>
+          <textarea class="aud-input aud-textarea" [(ngModel)]="form.resultat" rows="2"
+            placeholder="Résultat ou compte-rendu de l'audience…"></textarea>
+        </div>
+  
+        <div class="aud-field" *ngIf="form.statut === 'TENUE' || form.statut === 'REPORTEE'">
+          <label class="aud-label">Prochaine audience</label>
+          <input type="date" class="aud-input" [(ngModel)]="form.prochaineAudience" />
+        </div>
+  
+        <div class="aud-form-error" *ngIf="formError">
+          <span>⚠️</span> {{ formError }}
+        </div>
+      </div>
+  
+      <div class="aud-modal-foot">
+        <button class="aud-btn aud-btn--ghost" (click)="fermerFormulaire()" [disabled]="submitting">
+          Annuler
+        </button>
+        <button class="aud-btn aud-btn--primary" (click)="soumettre()" [disabled]="submitting">
+          <span class="aud-spin aud-spin--sm" *ngIf="submitting"></span>
+          {{ submitting ? 'Enregistrement…' : (modeEdition ? 'Mettre à jour' : 'Ajouter l\'audience') }}
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MODAL : Confirmation suppression                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="aud-modal-overlay" *ngIf="audienceASupprimer" (click)="annulerSuppression()">
+    <div class="aud-modal aud-modal--sm" (click)="$event.stopPropagation()">
+      <div class="aud-modal-head aud-modal-head--danger">
+        <h3>🗑️ Supprimer l'audience</h3>
+        <button class="aud-modal-close" (click)="annulerSuppression()">✕</button>
+      </div>
+      <div class="aud-modal-body">
+        <p class="aud-confirm-msg">
+          Supprimer l'audience du
+          <strong>{{ audienceASupprimer.dateAudience | date:'dd/MM/yyyy' }}</strong>
+          — <em>{{ audienceASupprimer.motif }}</em> ?
+          <br>Cette action est <strong>irréversible</strong>.
+        </p>
+      </div>
+      <div class="aud-modal-foot">
+        <button class="aud-btn aud-btn--ghost" (click)="annulerSuppression()" [disabled]="submitting">
+          Annuler
+        </button>
+        <button class="aud-btn aud-btn--danger" (click)="supprimerAudience()" [disabled]="submitting">
+          <span class="aud-spin aud-spin--sm aud-spin--white" *ngIf="submitting"></span>
+          {{ submitting ? 'Suppression…' : 'Confirmer la suppression' }}
+        </button>
+      </div>
+    </div>
+  </div>

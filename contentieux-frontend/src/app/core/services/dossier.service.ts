@@ -11,6 +11,7 @@ export class DossierService {
   private apiUrl = `${environment.apiUrl}/api/agent/dossiers`;
   private clientApiUrl = `${environment.apiUrl}/api/agent/clients`;
 
+  private lancerapiUrl = 'http://localhost:8080/api'; 
   constructor(private http: HttpClient) {}
 
   // ─── Lecture ─────────────────────────────────────────────────────────────────
@@ -96,5 +97,22 @@ export class DossierService {
 ressoumettreDossier(id: number): Observable<any> {
   return this.http.post(`${this.apiUrl}/${id}/ressoumettre`, {});
 }
+
+
+
+/**
+ * Lance une procédure judiciaire pour un dossier validé.
+ * Correspond à POST /api/agent/dossiers/{dossierId}/prestations/lancer
+ */
+// Correspond à :
+//   POST /api/agent/dossiers/{dossierId}/prestations/lancer
+// ═══════════════════════════════════════════════════════════════════
+ 
+
+// Après
+lancerProcedureJudiciaire(dossierId: number, payload: any): Observable<any> {
+  return this.http.post(`${this.apiUrl}/${dossierId}/prestations`, payload);
+}
+
 
 }

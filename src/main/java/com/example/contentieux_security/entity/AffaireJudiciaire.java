@@ -43,11 +43,7 @@ public class AffaireJudiciaire {
 
     // ✔ Type de jugement rendu
     public enum TypeJugement {
-        FAVORABLE,
-        DEFAVORABLE,
-        EN_APPEL,
-        TRANSACTION,
-        EN_ATTENTE
+        CONDAMNATION, REJET, PARTIEL, MIXTE
     }
 
     // ==============================
@@ -101,7 +97,8 @@ public class AffaireJudiciaire {
     // 📜 INFORMATIONS JUGEMENT
     // ==============================
 
-    @Enumerated(EnumType.STRING)
+    @Enumerated(EnumType.STRING)   // ← doit être STRING, pas ORDINAL
+    @Column(name = "type_jugement", length = 20)
     private TypeJugement typeJugement;
 
     private LocalDate dateJugement;
@@ -112,6 +109,8 @@ public class AffaireJudiciaire {
 
     @Column(columnDefinition = "TEXT")
     private String descriptionJugement;
+
+    private LocalDate dateLimiteAppel; 
 
     // ==============================
     // 🔗 RELATIONS
