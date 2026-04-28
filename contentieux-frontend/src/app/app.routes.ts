@@ -164,6 +164,41 @@ export const routes: Routes = [
     pathMatch: 'full'
   },
 
+
+
+
+   // ── Création d'un prestataire ────────────────────────────────
+   {
+    path: 'agent/prestataires/nouveau',
+    canActivate: [AuthGuard],
+    data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
+    loadComponent: () =>
+      import('./features/agent/creer-prestataire/creer-prestataire.component').then(
+        m => m.CreerPrestataireComponent
+      ),
+  },
+
+  
+
+  {
+    path: 'agent/prestataires/liste',
+    canActivate: [AuthGuard],
+    data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
+    loadComponent: () =>
+      import('./features/agent/prestataires-liste/prestataires-liste.component').then(
+        m => m.PrestatairesListeComponent
+      ),
+  },
+
+  {
+    path: 'agent/prestataires/modifier/:id',
+    loadComponent: () =>
+      import('./features/agent/modifier-prestataire/modifier-prestataire.component').then(
+        m => m.ModifierPrestataireComponent
+      ),
+  },
+  
+
   // ── AVOCAT ─────────────────────────────────────────
   {
     path: 'avocat/dashboard',

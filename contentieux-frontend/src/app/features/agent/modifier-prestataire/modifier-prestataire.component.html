@@ -1,0 +1,193 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- POPUP - MODIFIER UN PRESTATAIRE -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<!-- Overlay de fond -->
+<div class="mp-overlay" (click)="fermerPopup()">
+  
+    <!-- Conteneur principal de la popup -->
+    <div class="mp-popup-container" (click)="$event.stopPropagation()">
+      
+      <!-- ── Loading ─────────────────────────────────────────────────── -->
+      <div class="mp-loading" *ngIf="loading">
+        <div class="mp-spinner"></div>
+        <p>Chargement du prestataire…</p>
+      </div>
+    
+      <!-- ── Contenu ─────────────────────────────────────────────────── -->
+      <div *ngIf="!loading">
+        
+        <!-- Bouton de fermeture -->
+        <button class="mp-close-btn" (click)="fermerPopup()" aria-label="Fermer">✕</button>
+    
+        <!-- ── Header ─────────────────────────────────────────────────── -->
+        <div class="mp-header">
+          <div class="mp-header-text">
+            <div class="mp-header-top">
+              <span class="mp-tag">MODIFICATION</span>
+              <span class="mp-type-badge" *ngIf="form.typePrestataire"
+                    [class]="'mp-type--' + form.typePrestataire.toLowerCase()">
+                {{ getEmojiType(form.typePrestataire) }} {{ getLabelType(form.typePrestataire) }}
+              </span>
+            </div>
+  
+            <h2 class="mp-title">Modifier le prestataire</h2>
+  
+            <p class="mp-subtitle" *ngIf="form.prenom || form.nom">
+              {{ form.prenom }} {{ form.nom }}
+              <span *ngIf="form.username"> · {{ '@' + form.username }}</span>
+            </p>
+          </div>
+  
+          <!-- 🔥 correction ici -->
+          <div class="mp-avatar" 
+               [class]="'mp-avatar--' + (form.typePrestataire.toLowerCase() || 'default')">
+            {{ initiales() }}
+          </div>
+        </div>
+    
+        <!-- ── Alertes ─────────────────────────────────────────────────── -->
+        <div class="mp-alert mp-alert--success" *ngIf="successMsg">
+          <span>✅</span> {{ successMsg }}
+        </div>
+  
+        <div class="mp-alert mp-alert--error" *ngIf="errorMsg">
+          <span>⚠️</span> {{ errorMsg }}
+        </div>
+    
+        <!-- ── Corps ───────────────────────────────────────────────────── -->
+        <div class="mp-body">
+    
+          <!-- ══ COL PRINCIPALE ══ -->
+          <div class="mp-col-main">
+    
+            <!-- ── Identité ────────────────────────────────────────────── -->
+            <section class="mp-card">
+              <div class="mp-card-head">
+                <h3><span class="mp-card-icon">🪪</span> Identité</h3>
+              </div>
+  
+              <div class="mp-card-body">
+                <div class="mp-form-row">
+                  <div class="mp-field">
+                    <label class="mp-label">Prénom <span class="mp-req">*</span></label>
+                    <input type="text" class="mp-input"
+                           [(ngModel)]="form.prenom"
+                           [class.mp-input--error]="touched && !form.prenom" />
+                  </div>
+  
+                  <div class="mp-field">
+                    <label class="mp-label">Nom <span class="mp-req">*</span></label>
+                    <input type="text" class="mp-input"
+                           [(ngModel)]="form.nom"
+                           [class.mp-input--error]="touched && !form.nom" />
+                  </div>
+                </div>
+  
+                <div class="mp-form-row">
+                  <div class="mp-field">
+                    <label class="mp-label">Email <span class="mp-req">*</span></label>
+                    <input type="email" class="mp-input"
+                           [(ngModel)]="form.email"
+                           [class.mp-input--error]="touched && !form.email" />
+                  </div>
+  
+                  <div class="mp-field">
+                    <label class="mp-label">Téléphone</label>
+                    <input type="tel" class="mp-input"
+                           [(ngModel)]="form.telephone" />
+                  </div>
+                </div>
+  
+                <div class="mp-field">
+                  <label class="mp-label">Adresse</label>
+                  <input type="text" class="mp-input"
+                         [(ngModel)]="form.adresse" />
+                </div>
+              </div>
+            </section>
+    
+            <!-- ── Accès système ──────────────────────────────────────── -->
+            <section class="mp-card">
+              <div class="mp-card-head">
+                <h3><span class="mp-card-icon">🔐</span> Accès système</h3>
+              </div>
+  
+              <div class="mp-card-body">
+                <div class="mp-form-row">
+                  <div class="mp-field">
+                    <label class="mp-label">Nom d'utilisateur</label>
+                    <input type="text" class="mp-input mp-input--readonly"
+                           [(ngModel)]="form.username" readonly />
+                  </div>
+  
+                  <div class="mp-field">
+                    <label class="mp-label">Nouveau mot de passe</label>
+                    <div class="mp-input-eye">
+                      <input [type]="showPassword ? 'text' : 'password'"
+                             class="mp-input"
+                             [(ngModel)]="form.motDePasse" />
+                      <button type="button" (click)="showPassword = !showPassword">
+                        {{ showPassword ? '🙈' : '👁️' }}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+    
+            <!-- ── Informations professionnelles ─────────────────────── -->
+            <section class="mp-card">
+              <div class="mp-card-head">
+                <h3><span class="mp-card-icon">💼</span> Informations professionnelles</h3>
+              </div>
+  
+              <div class="mp-card-body">
+                <div class="mp-form-row">
+                  <div class="mp-field">
+                    <label class="mp-label">Spécialité</label>
+                    <input type="text" class="mp-input"
+                           [(ngModel)]="form.specialite" />
+                  </div>
+  
+                  <div class="mp-field">
+                    <label class="mp-label">N° Carte professionnelle</label>
+                    <input type="text" class="mp-input"
+                           [(ngModel)]="form.numeroCartePro" />
+                  </div>
+                </div>
+              </div>
+            </section>
+    
+          </div>
+    
+          <!-- ══ COL DROITE ══ -->
+          <div class="mp-col-side">
+    
+            <div class="mp-form-error" *ngIf="formError">
+              ⚠️ {{ formError }}
+            </div>
+    
+            <div class="mp-actions">
+              <button class="mp-btn mp-btn--ghost" (click)="fermerPopup()">
+                Annuler
+              </button>
+  
+              <button class="mp-btn mp-btn--primary" (click)="soumettre()">
+                💾 Enregistrer
+              </button>
+            </div>
+    
+            <!-- Récap -->
+            <section class="mp-card">
+              <h3>📋 Récapitulatif</h3>
+              <p>{{ form.username }}</p>
+              <p>{{ form.email }}</p>
+            </section>
+    
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>

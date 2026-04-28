@@ -55,9 +55,9 @@ public class KeycloakUserService {
             if (usernameExists(username)) {
                 throw new RuntimeException("Nom d'utilisateur déjà existant dans Keycloak");
             }
-            if (emailExists(email)) {
-                throw new RuntimeException("Email déjà existant dans Keycloak");
-            }
+        //    if (emailExists(email)) {
+          //      throw new RuntimeException("Email déjà existant dans Keycloak");
+            //}
 
             UserRepresentation user = new UserRepresentation();
             user.setUsername(username);

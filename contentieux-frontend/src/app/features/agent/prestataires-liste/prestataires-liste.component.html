@@ -1,0 +1,185 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- AGENT — LISTE DES PRESTATAIRES                                   -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="pl-page">
+
+    <!-- ── Header ─────────────────────────────────────────────────── -->
+    <div class="pl-header">
+      <div class="pl-header-text">
+        <div class="pl-header-top">
+          <span class="pl-tag">PRESTATAIRES</span>
+        </div>
+        <h1 class="pl-title">Mes Prestataires</h1>
+        <p class="pl-subtitle">Gérez vos avocats, experts et huissiers</p>
+      </div>
+      <button class="pl-add-btn" (click)="naviguerVersCreation()">
+        <span>+</span> Nouveau prestataire
+      </button>
+    </div>
+  
+    <!-- ── Alertes ─────────────────────────────────────────────────── -->
+    <div class="pl-alert pl-alert--success" *ngIf="successMsg">
+      <span>✅</span> {{ successMsg }}
+    </div>
+    <div class="pl-alert pl-alert--error" *ngIf="errorMsg">
+      <span>⚠️</span> {{ errorMsg }}
+    </div>
+  
+    <!-- ── Filtres & Recherche ─────────────────────────────────────── -->
+    <div class="pl-toolbar">
+      <div class="pl-search-box">
+        <span class="pl-search-icon">🔍</span>
+        <input type="text" [(ngModel)]="search"
+               (ngModelChange)="appliquerFiltres()"
+               placeholder="Rechercher par nom, email, username…" />
+        <button class="pl-search-clear" *ngIf="search" (click)="search=''; appliquerFiltres()">✕</button>
+      </div>
+      <div class="pl-filters">
+        <button class="pl-filter-btn" [class.active]="filtreType === null"
+                (click)="filtrerParType(null)">
+          Tous ({{ prestataires.length }})
+        </button>
+        <button class="pl-filter-btn" *ngFor="let t of typeOptions"
+                [class.active]="filtreType === t.value"
+                (click)="filtrerParType(t.value)">
+          {{ t.emoji }} {{ t.label }} ({{ countParType(t.value) }})
+        </button>
+        <button class="pl-filter-btn pl-filter-btn--actif"
+                [class.active]="filtreActif === true"
+                (click)="filtrerParActif(filtreActif === true ? null : true)">
+          ✅ Actifs
+        </button>
+        <button class="pl-filter-btn pl-filter-btn--inactif"
+                [class.active]="filtreActif === false"
+                (click)="filtrerParActif(filtreActif === false ? null : false)">
+          ⛔ Inactifs
+        </button>
+      </div>
+    </div>
+  
+    <!-- ── Loading ─────────────────────────────────────────────────── -->
+    <div class="pl-loading" *ngIf="loading">
+      <div class="pl-spinner"></div>
+      <p>Chargement des prestataires…</p>
+    </div>
+  
+    <!-- ── Vide ───────────────────────────────────────────────────── -->
+    <div class="pl-empty" *ngIf="!loading && prestataires.length === 0">
+      <span class="pl-empty-icon">👤</span>
+      <h3>Aucun prestataire</h3>
+      <p>Commencez par créer votre premier prestataire.</p>
+      <button class="pl-add-btn" (click)="naviguerVersCreation()">+ Nouveau prestataire</button>
+    </div>
+  
+    <!-- ── Résultat filtré vide ────────────────────────────────────── -->
+    <div class="pl-empty pl-empty--sm" *ngIf="!loading && prestataires.length > 0 && filtres.length === 0">
+      <span>🔍</span>
+      <p>Aucun résultat pour <strong>"{{ search }}"</strong></p>
+      <button class="pl-btn pl-btn--ghost" (click)="reinitialiserFiltres()">Effacer les filtres</button>
+    </div>
+  
+    <!-- ── Grille prestataires ─────────────────────────────────────── -->
+    <div class="pl-grid" *ngIf="!loading && filtres.length > 0">
+      <div class="pl-card"
+           *ngFor="let p of filtres; trackBy: trackById"
+           [class.pl-card--inactif]="!p.actif">
+  
+        <!-- En-tête carte -->
+        <div class="pl-card-head">
+          <div class="pl-avatar" [class]="'pl-avatar--' + p.type?.toLowerCase()">
+            {{ initiales(p) }}
+          </div>
+          <div class="pl-card-info">
+            <span class="pl-card-nom">{{ p.prenom }} {{ p.nom }}</span>
+            <span class="pl-card-username">{{ '@' + p.username }}</span>
+          </div>
+          <div class="pl-card-badges">
+            <span class="pl-type-badge" [class]="'pl-type--' + p.type?.toLowerCase()">
+              {{ getEmojiType(p.type) }} {{ getLabelType(p.type) }}
+            </span>
+            <span class="pl-actif-badge" [class.actif]="p.actif" [class.inactif]="!p.actif">
+              {{ p.actif ? 'Actif' : 'Inactif' }}
+            </span>
+          </div>
+        </div>
+  
+        <!-- Corps carte -->
+        <div class="pl-card-body">
+          <div class="pl-info-row" *ngIf="p.email">
+            <span class="pl-info-icon">✉</span>
+            <span>{{ p.email }}</span>
+          </div>
+          <div class="pl-info-row" *ngIf="p.telephone">
+            <span class="pl-info-icon">📞</span>
+            <span>{{ p.telephone }}</span>
+          </div>
+          <div class="pl-info-row" *ngIf="p.specialite">
+            <span class="pl-info-icon">💼</span>
+            <span>{{ p.specialite }}</span>
+          </div>
+          <div class="pl-info-row" *ngIf="p.numeroCartePro">
+            <span class="pl-info-icon">🪪</span>
+            <span class="pl-mono">{{ p.numeroCartePro }}</span>
+          </div>
+          <div class="pl-info-row" *ngIf="p.dateDebutCollaboration">
+            <span class="pl-info-icon">📅</span>
+            <span>Depuis le {{ p.dateDebutCollaboration | date:'dd/MM/yyyy' }}</span>
+          </div>
+        </div>
+  
+        <!-- Actions carte -->
+        <div class="pl-card-foot">
+          <button class="pl-icon-btn pl-icon-btn--edit" (click)="naviguerVersModification(p.id)" title="Modifier">
+            ✏️ Modifier
+          </button>
+          <button class="pl-icon-btn"
+                  [class.pl-icon-btn--toggle-off]="p.actif"
+                  [class.pl-icon-btn--toggle-on]="!p.actif"
+                  (click)="toggleActif(p)"
+                  [disabled]="togglingId === p.id"
+                  title="{{ p.actif ? 'Désactiver' : 'Activer' }}">
+            <span class="pl-mini-spin" *ngIf="togglingId === p.id"></span>
+            {{ togglingId === p.id ? '…' : (p.actif ? '⛔ Désactiver' : '✅ Activer') }}
+          </button>
+          <button class="pl-icon-btn pl-icon-btn--del" (click)="confirmerSuppression(p)" title="Supprimer">
+            🗑️
+          </button>
+        </div>
+  
+      </div>
+    </div>
+  
+  </div>
+  
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <!-- MODAL : Confirmation suppression                                  -->
+  <!-- ═══════════════════════════════════════════════════════════════ -->
+  <div class="pl-modal-overlay" *ngIf="prestataireASupprimer" (click)="annulerSuppression()">
+    <div class="pl-modal" (click)="$event.stopPropagation()">
+      <div class="pl-modal-head pl-modal-head--danger">
+        <h3>🗑️ Supprimer le prestataire</h3>
+        <button class="pl-modal-close" (click)="annulerSuppression()">✕</button>
+      </div>
+      <div class="pl-modal-body">
+        <div class="pl-confirm-avatar" [class]="'pl-avatar--' + prestataireASupprimer.type?.toLowerCase()">
+          {{ initiales(prestataireASupprimer) }}
+        </div>
+        <p class="pl-confirm-msg">
+          Supprimer définitivement
+          <strong>{{ prestataireASupprimer.prenom }} {{ prestataireASupprimer.nom }}</strong>
+          ({{ '@' + prestataireASupprimer.username }}) ?
+          <br>Cette action est <strong>irréversible</strong>.
+        </p>
+      </div>
+      <div class="pl-modal-foot">
+        <button class="pl-btn pl-btn--ghost" (click)="annulerSuppression()" [disabled]="deletingId !== null">
+          Annuler
+        </button>
+        <button class="pl-btn pl-btn--danger" (click)="supprimerPrestataire()" [disabled]="deletingId !== null">
+          <span class="pl-mini-spin pl-mini-spin--white" *ngIf="deletingId !== null"></span>
+          {{ deletingId !== null ? 'Suppression…' : 'Confirmer la suppression' }}
+        </button>
+      </div>
+    </div>
+  </div>

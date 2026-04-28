@@ -1,0 +1,297 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- AGENT — CRÉER UN PRESTATAIRE                                     -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="cp-page">
+
+  <!-- ── Header ─────────────────────────────────────────────────── -->
+  <div class="cp-header">
+    <button class="cp-back-btn" (click)="retour()">←</button>
+    <div class="cp-header-text">
+      <div class="cp-header-top">
+        <span class="cp-tag">NOUVEAU PRESTATAIRE</span>
+      </div>
+      <h1 class="cp-title">Créer un Prestataire</h1>
+      <p class="cp-subtitle">Enregistrez un avocat, expert ou huissier dans le système</p>
+    </div>
+  </div>
+
+  <!-- ── Alertes ─────────────────────────────────────────────────── -->
+  <div class="cp-alert cp-alert--success" *ngIf="successMsg">
+    <span>✅</span> {{ successMsg }}
+    <span class="cp-redirect">Redirection…</span>
+  </div>
+  <div class="cp-alert cp-alert--error" *ngIf="errorMsg">
+    <span>⚠️</span> {{ errorMsg }}
+  </div>
+
+  <!-- ── Corps ───────────────────────────────────────────────────── -->
+  <div class="cp-body">
+
+    <!-- ══ COL PRINCIPALE ══ -->
+    <div class="cp-col-main">
+
+      <!-- ── Sélection du type ──────────────────────────────────── -->
+      <section class="cp-card">
+        <div class="cp-card-head">
+          <h2><span class="cp-card-icon">👤</span> Type de prestataire</h2>
+          <span class="cp-req-hint"><span class="cp-req">*</span> Obligatoire</span>
+        </div>
+        <div class="cp-card-body">
+          <div class="cp-type-grid">
+            <div class="cp-type-card"
+                 *ngFor="let t of typeOptions"
+                 [class.selected]="form.typePrestataire === t.value"
+                 (click)="selectionnerType(t.value)">
+              <span class="cp-type-emoji">{{ t.emoji }}</span>
+              <span class="cp-type-label">{{ t.label }}</span>
+              <p class="cp-type-desc">{{ t.desc }}</p>
+              <div class="cp-type-check" *ngIf="form.typePrestataire === t.value">✓</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Identité ───────────────────────────────────────────── -->
+      <section class="cp-card">
+        <div class="cp-card-head">
+          <h2><span class="cp-card-icon">🪪</span> Identité</h2>
+        </div>
+        <div class="cp-card-body">
+          <div class="cp-form-row">
+            <div class="cp-field">
+              <label class="cp-label">Prénom <span class="cp-req">*</span></label>
+              <input type="text" class="cp-input" [(ngModel)]="form.prenom"
+                     placeholder="Ex: Ahmed" [class.cp-input--error]="touched && !form.prenom" />
+            </div>
+            <div class="cp-field">
+              <label class="cp-label">Nom <span class="cp-req">*</span></label>
+              <input type="text" class="cp-input" [(ngModel)]="form.nom"
+                     placeholder="Ex: Ben Ali" [class.cp-input--error]="touched && !form.nom" />
+            </div>
+          </div>
+
+          <div class="cp-form-row">
+            <div class="cp-field">
+              <label class="cp-label">Email <span class="cp-req">*</span></label>
+              <input type="email" class="cp-input" [(ngModel)]="form.email"
+                     placeholder="ahmed.benali@cabinet.tn"
+                     [class.cp-input--error]="touched && !form.email" />
+            </div>
+            <div class="cp-field">
+              <label class="cp-label">Téléphone</label>
+              <input type="tel" class="cp-input" [(ngModel)]="form.telephone"
+                     placeholder="+216 XX XXX XXX" />
+            </div>
+          </div>
+
+          <div class="cp-field">
+            <label class="cp-label">Adresse</label>
+            <input type="text" class="cp-input" [(ngModel)]="form.adresse"
+                   placeholder="Ex: 12 Rue de la République, Tunis" />
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Accès système ──────────────────────────────────────── -->
+     <!-- ── Accès système ──────────────────────────────────────────── -->
+<section class="cp-card">
+  <div class="cp-card-head">
+    <h2><span class="cp-card-icon">🔐</span> Accès système (Keycloak)</h2>
+  </div>
+  <div class="cp-card-body">
+    <div class="cp-form-row">
+
+      <div class="cp-field">
+        <label class="cp-label">
+          Nom d'utilisateur <span class="cp-req">*</span>
+        </label>
+        <input type="text" class="cp-input" [(ngModel)]="form.username"
+               placeholder="ahmed.benali"
+               [class.cp-input--error]="touched && !form.username" />
+        <span class="cp-hint">Utilisé pour la connexion — unique dans le système</span>
+      </div>
+
+      <div class="cp-field">
+        <label class="cp-label">
+          Mot de passe
+          <span class="cp-opt">(optionnel)</span>
+        </label>
+        <div class="cp-input-eye">
+          <input [type]="showPassword ? 'text' : 'password'"
+                 class="cp-input cp-input--eye"
+                 [(ngModel)]="form.motDePasse"
+                 placeholder="Laissez vide pour générer automatiquement" />
+          <button class="cp-eye-btn" type="button"
+                  (click)="showPassword = !showPassword">
+            {{ showPassword ? '🙈' : '👁️' }}
+          </button>
+        </div>
+        <!-- ✅ Message mis à jour — explique ce qui se passe -->
+        <span class="cp-hint cp-hint--info">
+          Si vide, un mot de passe sécurisé est généré et envoyé 
+          automatiquement par email au prestataire.
+        </span>
+      </div>
+
+    </div>
+
+    <!-- ✅ Bandeau informatif sur l'envoi d'email -->
+    <div class="cp-email-notice">
+      <span class="cp-email-icon">📧</span>
+      <div>
+        <strong>Envoi automatique des identifiants</strong>
+        <p>
+          Le nom d'utilisateur et le mot de passe seront envoyés 
+          automatiquement à <strong>{{ form.email || 'l\'adresse email renseignée' }}</strong>
+          après la création du compte.
+        </p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+      <!-- ── Informations professionnelles ─────────────────────── -->
+      <section class="cp-card">
+        <div class="cp-card-head">
+          <h2><span class="cp-card-icon">💼</span> Informations professionnelles</h2>
+        </div>
+        <div class="cp-card-body">
+          <div class="cp-form-row">
+            <div class="cp-field">
+              <label class="cp-label">Spécialité</label>
+              <input type="text" class="cp-input" [(ngModel)]="form.specialite"
+                     [placeholder]="specialitePlaceholder()" />
+            </div>
+            <div class="cp-field">
+              <label class="cp-label">N° Carte professionnelle</label>
+              <input type="text" class="cp-input" [(ngModel)]="form.numeroCartePro"
+                     placeholder="Ex: AV-2024-1234" />
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <!-- ══ COL DROITE ══ -->
+    <div class="cp-col-side">
+
+      <!-- ── Récapitulatif ──────────────────────────────────────── -->
+      <section class="cp-card cp-card--recap">
+        <div class="cp-card-head">
+          <h2><span class="cp-card-icon">📋</span> Récapitulatif</h2>
+        </div>
+        <div class="cp-card-body">
+
+          <!-- Avatar preview -->
+          <div class="cp-preview-avatar"
+          [class]="'cp-preview-avatar--' + (form.typePrestataire ? form.typePrestataire.toLowerCase() : 'default')">
+            
+               <span class="cp-preview-initiales">{{ initiales() }}</span>
+            <span class="cp-preview-type" *ngIf="form.typePrestataire">
+              {{ getLabelType(form.typePrestataire) }}
+            </span>
+          </div>
+
+          <div class="cp-recap-rows">
+            <div class="cp-recap-row" *ngIf="form.prenom || form.nom">
+              <span class="cp-rkey">Nom complet</span>
+              <span class="cp-rval">{{ form.prenom }} {{ form.nom }}</span>
+            </div>
+            <div class="cp-recap-row" *ngIf="form.username">
+              <span class="cp-rkey">Username</span>
+              <span class="cp-rval cp-mono">{{ form.username }}</span>
+            </div>
+            <div class="cp-recap-row" *ngIf="form.email">
+              <span class="cp-rkey">Email</span>
+              <span class="cp-rval">{{ form.email }}</span>
+            </div>
+            <div class="cp-recap-row" *ngIf="form.telephone">
+              <span class="cp-rkey">Téléphone</span>
+              <span class="cp-rval">{{ form.telephone }}</span>
+            </div>
+            <div class="cp-recap-row" *ngIf="form.specialite">
+              <span class="cp-rkey">Spécialité</span>
+              <span class="cp-rval">{{ form.specialite }}</span>
+            </div>
+            <div class="cp-recap-row" *ngIf="form.numeroCartePro">
+              <span class="cp-rkey">N° Carte pro</span>
+              <span class="cp-rval cp-mono">{{ form.numeroCartePro }}</span>
+            </div>
+          </div>
+
+          <!-- Checklist -->
+          <div class="cp-checklist">
+            <div class="cp-check-item" [class.ok]="!!form.typePrestataire">
+              <span>{{ form.typePrestataire ? '✅' : '⭕' }}</span>
+              Type sélectionné
+            </div>
+            <div class="cp-check-item" [class.ok]="!!form.prenom">
+              <span>{{ form.prenom ? '✅' : '⭕' }}</span>
+              Prénom renseigné
+            </div>
+            <div class="cp-check-item" [class.ok]="!!form.nom">
+              <span>{{ form.nom ? '✅' : '⭕' }}</span>
+              Nom renseigné
+            </div>
+            <div class="cp-check-item" [class.ok]="!!form.email">
+              <span>{{ form.email ? '✅' : '⭕' }}</span>
+              Email renseigné
+            </div>
+            <div class="cp-check-item" [class.ok]="!!form.username">
+              <span>{{ form.username ? '✅' : '⭕' }}</span>
+              Username renseigné
+            </div>
+          </div>
+
+          <!-- Barre de progression -->
+          <div class="cp-progress">
+            <div class="cp-progress-bar">
+              <div class="cp-progress-fill" [style.width.%]="progression()"></div>
+            </div>
+            <span class="cp-progress-label">{{ progression() }}% complété</span>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── Erreur formulaire ───────────────────────────────────── -->
+      <div class="cp-form-error" *ngIf="formError">
+        <span>⚠️</span> {{ formError }}
+      </div>
+
+      <!-- ── Actions ────────────────────────────────────────────── -->
+      <div class="cp-actions">
+        <button class="cp-btn cp-btn--ghost" (click)="reinitialiser()" [disabled]="submitting">
+          🔄 Réinitialiser
+        </button>
+        <button class="cp-btn cp-btn--primary" (click)="soumettre()" [disabled]="submitting">
+          <span class="cp-spin" *ngIf="submitting"></span>
+          {{ submitting ? 'Création en cours…' : '✅ Créer le prestataire' }}
+        </button>
+      </div>
+
+      <!-- ── Info ───────────────────────────────────────────────── -->
+      <section class="cp-card cp-card--info">
+        <div class="cp-card-head">
+          <h2><span class="cp-card-icon">ℹ️</span> Informations</h2>
+        </div>
+        <div class="cp-card-body">
+          <ul class="cp-info-list">
+            <li>Un compte <strong>Keycloak</strong> sera créé automatiquement.</li>
+            <!-- ✅ Message mis à jour -->
+            <li>
+              Le <strong>username</strong> et le <strong>mot de passe</strong> 
+              seront envoyés par email au prestataire.
+            </li>
+            <li>Le prestataire sera associé à <strong>votre agence</strong>.</li>
+            <li>Le mot de passe peut être changé à la première connexion.</li>
+          </ul>
+        </div>
+      </section>
+
+    </div>
+  </div>
+</div>

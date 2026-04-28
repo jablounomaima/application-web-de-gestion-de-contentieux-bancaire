@@ -5,9 +5,12 @@ import com.example.contentieux_security.dto.PrestataireCreationRequest;
 import com.example.contentieux_security.dto.PrestataireDTO;
 import com.example.contentieux_security.entity.AgentBancaire;
 import com.example.contentieux_security.entity.Prestataire;
+import com.example.contentieux_security.entity.Utilisateur;
 import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.repository.AgentBancaireRepository;
 import com.example.contentieux_security.repository.PrestataireRepository;
+import com.example.contentieux_security.repository.UtilisateurRepository;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,7 +26,9 @@ public class PrestataireService {
     private final PrestataireRepository prestataireRepository;
     private final AgentBancaireRepository agentRepository;
     private final KeycloakUserService keycloakUserService;
-    
+    private final UtilisateurRepository utilisateurRepository; // ✅ injecter
+    private final EmailService emailService; // ✅ injecter
+
     // ════════════════════════════════════════
     // ✅ CRÉATION
     // ════════════════════════════════════════
@@ -31,19 +36,22 @@ public class PrestataireService {
     @Transactional
     public Prestataire creerPrestataire(PrestataireCreationRequest request, String agentUsername) {
 
+        // 1. Vérifications unicité
         if (prestataireRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("Username déjà utilisé");
         }
+        //  if (prestataireRepository.existsByEmail(request.getEmail())) {
+          //  throw new RuntimeException("Email déjà utilisé");
+        //}
 
-        if (prestataireRepository.existsByEmail(request.getEmail())) {
-            throw new RuntimeException("Email déjà utilisé");
-        }
-
+        // 2. ✅ Génération automatique du mot de passe
+        //    Si l'agent en fournit un → on l'utilise
+        //    Sinon → on génère automatiquement
         String motDePasse = (request.getMotDePasse() != null && !request.getMotDePasse().isBlank())
                 ? request.getMotDePasse()
                 : genererMotDePasseTemporaire();
 
-        // 🔹 Keycloak
+        // 3. Créer le compte dans Keycloak
         keycloakUserService.createUser(
                 request.getUsername(),
                 request.getEmail(),
@@ -53,18 +61,20 @@ public class PrestataireService {
                 request.getTypePrestataire().toKeycloakRole()
         );
 
-        try {
-            keycloakUserService.sendVerificationEmail(request.getUsername());
-        } catch (Exception e) {
-            System.out.println("Email non envoyé: " + e.getMessage());
-        }
+        // 4. ✅ Envoyer username + mot de passe par email au prestataire
+        //    Le prestataire reçoit ses credentials directement dans sa boîte mail
+        emailService.envoyerCredentiels(
+                request.getEmail(),   // destinataire
+                request.getUsername(), // username
+                motDePasse            // mot de passe généré ou fourni
+        );
 
-        // 🔹 Agent
+        // 5. Récupérer l'agent responsable
         AgentBancaire agent = agentRepository.findByUsername(agentUsername)
                 .stream().findFirst()
                 .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
 
-        // 🔹 Save DB
+        // 6. Sauvegarder en base de données
         Prestataire prestataire = Prestataire.builder()
                 .username(request.getUsername())
                 .prenom(request.getPrenom())
@@ -85,6 +95,8 @@ public class PrestataireService {
 
         return prestataireRepository.save(prestataire);
     }
+
+
 
     public Prestataire createPrestataire(PrestataireCreationRequest request, String agentUsername) {
         return creerPrestataire(request, agentUsername);
@@ -123,22 +135,32 @@ public class PrestataireService {
 
     @Transactional
     public Prestataire updatePrestataire(Long id, PrestataireCreationRequest request, String agentUsername) {
-
+    
+        // 1. Récupérer le prestataire en DB
         Prestataire p = findById(id);
-
+    
+        // 2. Vérifier que c'est bien l'agent responsable qui fait la modification
         if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
             throw new RuntimeException("Accès refusé");
         }
-
-        // Keycloak update
+    
+        // 3. Mettre à jour les infos de base dans Keycloak (nom, prénom, email)
+        //    Le mot de passe N'est PAS géré ici — c'est fait séparément en étape 4
         keycloakUserService.updateUser(
-                p.getUsername(),
-                request.getEmail(),
-                request.getPrenom(),
-                request.getNom()
+            p.getUsername(),
+            request.getEmail(),
+            request.getPrenom(),
+            request.getNom()
         );
-
-        // DB update
+    
+        // 4. ✅ CORRECTION — Changer le mot de passe dans Keycloak si fourni
+        //    Sans ce bloc, le motDePasse envoyé par Angular était complètement ignoré
+        //    On vérifie null ET isBlank() pour éviter de changer avec une valeur vide
+        if (request.getMotDePasse() != null && !request.getMotDePasse().isBlank()) {
+            keycloakUserService.changeUserPassword(p.getUsername(), request.getMotDePasse());
+        }
+    
+        // 5. Mettre à jour les infos dans la base de données locale
         p.setPrenom(request.getPrenom());
         p.setNom(request.getNom());
         p.setEmail(request.getEmail());
@@ -148,10 +170,11 @@ public class PrestataireService {
         p.setNumeroCartePro(request.getNumeroCartePro());
         p.setNiveauValidation(request.getNiveauValidation());
         p.setPlafondValidation(request.getPlafondValidation());
-
+    
+        // 6. Sauvegarder et retourner le prestataire mis à jour
         return prestataireRepository.save(p);
     }
-
+   
     // ════════════════════════════════════════
     // ✅ ACTIF / INACTIF
     // ════════════════════════════════════════
@@ -178,16 +201,21 @@ public class PrestataireService {
     // ════════════════════════════════════════
 
     @Transactional
-    public void supprimerPrestataire(Long id, String agentUsername) {
-
+    public boolean supprimerPrestataire(Long id, String agentUsername) {
+    
         Prestataire p = findById(id);
-
+    
         if (!p.getAgentResponsable().getUsername().equals(agentUsername)) {
             throw new RuntimeException("Accès refusé");
         }
-
+    
+        // ✅ Supprime dans Keycloak (= supprime le login)
         keycloakUserService.deleteUser(p.getUsername());
+    
+        // ✅ Supprime dans la DB
         prestataireRepository.delete(p);
+    
+        return true;
     }
 
     // ════════════════════════════════════════
@@ -219,18 +247,6 @@ public class PrestataireService {
     }
 
 
-    public boolean deletePrestataire(Long id, String username) {
-        Prestataire prestataire = prestataireRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé"));
 
-        // (optionnel) vérification utilisateur
-        if (!prestataire.getAgentResponsable().getUsername().equals(username)) {
-            throw new RuntimeException("Accès refusé");
-        }
 
-        prestataireRepository.delete(prestataire);
-        return true;
-    }
-
-    
 }

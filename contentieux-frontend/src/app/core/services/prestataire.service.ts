@@ -6,6 +6,7 @@ import { environment } from '../../../environments/environment';
 @Injectable({ providedIn: 'root' })
 export class PrestataireService {
   private api = `${environment.apiUrl}/prestataire`;
+  private agentApi = `${environment.apiUrl}/agent`;
 
   constructor(private http: HttpClient) {}
 
@@ -31,5 +32,12 @@ export class PrestataireService {
 
   soumettreFacture(missionId: number, data: any): Observable<any> {
     return this.http.post(`${this.api}/missions/${missionId}/facture`, data);
+  }
+
+  creerPrestataire(request: any): Observable<{ message: string; prestataire: any }> {
+    return this.http.post<{ message: string; prestataire: any }>(
+      `${this.agentApi}/prestataires`,
+      request
+    );
   }
 }

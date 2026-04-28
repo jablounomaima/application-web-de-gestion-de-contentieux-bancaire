@@ -256,7 +256,8 @@ public ResponseEntity<?> updateClient(@PathVariable Long id, @RequestBody Client
     @DeleteMapping("/prestataires/{id}")
     public ResponseEntity<?> deletePrestataire(@PathVariable("id") Long id, Principal principal) {
         try {
-            boolean deleted = prestataireService.deletePrestataire(id, principal.getName());
+            // ✅ Appeler supprimerPrestataire() et non deletePrestataire()
+            boolean deleted = prestataireService.supprimerPrestataire(id, principal.getName());
             if (deleted) return ResponseEntity.ok(Map.of("message", "Prestataire supprimé avec succès !"));
             return ResponseEntity.badRequest().body(Map.of("error", "Impossible de supprimer ce prestataire."));
         } catch (Exception e) {

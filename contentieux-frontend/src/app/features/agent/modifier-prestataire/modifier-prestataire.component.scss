@@ -1,0 +1,270 @@
+/* ================= OVERLAY ================= */
+.mp-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+  }
+  
+  /* ================= POPUP ================= */
+  .mp-popup-container {
+    position: relative;
+    width: 90%;
+    max-width: 1100px;
+    max-height: 90vh;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow-y: auto;
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    animation: slideUp 0.3s ease-out;
+  }
+  
+  /* ================= CLOSE BUTTON ================= */
+  .mp-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: 1px solid #ddd;
+    background: white;
+    cursor: pointer;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+  }
+  
+  .mp-close-btn:hover {
+    background: #f3f4f6;
+    transform: scale(1.05);
+  }
+  
+  /* ================= HEADER ================= */
+  .mp-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px;
+  }
+  
+  .mp-header-text {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  
+  .mp-title {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+  
+  .mp-subtitle {
+    color: #6b7280;
+    font-size: 14px;
+  }
+  
+  /* Avatar */
+  .mp-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    background: #3b82f6;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+  }
+  
+  /* ================= BODY ================= */
+  .mp-body {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+  }
+  
+  /* Colonnes */
+  .mp-col-main {
+    flex: 2;
+    min-width: 0;
+  }
+  
+  .mp-col-side {
+    flex: 1;
+    min-width: 260px;
+  }
+  
+  /* ================= CARD ================= */
+  .mp-card {
+    background: #fff;
+    border-radius: 10px;
+    padding: 15px;
+    margin-bottom: 15px;
+    border: 1px solid #eee;
+  }
+  
+  .mp-card-head h3 {
+    margin: 0 0 10px 0;
+    font-size: 16px;
+  }
+  
+  /* ================= FORM ================= */
+  .mp-form-row {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  
+  .mp-field {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  .mp-label {
+    font-size: 13px;
+    margin-bottom: 4px;
+    font-weight: 500;
+  }
+  
+  .mp-input {
+    padding: 8px 10px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    transition: border 0.2s;
+  }
+  
+  .mp-input:focus {
+    outline: none;
+    border-color: #3b82f6;
+  }
+  
+  /* Input erreur */
+  .mp-input--error {
+    border-color: red;
+  }
+  
+  /* ================= PASSWORD EYE ================= */
+  .mp-input-eye {
+    display: flex;
+    align-items: center;
+  }
+  
+  .mp-input-eye input {
+    flex: 1;
+  }
+  
+  .mp-eye-btn {
+    margin-left: 5px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 16px;
+  }
+  
+  /* ================= ALERTS ================= */
+  .mp-alert {
+    margin: 10px 20px;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 14px;
+  }
+  
+  .mp-alert--success {
+    background: #ecfdf5;
+    color: #065f46;
+  }
+  
+  .mp-alert--error {
+    background: #fef2f2;
+    color: #991b1b;
+  }
+  
+  /* ================= ACTIONS ================= */
+  .mp-actions {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 15px;
+  }
+  
+  .mp-btn {
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-weight: 500;
+  }
+  
+  .mp-btn--ghost {
+    background: #f3f4f6;
+  }
+  
+  .mp-btn--primary {
+    background: #3b82f6;
+    color: white;
+  }
+  
+  .mp-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  
+  /* ================= RECAP ================= */
+  .mp-recap-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 14px;
+    margin-bottom: 6px;
+  }
+  
+  .mp-rkey {
+    color: #6b7280;
+  }
+  
+  .mp-rval {
+    font-weight: 500;
+  }
+  
+  /* ================= INFO ================= */
+  .mp-info-list {
+    padding-left: 18px;
+    font-size: 14px;
+  }
+  
+  /* ================= ANIMATIONS ================= */
+  @keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  
+  @keyframes slideUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  /* ================= RESPONSIVE ================= */
+  @media (max-width: 900px) {
+    .mp-body {
+      flex-direction: column;
+    }
+  
+    .mp-col-side {
+      width: 100%;
+    }
+  }
