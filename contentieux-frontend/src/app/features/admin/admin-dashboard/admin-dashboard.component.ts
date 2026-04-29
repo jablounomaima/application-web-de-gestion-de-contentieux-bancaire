@@ -123,7 +123,7 @@ export class AdminDashboardComponent implements OnInit {
         nom: item.nom,
         prenom: item.prenom,
         username: item.username || '',
-        password: '',
+        
         email: item.email,
         matricule: item.matricule,
         telephone: item.telephone,
@@ -148,7 +148,7 @@ export class AdminDashboardComponent implements OnInit {
         nom: item.nom,
         prenom: item.prenom,
         username: item.username || '',  // ← ajouter
-        password: '',                   // ← vide en édition
+                          // ← vide en édition
         email: item.email,
         matricule: item.matricule,
         telephone: item.telephone || '',
@@ -169,32 +169,48 @@ export class AdminDashboardComponent implements OnInit {
   // ─── Agent CRUD ────────────────────────────────────────────────────────────
 
   submitAgent() {
-    if (!this.agentForm.nom?.trim() ||
-      !this.agentForm.prenom?.trim() ||
-      !this.agentForm.email?.trim() ||
-      !this.agentForm.matricule?.trim() ||
-      !this.agentForm.username?.trim() ||
-      !this.agentForm.agenceId) {
-      this.showToast('Veuillez remplir tous les champs obligatoires de l’agent', true);
+    // ✅ Validation — password supprimé
+    if (!this.agentForm.nom?.trim()      ||
+        !this.agentForm.prenom?.trim()   ||
+        !this.agentForm.email?.trim()    ||
+        !this.agentForm.matricule?.trim()||
+        !this.agentForm.username?.trim() ||
+        !this.agentForm.agenceId) {
+      this.showToast('Veuillez remplir tous les champs obligatoires', true);
       return;
     }
-
-    if (this.modalMode === 'create' && !this.agentForm.password?.trim()) {
-      this.showToast('Le mot de passe initial est obligatoire à la création', true);
+  
+    // ✅ Vérification email basique
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.agentForm.email)) {
+      this.showToast('Email invalide', true);
       return;
     }
-
+  
+    // ✅ Plus de vérification password — généré automatiquement
     this.agentForm.role = 'AGENT';
     this.submitting = true;
+  
     const op$ = this.modalMode === 'create'
       ? this.adminService.createAgent(this.agentForm)
       : this.adminService.updateAgent(this.editingId!, this.agentForm);
-
+  
     op$.subscribe({
-      next: (res) => { this.showToast(res.message || 'Succès'); this.closeModal(); this.chargerDonnees(); },
-      error: (err) => { this.showToast(err.error?.error || 'Erreur', true); this.submitting = false; }
+      next: (res) => {
+        // ✅ Message mentionne l'envoi d'email
+        const msg = this.modalMode === 'create'
+          ? `Agent créé ! Les identifiants ont été envoyés à ${this.agentForm.email}`
+          : (res.message || 'Agent mis à jour');
+        this.showToast(msg);
+        this.closeModal();
+        this.chargerDonnees();
+      },
+      error: (err) => {
+        this.showToast(err.error?.error || 'Erreur', true);
+        this.submitting = false;
+      }
     });
   }
+  
 
   toggleAgent(id: number) {
     this.adminService.toggleAgentStatus(id).subscribe({
@@ -203,16 +219,23 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
 
-  supprimerAgent(id: number) {
+  supprimerAgent(id: number): void {
     this.confirmDialog = {
       visible: true,
       title: 'Supprimer l\'agent',
-      message: 'Cette action est irréversible. Confirmer la suppression ?',
+      message: 'Cette action est irréversible. L\'agent ne pourra plus se connecter.',
       onConfirm: () => {
         this.confirmDialog.visible = false;
+  
         this.adminService.deleteAgent(id).subscribe({
-          next: (res) => { this.showToast(res.message || 'Agent supprimé'); this.chargerDonnees(); },
-          error: () => this.showToast('Erreur lors de la suppression', true)
+          next: () => {
+            // ✅ Retirer immédiatement de la liste locale
+            this.agents = this.agents.filter(a => a.id !== id);
+            this.showToast('Agent supprimé avec succès');
+          },
+          error: (err) => {
+            this.showToast(err.error?.error || 'Erreur lors de la suppression', true);
+          }
         });
       }
     };
@@ -248,33 +271,50 @@ export class AdminDashboardComponent implements OnInit {
   }
 
   // ─── Validateur CRUD ───────────────────────────────────────────────────────
+submitValidateur() {
 
-  submitValidateur() {
-    if (!this.validateurForm.nom?.trim() ||
-      !this.validateurForm.prenom?.trim() ||
-      !this.validateurForm.username?.trim() ||
-      !this.validateurForm.email?.trim() ||
-      !this.validateurForm.matricule?.trim() ||
-      !this.validateurForm.agenceId) {
+ 
+    // ✅ Validation — password supprimé
+    if (!this.validateurForm.nom?.trim()      ||
+        !this.validateurForm.prenom?.trim()   ||
+        !this.validateurForm.username?.trim() ||
+        !this.validateurForm.email?.trim()    ||
+        !this.validateurForm.matricule?.trim()||
+        !this.validateurForm.agenceId         ||
+        !this.validateurForm.type) {
       this.showToast('Veuillez remplir tous les champs obligatoires', true);
       return;
     }
-    if (this.modalMode === 'create' && !this.validateurForm.password?.trim()) {
-      this.showToast('Le mot de passe initial est obligatoire à la création', true);
+  
+    // ✅ Vérification email basique
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(this.validateurForm.email)) {
+      this.showToast('Email invalide', true);
       return;
     }
-
-    this.submitting = true;  // ← manquait aussi
+  
+    // ✅ Plus de vérification password — généré automatiquement
+    this.submitting = true;
+  
     const op$ = this.modalMode === 'create'
       ? this.adminService.createValidateur(this.validateurForm)
       : this.adminService.updateValidateur(this.editingId!, this.validateurForm);
-
+  
     op$.subscribe({
-      next: (res) => { this.showToast(res.message || 'Succès'); this.closeModal(); this.chargerDonnees(); },
-      error: (err) => { this.showToast(err.error?.error || 'Erreur', true); this.submitting = false; }
+      next: (res) => {
+        // ✅ Message mentionne l'envoi d'email
+        const msg = this.modalMode === 'create'
+          ? `Validateur créé ! Les identifiants ont été envoyés à ${this.validateurForm.email}`
+          : (res.message || 'Validateur mis à jour');
+        this.showToast(msg);
+        this.closeModal();
+        this.chargerDonnees();
+      },
+      error: (err) => {
+        this.showToast(err.error?.error || 'Erreur', true);
+        this.submitting = false;
+      }
     });
   }
-
   toggleValidateur(id: number) {
     this.adminService.toggleValidateurStatus(id).subscribe({
       next: (res) => { this.showToast(res.message || 'Statut modifié'); this.chargerDonnees(); },
@@ -309,7 +349,7 @@ export class AdminDashboardComponent implements OnInit {
       nom: '',
       prenom: '',
       username: '',
-      password: '',
+     
       email: '',
       matricule: '',
       telephone: '',
@@ -326,7 +366,7 @@ export class AdminDashboardComponent implements OnInit {
 
   private emptyValidateur(): ValidateurCreationRequest {
     return {
-      nom: '', prenom: '', username: '', password: '',
+      nom: '', prenom: '', username: '',
       email: '', matricule: '', telephone: '',
       type: 'VALIDATEUR_JURIDIQUE', agenceId: 0
     };

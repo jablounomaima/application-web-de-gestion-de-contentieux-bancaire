@@ -14,10 +14,13 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import com.example.contentieux_security.entity.Mission;
 import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.repository.MissionRepository;
+
+
 
 import java.time.LocalDateTime;
 @Service
@@ -28,18 +31,21 @@ public class AgentBancaireService {
     private final PasswordEncoder         passwordEncoder;
     private final KeycloakUserService     keycloakUserService;
     private final MissionRepository missionRepository;
+    private final EmailService emailService; // ✅ injecter
 
     public AgentBancaireService(AgentBancaireRepository agentRepository,
                                 AgenceRepository agenceRepository,
                                 PasswordEncoder passwordEncoder,
                                 KeycloakUserService keycloakUserService,
-                                MissionRepository missionRepository) {
+                                MissionRepository missionRepository,
+                                EmailService emailService) {
         this.agentRepository    = agentRepository;
         this.agenceRepository   = agenceRepository;
         this.passwordEncoder    = passwordEncoder;
         this.keycloakUserService = keycloakUserService;
         this.missionRepository = missionRepository;
-    }
+        this.emailService=emailService;
+    } 
 
     // ── Recherche par username ────────────────────────────────────
 
@@ -91,46 +97,46 @@ public class AgentBancaireService {
 
     @Transactional
     public AgentBancaireDTO createAgent(AgentCreationRequest request) {
+    
+        // 1. Validations — password RETIRÉ des validations obligatoires
+        if (request.getUsername() == null || request.getUsername().isBlank())
+            throw new RuntimeException("Nom d'utilisateur obligatoire");
+        if (request.getEmail() == null || request.getEmail().isBlank())
+            throw new RuntimeException("Email obligatoire");
         if (agentRepository.existsByUsername(request.getUsername()))
             throw new RuntimeException("Nom d'utilisateur déjà existant");
-        if (request.getEmail() == null || request.getEmail().isBlank()) {
-            throw new RuntimeException("Email obligatoire");
-        }
-        if (request.getPassword() == null || request.getPassword().isBlank()) {
-            throw new RuntimeException("Mot de passe obligatoire");
-        }
-        if (request.getUsername() == null || request.getUsername().isBlank()) {
-            throw new RuntimeException("Nom d'utilisateur obligatoire");
-        }
-
+    
+        // 2. ✅ Génération OBLIGATOIRE — jamais fourni par le formulaire
+        String motDePasse = genererMotDePasse();
+    
+        // 3. Agence
         Agence agence = agenceRepository.findById(request.getAgenceId())
                 .orElseThrow(() -> new RuntimeException("Agence non trouvée"));
-
-        // ✅ Créer d'abord dans Keycloak (si ça échoue, on n'a pas pollué la base)
+    
+        // 4. Keycloak
         try {
             keycloakUserService.createUser(
                     request.getUsername(),
                     request.getEmail(),
                     request.getNom(),
                     request.getPrenom(),
-                    request.getPassword(),
+                    motDePasse,
                     "AGENT"
             );
-            System.out.println("✅ Keycloak: Utilisateur créé - " + request.getUsername());
         } catch (Exception e) {
-            System.err.println("❌ Keycloak: Échec création - " + e.getMessage());
-            String lower = (e.getMessage() == null ? "" : e.getMessage().toLowerCase());
-            if (lower.contains("déjà existant") || lower.contains("already exists") || lower.contains("[409]") || lower.contains("conflit")) {
-                throw new RuntimeException("Utilisateur déjà existant dans Keycloak (username ou email). Choisissez un autre username/email.");
+            String msg = e.getMessage() == null ? "" : e.getMessage().toLowerCase();
+            if (msg.contains("déjà existant") || msg.contains("already exists")
+                    || msg.contains("[409]") || msg.contains("conflit")) {
+                throw new RuntimeException("Username ou email déjà utilisé dans Keycloak.");
             }
-            throw new RuntimeException("Erreur création Keycloak: " + e.getMessage(), e);
+            throw new RuntimeException("Erreur Keycloak: " + e.getMessage(), e);
         }
-
-        // ✅ Puis créer dans la base
+    
+        // 5. Base de données
         try {
             AgentBancaire agent = new AgentBancaire();
             agent.setUsername(request.getUsername());
-            agent.setPassword(passwordEncoder.encode(request.getPassword()));
+            agent.setPassword(passwordEncoder.encode(motDePasse));
             agent.setNom(request.getNom());
             agent.setPrenom(request.getPrenom());
             agent.setEmail(request.getEmail());
@@ -140,24 +146,31 @@ public class AgentBancaireService {
             agent.setDateEmbauche(request.getDateEmbauche());
             agent.setAgence(agence);
             agent.setActif(true);
-
+    
             AgentBancaire saved = agentRepository.save(agent);
-            System.out.println("✅ Base de données: Agent créé - ID: " + saved.getId());
+    
+            // 6. ✅ Email OBLIGATOIRE — lancé après sauvegarde réussie
+            emailService.envoyerCredentiels(
+                    request.getEmail(),
+                    request.getUsername(),
+                    motDePasse
+            );
+    
             return convertToDTO(saved);
-            
+    
         } catch (Exception e) {
-            // ⚠️ Compensation: supprimer de Keycloak si la base échoue
-            System.err.println("❌ Base de données: Échec création - " + e.getMessage());
-            System.err.println("⚠️ Compensation: Suppression Keycloak...");
-            try {
-                keycloakUserService.deleteUser(request.getUsername());
-                System.out.println("✅ Compensation: Utilisateur Keycloak supprimé");
-            } catch (Exception deleteEx) {
-                System.err.println("❌ Compensation échouée: " + deleteEx.getMessage());
-            }
-            throw new RuntimeException("Erreur création base de données: " + e.getMessage(), e);
+            // Compensation Keycloak
+            try { keycloakUserService.deleteUser(request.getUsername()); }
+            catch (Exception ex) { System.err.println("❌ Compensation échouée: " + ex.getMessage()); }
+            throw new RuntimeException("Erreur base de données: " + e.getMessage(), e);
         }
     }
+    
+    // ✅ Génération sécurisée — format: Agent@XXXXXX
+    private String genererMotDePasse() {
+        return "Agent@" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+    }
+
 
     @Transactional
     public AgentBancaireDTO updateAgent(Long id, AgentCreationRequest request) {
@@ -180,10 +193,35 @@ public class AgentBancaireService {
     public void deleteAgent(Long id) {
         AgentBancaire agent = agentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
-        keycloakUserService.deleteUser(agent.getUsername());
-        agentRepository.deleteById(id);
+    
+        String username = agent.getUsername();
+    
+        // 1. ✅ Supprimer dans Keycloak EN PREMIER
+        //    Si Keycloak échoue → on arrête, rien n'est supprimé en DB
+        try {
+            keycloakUserService.deleteUser(username);
+            System.out.println("✅ Keycloak: Agent supprimé — " + username);
+        } catch (Exception e) {
+            throw new RuntimeException(
+                "Erreur suppression Keycloak: " + e.getMessage());
+        }
+    
+        // 2. ✅ Supprimer en base de données
+        try {
+            agentRepository.deleteById(id);
+            System.out.println("✅ DB: Agent supprimé — id=" + id);
+        } catch (Exception e) {
+            // ⚠️ Compensation — recréer dans Keycloak si la DB échoue ?
+            // Difficile à compenser — logger l'incohérence
+            System.err.println("❌ DB: Échec suppression agent id=" + id
+                + " — Keycloak déjà supprimé ! Incohérence possible.");
+            throw new RuntimeException(
+                "Erreur suppression base de données: " + e.getMessage());
+        }
     }
-
+    
+    
+    
     @Transactional
     public void toggleAgentStatus(Long id) {
         AgentBancaire agent = agentRepository.findById(id)

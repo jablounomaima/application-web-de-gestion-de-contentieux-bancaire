@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import com.example.contentieux_security.dto.ValidateurDTO.*;
 
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -24,7 +25,7 @@ public class ValidateurService {
     private final KeycloakUserService  keycloakUserService;
     private final ValidateurRepository validateurRepository;
     private final AgenceRepository     agenceRepository;
-
+    private final EmailService emailService;
     // ── Lecture ───────────────────────────────────────────
 
     @Transactional(readOnly = true)
@@ -57,68 +58,84 @@ public class ValidateurService {
      *   VALIDATEUR_JURIDIQUE → ROLE_VALIDATEUR_JURIDIQUE
      */
    
+    @Transactional
     public Validateur creerValidateur(ValidateurCreationRequest request) {
-
-        // Validations
+    
+        // 1. Validations — password RETIRÉ
         if (request.getMatricule() == null || request.getMatricule().isBlank())
             throw new IllegalArgumentException("Matricule obligatoire");
-
         if (validateurRepository.existsByMatricule(request.getMatricule()))
             throw new IllegalArgumentException("Matricule déjà utilisé");
-
         if (validateurRepository.existsByEmail(request.getEmail()))
-            throw new IllegalArgumentException("Email déjà utilisé");
-
-        // ✅ Déterminer le rôle Keycloak selon le type de validateur
+           throw new IllegalArgumentException("Email déjà utilisé");
+    
+        // 2. ✅ Génération OBLIGATOIRE
+        String motDePasse = genererMotDePasse();
+    
+        // 3. Rôle Keycloak
         String roleKeycloak = switch (request.getType()) {
             case VALIDATEUR_FINANCIER -> "VALIDATEUR_FINANCIER";
             case VALIDATEUR_JURIDIQUE -> "VALIDATEUR_JURIDIQUE";
         };
-
-        System.out.println("=== Création validateur Keycloak : "
-                + request.getUsername() + " → rôle : " + roleKeycloak);
-
-        // ✅ Créer l'utilisateur dans Keycloak avec le bon rôle
+    
+        // 4. Keycloak
         try {
             keycloakUserService.createUser(
-                request.getUsername(),
-                request.getEmail(),
-                request.getNom(),        // ✔️ firstName
-                request.getPrenom(),     // ✔️ lastName
-                request.getPassword(),   // ✔️ password
-                roleKeycloak
+                    request.getUsername(),
+                    request.getEmail(),
+                    request.getNom(),
+                    request.getPrenom(),
+                    motDePasse,
+                    roleKeycloak
             );
-            System.out.println("=== Utilisateur Keycloak créé ✅ : "
-                    + request.getUsername());
         } catch (Exception e) {
-            System.err.println("=== ERREUR Keycloak : " + e.getMessage());
-            throw new RuntimeException(
-                    "Erreur lors de la création dans Keycloak : "
-                    + e.getMessage());
+            throw new RuntimeException("Erreur Keycloak: " + e.getMessage());
         }
-
-        // ✅ Créer l'entité en base
+    
+        // 5. Base de données
         Agence agence = agenceRepository.findById(request.getAgenceId())
                 .orElseThrow(() -> new IllegalArgumentException(
-                        "Agence introuvable : " + request.getAgenceId()));
-
-        Validateur v = new Validateur();
-        v.setMatricule(request.getMatricule());
-        v.setUsername(request.getUsername());
-        v.setNom(request.getNom());
-        v.setPrenom(request.getPrenom());
-        v.setEmail(request.getEmail());
-        v.setTelephone(request.getTelephone());
-        v.setTypeValidateur(request.getType());
-        v.setAgence(agence);
-        v.setActif(true);
-
-        Validateur saved = validateurRepository.save(v);
-        System.out.println("=== Validateur sauvegardé en base ✅ id="
-                + saved.getId());
-        return saved;
+                        "Agence introuvable: " + request.getAgenceId()));
+    
+        try {
+            Validateur v = new Validateur();
+            v.setMatricule(request.getMatricule());
+            v.setUsername(request.getUsername());
+            v.setNom(request.getNom());
+            v.setPrenom(request.getPrenom());
+            v.setEmail(request.getEmail());
+            v.setTelephone(request.getTelephone());
+            v.setTypeValidateur(request.getType());
+            v.setAgence(agence);
+            v.setActif(true);
+    
+            Validateur saved = validateurRepository.save(v);
+    
+            // 6. ✅ Email OBLIGATOIRE
+          emailService.envoyerCredentiels(
+                    request.getEmail(),
+                  request.getUsername(),
+                    motDePasse
+         
+         
+               );
+    
+            return saved;
+    
+        } catch (Exception e) {
+            // Compensation Keycloak
+            try { keycloakUserService.deleteUser(request.getUsername()); }
+            catch (Exception ex) { System.err.println("❌ Compensation échouée: " + ex.getMessage()); }
+            throw new RuntimeException("Erreur base de données: " + e.getMessage(), e);
+        }
     }
+    
 
+
+    // ✅ Génération sécurisée — format: Valid@XXXXXX
+    private String genererMotDePasse() {
+        return "Valid@" + UUID.randomUUID().toString().substring(0, 6).toUpperCase();
+    }
     // ── Mise à jour ───────────────────────────────────────
 
     public ValidateurDTO update(Long id, ValidateurDTO dto) {
@@ -136,14 +153,20 @@ public class ValidateurService {
 
     // ── Suppression ───────────────────────────────────────
 
+    @Transactional
     public void delete(Long id) {
-        Validateur v = findOrThrow(id);
-        // ✅ Supprimer aussi dans Keycloak
+        Validateur validateur = validateurRepository.findById(id)
+            .orElseThrow(() -> new IllegalArgumentException("Validateur introuvable: " + id));
+        
+        // Supprimer dans Keycloak
         try {
-            keycloakUserService.deleteUser(v.getUsername());
+            keycloakUserService.deleteUser(validateur.getUsername());
         } catch (Exception e) {
-            System.err.println("=== WARN Keycloak delete : " + e.getMessage());
+            System.err.println("⚠️ Suppression Keycloak échouée: " + e.getMessage());
+            // On continue quand même pour supprimer en base
         }
+    
+        // Supprimer en base
         validateurRepository.deleteById(id);
     }
 

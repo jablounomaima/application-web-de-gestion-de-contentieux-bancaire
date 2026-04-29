@@ -24,7 +24,6 @@ public class ValidateurCreationRequest {
 
     private String telephone;
 
-    private String password;
     private String matricule;
 
     // ✅ TypeValidateur — séparé de TypePrestataire

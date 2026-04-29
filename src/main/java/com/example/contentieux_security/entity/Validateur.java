@@ -31,7 +31,7 @@ public class Validateur {
     @Column(nullable = false)
     private String prenom;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false) //(unique = true)
     private String email;
 
     private String telephone;

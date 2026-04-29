@@ -277,6 +277,9 @@
 <!-- ════════════════════════════════════════════════════ -->
 <!-- MODAL AGENT                                          -->
 <!-- ════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════ -->
+<!-- MODAL AGENT                                          -->
+<!-- ════════════════════════════════════════════════════ -->
 <div class="modal-overlay" *ngIf="modalVisible === 'agent'" (click)="closeModal()">
     <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header">
@@ -294,10 +297,12 @@
                     <input type="text" [(ngModel)]="agentForm.nom" placeholder="Nom">
                 </div>
             </div>
+
             <div class="form-group">
                 <label>Email *</label>
                 <input type="email" [(ngModel)]="agentForm.email" placeholder="email@banque.tn">
             </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Nom d'utilisateur *</label>
@@ -308,6 +313,7 @@
                     <input type="date" [(ngModel)]="agentForm.dateEmbauche">
                 </div>
             </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Matricule *</label>
@@ -318,10 +324,7 @@
                     <input type="text" [(ngModel)]="agentForm.telephone" placeholder="+216 XX XXX XXX">
                 </div>
             </div>
-            <div class="form-group" *ngIf="modalMode === 'create'">
-                <label>Mot de passe initial *</label>
-                <input type="password" [(ngModel)]="agentForm.password" placeholder="Minimum 8 caractères">
-            </div>
+
             <div class="form-group">
                 <label>Agence d'affectation *</label>
                 <select [(ngModel)]="agentForm.agenceId">
@@ -329,6 +332,20 @@
                     <option *ngFor="let a of agences" [ngValue]="a.id">{{ a.nom }} ({{ a.code }})</option>
                 </select>
             </div>
+
+            <!-- ✅ Bandeau email — visible uniquement en mode création -->
+            <div class="email-notice" *ngIf="modalMode === 'create'">
+                <span>📧</span>
+                <div>
+                    <strong>Identifiants générés automatiquement</strong>
+                    <p>
+                        Un mot de passe sécurisé sera généré et envoyé avec le 
+                        nom d'utilisateur à
+                        <strong>{{ agentForm.email || 'l\'adresse email renseignée' }}</strong>.
+                    </p>
+                </div>
+            </div>
+
             <div class="modal-footer">
                 <button class="btn-cancel" (click)="closeModal()">Annuler</button>
                 <button class="btn-submit" (click)="submitAgent()" [disabled]="submitting">
@@ -338,7 +355,6 @@
         </div>
     </div>
 </div>
-
 <!-- ════════════════════════════════════════════════════ -->
 <!-- MODAL AGENCE                                         -->
 <!-- ════════════════════════════════════════════════════ -->
@@ -381,6 +397,9 @@
 <!-- ════════════════════════════════════════════════════ -->
 <!-- MODAL VALIDATEUR                                     -->
 <!-- ════════════════════════════════════════════════════ -->
+<!-- ════════════════════════════════════════════════════ -->
+<!-- MODAL VALIDATEUR                                     -->
+<!-- ════════════════════════════════════════════════════ -->
 <div class="modal-overlay" *ngIf="modalVisible === 'validateur'" (click)="closeModal()">
     <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header">
@@ -398,31 +417,30 @@
                     <input type="text" [(ngModel)]="validateurForm.nom" placeholder="Nom">
                 </div>
             </div>
+
             <div class="form-group">
                 <label>Email *</label>
                 <input type="email" [(ngModel)]="validateurForm.email" placeholder="email@banque.tn">
             </div>
+
             <div class="form-row">
                 <div class="form-group">
                     <label>Nom d'utilisateur *</label>
-                    <input type="text" [(ngModel)]="validateurForm.username" placeholder="Ex: valid.juridique.01">
+                    <input type="text" [(ngModel)]="validateurForm.username" 
+                           placeholder="Ex: valid.juridique.01">
                 </div>
-                <div class="form-group" *ngIf="modalMode === 'create'">
-                    <label>Mot de passe initial *</label>
-                    <input type="password" [(ngModel)]="validateurForm.password" placeholder="Minimum 8 caractères">
-                </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
                     <label>Matricule *</label>
                     <input type="text" [(ngModel)]="validateurForm.matricule" placeholder="MAT-0001">
                 </div>
+            </div>
+
+            <div class="form-row">
                 <div class="form-group">
                     <label>Téléphone</label>
-                    <input type="text" [(ngModel)]="validateurForm.telephone" placeholder="+216 XX XXX XXX">
+                    <input type="text" [(ngModel)]="validateurForm.telephone" 
+                           placeholder="+216 XX XXX XXX">
                 </div>
-            </div>
-            <div class="form-row">
                 <div class="form-group">
                     <label>Type *</label>
                     <select [(ngModel)]="validateurForm.type">
@@ -430,14 +448,29 @@
                         <option value="VALIDATEUR_FINANCIER">💰 Financier</option>
                     </select>
                 </div>
-                <div class="form-group">
-                    <label>Agence *</label>
-                    <select [(ngModel)]="validateurForm.agenceId">
-                        <option [ngValue]="0" disabled>-- Choisir --</option>
-                        <option *ngFor="let a of agences" [ngValue]="a.id">{{ a.nom }}</option>
-                    </select>
+            </div>
+
+            <div class="form-group">
+                <label>Agence *</label>
+                <select [(ngModel)]="validateurForm.agenceId">
+                    <option [ngValue]="0" disabled>-- Choisir --</option>
+                    <option *ngFor="let a of agences" [ngValue]="a.id">{{ a.nom }}</option>
+                </select>
+            </div>
+
+            <!-- ✅ Bandeau email — visible uniquement en mode création -->
+            <div class="email-notice" *ngIf="modalMode === 'create'">
+                <span>📧</span>
+                <div>
+                    <strong>Identifiants générés automatiquement</strong>
+                    <p>
+                        Un mot de passe sécurisé sera généré et envoyé avec le 
+                        nom d'utilisateur à
+                        <strong>{{ validateurForm.email || 'l\'adresse email renseignée' }}</strong>.
+                    </p>
                 </div>
             </div>
+
             <div class="modal-footer">
                 <button class="btn-cancel" (click)="closeModal()">Annuler</button>
                 <button class="btn-submit" (click)="submitValidateur()" [disabled]="submitting">
@@ -447,7 +480,6 @@
         </div>
     </div>
 </div>
-
 <!-- ════════════════════════════════════════════════════ -->
 <!-- CONFIRM DIALOG                                       -->
 <!-- ════════════════════════════════════════════════════ -->

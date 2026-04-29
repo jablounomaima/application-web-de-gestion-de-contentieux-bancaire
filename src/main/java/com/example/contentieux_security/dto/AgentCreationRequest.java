@@ -8,7 +8,7 @@ public class AgentCreationRequest {
     private String nom;
     private String prenom;
     private String username;
-    private String password;
+    
     private String email;
     private String telephone;
     private String matricule;

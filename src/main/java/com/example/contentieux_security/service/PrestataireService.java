@@ -40,9 +40,9 @@ public class PrestataireService {
         if (prestataireRepository.existsByUsername(request.getUsername())) {
             throw new RuntimeException("Username déjà utilisé");
         }
-        //  if (prestataireRepository.existsByEmail(request.getEmail())) {
-          //  throw new RuntimeException("Email déjà utilisé");
-        //}
+         if (prestataireRepository.existsByEmail(request.getEmail())) {
+            throw new RuntimeException("Email déjà utilisé");
+        }
 
         // 2. ✅ Génération automatique du mot de passe
         //    Si l'agent en fournit un → on l'utilise
