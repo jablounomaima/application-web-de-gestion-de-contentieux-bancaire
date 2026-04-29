@@ -2,6 +2,7 @@ import { Routes } from '@angular/router';
 import { AuthGuard } from './core/auth/auth.guard';
 import { AvocatAudiencesComponent } from './features/avocat/avocat-audiences/avocat-audiences.component';
 import { AvocatJugementComponent } from './features/avocat/avocat-jugement/avocat-jugement.component';
+import { AgentActifGuard } from './core/auth/agent-actif.guard';
 
 export const routes: Routes = [
 
@@ -29,7 +30,7 @@ export const routes: Routes = [
   // ── AGENT ──────────────────────────────────────────
   {
     path: 'agent/dashboard',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard,AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/agent-dashboard/agent-dashboard.component')
@@ -38,7 +39,7 @@ export const routes: Routes = [
 
   {
     path: 'agent/liste',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard,AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/agent-dossiers-liste/agent-dossiers-liste.component')
@@ -62,7 +63,7 @@ export const routes: Routes = [
   // ✅ NOUVEAU — avant la route générique :id
 {
   path: 'agent/dossiers/:id/prestations/lancer',
-  canActivate: [AuthGuard],
+  canActivate: [AuthGuard , AgentActifGuard],
   data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
   loadComponent: () =>
     import('./features/agent/lancer-procedure/lancer-procedure.component')
@@ -108,7 +109,7 @@ export const routes: Routes = [
 
   {
     path: 'agent/dossiers',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard,, AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/agent-dossiers/agent-dossiers.component')
@@ -124,7 +125,7 @@ export const routes: Routes = [
   // AND they must be BEFORE the fallback route
   {
     path: 'agent/dossiers/:id/modifier',    // ← Modifier route (specific)
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/agent-dossier-modifier/agent-dossier-modifier.component')
@@ -132,7 +133,7 @@ export const routes: Routes = [
   },
   {
     path: 'agent/dossiers/:id',             // ← Detail route (generic)
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/agent-dossier-detail/agent-dossier-detail.component')
@@ -170,7 +171,7 @@ export const routes: Routes = [
    // ── Création d'un prestataire ────────────────────────────────
    {
     path: 'agent/prestataires/nouveau',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard , AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/creer-prestataire/creer-prestataire.component').then(
@@ -182,7 +183,7 @@ export const routes: Routes = [
 
   {
     path: 'agent/prestataires/liste',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard ,, AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/prestataires-liste/prestataires-liste.component').then(
@@ -316,8 +317,13 @@ export const routes: Routes = [
 
 
 
-  //--------------------avocat---------
-
+ // ✅ Route compte désactivé — ajouter avant le fallback **
+ {
+  path: 'compte-desactive',
+  loadComponent: () =>
+    import('./core/auth/compte-desactive/compte-desactive.component')
+      .then(m => m.CompteDesactiveComponent)
+},
 
   // ── Fallback ───────────────────────────────────────
   { path: '**', redirectTo: 'login', pathMatch: 'full' }

@@ -226,8 +226,23 @@ public class AgentBancaireService {
     public void toggleAgentStatus(Long id) {
         AgentBancaire agent = agentRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Agent non trouvé"));
-        agent.setActif(!agent.isActif());
+    
+        // ✅ Inverser le statut
+        boolean nouveauStatut = !agent.isActif();
+        agent.setActif(nouveauStatut);
         agentRepository.save(agent);
+    
+        // ✅ Synchroniser avec Keycloak — activer OU désactiver
+        try {
+            keycloakUserService.toggleUserStatus(agent.getUsername(), nouveauStatut);
+            System.out.println("✅ Keycloak: statut mis à jour → "
+                + agent.getUsername() + " = " + nouveauStatut);
+        } catch (Exception e) {
+            // ⚠️ Rollback DB si Keycloak échoue
+            agent.setActif(!nouveauStatut);
+            agentRepository.save(agent);
+            throw new RuntimeException("Erreur Keycloak toggle: " + e.getMessage());
+        }
     }
 
     @Transactional
@@ -274,6 +289,12 @@ public class AgentBancaireService {
         return dto;
     }
 
+    @Transactional
+    // ✅ Méthode à ajouter dans AgentService
+public AgentBancaire findByUsername(String username) {
+    return agentRepository.findByUsername(username)
+            .orElseThrow(() -> new RuntimeException("Agent non trouvé: " + username));
+}
 
 
 

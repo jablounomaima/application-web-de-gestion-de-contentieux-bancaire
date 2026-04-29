@@ -341,5 +341,28 @@ public ResponseEntity<?> updateClient(@PathVariable Long id, @RequestBody Client
     private String getCurrentUsername() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         return auth.getName();
+
     }
+
+
+// ✅ Endpoint appelé par le guard Angular pour vérifier si le compte est actif
+// ✅ Remplacer la méthode getMonProfil() par :
+@GetMapping("/mon-profil")
+public ResponseEntity<?> getMonProfil(Principal principal) {
+    try {
+        // ✅ Utiliser agentService au lieu de agentRepository
+        AgentBancaire agent = agentService.findByUsername(principal.getName());
+
+        return ResponseEntity.ok(Map.of(
+            "username", agent.getUsername(),
+            "nom",      agent.getNom(),
+            "prenom",   agent.getPrenom(),
+            "actif",    agent.isActif()
+        ));
+    } catch (Exception e) {
+        return ResponseEntity.status(403)
+                .body(Map.of("error", "Accès refusé"));
+    }
+}
+
 }

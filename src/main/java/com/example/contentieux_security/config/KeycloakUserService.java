@@ -221,13 +221,21 @@ public class KeycloakUserService {
     // ══════════════════════════════════════════════════════════════
 
     public void toggleUserStatus(String username, boolean enabled) {
-        String userId = getUserId(username);
-        UserRepresentation user = new UserRepresentation();
-        user.setEnabled(enabled);
-        keycloak.realm(realm).users().get(userId).update(user);
-        System.out.println("✅ Statut mis à jour: " + username + " (enabled=" + enabled + ")");
+        try {
+            String userId = getUserId(username);
+    
+            UserRepresentation user = new UserRepresentation();
+            user.setEnabled(enabled); // ✅ true = activer, false = désactiver
+    
+            keycloak.realm(realm).users().get(userId).update(user);
+            System.out.println("✅ Keycloak: " + username 
+                + " → enabled=" + enabled);
+    
+        } catch (Exception e) {
+            throw new RuntimeException(
+                "Erreur Keycloak toggleUserStatus: " + e.getMessage());
+        }
     }
-
     // ══════════════════════════════════════════════════════════════
     //  UTILITAIRE PRIVÉ
     // ══════════════════════════════════════════════════════════════

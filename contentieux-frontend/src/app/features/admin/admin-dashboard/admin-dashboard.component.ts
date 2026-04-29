@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { KeycloakService } from 'keycloak-angular';
 
 import {
   AdminService,
@@ -51,7 +52,7 @@ export class AdminDashboardComponent implements OnInit {
   };
 
   constructor(private adminService: AdminService,
-    private route: ActivatedRoute ) { }
+    private route: ActivatedRoute ,private keycloakService: KeycloakService) { }
 
   ngOnInit() {
     this.route.queryParams.subscribe(params => {
@@ -211,8 +212,13 @@ export class AdminDashboardComponent implements OnInit {
     });
   }
   
-
   toggleAgent(id: number) {
+    // 🔍 LOG TEMPORAIRE — à supprimer après
+    this.keycloakService.getToken().then(token => {
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      console.log('🔍 Roles:', payload.realm_access?.roles);
+    });
+  
     this.adminService.toggleAgentStatus(id).subscribe({
       next: (res) => { this.showToast(res.message || 'Statut modifié'); this.chargerDonnees(); },
       error: () => this.showToast('Erreur', true)
