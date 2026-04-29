@@ -3,6 +3,7 @@ import { AuthGuard } from './core/auth/auth.guard';
 import { AvocatAudiencesComponent } from './features/avocat/avocat-audiences/avocat-audiences.component';
 import { AvocatJugementComponent } from './features/avocat/avocat-jugement/avocat-jugement.component';
 import { AgentActifGuard } from './core/auth/agent-actif.guard';
+import { PrestataireActifGuard } from './core/auth/prestataire-actif.guard';
 
 export const routes: Routes = [
 
@@ -148,7 +149,7 @@ export const routes: Routes = [
   // ── PRESTATAIRE / EXPERT / HUISSIER ────────────────
   {
     path: 'prestataire/dashboard',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard  , PrestataireActifGuard],
     data: { roles: ['ROLE_PRESTATAIRE', 'ROLE_EXPERT', 'ROLE_HUISSIER'] },
     loadComponent: () =>
       import('./features/prestataire/prestataire-dashboard/prestataire-dashboard.component')
@@ -183,7 +184,7 @@ export const routes: Routes = [
 
   {
     path: 'agent/prestataires/liste',
-    canActivate: [AuthGuard ,, AgentActifGuard],
+    canActivate: [AuthGuard , AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>
       import('./features/agent/prestataires-liste/prestataires-liste.component').then(
@@ -324,6 +325,9 @@ export const routes: Routes = [
     import('./core/auth/compte-desactive/compte-desactive.component')
       .then(m => m.CompteDesactiveComponent)
 },
+
+
+
 
   // ── Fallback ───────────────────────────────────────
   { path: '**', redirectTo: 'login', pathMatch: 'full' }

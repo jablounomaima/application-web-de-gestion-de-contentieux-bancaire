@@ -29,6 +29,7 @@ public class PrestataireController {
     private final DossierService         dossierService;
     private final MissionService         missionService;
     private final MissionRepository missionRepository;
+    private final PrestataireService prestataireService;
 
     @Value("${app.upload.dir:uploads/resultats}")
     private String uploadDir;
@@ -162,4 +163,35 @@ public class PrestataireController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fichier.getNomFichierOriginal() + "\"")
                 .body(contenu);
     }
+
+
+
+    
+
+// Endpoint GET pour l'URL "/mon-profil"
+@GetMapping("/mon-profil")
+public ResponseEntity<?> getMonProfil(Principal principal) {
+    // Principal contient les informations de l'utilisateur authentifié
+    
+    try {
+        // Récupérer le prestataire connecté via son nom d'utilisateur
+        // principal.getName() retourne le username de l'utilisateur actuel
+        Prestataire p = prestataireService.findByUsername(principal.getName());
+        
+        // Retourner une réponse HTTP 200 avec les données du profil
+        // Map.of() crée un objet contenant les champs à envoyer au client
+        return ResponseEntity.ok(Map.of(
+            "username", p.getUsername(),   // Nom d'utilisateur
+            "nom",      p.getNom(),        // Nom de famille
+            "prenom",   p.getPrenom(),     // Prénom
+            "actif",    p.isActif()        // Statut actif/inactif
+        ));
+        
+    } catch (Exception e) {
+        // En cas d'erreur (prestataire non trouvé, problème technique)
+        // Retourner une erreur HTTP 403 (Accès refusé)
+        return ResponseEntity.status(403)
+                .body(Map.of("error", "Accès refusé"));
+    }
+}
 }

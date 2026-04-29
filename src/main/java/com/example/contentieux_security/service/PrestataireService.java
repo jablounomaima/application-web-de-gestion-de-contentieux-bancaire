@@ -248,5 +248,21 @@ public class PrestataireService {
 
 
 
+    public Prestataire findByUsername(String username) {
+        // Méthode publique qui retourne un objet Prestataire
+        // Paramètre : username - le nom d'utilisateur du prestataire à rechercher
+        
+        // Appel au repository pour trouver le prestataire par son username
+        // prestataireRepository.findByUsername(username) retourne un Optional<Prestataire>
+        return prestataireRepository.findByUsername(username)
+        
+                // Si le prestataire existe, .get() le retourne
+                // Si le prestataire n'existe pas, on lance une exception
+                .orElseThrow(() -> new RuntimeException("Prestataire non trouvé: " + username));
+                // Crée une nouvelle exception avec un message d'erreur personnalisé
+                // qui indique quel username n'a pas été trouvé
+    }
+
+
 
 }
