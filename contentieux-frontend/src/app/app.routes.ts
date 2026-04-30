@@ -4,6 +4,7 @@ import { AvocatAudiencesComponent } from './features/avocat/avocat-audiences/avo
 import { AvocatJugementComponent } from './features/avocat/avocat-jugement/avocat-jugement.component';
 import { AgentActifGuard } from './core/auth/agent-actif.guard';
 import { PrestataireActifGuard } from './core/auth/prestataire-actif.guard';
+import { ValidateurActifGuard } from './core/auth/validateur-actif.guard';
 
 export const routes: Routes = [
 
@@ -269,7 +270,7 @@ export const routes: Routes = [
   
   {
     path: 'validateur/juridique/dashboard',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard, ValidateurActifGuard],
     data: { roles: ['ROLE_VALIDATEUR_JURIDIQUE'] },
     loadComponent: () =>
       import('./features/validateur-juridique/validateur-juridique-dashboard/validateur-juridique-dashboard.component')
@@ -280,7 +281,7 @@ export const routes: Routes = [
 
   {
     path: 'validateur/juridique/liste',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard ,ValidateurActifGuard],
     data: { roles: ['ROLE_VALIDATEUR_JURIDIQUE'] },
     loadComponent: () =>
       import('./features/validateur-juridique/validateur-juridique-liste/validateur-juridique-liste.component')
@@ -293,7 +294,7 @@ export const routes: Routes = [
   },
   {
     path: 'validateur/financier/dashboard',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard , ValidateurActifGuard],
     data: { roles: ['ROLE_VALIDATEUR_FINANCIER'] },
     loadComponent: () =>
       import('./features/validateur-financier/validateur-financier-dashboard/validateur-financier-dashboard.component')
@@ -303,7 +304,7 @@ export const routes: Routes = [
 
   {
     path: 'validateur/financier/liste',
-    canActivate: [AuthGuard],
+    canActivate: [AuthGuard , ValidateurActifGuard],
     data: { roles: ['ROLE_VALIDATEUR_FINANCIER'] },
     loadComponent: () =>
       import('./features/validateur-financier/validateur-financier-liste/validateur-financier-liste.component')
@@ -315,7 +316,36 @@ export const routes: Routes = [
     pathMatch: 'full'
   },
 
+  //---------mission 
+// app.routes.ts
+{
+  path: 'agent/dossiers/:dossierId/missions/creer',  // ✅ paramètre dossierId
+  canActivate: [AuthGuard, AgentActifGuard],          // ✅ une seule virgule
+  data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
+  loadComponent: () =>
+    import('./features/agent/missions/mission-creer/mission-creer.component')
+      .then(m => m.MissionCreerComponent),
+},
 
+{
+  path: 'prestataire/missions',
+  canActivate: [AuthGuard],
+  data: { roles: ['ROLE_PRESTATAIRE', 'ROLE_EXPERT', 'ROLE_HUISSIER', 'ROLE_AVOCAT'] },
+  loadComponent: () =>
+    import('./features/prestataire/prestataire-missions-liste/prestataire-missions-liste.component')
+      .then(m => m.PrestataireMissionsListeComponent),
+},
+
+
+
+
+//voir detail dossier pour prestataire 
+{
+  path: 'prestataire/mission/:id/dossier',
+  loadComponent: () =>
+    import('./features/prestataire/prestataire-dossier-detail/prestataire-dossier-detail.component')
+      .then(m => m.PrestataireDossierDetailComponent)
+},
 
 
  // ✅ Route compte désactivé — ajouter avant le fallback **

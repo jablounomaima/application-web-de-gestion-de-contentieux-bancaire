@@ -28,8 +28,19 @@ export class MissionService {
   }
 
   creerMission(dossierId: number, missionData: any): Observable<any> {
-    return this.http.post(`${this.apiUrl}/agent/dossiers/${dossierId}/missions`, missionData);
+    return this.http.post(`${this.apiUrl}/agent/dossiers/${dossierId}/missions/creer`, missionData);
+
   }
+
+  // ✅ Ajouter — liste des prestataires de l'agent
+getPrestataires(): Observable<any> {
+  return this.http.get(`${this.apiUrl}/agent/prestataires`);
+}
+
+// ✅ Ajouter — liste des prestations du dossier
+getPrestationsDossier(dossierId: number): Observable<any> {
+  return this.http.get(`${this.apiUrl}/agent/dossiers/${dossierId}/missions`);
+}
 
   // Pour le prestataire (expert, huissier, etc.)
   getDashboardPrestataire(): Observable<any> {

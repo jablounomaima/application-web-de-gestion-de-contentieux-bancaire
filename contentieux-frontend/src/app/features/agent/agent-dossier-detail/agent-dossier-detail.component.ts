@@ -503,4 +503,9 @@ lancerProcedure() {
       this.chargerDossier(currentId);
     }
   }
+
+  creerMission(): void {
+    this.router.navigate(['/agent/dossiers', this.dossier?.id, 'missions', 'creer']);
+
+  }
 }

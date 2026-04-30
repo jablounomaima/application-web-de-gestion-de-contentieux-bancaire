@@ -48,6 +48,9 @@ public class SecurityConfig {
                                 "VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE", "ADMIN")
                         .requestMatchers("/api/prestataire/**").hasAnyRole(
                                 "HUISSIER", "EXPERT", "AVOCAT")
+
+                                .requestMatchers("/api/validateur/mon-profil")
+                                .hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE")       
                         .anyRequest().authenticated())
                 .oauth2ResourceServer(oauth2 -> oauth2
                         .jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter())));

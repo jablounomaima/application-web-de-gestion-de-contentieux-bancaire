@@ -144,12 +144,15 @@ public class AdminController {
     @GetMapping("/validateurs")
     public ResponseEntity<?> listValidateurs() {
         Map<String, Object> response = new HashMap<>();
-        response.put("validateursFinanciers", validateurService.getByTypeAndActif(TypeValidateur.VALIDATEUR_FINANCIER));
-        response.put("validateursJuridiques", validateurService.getByTypeAndActif(TypeValidateur.VALIDATEUR_JURIDIQUE));
+    
+        // ✅ Doit appeler getByType() — pas getByTypeAndActif()
+        response.put("validateursFinanciers",
+            validateurService.getByType(TypeValidateur.VALIDATEUR_FINANCIER));
+        response.put("validateursJuridiques",
+            validateurService.getByType(TypeValidateur.VALIDATEUR_JURIDIQUE));
         response.put("agences", agenceService.getAllAgences());
         return ResponseEntity.ok(response);
     }
-
     @GetMapping("/validateurs/{id}")
     public ResponseEntity<?> getValidateur(@PathVariable Long id) {
         try {
@@ -193,8 +196,11 @@ public class AdminController {
     @PatchMapping("/validateurs/{id}/toggle")
     public ResponseEntity<?> toggleValidateur(@PathVariable Long id) {
         try {
-            validateurService.toggleActif(id);
-            return ResponseEntity.ok(Map.of("message", "Statut du validateur modifié !"));
+            boolean actif = validateurService.toggleActif(id);
+            return ResponseEntity.ok(Map.of(
+                "message", actif ? "Validateur activé !" : "Validateur désactivé !",
+                "actif",   actif
+            ));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

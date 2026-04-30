@@ -1,0 +1,239 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- AGENT — LISTE DES MISSIONS DU DOSSIER                            -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="ml-page">
+
+    <!-- ── Loading ─────────────────────────────────────────────────── -->
+    <div class="ml-loading" *ngIf="loading">
+      <div class="ml-spinner"></div>
+      <p>Chargement des missions…</p>
+    </div>
+  
+    <div *ngIf="!loading">
+  
+      <!-- ── Header ─────────────────────────────────────────────────── -->
+      <div class="ml-header">
+        <button class="ml-back-btn" (click)="retour()">←</button>
+        <div class="ml-header-text">
+          <div class="ml-header-top">
+            <span class="ml-tag">MISSIONS</span>
+            <span class="ml-dossier-ref" *ngIf="dossier">
+              {{ dossier.numeroDossier }}
+            </span>
+          </div>
+          <h1 class="ml-title">Gestion des Missions</h1>
+          <p class="ml-subtitle" *ngIf="dossier">
+            {{ dossier.libelle || 'Dossier contentieux' }}
+          </p>
+        </div>
+        <button class="ml-add-btn" (click)="naviguerVersCreation()">
+          <span>+</span> Nouvelle mission
+        </button>
+      </div>
+  
+      <!-- ── Alertes ─────────────────────────────────────────────────── -->
+      <div class="ml-alert ml-alert--success" *ngIf="successMsg">
+        <span>✅</span> {{ successMsg }}
+      </div>
+      <div class="ml-alert ml-alert--error" *ngIf="errorMsg">
+        <span>⚠️</span> {{ errorMsg }}
+      </div>
+  
+      <!-- ── Stats ───────────────────────────────────────────────────── -->
+      <div class="ml-stats">
+        <div class="ml-stat ml-stat--blue">
+          <span class="ml-stat-val">{{ stats.assignee }}</span>
+          <span class="ml-stat-label">Assignées</span>
+        </div>
+        <div class="ml-stat ml-stat--orange">
+          <span class="ml-stat-val">{{ stats.enCours }}</span>
+          <span class="ml-stat-label">En cours</span>
+        </div>
+        <div class="ml-stat ml-stat--purple">
+          <span class="ml-stat-val">{{ stats.pvSoumis }}</span>
+          <span class="ml-stat-label">PV soumis</span>
+        </div>
+        <div class="ml-stat ml-stat--pink">
+          <span class="ml-stat-val">{{ stats.factureSoumise }}</span>
+          <span class="ml-stat-label">Facture soumise</span>
+        </div>
+        <div class="ml-stat ml-stat--green">
+          <span class="ml-stat-val">{{ stats.terminee }}</span>
+          <span class="ml-stat-label">Terminées</span>
+        </div>
+        <div class="ml-stat ml-stat--red" *ngIf="stats.retard > 0">
+          <span class="ml-stat-val">{{ stats.retard }}</span>
+          <span class="ml-stat-label">En retard ⚠️</span>
+        </div>
+      </div>
+  
+      <!-- ── Filtres ──────────────────────────────────────────────────── -->
+      <div class="ml-toolbar">
+        <div class="ml-search">
+          <span class="ml-search-icon">🔍</span>
+          <input type="text" [(ngModel)]="search"
+                 (ngModelChange)="appliquerFiltres()"
+                 placeholder="Rechercher par prestataire, N° mission…" />
+          <button *ngIf="search" (click)="search=''; appliquerFiltres()" class="ml-clear">✕</button>
+        </div>
+        <div class="ml-filters">
+          <button class="ml-filter-btn" [class.active]="filtreStatut === null"
+                  (click)="filtrerParStatut(null)">
+            Tous ({{ missions.length }})
+          </button>
+          <button class="ml-filter-btn"
+                  *ngFor="let s of statutOptions"
+                  [class.active]="filtreStatut === s.value"
+                  (click)="filtrerParStatut(s.value)">
+            {{ s.label }}
+          </button>
+        </div>
+      </div>
+  
+      <!-- ── Vide ────────────────────────────────────────────────────── -->
+      <div class="ml-empty" *ngIf="missions.length === 0">
+        <span>📋</span>
+        <h3>Aucune mission</h3>
+        <p>Créez la première mission pour ce dossier.</p>
+        <button class="ml-add-btn" (click)="naviguerVersCreation()">+ Nouvelle mission</button>
+      </div>
+  
+      <div class="ml-empty ml-empty--sm"
+           *ngIf="missions.length > 0 && filtrees.length === 0">
+        <span>🔍</span>
+        <p>Aucun résultat pour <strong>"{{ search }}"</strong></p>
+      </div>
+  
+      <!-- ── Table missions ───────────────────────────────────────────── -->
+      <div class="ml-table-wrap" *ngIf="filtrees.length > 0">
+        <table class="ml-table">
+          <thead>
+            <tr>
+              <th>N° Mission</th>
+              <th>Prestataire</th>
+              <th>Description</th>
+              <th>Échéance</th>
+              <th>Statut</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let m of filtrees; trackBy: trackById"
+                [class.ml-row--retard]="isEnRetard(m)">
+              <td>
+                <div class="ml-mission-ref">
+                  <span class="ml-ref-num">{{ m.numeroMission }}</span>
+                  <span class="ml-retard-badge" *ngIf="isEnRetard(m)">⚠️ Retard</span>
+                </div>
+              </td>
+              <td>
+                <div class="ml-prestataire">
+                  <span class="ml-prest-emoji">{{ getEmojiType(typePrestataire(m)) }}</span>
+                  <div>
+                    <span class="ml-prest-nom">{{ nomPrestataire(m) }}</span>
+                    <span class="ml-prest-type">{{ typePrestataire(m) }}</span>
+                  </div>
+                </div>
+              </td>
+              <td>
+                <span class="ml-desc">{{ m.description | slice:0:60 }}{{ m.description?.length > 60 ? '…' : '' }}</span>
+              </td>
+              <td>
+                <span class="ml-date" [class.ml-date--retard]="isEnRetard(m)">
+                  {{ m.dateFinPrevue ? (m.dateFinPrevue | date:'dd/MM/yyyy') : '—' }}
+                </span>
+              </td>
+              <td>
+                <span class="ml-statut-badge" [class]="getStatutClass(m.statut)">
+                  {{ getStatutLabel(m.statut) }}
+                </span>
+              </td>
+              <td>
+                <div class="ml-actions">
+                  <button class="ml-action-btn ml-action-btn--view"
+                          (click)="naviguerVersDetail(m.id)"
+                          title="Voir le détail">
+                    👁️
+                  </button>
+                  <button class="ml-action-btn ml-action-btn--validate"
+                          *ngIf="peutValider(m)"
+                          (click)="ouvrirValidation(m)"
+                          title="Valider">
+                    ✅
+                  </button>
+                  <button class="ml-action-btn ml-action-btn--reject"
+                          *ngIf="peutRejeter(m)"
+                          (click)="ouvrirRejet(m)"
+                          title="Rejeter">
+                    ❌
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+  
+    </div>
+  </div>
+  
+  <!-- ═══ MODAL VALIDATION ═══ -->
+  <div class="ml-overlay" *ngIf="showModalValidation" (click)="showModalValidation=false">
+    <div class="ml-modal" (click)="$event.stopPropagation()">
+      <div class="ml-modal-head ml-modal-head--success">
+        <h3>✅ Valider la mission</h3>
+        <button class="ml-modal-close" (click)="showModalValidation=false">✕</button>
+      </div>
+      <div class="ml-modal-body">
+        <p class="ml-modal-desc">
+          Valider la mission <strong>{{ missionSelectionnee?.numeroMission }}</strong>
+          de <strong>{{ nomPrestataire(missionSelectionnee) }}</strong> ?
+        </p>
+        <div class="ml-field">
+          <label class="ml-label">Commentaire <span class="ml-opt">(optionnel)</span></label>
+          <textarea class="ml-input ml-textarea" [(ngModel)]="commentaireValidation"
+                    rows="3" placeholder="Ajoutez un commentaire…"></textarea>
+        </div>
+      </div>
+      <div class="ml-modal-foot">
+        <button class="ml-btn ml-btn--ghost" (click)="showModalValidation=false" [disabled]="submitting">
+          Annuler
+        </button>
+        <button class="ml-btn ml-btn--success" (click)="validerMission()" [disabled]="submitting">
+          <span class="ml-spin" *ngIf="submitting"></span>
+          {{ submitting ? 'Validation…' : '✅ Confirmer la validation' }}
+        </button>
+      </div>
+    </div>
+  </div>
+  
+  <!-- ═══ MODAL REJET ═══ -->
+  <div class="ml-overlay" *ngIf="showModalRejet" (click)="showModalRejet=false">
+    <div class="ml-modal" (click)="$event.stopPropagation()">
+      <div class="ml-modal-head ml-modal-head--danger">
+        <h3>❌ Rejeter la mission</h3>
+        <button class="ml-modal-close" (click)="showModalRejet=false">✕</button>
+      </div>
+      <div class="ml-modal-body">
+        <p class="ml-modal-desc">
+          Rejeter la mission <strong>{{ missionSelectionnee?.numeroMission }}</strong> ?
+          Le prestataire devra soumettre à nouveau son travail.
+        </p>
+        <div class="ml-field">
+          <label class="ml-label">Motif du rejet <span class="ml-req">*</span></label>
+          <textarea class="ml-input ml-textarea" [(ngModel)]="commentaireRejet"
+                    rows="3" placeholder="Expliquez pourquoi vous rejetez cette mission…"></textarea>
+        </div>
+      </div>
+      <div class="ml-modal-foot">
+        <button class="ml-btn ml-btn--ghost" (click)="showModalRejet=false" [disabled]="submitting">
+          Annuler
+        </button>
+        <button class="ml-btn ml-btn--danger" (click)="rejeterMission()" [disabled]="submitting || !commentaireRejet.trim()">
+          <span class="ml-spin ml-spin--white" *ngIf="submitting"></span>
+          {{ submitting ? 'Rejet…' : '❌ Confirmer le rejet' }}
+        </button>
+      </div>
+    </div>
+  </div>

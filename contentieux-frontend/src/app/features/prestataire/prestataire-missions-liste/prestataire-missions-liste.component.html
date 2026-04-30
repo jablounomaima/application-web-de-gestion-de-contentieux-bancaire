@@ -1,0 +1,243 @@
+<div class="pm-page">
+
+    <!-- ── Loading ──────────────────────────────────────────────── -->
+    <div class="pm-loading" *ngIf="loading">
+      <div class="pm-spinner"></div>
+      <p>Chargement de vos missions…</p>
+    </div>
+  
+    <div *ngIf="!loading">
+  
+      <!-- ── Header ───────────────────────────────────────────────── -->
+      <div class="pm-header">
+        <div>
+          <h1 class="pm-title">Mes Missions</h1>
+          <p class="pm-subtitle">Suivez et gérez les missions qui vous sont assignées</p>
+        </div>
+        <button class="pm-refresh-btn" (click)="charger()">↻ Actualiser</button>
+      </div>
+  
+      <!-- ── Alerte erreur ─────────────────────────────────────────── -->
+      <div class="pm-alert pm-alert--error" *ngIf="errorMsg">
+        ⚠️ {{ errorMsg }}
+      </div>
+  
+      <!-- ── Stats ────────────────────────────────────────────────── -->
+      <div class="pm-stats">
+        <div class="pm-stat-card">
+          <span class="pm-stat-num">{{ stats.total }}</span>
+          <span class="pm-stat-label">Total</span>
+        </div>
+        <div class="pm-stat-card pm-stat-card--amber">
+          <span class="pm-stat-num">{{ stats.assignee }}</span>
+          <span class="pm-stat-label">Assignées</span>
+        </div>
+        <div class="pm-stat-card pm-stat-card--blue">
+          <span class="pm-stat-num">{{ stats.enCours }}</span>
+          <span class="pm-stat-label">En cours</span>
+        </div>
+        <div class="pm-stat-card pm-stat-card--green">
+          <span class="pm-stat-num">{{ stats.terminee }}</span>
+          <span class="pm-stat-label">Terminées</span>
+        </div>
+        <div class="pm-stat-card pm-stat-card--red">
+          <span class="pm-stat-num">{{ stats.rejetee }}</span>
+          <span class="pm-stat-label">Rejetées</span>
+        </div>
+      </div>
+  
+      <!-- ── Filtres ───────────────────────────────────────────────── -->
+      <div class="pm-filtres">
+        <div class="pm-search-wrap">
+          <span class="pm-search-icon">🔍</span>
+          <input class="pm-search"
+                 type="text"
+                 placeholder="Rechercher par numéro, dossier, client…"
+                 [(ngModel)]="filtreRecherche"
+                 (ngModelChange)="appliquerFiltres()" />
+        </div>
+        <div class="pm-statut-tabs">
+          <button class="pm-tab"
+                  *ngFor="let s of STATUTS"
+                  [class.active]="filtreStatut === s.value"
+                  (click)="filtreStatut = s.value; appliquerFiltres()">
+            {{ s.label }}
+          </button>
+        </div>
+      </div>
+  
+      <!-- ── Liste vide ────────────────────────────────────────────── -->
+      <div class="pm-empty" *ngIf="missionsFiltrees.length === 0">
+        <div class="pm-empty-icon">📭</div>
+        <p>Aucune mission {{ filtreStatut !== 'TOUS' ? 'avec ce statut' : '' }}</p>
+        <button class="pm-btn pm-btn--ghost" (click)="filtreStatut = 'TOUS'; filtreRecherche = ''; appliquerFiltres()">
+          Réinitialiser les filtres
+        </button>
+      </div>
+  
+      <!-- ── Cartes missions ───────────────────────────────────────── -->
+      <div class="pm-list" *ngIf="missionsFiltrees.length > 0">
+        <div class="pm-card"
+             *ngFor="let m of missionsFiltrees"
+             [class.pm-card--retard]="isEnRetard(m)"
+             [class.pm-card--rejetee]="m.statut === 'REJETEE'">
+  
+          <!-- En-tête carte -->
+          <div class="pm-card-head">
+            <div class="pm-card-head-left">
+              <span class="pm-mission-num">{{ m.numeroMission }}</span>
+              <span class="pm-retard-badge" *ngIf="isEnRetard(m)">⚠️ En retard</span>
+            </div>
+            <span class="pm-statut-badge"
+                  [style.background]="getStatutConfig(m.statut).bg"
+                  [style.color]="getStatutConfig(m.statut).color">
+              {{ getStatutConfig(m.statut).label }}
+            </span>
+          </div>
+  
+          <!-- Corps carte -->
+          <div class="pm-card-body">
+            <div class="pm-info-grid">
+              <div class="pm-info-item">
+                <span class="pm-info-label">Dossier</span>
+                <span class="pm-info-val">{{ m.prestation?.dossier?.numeroDossier || '—' }}</span>
+              </div>
+              <div class="pm-info-item">
+                <span class="pm-info-label">Client</span>
+                <span class="pm-info-val">
+                  {{ m.prestation?.dossier?.client?.nom || '—' }}
+                  {{ m.prestation?.dossier?.client?.prenom || '' }}
+                </span>
+              </div>
+              <div class="pm-info-item">
+                <span class="pm-info-label">Type prestation</span>
+                <span class="pm-info-val">{{ getTypeLabel(m.prestation?.type) }}</span>
+              </div>
+              <div class="pm-info-item">
+                <span class="pm-info-label">Assignée le</span>
+                <span class="pm-info-val">{{ formatDate(m.dateAssignation) }}</span>
+              </div>
+              <div class="pm-info-item" *ngIf="m.dateFinPrevue">
+                <span class="pm-info-label">Échéance</span>
+                <span class="pm-info-val" [class.pm-retard-text]="isEnRetard(m)">
+                  {{ formatDate(m.dateFinPrevue) }}
+                </span>
+              </div>
+            </div>
+  
+            <!-- Description -->
+            <p class="pm-description" *ngIf="m.description">{{ m.description }}</p>
+  
+            <!-- Commentaire agent si rejetée -->
+            <div class="pm-rejet-box" *ngIf="m.statut === 'REJETEE' && m.commentaireAgent">
+              <span class="pm-rejet-label">Motif de rejet :</span>
+              <span class="pm-rejet-text">{{ m.commentaireAgent }}</span>
+            </div>
+          </div>
+  
+          <!-- Actions carte -->
+          <div class="pm-card-actions">
+            <button class="pm-btn pm-btn--ghost" (click)="voirDetail(m.id)">
+              Voir le détail →
+            </button>
+            <button class="pm-btn pm-btn--primary"
+                    *ngIf="peutSoumettre(m)"
+                    (click)="ouvrirModal(m)">
+              {{ m.statut === 'REJETEE' ? '↩ Resoumettre' : '📤 Soumettre résultat' }}
+            </button>
+            <span class="pm-termine-badge" *ngIf="m.statut === 'TERMINEE'">
+              ✅ Mission terminée
+            </span>
+          </div>
+  
+        </div>
+      </div>
+    </div>
+  
+  </div>
+  
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <!-- MODAL SOUMISSION RÉSULTAT                                      -->
+  <!-- ══════════════════════════════════════════════════════════════ -->
+  <div class="pm-modal-overlay" *ngIf="modalOuverte" (click)="fermerModal()">
+    <div class="pm-modal" (click)="$event.stopPropagation()">
+  
+      <div class="pm-modal-head">
+        <h2>{{ missionSelectionnee?.statut === 'REJETEE' ? '↩ Resoumettre le résultat' : '📤 Soumettre le résultat' }}</h2>
+        <button class="pm-modal-close" (click)="fermerModal()">✕</button>
+      </div>
+  
+      <div class="pm-modal-body">
+  
+        <!-- Infos mission -->
+        <div class="pm-modal-info">
+          <div class="pm-modal-info-row">
+            <span>Mission</span>
+            <strong>{{ missionSelectionnee?.numeroMission }}</strong>
+          </div>
+          <div class="pm-modal-info-row">
+            <span>Dossier</span>
+            <strong>{{ missionSelectionnee?.prestation?.dossier?.numeroDossier || '—' }}</strong>
+          </div>
+          <div class="pm-modal-info-row" *ngIf="missionSelectionnee?.statut === 'REJETEE'">
+            <span>Motif rejet</span>
+            <strong class="pm-rejet-text">{{ missionSelectionnee?.commentaireAgent || '—' }}</strong>
+          </div>
+        </div>
+  
+        <!-- Succès -->
+        <div class="pm-alert pm-alert--success" *ngIf="successMsg">
+          ✅ {{ successMsg }}
+        </div>
+  
+        <!-- Erreur -->
+        <div class="pm-alert pm-alert--error" *ngIf="modalError">
+          ⚠️ {{ modalError }}
+        </div>
+  
+        <!-- Commentaire -->
+        <div class="pm-field">
+          <label class="pm-label">
+            Commentaire / Compte rendu
+            <span class="pm-opt">(optionnel si fichier joint)</span>
+          </label>
+          <textarea class="pm-textarea"
+                    [(ngModel)]="commentaire"
+                    rows="5"
+                    placeholder="Décrivez le travail réalisé, les observations, les conclusions…">
+          </textarea>
+        </div>
+  
+        <!-- Fichiers -->
+        <div class="pm-field">
+          <label class="pm-label">Fichiers joints <span class="pm-opt">(max 20 Mo/fichier)</span></label>
+          <label class="pm-file-zone">
+            <input type="file" multiple (change)="onFichiersChange($event)" style="display:none" />
+            <span class="pm-file-icon">📎</span>
+            <span>Cliquez ou glissez vos fichiers ici</span>
+            <span class="pm-opt">PDF, Word, images…</span>
+          </label>
+          <!-- Liste fichiers sélectionnés -->
+          <div class="pm-fichier-list" *ngIf="fichiers.length > 0">
+            <div class="pm-fichier-row" *ngFor="let f of fichiers; let i = index">
+              <span class="pm-fichier-nom">{{ f.name }}</span>
+              <span class="pm-fichier-taille">{{ formatTaille(f.size) }}</span>
+              <button class="pm-fichier-del" (click)="supprimerFichier(i)">✕</button>
+            </div>
+          </div>
+        </div>
+  
+      </div>
+  
+      <div class="pm-modal-foot">
+        <button class="pm-btn pm-btn--ghost" (click)="fermerModal()" [disabled]="submitting">
+          Annuler
+        </button>
+        <button class="pm-btn pm-btn--primary" (click)="soumettrResultat()" [disabled]="submitting">
+          <span class="pm-spin" *ngIf="submitting"></span>
+          {{ submitting ? 'Envoi…' : '✅ Valider et envoyer' }}
+        </button>
+      </div>
+  
+    </div>
+  </div>

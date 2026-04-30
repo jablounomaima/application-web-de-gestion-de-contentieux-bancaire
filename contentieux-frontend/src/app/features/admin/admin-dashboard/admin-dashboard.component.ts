@@ -323,8 +323,19 @@ submitValidateur() {
   }
   toggleValidateur(id: number) {
     this.adminService.toggleValidateurStatus(id).subscribe({
-      next: (res) => { this.showToast(res.message || 'Statut modifié'); this.chargerDonnees(); },
-      error: () => this.showToast('Erreur', true)
+      next: (res) => {
+        // ✅ Mise à jour locale instantanée sans recharger toute la liste
+        const msg = res.actif ? 'Validateur activé' : 'Validateur désactivé';
+        this.showToast(msg);
+  
+        // ✅ Mettre à jour localement dans les deux listes
+        const updateStatut = (liste: any[]) =>
+          liste.map(v => v.id === id ? { ...v, actif: res.actif } : v);
+  
+        this.validateursJuridiques = updateStatut(this.validateursJuridiques);
+        this.validateursFinanciers = updateStatut(this.validateursFinanciers);
+      },
+      error: () => this.showToast('Erreur toggle validateur', true)
     });
   }
 

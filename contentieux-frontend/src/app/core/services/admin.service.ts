@@ -160,10 +160,11 @@ export class AdminService {
     return this.http.put<ApiMessage>(`${this.api}/validateurs/${id}`, request);
   }
 
-  toggleValidateurStatus(id: number): Observable<ApiMessage> {
-    return this.http.patch<ApiMessage>(`${this.api}/validateurs/${id}/toggle`, {});
+  toggleValidateurStatus(id: number): Observable<ApiMessage & { actif: boolean }> {
+    return this.http.patch<ApiMessage & { actif: boolean }>(
+      `${this.api}/validateurs/${id}/toggle`, {}
+    );
   }
-
   deleteValidateur(id: number): Observable<ApiMessage> {
     return this.http.delete<ApiMessage>(`${this.api}/validateurs/${id}`);
   }

@@ -2,6 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PrestataireService } from '../../../core/services/prestataire.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-prestataire-dashboard',
@@ -66,11 +67,31 @@ import { PrestataireService } from '../../../core/services/prestataire.service';
             </tr>
             <tr *ngFor="let m of missionsFiltrees" class="table-row">
               <td><strong>#{{ m.id }}</strong></td>
-              <td>{{ m.prestation?.dossier?.numeroDossier || 'N/A' }}</td>
+              <td>
+  <div *ngIf="m.prestation?.dossier as d; else noDossier">
+    <strong>{{ d.numeroDossier }}</strong><br>
+
+    <small>👤 {{ d.client?.nom }} {{ d.client?.prenom }}</small><br>
+
+    <small>📄 {{ d.libelle || '—' }}</small><br>
+
+    <small>💰 {{ d.montant || '—' }} TND</small><br>
+
+    <small>📅 {{ d.dateCreation | date:'dd/MM/yyyy' }}</small>
+  </div>
+
+  <ng-template #noDossier>
+    <span>N/A</span>
+  </ng-template>
+</td>
               <td><span class="type-badge">{{ m.prestation?.type || 'N/A' }}</span></td>
               <td>{{ m.dateAssignation | date:'dd/MM/yyyy' }}</td>
               <td><span class="statut-badge" [ngClass]="getStatutClass(m.statut)">{{ m.statut }}</span></td>
               <td class="actions">
+              <button class="btn-action info"
+          (click)="voirDossier(m)">
+    👁️ Voir dossier
+  </button>
                 <button class="btn-action pv" (click)="ouvrirModalPV(m)" *ngIf="peutSoumettrePV(m)">📄 Soumettre PV</button>
                 <button class="btn-action facture" (click)="ouvrirModalFacture(m)" *ngIf="peutSoumettreFacture(m)">💳 Facture</button>
                 <span class="statut-final" *ngIf="!peutSoumettrePV(m) && !peutSoumettreFacture(m)">—</span>
@@ -222,7 +243,7 @@ export class PrestataireDashboardComponent implements OnInit {
   succes = '';
   soumission = false;
 
-  constructor(private prestataireService: PrestataireService) {}
+  constructor(private prestataireService: PrestataireService, private router: Router) {}
 
   ngOnInit() {
     this.prestataireService.getDashboard().subscribe({
@@ -305,5 +326,10 @@ export class PrestataireDashboardComponent implements OnInit {
       error: (err) => { this.erreur = err.error?.error || 'Erreur lors de la soumission.'; this.soumission = false; }
     });
   }
+
+  voirDossier(m: any) {
+    this.router.navigate(['/prestataire/mission', m.id, 'dossier']);
+  }
 }
+
 

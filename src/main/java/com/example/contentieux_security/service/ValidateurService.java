@@ -41,15 +41,15 @@ public class ValidateurService {
     }
 
     @Transactional(readOnly = true)
-    public List<ValidateurDTO> getByTypeAndActif(TypeValidateur type) {
-        return validateurRepository
-                .findByTypeValidateurAndActifTrue(type)
-                .stream()
-                .map(this::toDTO)
-                .collect(Collectors.toList());
-    }
-
-    // ── Création ──────────────────────────────────────────
+   // ✅ Doit exister
+public List<ValidateurDTO> getByType(TypeValidateur type) {
+    return validateurRepository
+            .findByTypeValidateur(type)
+            .stream()
+            .map(this::toDTO)
+            .collect(Collectors.toList());
+}
+//─ Création ──────────────────────────────────────────
 
     /**
      * Crée un validateur en base ET dans Keycloak.
@@ -172,12 +172,29 @@ public class ValidateurService {
 
     // ── Toggle actif ──────────────────────────────────────
 
-    public void toggleActif(Long id) {
+    @Transactional
+    public boolean toggleActif(Long id) {
         Validateur v = findOrThrow(id);
-        v.setActif(!v.isActif());
+    
+        // 1. Inverser le statut
+        boolean nouveauStatut = !v.isActif();
+        v.setActif(nouveauStatut);
         validateurRepository.save(v);
+    
+        // 2. ✅ Synchroniser Keycloak — manquait avant
+        try {
+            keycloakUserService.toggleUserStatus(v.getUsername(), nouveauStatut);
+            System.out.println("✅ Keycloak validateur: "
+                + v.getUsername() + " → enabled=" + nouveauStatut);
+        } catch (Exception e) {
+            // Rollback DB si Keycloak échoue
+            v.setActif(!nouveauStatut);
+            validateurRepository.save(v);
+            throw new RuntimeException("Erreur Keycloak toggle: " + e.getMessage());
+        }
+    
+        return nouveauStatut;
     }
-
     // ── Helpers ───────────────────────────────────────────
 
     private Validateur findOrThrow(Long id) {

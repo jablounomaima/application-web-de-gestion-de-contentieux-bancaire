@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.file.*;
@@ -193,5 +194,90 @@ public ResponseEntity<?> getMonProfil(Principal principal) {
         return ResponseEntity.status(403)
                 .body(Map.of("error", "Accès refusé"));
     }
+}
+
+
+// ─────────────────────────────────────────────────────────────
+// 📄 Détail dossier pour une mission (PRESTATAIRE)
+// ─────────────────────────────────────────────────────────────
+@Transactional
+@GetMapping("/missions/{missionId}/dossier")
+@PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
+public ResponseEntity<?> getDossierMission(@PathVariable Long missionId,
+                                           Authentication auth) {
+
+    Mission mission = missionService.getMissionWithDetails(missionId);
+
+    if (mission.getPrestataire() == null ||
+        !mission.getPrestataire().getUsername().equals(auth.getName())) {
+        return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+    }
+
+    DossierContentieux dossier = mission.getPrestation().getDossier();
+
+    // ── Mission (données simples) ──────────────────────────────
+    Map<String, Object> missionMap = new HashMap<>();
+    missionMap.put("id",             mission.getId());
+    missionMap.put("numeroMission",  mission.getNumeroMission());
+    missionMap.put("statut",         mission.getStatut());
+    missionMap.put("description",    mission.getDescription());
+    missionMap.put("dateFinPrevue",  mission.getDateFinPrevue());
+
+    // ── Client ─────────────────────────────────────────────────
+    Map<String, Object> clientMap = new HashMap<>();
+    if (dossier.getClient() != null) {
+        var c = dossier.getClient();
+        clientMap.put("nom",       c.getNom());
+        clientMap.put("prenom",    c.getPrenom());
+        clientMap.put("email",     c.getEmail());
+        clientMap.put("telephone", c.getTelephone());
+        clientMap.put("adresse",   c.getAdresse());
+    }
+
+    // ── Risques ────────────────────────────────────────────────
+    List<Map<String, Object>> risquesMap = new java.util.ArrayList<>();
+    if (dossier.getRisques() != null) {
+        for (var r : dossier.getRisques()) {
+            // ── Garanties du risque ──
+            List<Map<String, Object>> garantiesMap = new java.util.ArrayList<>();
+            if (r.getGaranties() != null) {
+                for (var g : r.getGaranties()) {
+                    Map<String, Object> gm = new HashMap<>();
+                    gm.put("typeGarantie",  g.getTypeGarantie());
+                    gm.put("valeurEstimee", g.getValeurEstimee());
+                    gm.put("description",   g.getDescription());
+                    gm.put("statut",        g.getStatut());
+                    garantiesMap.add(gm);
+                }
+            }
+        
+            Map<String, Object> rm = new HashMap<>();
+            rm.put("type",          r.getType());
+            rm.put("montant",       r.getMontantInitial());
+            rm.put("montantImpaye", r.getMontantImpaye());
+            rm.put("selectionne",   r.isSelectionne());
+            rm.put("dateEcheance",  r.getDateEcheance());
+            rm.put("description",   r.getDescription());
+            rm.put("garanties",     garantiesMap);  // ← ajouter
+            risquesMap.add(rm);
+        }
+    }
+
+    // ── Dossier ────────────────────────────────────────────────
+    Map<String, Object> dossierMap = new HashMap<>();
+    dossierMap.put("numeroDossier", dossier.getNumeroDossier());
+    dossierMap.put("libelle",       dossier.getLibelle());
+    dossierMap.put("statut",        dossier.getStatut());
+    dossierMap.put("montant",       dossier.calculerSolde());
+    dossierMap.put("dateCreation",  dossier.getDateCreation());
+    dossierMap.put("agenceNom",     dossier.getAgence() != null ? dossier.getAgence().getNom() : null);
+    dossierMap.put("creePar",       dossier.getCreePar());
+    dossierMap.put("client",        clientMap);
+    dossierMap.put("risques",       risquesMap);
+
+    return ResponseEntity.ok(Map.of(
+            "mission", missionMap,
+            "dossier", dossierMap
+    ));
 }
 }

@@ -1,0 +1,226 @@
+<!-- prestataire-dossier-detail.component.html -->
+<div class="dd-page">
+
+    <div class="dd-header">
+      <button class="dd-back" (click)="retour()" title="Retour">←</button>
+      <div class="dd-header-text">
+        <span class="dd-role-badge">PRESTATAIRE — DOSSIER</span>
+        <h1 class="dd-title">{{ dossier?.numeroDossier || 'Chargement…' }}</h1>
+        <p class="dd-subtitle">{{ dossier?.libelle }}</p>
+      </div>
+      <div *ngIf="dossier" class="dd-header-badges">
+        <span class="dd-pill" [ngClass]="statutClass(dossier.statut)">
+          {{ statutLabel(dossier.statut) }}
+        </span>
+      </div>
+    </div>
+  
+    <div *ngIf="chargement" class="dd-loading">
+      <div class="dd-spinner"></div>
+      <p>Chargement du dossier…</p>
+    </div>
+  
+    <div *ngIf="erreur" class="dd-alert dd-alert--error">
+      <span>⚠️</span> {{ erreur }}
+    </div>
+  
+    <div *ngIf="!chargement && dossier" class="dd-body">
+  
+      <div class="dd-metrics">
+        <div class="dd-metric">
+          <span class="dd-metric-icon">💰</span>
+          <div class="dd-metric-body">
+            <span class="dd-metric-val">{{ montantTotal() | number:'1.0-0' }} TND</span>
+            <span class="dd-metric-lbl">Montant total impayé</span>
+          </div>
+        </div>
+        <div class="dd-metric">
+          <span class="dd-metric-icon">💳</span>
+          <div class="dd-metric-body">
+            <span class="dd-metric-val">{{ risques().length }}</span>
+            <span class="dd-metric-lbl">Crédit(s)</span>
+          </div>
+        </div>
+        <div class="dd-metric" *ngIf="mission">
+          <span class="dd-metric-icon">⚖️</span>
+          <div class="dd-metric-body">
+            <span class="dd-pill dd-pill--sm" [ngClass]="missionStatutClass(mission.statut)">
+              {{ mission.statut }}
+            </span>
+            <span class="dd-metric-lbl">Statut mission</span>
+          </div>
+        </div>
+      </div>
+  
+      <div class="dd-grid">
+  
+        <div class="dd-col-left">
+  
+          <div class="dd-card">
+            <div class="dd-card-head"><h2><span>👤</span> Client</h2></div>
+            <div class="dd-card-body">
+              <div class="dd-info-grid">
+                <div class="dd-info-cell dd-info-cell--full">
+                  <span class="dd-info-label">Nom complet</span>
+                  <span class="dd-info-val dd-bold">{{ nomClient() }}</span>
+                </div>
+                <div class="dd-info-cell" *ngIf="dossier.client?.email">
+                  <span class="dd-info-label">Email</span>
+                  <span class="dd-info-val">{{ dossier.client.email }}</span>
+                </div>
+                <div class="dd-info-cell" *ngIf="dossier.client?.telephone">
+                  <span class="dd-info-label">Téléphone</span>
+                  <span class="dd-info-val dd-mono">{{ dossier.client.telephone }}</span>
+                </div>
+                <div class="dd-info-cell dd-info-cell--full" *ngIf="dossier.client?.adresse">
+                  <span class="dd-info-label">Adresse</span>
+                  <span class="dd-info-val">{{ dossier.client.adresse }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <div class="dd-card">
+            <div class="dd-card-head"><h2><span>📁</span> Informations dossier</h2></div>
+            <div class="dd-card-body">
+              <div class="dd-info-grid">
+                <div class="dd-info-cell">
+                  <span class="dd-info-label">Agence</span>
+                  <span class="dd-info-val">{{ dossier.agenceNom || '—' }}</span>
+                </div>
+                <div class="dd-info-cell">
+                  <span class="dd-info-label">Créé par</span>
+                  <span class="dd-info-val">{{ dossier.creePar || '—' }}</span>
+                </div>
+                <div class="dd-info-cell">
+                  <span class="dd-info-label">Date création</span>
+                  <span class="dd-info-val">{{ dossier.dateCreation | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+          <div class="dd-card" *ngIf="mission">
+            <div class="dd-card-head">
+              <h2><span>⚖️</span> Mission</h2>
+              <span class="dd-pill" [ngClass]="missionStatutClass(mission.statut)">
+                {{ mission.statut }}
+              </span>
+            </div>
+            <div class="dd-card-body">
+              <div class="dd-info-grid">
+                <div class="dd-info-cell">
+                  <span class="dd-info-label">N° Mission</span>
+                  <span class="dd-info-val dd-mono">{{ mission.numeroMission }}</span>
+                </div>
+                <div class="dd-info-cell" *ngIf="mission.dateFinPrevue">
+                  <span class="dd-info-label">Échéance</span>
+                  <span class="dd-info-val">{{ mission.dateFinPrevue | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="dd-info-cell dd-info-cell--full" *ngIf="mission.description">
+                  <span class="dd-info-label">Description</span>
+                  <p class="dd-info-text">{{ mission.description }}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+  
+        </div>
+  
+        <div class="dd-col-right">
+  
+          <div class="dd-card">
+            <div class="dd-card-head">
+              <h2><span>💳</span> Crédits & Risques</h2>
+              <span class="dd-count" *ngIf="risques().length">{{ risques().length }}</span>
+            </div>
+            <div class="dd-card-body dd-card-body--noPad">
+  
+              <div *ngIf="risques().length === 0" class="dd-card-empty">
+                <span>💳</span>
+                <p>Aucun crédit enregistré.</p>
+              </div>
+  
+              <div class="dd-risque-list">
+                <div class="dd-risque-item"
+                     *ngFor="let r of risques(); let last = last"
+                     [class.dd-risque-item--last]="last"
+                     [class.dd-risque-item--selected]="r.selectionne">
+  
+                  <div class="dd-risque-head">
+                    <div class="dd-risque-type-badge">
+                      {{ formatRisqueType(r.type) }}
+                    </div>
+                    <span *ngIf="r.selectionne" class="dd-pill dd-pill--sm pill--green">
+                      ✅ Sélectionné
+                    </span>
+                    <span *ngIf="!r.selectionne" class="dd-pill dd-pill--sm pill--grey">
+                      Non sélectionné
+                    </span>
+                  </div>
+  
+                  <div class="dd-risque-montants">
+                    <div class="dd-montant-cell">
+                      <span class="dd-montant-lbl">Montant initial</span>
+                      <span class="dd-montant-val">{{ r.montant | number:'1.0-0' }} TND</span>
+                    </div>
+                    <div class="dd-montant-sep"></div>
+                    <div class="dd-montant-cell">
+                      <span class="dd-montant-lbl">Montant impayé</span>
+                      <span class="dd-montant-val dd-danger">{{ r.montantImpaye | number:'1.0-0' }} TND</span>
+                    </div>
+                    <ng-container *ngIf="r.dateEcheance">
+                      <div class="dd-montant-sep"></div>
+                      <div class="dd-montant-cell">
+                        <span class="dd-montant-lbl">Échéance</span>
+                        <span class="dd-montant-val">{{ r.dateEcheance | date:'dd/MM/yyyy' }}</span>
+                      </div>
+                    </ng-container>
+                  </div>
+                  <!-- après le bloc dd-risque-montants et la description -->
+
+<!-- Garanties -->
+<div *ngIf="r.garanties?.length" class="dd-garanties">
+    <div class="dd-garanties-title">
+      🔒 Garanties ({{ r.garanties.length }})
+    </div>
+    <div class="dd-garantie-row" *ngFor="let g of r.garanties">
+      <div class="dd-garantie-left">
+        <span class="dd-garantie-type">{{ g.typeGarantie }}</span>
+        <span *ngIf="g.description" class="dd-garantie-desc">
+          {{ g.description }}
+        </span>
+      </div>
+      <div class="dd-garantie-right">
+        <span *ngIf="g.valeurEstimee" class="dd-garantie-val">
+          {{ g.valeurEstimee | number:'1.0-0' }} TND
+        </span>
+        <span *ngIf="g.statut" class="dd-pill dd-pill--sm pill--grey">
+          {{ g.statut }}
+        </span>
+      </div>
+    </div>
+  </div>
+  
+  <div *ngIf="!r.garanties?.length" class="dd-no-garantie">
+    Aucune garantie
+  </div>
+  
+                  <p *ngIf="r.description" class="dd-risque-desc">{{ r.description }}</p>
+  
+                </div>
+              </div>
+  
+            </div>
+          </div>
+  
+        </div>
+  
+      </div>
+  
+      <div class="dd-footer">
+        <button class="dd-btn dd-btn--ghost" (click)="retour()">← Retour</button>
+      </div>
+  
+    </div>
+  </div>

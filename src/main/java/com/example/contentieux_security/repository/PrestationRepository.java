@@ -36,4 +36,10 @@ public interface PrestationRepository extends JpaRepository<Prestation, Long> {
 
 
     List<Prestation> findByDossier_IdAndType(Long dossierId, TypePrestation type);
+
+
+    // PrestationRepository.java
+@Query("SELECT p FROM Prestation p WHERE p.dossier.id = :dossierId AND p.type = :type")
+Optional<Prestation> findByDossierIdAndType(@Param("dossierId") Long dossierId,
+                                             @Param("type") TypePrestation type);
 }

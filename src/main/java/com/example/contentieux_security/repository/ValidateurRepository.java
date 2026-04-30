@@ -15,34 +15,29 @@ import java.util.Optional;
 public interface ValidateurRepository extends JpaRepository<Validateur, Long> {
 
     boolean existsByMatricule(String matricule);
-
     boolean existsByEmail(String email);
-
     boolean existsByMatriculeAndIdNot(String matricule, Long id);
-
     boolean existsByEmailAndIdNot(String email, Long id);
 
     Optional<Validateur> findByMatricule(String matricule);
 
+    // ✅ AJOUTER — utilisé par ValidateurProfileController et ValidateurActifGuard
+    Optional<Validateur> findByUsername(String username);
+
     List<Validateur> findByActifTrue();
-
     List<Validateur> findByAgenceId(Long agenceId);
-
     List<Validateur> findByTypeValidateur(TypeValidateur typeValidateur);
-
     List<Validateur> findByTypeValidateurAndActifTrue(TypeValidateur typeValidateur);
+    List<Validateur> findByTypeValidateurAndActifTrueAndAgence_Id(
+        TypeValidateur type, Long agenceId);
 
     @Query("SELECT DISTINCT d FROM DossierContentieux d " +
-       "LEFT JOIN FETCH d.client " +
-       "LEFT JOIN FETCH d.agence " +
-       "LEFT JOIN FETCH d.agentCreateur " +  // ← important
-       "LEFT JOIN FETCH d.risques " +
-       "WHERE d.id = :id")
-Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
+           "LEFT JOIN FETCH d.client " +
+           "LEFT JOIN FETCH d.agence " +
+           "LEFT JOIN FETCH d.agentCreateur " +
+           "LEFT JOIN FETCH d.risques " +
+           "WHERE d.id = :id")
+    Optional<DossierContentieux> findByIdWithDetails(@Param("id") Long id);
 
 
-
-
-List<Validateur> findByTypeValidateurAndActifTrueAndAgence_Id(
-    TypeValidateur type, Long agenceId);
 }

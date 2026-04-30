@@ -1,4 +1,5 @@
 package com.example.contentieux_security.enums;
+import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum TypePrestataire {
 
@@ -33,4 +34,9 @@ public enum TypePrestataire {
     public String toString() {
         return libelle;
     }
+
+    @JsonValue
+public String getName() {
+    return this.name(); // force "AVOCAT" au lieu de "Avocat"
+}
 }

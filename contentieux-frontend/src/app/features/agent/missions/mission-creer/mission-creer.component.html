@@ -1,0 +1,222 @@
+<!-- ═══════════════════════════════════════════════════════════════ -->
+<!-- AGENT — CRÉER UNE MISSION                                        -->
+<!-- ═══════════════════════════════════════════════════════════════ -->
+
+<div class="mc-page">
+
+    <!-- ── Loading ─────────────────────────────────────────────────── -->
+    <div class="mc-loading" *ngIf="loading">
+      <div class="mc-spinner"></div>
+      <p>Chargement…</p>
+    </div>
+  
+    <div *ngIf="!loading">
+  
+      <!-- ── Header ─────────────────────────────────────────────────── -->
+      <div class="mc-header">
+        <button class="mc-back-btn" (click)="retour()">←</button>
+        <div class="mc-header-text">
+          <div class="mc-header-top">
+            <span class="mc-tag">NOUVELLE MISSION</span>
+            <span class="mc-dossier-ref" *ngIf="dossier">{{ dossier.numeroDossier }}</span>
+          </div>
+          <h1 class="mc-title">Créer une Mission</h1>
+          <p class="mc-subtitle">Assignez une mission à un prestataire</p>
+        </div>
+      </div>
+  
+      <!-- ── Alertes ─────────────────────────────────────────────────── -->
+      <div class="mc-alert mc-alert--success" *ngIf="successMsg">
+        <span>✅</span> {{ successMsg }}
+      </div>
+      <div class="mc-alert mc-alert--error" *ngIf="errorMsg">
+        <span>⚠️</span> {{ errorMsg }}
+      </div>
+  
+      <!-- ── Corps ───────────────────────────────────────────────────── -->
+      <div class="mc-body">
+  
+        <!-- ══ COL PRINCIPALE ══ -->
+        <div class="mc-col-main">
+  
+          <!-- ── Étape 1 : Type de prestation ─────────────────────── -->
+          <section class="mc-card">
+            <div class="mc-card-head">
+              <div class="mc-step-num">1</div>
+              <h2>Sélectionner le type de prestation</h2>
+              <span class="mc-req-hint"><span class="mc-req">*</span> Obligatoire</span>
+            </div>
+            <div class="mc-card-body">
+              <div class="mc-presta-grid">
+                <div class="mc-presta-card"
+                     *ngFor="let t of typesPrestation"
+                     [class.selected]="form.typePrestation === t.value"
+                     [class.mc-input--error]="touched && !form.typePrestation"
+                     (click)="selectionnerTypePrestation(t.value)">
+                  <span class="mc-presta-label">{{ t.label }}</span>
+                  <div class="mc-presta-check" *ngIf="form.typePrestation === t.value">✓</div>
+                </div>
+              </div>
+            </div>
+          </section>
+  
+          <!-- ── Étape 2 : Prestataire ─────────────────────────────── -->
+          <section class="mc-card">
+            <div class="mc-card-head">
+              <div class="mc-step-num">2</div>
+              <h2>Choisir le prestataire</h2>
+            </div>
+            <div class="mc-card-body">
+              <div *ngIf="!form.typePrestation" class="mc-empty-inline">
+                ← Sélectionnez d'abord un type de prestation.
+              </div>
+              <div *ngIf="form.typePrestation && prestatairesFiltres.length === 0" class="mc-empty-inline">
+                Aucun prestataire disponible pour ce type de prestation.
+              </div>
+              <div class="mc-prest-list" *ngIf="form.typePrestation && prestatairesFiltres.length > 0">
+                <div class="mc-prest-row"
+                     *ngFor="let p of prestatairesFiltres"
+                     [class.selected]="form.prestataireId === +p.id"
+                     (click)="selectionnerPrestataire(+p.id)">
+                  <div class="mc-prest-avatar" [class]="'mc-avatar--' + p.type?.toLowerCase()">
+                    {{ (p.prenom?.[0] || '') + (p.nom?.[0] || '') }}
+                  </div>
+                  <div class="mc-prest-info">
+                    <span class="mc-prest-nom">{{ nomPrestataire(p) }}</span>
+                    <span class="mc-prest-meta">
+                      {{ getEmojiType(p.type) }} {{ getLabelType(p.type) }}
+                      <span *ngIf="p.specialite"> · {{ p.specialite }}</span>
+                    </span>
+                  </div>
+                  <span class="mc-prest-actif" [class.actif]="p.actif">
+                    {{ p.actif ? '✅ Actif' : '⛔ Inactif' }}
+                  </span>
+                  <div class="mc-prest-check" *ngIf="form.prestataireId === +p.id">✓</div>
+                </div>
+              </div>
+            </div>
+          </section>
+  
+          <!-- ── Étape 3 : Détails ──────────────────────────────────── -->
+          <section class="mc-card">
+            <div class="mc-card-head">
+              <div class="mc-step-num">3</div>
+              <h2>Détails de la mission</h2>
+            </div>
+            <div class="mc-card-body">
+              <div class="mc-field">
+                <label class="mc-label">Description <span class="mc-req">*</span></label>
+                <textarea class="mc-input mc-textarea" [(ngModel)]="form.description"
+                          rows="4" placeholder="Décrivez les diligences attendues du prestataire…"
+                          [class.mc-input--error]="touched && !form.description.trim()"></textarea>
+              </div>
+              <div class="mc-field">
+                <label class="mc-label">Date de fin prévue <span class="mc-opt">(optionnel)</span></label>
+                <input type="date" class="mc-input" [(ngModel)]="form.dateFinPrevue"
+                       [min]="today" />
+              </div>
+            </div>
+          </section>
+  
+        </div>
+  
+        <!-- ══ COL DROITE ══ -->
+        <div class="mc-col-side">
+  
+          <!-- ── Erreur ──────────────────────────────────────────────── -->
+          <div class="mc-form-error" *ngIf="formError">
+            <span>⚠️</span> {{ formError }}
+          </div>
+  
+          <!-- ── Actions ────────────────────────────────────────────── -->
+          <div class="mc-actions">
+            <button class="mc-btn mc-btn--ghost" (click)="retour()" [disabled]="submitting">
+              ← Annuler
+            </button>
+            <button class="mc-btn mc-btn--primary" (click)="soumettre()" [disabled]="submitting">
+              <span class="mc-spin" *ngIf="submitting"></span>
+              {{ submitting ? 'Création…' : '🚀 Créer la mission' }}
+            </button>
+          </div>
+  
+          <!-- ── Récapitulatif ───────────────────────────────────────── -->
+          <section class="mc-card mc-card--recap">
+            <div class="mc-card-head">
+              <div class="mc-step-num mc-step-num--sm">📋</div>
+              <h2>Récapitulatif</h2>
+            </div>
+            <div class="mc-card-body">
+  
+              <!-- Checklist -->
+              <div class="mc-checklist">
+                <div class="mc-check-item" [class.ok]="!!form.typePrestation">
+                  <span>{{ form.typePrestation ? '✅' : '⭕' }}</span>
+                  Type de prestation sélectionné
+                </div>
+                <div class="mc-check-item" [class.ok]="!!form.prestataireId">
+                  <span>{{ form.prestataireId ? '✅' : '⭕' }}</span>
+                  Prestataire choisi
+                </div>
+                <div class="mc-check-item" [class.ok]="!!form.description.trim()">
+                  <span>{{ form.description.trim() ? '✅' : '⭕' }}</span>
+                  Description renseignée
+                </div>
+              </div>
+  
+              <!-- Progress -->
+              <div class="mc-progress">
+                <div class="mc-progress-bar">
+                  <div class="mc-progress-fill" [style.width.%]="progression()"></div>
+                </div>
+                <span class="mc-progress-label">{{ progression() }}% complété</span>
+              </div>
+  
+              <!-- Aperçu type prestation -->
+              <div class="mc-recap-section" *ngIf="form.typePrestation">
+                <span class="mc-recap-label">Prestation</span>
+                <span class="mc-recap-val">{{ getLabelTypePrestation(form.typePrestation) }}</span>
+              </div>
+  
+              <!-- Aperçu prestataire -->
+              <div class="mc-recap-prestataire" *ngIf="getPrestataireSelectionne()">
+                <div class="mc-prest-avatar mc-prest-avatar--sm"
+                     [class]="'mc-avatar--' + getPrestataireSelectionne().type?.toLowerCase()">
+                  {{ (getPrestataireSelectionne().prenom?.[0] || '') + (getPrestataireSelectionne().nom?.[0] || '') }}
+                </div>
+                <div>
+                  <span class="mc-recap-nom">{{ nomPrestataire(getPrestataireSelectionne()) }}</span>
+                  <span class="mc-recap-type">
+                    {{ getEmojiType(getPrestataireSelectionne().type) }}
+                    {{ getLabelType(getPrestataireSelectionne().type) }}
+                  </span>
+                </div>
+              </div>
+  
+              <!-- Date fin -->
+              <div class="mc-recap-section" *ngIf="form.dateFinPrevue">
+                <span class="mc-recap-label">Échéance</span>
+                <span class="mc-recap-val">{{ form.dateFinPrevue | date:'dd/MM/yyyy' }}</span>
+              </div>
+  
+            </div>
+          </section>
+  
+          <!-- ── Info ───────────────────────────────────────────────── -->
+          <section class="mc-card mc-card--info">
+            <div class="mc-card-head">
+              <div class="mc-step-num mc-step-num--sm">ℹ️</div>
+              <h2>Informations</h2>
+            </div>
+            <div class="mc-card-body">
+              <ul class="mc-info-list">
+                <li>Le prestataire sera <strong>notifié</strong> automatiquement.</li>
+                <li>La mission sera en statut <strong>ASSIGNÉE</strong> après création.</li>
+                <li>Vous pourrez valider ou rejeter le travail soumis.</li>
+              </ul>
+            </div>
+          </section>
+  
+        </div>
+      </div>
+    </div>
+  </div>
