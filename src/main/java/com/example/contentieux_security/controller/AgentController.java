@@ -26,13 +26,19 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+
+
+import com.example.contentieux_security.entity.FichierResultat;
+import com.example.contentieux_security.entity.ResultatMission;
+import com.example.contentieux_security.repository.ResultatMissionRepository;
+
 import java.security.Principal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import java.util.ArrayList;
 @RestController
 @RequestMapping("/api/agent")
 @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
@@ -46,7 +52,7 @@ public class AgentController {
     private final DossierRepository dossierRepository;
     private final MissionService missionService;
     private final MissionRepository missionRepository;
-
+    private final ResultatMissionRepository resultatMissionRepository;
     // ══════════════════════════════════════════════════════════════
     //  DASHBOARD
     // ══════════════════════════════════════════════════════════════
@@ -365,4 +371,95 @@ public ResponseEntity<?> getMonProfil(Principal principal) {
     }
 }
 
+
+
+// ══════════════════════════════════════════════════════════════
+//  RÉSULTATS PRESTATAIRES PAR DOSSIER
+// ══════════════════════════════════════════════════════════════
+@GetMapping("/dossiers/{dossierId}/resultats-prestataires")
+@Transactional
+public ResponseEntity<?> getResultatsPrestataires(@PathVariable Long dossierId,
+                                                   Authentication auth) {
+    try {
+        DossierContentieux dossier = dossierRepository.findByIdWithDetails(dossierId)
+                .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
+
+        if (!dossier.getCreePar().equals(auth.getName())) {
+            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+        }
+
+        List<Mission> missions = missionRepository.findByDossierIdWithFullDetails(dossierId);
+
+        List<Map<String, Object>> resultats = new ArrayList<>();
+        for (Mission m : missions) {
+            Map<String, Object> item = new HashMap<>();
+            item.put("missionId",      m.getId());
+            item.put("numeroMission",  m.getNumeroMission());
+            item.put("statut",         m.getStatut() != null ? m.getStatut().name() : null);
+            item.put("description",    m.getDescription());
+            item.put("dateAssignation", m.getDateAssignation());
+            item.put("dateFinPrevue",  m.getDateFinPrevue());
+        
+            item.put("typePrestation", m.getPrestation() != null
+                    ? m.getPrestation().getType() : null);
+        
+            if (m.getPrestataire() != null) {
+                var p = m.getPrestataire();
+                item.put("prestataire", Map.of(
+                    "id",         p.getId(),
+                    "nom",        p.getNom(),
+                    "prenom",     p.getPrenom(),
+                    "username",   p.getUsername(),
+                    "specialite", p.getSpecialite() != null ? p.getSpecialite() : "",
+                    "type",       p.getType() != null ? p.getType().name() : ""
+                ));
+            }
+        
+            item.put("pvTexte",               m.getPvMission());
+            item.put("dateValidationPv",      m.getDateValidationPv());
+            item.put("pvValide",              m.getStatut() == StatutMission.PV_SOUMIS
+                                           || m.getStatut() == StatutMission.FACTURE_SOUMISE
+                                           || m.getStatut() == StatutMission.TERMINEE
+                                           || m.getStatut() == StatutMission.REALISEE);
+            item.put("factureRef",            m.getFactureRef());
+            item.put("montantFacture",        m.getMontantFacture());
+            item.put("dateValidationFacture", m.getDateValidationFacture());
+            item.put("factureValide",         m.getStatut() == StatutMission.FACTURE_SOUMISE
+                                           || m.getStatut() == StatutMission.TERMINEE
+                                           || m.getStatut() == StatutMission.REALISEE);
+            item.put("commentaireAgent",      m.getCommentaireAgent());
+        
+            List<Map<String, Object>> fichiersList = new ArrayList<>();
+            resultatMissionRepository.findByMissionIdWithFichiers(m.getId()).ifPresent(r -> {
+                if (r.getFichiers() != null) {
+                    for (FichierResultat f : r.getFichiers()) {
+                        Map<String, Object> fm = new HashMap<>();
+                        fm.put("id",                 f.getId());
+                        fm.put("nomFichierOriginal",  f.getNomFichierOriginal());
+                        fm.put("nomFichierServeur",   f.getNomFichierServeur());
+                        fm.put("typeMime",            f.getTypeMime() != null ? f.getTypeMime() : "");
+                        fm.put("tailleFichier",       f.getTailleFichier());
+                        fm.put("dateUpload",          f.getDateUpload());
+                        fichiersList.add(fm);
+                    }
+                }
+                item.put("commentaire",    r.getCommentaire());
+                item.put("soumisePar",     r.getSoumisePar());
+                item.put("dateSoumission", r.getDateSoumission());
+            });
+            item.put("fichiers", fichiersList);
+        
+            resultats.add(item); // ✅ LIGNE MANQUANTE — c'était ça le bug
+        }
+        Map<String, Object> response = new HashMap<>();
+        response.put("numeroDossier", dossier.getNumeroDossier());
+        response.put("libelle",       dossier.getLibelle());
+        response.put("resultats",     resultats);
+
+        return ResponseEntity.ok(response);
+
+    } catch (Exception e) {
+        return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+    }
+}
 }

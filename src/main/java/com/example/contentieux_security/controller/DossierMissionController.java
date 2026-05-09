@@ -14,7 +14,10 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.transaction.annotation.Transactional;
-
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -28,6 +31,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/agent/dossiers/{dossierId}/missions")
 @PreAuthorize("hasRole('AGENT')")
 @RequiredArgsConstructor
+@Slf4j
 public class DossierMissionController {
 
     private final DossierRepository        dossierRepository;
@@ -74,63 +78,115 @@ public class DossierMissionController {
     @GetMapping
     @Transactional(readOnly = true)
     public ResponseEntity<?> listeMissions(@PathVariable Long dossierId, Authentication auth) {
-        DossierContentieux dossier = dossierRepository.findByIdWithDetails(dossierId).orElse(null);
-        if (dossier == null) {
-            return ResponseEntity.badRequest().body(Map.of("error", "Dossier introuvable"));
+        try {
+            DossierContentieux dossier = dossierRepository.findByIdWithDetails(dossierId).orElse(null);
+            if (dossier == null)
+                return ResponseEntity.badRequest().body(Map.of("error", "Dossier introuvable"));
+            if (!auth.getName().equals(dossier.getCreePar()))
+                return ResponseEntity.status(403).body(Map.of("error", "Accès non autorisé"));
+    
+            List<Mission> missions = missionRepository.findByDossierIdWithPrestataire(dossierId);
+            AgentBancaire agent = agentBancaireRepository.findByUsername(auth.getName())
+                    .orElseThrow(() -> new RuntimeException("Agent introuvable"));
+            List<Prestataire> prestataires = prestataireRepository.findByAgence_Id(agent.getAgence().getId());
+            List<Prestation>  prestations  = prestationRepository.findByDossier_Id(dossierId);
+    
+            // ── Dossier ──────────────────────────────────────────────
+            Map<String, Object> dossierMap = new HashMap<>();
+            dossierMap.put("id",            dossier.getId());
+            dossierMap.put("numeroDossier", dossier.getNumeroDossier());
+            dossierMap.put("libelle",       dossier.getLibelle());
+            dossierMap.put("statut",        dossier.getStatut() != null ? dossier.getStatut().name() : null);
+            dossierMap.put("montant",       dossier.calculerSolde());
+            if (dossier.getClient() != null) {
+                Map<String, Object> clientMap = new HashMap<>();
+                clientMap.put("nom",    dossier.getClient().getNom());
+                clientMap.put("prenom", dossier.getClient().getPrenom() != null ? dossier.getClient().getPrenom() : "");
+                clientMap.put("email",  dossier.getClient().getEmail() != null ? dossier.getClient().getEmail() : "");
+                dossierMap.put("client", clientMap);
+            }
+    
+            // ── Missions ─────────────────────────────────────────────
+            List<Map<String, Object>> missionsMap = new ArrayList<>();
+            for (Mission m : missions) {
+                Map<String, Object> mm = new HashMap<>();
+                mm.put("id",              m.getId());
+                mm.put("numeroMission",   m.getNumeroMission());
+                mm.put("statut",          m.getStatut() != null ? m.getStatut().name() : null);
+                mm.put("description",     m.getDescription());
+                mm.put("dateAssignation", m.getDateAssignation());
+                mm.put("dateFinPrevue",   m.getDateFinPrevue());
+                if (m.getPrestataire() != null) {
+                    Map<String, Object> pm = new HashMap<>();
+                    pm.put("id",       m.getPrestataire().getId());
+                    pm.put("nom",      m.getPrestataire().getNom());
+                    pm.put("prenom",   m.getPrestataire().getPrenom());
+                    pm.put("username", m.getPrestataire().getUsername());
+                    pm.put("type",     m.getPrestataire().getType() != null ? m.getPrestataire().getType().name() : "");
+                    mm.put("prestataire", pm);
+                }
+                if (m.getPrestation() != null) {
+                    mm.put("typePrestation", m.getPrestation().getType() != null ? m.getPrestation().getType().name() : null);
+                }
+                missionsMap.add(mm);
+            }
+    
+            // ── Prestataires ─────────────────────────────────────────
+            List<Map<String, Object>> prestatairesMap = prestataires.stream().map(p -> {
+                Map<String, Object> pm = new HashMap<>();
+                pm.put("id",         p.getId());
+                pm.put("username",   p.getUsername());
+                pm.put("nom",        p.getNom());
+                pm.put("prenom",     p.getPrenom());
+                pm.put("email",      p.getEmail() != null ? p.getEmail() : "");
+                pm.put("telephone",  p.getTelephone() != null ? p.getTelephone() : "");
+                pm.put("specialite", p.getSpecialite() != null ? p.getSpecialite() : "");
+                pm.put("actif",      p.isActif());
+                pm.put("type",       p.getType() != null ? p.getType().name() : null);
+                return pm;
+            }).collect(Collectors.toList());
+    
+            // ── Prestations ──────────────────────────────────────────
+            List<Map<String, Object>> prestationsMap = prestations.stream().map(p -> {
+                Map<String, Object> pm = new HashMap<>();
+                pm.put("id",               p.getId());
+                pm.put("numeroPrestation", p.getNumeroPrestation());
+                pm.put("statut",           p.getStatut() != null ? p.getStatut().name() : null);
+                pm.put("type",             p.getType()   != null ? p.getType().name()   : null);
+                pm.put("description",      p.getDescription());
+                pm.put("dateCreation",     p.getDateCreation());
+                return pm;
+            }).collect(Collectors.toList());
+    
+            String clientNom = dossier.getClient() != null
+                    ? dossier.getClient().getNom() + " " +
+                      (dossier.getClient().getPrenom() != null ? dossier.getClient().getPrenom() : "")
+                    : "—";
+    
+            // ── Réponse ──────────────────────────────────────────────
+            Map<String, Object> response = new HashMap<>();
+            response.put("nbAssignee",       missions.stream().filter(m -> m.getStatut() == StatutMission.ASSIGNEE).count());
+            response.put("nbEnCours",        missions.stream().filter(m -> m.getStatut() == StatutMission.EN_COURS).count());
+            response.put("nbPvSoumis",       missions.stream().filter(m -> m.getStatut() == StatutMission.PV_SOUMIS).count());
+            response.put("nbFactureSoumise", missions.stream().filter(m -> m.getStatut() == StatutMission.FACTURE_SOUMISE).count());
+            response.put("nbTerminee",       missions.stream().filter(m -> m.getStatut() == StatutMission.TERMINEE).count());
+            response.put("nbRetard",         missions.stream()
+                    .filter(m -> m.getDateFinPrevue() != null
+                              && m.getDateFinPrevue().isBefore(LocalDate.now())
+                              && m.getStatut() != StatutMission.TERMINEE).count());
+            response.put("dossier",      dossierMap);
+            response.put("clientNom",    clientNom);
+            response.put("missions",     missionsMap);
+            response.put("prestataires", prestatairesMap);
+            response.put("prestations",  prestationsMap);
+    
+            return ResponseEntity.ok(response);
+    
+        } catch (Exception e) {
+            log.error("Erreur listeMissions dossierId={} : {}", dossierId, e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue"));
         }
-        if (!auth.getName().equals(dossier.getCreePar())) {
-            return ResponseEntity.status(403).body(Map.of("error", "Accès non autorisé"));
-        }
-
-        List<Mission>     missions     = missionRepository.findByDossierIdWithPrestataire(dossierId);
-        AgentBancaire     agent        = agentBancaireRepository.findByUsername(auth.getName())
-                .orElseThrow(() -> new RuntimeException("Agent introuvable"));
-        List<Prestataire> prestataires = prestataireRepository.findByAgence_Id(agent.getAgence().getId());
-        List<Prestation>  prestations  = prestationRepository.findByDossier_Id(dossierId);
-
-        System.out.println("=== DEBUG MISSIONS ===");
-        System.out.println("Nombre prestataires: " + prestataires.size());
-        prestataires.forEach(p -> System.out.println(
-            "  PRESTATAIRE → id=" + p.getId() +
-            " | nom=" + p.getNom() +
-            " | type.name()=" + p.getType().name() +
-            " | actif=" + p.isActif() +
-            " | agence=" + (p.getAgence() != null ? p.getAgence().getId() : "NULL")
-        ));
-        System.out.println("Nombre prestations: " + prestations.size());
-        prestations.forEach(p -> System.out.println(
-            "  PRESTATION → id=" + p.getId() +
-            " | type.name()=" + p.getType().name() +
-            " | statut=" + p.getStatut().name()
-        ));
-        System.out.println("Agent agence ID: " + agent.getAgence().getId());
-        System.out.println("======================");
-
-        String clientNom = dossier.getClient() != null
-                ? dossier.getClient().getNom() + " " +
-                  (dossier.getClient().getPrenom() != null ? dossier.getClient().getPrenom() : "")
-                : "—";
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("nbAssignee",       missions.stream().filter(m -> m.getStatut() == StatutMission.ASSIGNEE).count());
-        response.put("nbEnCours",        missions.stream().filter(m -> m.getStatut() == StatutMission.EN_COURS).count());
-        response.put("nbPvSoumis",       missions.stream().filter(m -> m.getStatut() == StatutMission.PV_SOUMIS).count());
-        response.put("nbFactureSoumise", missions.stream().filter(m -> m.getStatut() == StatutMission.FACTURE_SOUMISE).count());
-        response.put("nbTerminee",       missions.stream().filter(m -> m.getStatut() == StatutMission.TERMINEE).count());
-        response.put("nbRetard",         missions.stream()
-                .filter(m -> m.getDateFinPrevue() != null
-                          && m.getDateFinPrevue().isBefore(LocalDate.now())
-                          && m.getStatut() != StatutMission.TERMINEE)
-                .count());
-        response.put("dossier",      dossier);
-        response.put("clientNom",    clientNom);
-        response.put("missions",     missions);
-        response.put("prestataires", prestataires.stream().map(this::mapPrestataire).collect(Collectors.toList()));
-        response.put("prestations",  prestations.stream().map(this::mapPrestation).collect(Collectors.toList()));
-
-        return ResponseEntity.ok(response);
     }
-
     // ══════════════════════════════════════════════════════════════
     // POST — créer mission
     // ══════════════════════════════════════════════════════════════

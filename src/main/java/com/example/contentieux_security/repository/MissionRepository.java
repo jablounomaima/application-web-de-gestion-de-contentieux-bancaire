@@ -153,4 +153,42 @@ Optional<String> findLastNumero(@Param("prefix") String prefix);
 """)
 List<Mission> findByPrestation_Dossier_CreeParWithDetails(@Param("username") String username);
 
+
+
+// MissionRepository.java
+
+// For dashboard (already done)
+@Query("""
+    SELECT m FROM Mission m
+    LEFT JOIN FETCH m.prestation p
+    LEFT JOIN FETCH p.dossier d
+    LEFT JOIN FETCH d.client
+    LEFT JOIN FETCH m.prestataire
+    WHERE m.prestataire.username = :username
+""")
+List<Mission> findByPrestataireUsernameWithDetails(@Param("username") String username);
+
+
+@Query("""
+    SELECT DISTINCT m FROM Mission m
+    LEFT JOIN FETCH m.prestataire
+    LEFT JOIN FETCH m.prestation p
+    LEFT JOIN FETCH p.dossier d
+    LEFT JOIN FETCH d.client
+    WHERE d.id = :dossierId
+    ORDER BY m.dateAssignation DESC
+""")
+List<Mission> findByDossierIdWithFullDetails(@Param("dossierId") Long dossierId);
+
+
+// MissionRepository.java — query de secours
+@Query("""
+    SELECT DISTINCT m FROM Mission m
+    LEFT JOIN FETCH m.prestataire
+    LEFT JOIN FETCH m.prestation p
+    LEFT JOIN FETCH p.dossier d
+    LEFT JOIN FETCH d.client
+    WHERE p.dossier.id = :dossierId
+""")
+List<Mission> findMissionsByDossierId(@Param("dossierId") Long dossierId);
 }

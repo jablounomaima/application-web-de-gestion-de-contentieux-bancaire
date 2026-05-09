@@ -11,769 +11,585 @@ import { AvocatService } from '../../../core/services/avocat.service';
   template: `
     <div class="page-container">
 
-      <!-- Fond animé -->
-      <div class="bg-mesh">
-        <div class="mesh-blob b1"></div>
-        <div class="mesh-blob b2"></div>
-        <div class="mesh-blob b3"></div>
-      </div>
-
-      <!-- Header -->
+      <!-- ══ Header ══ -->
       <div class="page-header">
         <button class="btn-back" (click)="retour()">← Retour</button>
         <div class="title-group">
-          <span class="role-badge">💰 HONORAIRES</span>
-          <h1>Prestations & Honoraires</h1>
+          <span class="role-badge">HONORAIRES</span>
+          <h1>PV & Facture d'Honoraires</h1>
           <p class="subtitle" *ngIf="affaire">
-            Affaire <strong>#{{ affaire.id }}</strong> —
-            {{ affaire.dossier?.numeroDossier || 'N/A' }}
+            Affaire <strong>#{{ affaire.numeroAffaire }}</strong>
+            <span class="status-pill" [ngClass]="statutClass(affaire.statut)">
+              {{ affaire.statut }}
+            </span>
           </p>
         </div>
       </div>
 
-      <!-- Loader -->
+      <!-- ══ Loader ══ -->
       <div class="loader-state" *ngIf="loading">
-        <div class="coin-spin">💰</div>
+        <div class="spinner"></div>
         <p>Chargement des données...</p>
       </div>
 
-      <div class="content-wrapper" *ngIf="!loading">
+      <div class="content-grid" *ngIf="!loading">
 
-        <!-- Bande de statut mission -->
-        <div class="mission-banner" [class]="getMissionClass()">
-          <div class="mission-left">
-            <span class="mission-icon">{{ getMissionIcon() }}</span>
-            <div>
-              <span class="mission-label">Statut de la Mission</span>
-              <span class="mission-status">{{ affaire?.mission?.statut || 'Aucune mission assignée' }}</span>
+        <!-- ════════ COLONNE GAUCHE : Récapitulatif ════════ -->
+        <div class="side-panel">
+
+          <!-- PV soumis -->
+          <div class="info-card pv-summary" *ngIf="hasPV()">
+            <h3 class="panel-title">📋 PV soumis</h3>
+
+            <div class="statut-row">
+              <span class="statut-badge" [ngClass]="pvBadgeClass()">
+                {{ pvStatutLabel() }}
+              </span>
+            </div>
+
+            <div class="pv-texte-box">
+              <span class="info-label">Contenu</span>
+              <p class="pv-texte">{{ affaire.pvTexte }}</p>
+            </div>
+
+            <!-- Fichiers -->
+            <div class="pj-section" *ngIf="pvFichiers().length > 0">
+              <span class="info-label">
+                📎 Pièces jointes ({{ pvFichiers().length }})
+              </span>
+              <div class="pj-list">
+                <div *ngFor="let f of pvFichiers(); let i = index"
+                     class="pj-item">
+                  <span class="pj-icon">{{ getFileIcon(f.nom) }}</span>
+                  <a [href]="buildDownloadUrl(f)"
+                     [download]="f.nom"
+                     target="_blank"
+                     class="pj-nom">{{ f.nom }}</a>
+                  <span class="pj-dl">⬇️</span>
+                  <button class="pj-del"
+                          (click)="supprimerFichierPV(i)"
+                          title="Supprimer">✕</button>
+                </div>
+              </div>
+            </div>
+            <div class="pj-empty"
+                 *ngIf="pvFichiers().length === 0">
+              Aucune pièce jointe.
+            </div>
+
+            <!-- Actions PV -->
+            <div class="card-actions">
+              <button class="btn-edit"
+                      (click)="editerPV()"
+                      *ngIf="pvStatut !== 'VALIDE'">
+                ✏️ Modifier le PV
+              </button>
             </div>
           </div>
-          <div class="mission-right" *ngIf="affaire?.mission">
-            <div class="mission-stat">
-              <span class="ms-label">Réf. Mission</span>
-              <span class="ms-value mono">#{{ affaire.mission.id }}</span>
+
+          <!-- Aucun PV -->
+          <div class="info-card empty-card" *ngIf="!hasPV()">
+            <div class="empty-icon">📋</div>
+            <p class="empty-text">Aucun PV soumis</p>
+            <p class="empty-sub">
+              Utilisez le formulaire ci-contre pour soumettre votre PV.
+            </p>
+          </div>
+
+          <!-- Facture soumise -->
+          <div class="info-card facture-summary" *ngIf="hasFacture()">
+            <h3 class="panel-title">🧾 Facture soumise</h3>
+
+            <div class="statut-row">
+              <span class="statut-badge" [ngClass]="factureBadgeClass()">
+                {{ factureStatutLabel() }}
+              </span>
             </div>
-            <div class="mission-stat" *ngIf="affaire.mission.montantFacture">
-              <span class="ms-label">Montant Facturé</span>
-              <span class="ms-value green">{{ affaire.mission.montantFacture | number:'1.3-3' }} TND</span>
+
+            <div class="info-row">
+              <span class="info-label">Référence</span>
+              <span class="info-value mono">{{ affaire.factureRef }}</span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">Montant HT</span>
+              <span class="info-value">
+                {{ affaire.montantFacture | number:'1.3-3' }} TND
+              </span>
+            </div>
+            <div class="info-row">
+              <span class="info-label">TVA 19%</span>
+              <span class="info-value">
+                {{ affaire.montantFacture * 0.19 | number:'1.3-3' }} TND
+              </span>
+            </div>
+            <div class="info-row total-row">
+              <span class="info-label">Total TTC</span>
+              <span class="info-value ttc">
+                {{ affaire.montantFacture * 1.19 | number:'1.3-3' }} TND
+              </span>
+            </div>
+
+            <!-- Actions Facture -->
+            <div class="card-actions" *ngIf="factureStatut !== 'PAYEE'">
+              <button class="btn-edit" (click)="editerFacture()">
+                ✏️ Modifier la facture
+              </button>
             </div>
           </div>
+
+          <!-- Aucune facture -->
+          <div class="info-card empty-card" *ngIf="!hasFacture()">
+            <div class="empty-icon">🧾</div>
+            <p class="empty-text">Aucune facture soumise</p>
+            <p class="empty-sub">
+              Utilisez le formulaire ci-contre pour soumettre votre facture.
+            </p>
+          </div>
+
         </div>
 
-        <!-- Alerte si pas de mission -->
-        <div class="no-mission-alert" *ngIf="!affaire?.mission">
-          <span class="alert-icon">⚠️</span>
-          <div>
-            <strong>Aucune mission active</strong>
-            <p>La soumission du PV et de la facture nécessite une mission assignée par le gestionnaire.</p>
-          </div>
-        </div>
+        <!-- ════════ COLONNE DROITE : Formulaires ════════ -->
+        <div class="form-panel">
 
-        <div class="two-col">
-
-          <!-- ══════════════ COLONNE 1 : PV de Mission ══════════════ -->
-          <div class="section-card pv-card">
-            <div class="card-header-strip green-strip">
-              <div class="strip-number">01</div>
+          <!-- ══ Formulaire PV ══ -->
+          <div class="form-card" *ngIf="pvStatut !== 'VALIDE'">
+            <div class="form-card-header green-header">
+              <div class="header-num">01</div>
               <div>
-                <h3>Rapport de Mission</h3>
-                <p>Procès-verbal détaillant vos diligences</p>
+                <h2>{{ hasPV() ? '✏️ Modifier le PV' : '➕ Soumettre un PV' }}</h2>
+                <p class="form-subtitle">
+                  Procès-verbal détaillant vos diligences
+                </p>
               </div>
-              <span class="strip-badge" *ngIf="affaire?.mission?.pvTexte">Soumis ✓</span>
             </div>
 
-            <div class="card-body">
+            <div class="form-body">
 
-              <!-- PV existant -->
-              <div class="existing-pv" *ngIf="affaire?.mission?.pvTexte && !editPV">
-                <div class="existing-label">PV actuellement enregistré</div>
-                <div class="pv-text-display">{{ affaire.mission.pvTexte }}</div>
-                <button class="btn-edit-inline" (click)="editPV = true">✏️ Modifier le PV</button>
+              <!-- PV refusé -->
+              <div class="alert-refus" *ngIf="pvStatut === 'REFUSE'">
+                ⚠️ PV refusé — soumettez un nouveau PV ci-dessous.
               </div>
 
-              <!-- Formulaire PV -->
-              <div *ngIf="!affaire?.mission?.pvTexte || editPV">
-                <label class="field-label">Contenu du Procès-Verbal</label>
-                <textarea
-                  [(ngModel)]="pvTexte"
-                  rows="8"
-                  class="field-textarea"
-                  placeholder="Décrivez en détail les diligences accomplies :
-• Consultations et conseils juridiques
-• Rédaction d'actes et mémoires
-• Représentation aux audiences
-• Recherches jurisprudentielles
-• Correspondances et négociations..."
-                  [disabled]="!affaire?.mission"
-                ></textarea>
+              <div class="field">
+                <label class="field-label">
+                  Contenu du Procès-Verbal <span class="required">*</span>
+                </label>
+                <textarea [(ngModel)]="pvTexte"
+                          rows="7"
+                          maxlength="5000"
+                          class="field-input textarea"
+                          placeholder="Saisir le contenu du PV...">
+                </textarea>
                 <div class="char-row">
-                  <span class="char-count">{{ pvTexte.length || 0 }} caractères</span>
-                  <span class="min-hint" [class.ok]="(pvTexte.length || 0) >= 50">
-                    {{ (pvTexte.length || 0) >= 50 ? '✓ Longueur suffisante' : 'Minimum recommandé : 50 car.' }}
+                  <span>{{ pvTexte.length }}/5000 caractères</span>
+                  <span class="min-hint" [class.ok]="pvTexte.length >= 50">
+                    {{ pvTexte.length >= 50
+                       ? '✓ Longueur suffisante'
+                       : 'Minimum 50 caractères recommandé' }}
                   </span>
                 </div>
+              </div>
 
-                <div class="btn-row">
-                  <button
-                    class="btn-cancel-inline"
-                    *ngIf="editPV"
-                    (click)="editPV = false"
-                  >Annuler</button>
-                  <button
-                    class="btn-submit green-btn"
-                    (click)="soumettrePV()"
-                    [disabled]="!affaire?.mission || savingPV || !pvTexte"
-                  >
-                    <span *ngIf="!savingPV">📄 Soumettre le PV</span>
-                    <span *ngIf="savingPV" class="saving-dots">Envoi<span>.</span><span>.</span><span>.</span></span>
-                  </button>
+              <!-- Upload -->
+              <div class="field">
+                <label class="field-label">
+                  Pièces jointes
+                  <span class="pj-count-badge" *ngIf="pvFiles.length > 0">
+                    {{ pvFiles.length }}
+                  </span>
+                </label>
+
+                <label class="pj-drop-area" *ngIf="pvFiles.length === 0">
+                  <input type="file" multiple
+                         accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                         (change)="onPVFilesSelected($event)"
+                         style="display:none">
+                  <div class="drop-content">
+                    <span class="drop-icon">📂</span>
+                    <span class="drop-text">
+                      Cliquez pour ajouter des fichiers
+                    </span>
+                    <span class="drop-hint">PDF, Word, Images — max 10 Mo</span>
+                  </div>
+                </label>
+
+                <div class="pj-files-preview" *ngIf="pvFiles.length > 0">
+                  <div class="pj-file-item"
+                       *ngFor="let f of pvFiles; let i = index">
+                    <span class="pj-icon-sm">{{ getFileIcon(f.name) }}</span>
+                    <span class="pj-name">{{ f.name }}</span>
+                    <span class="pj-size">{{ formatSize(f.size) }}</span>
+                    <button type="button" class="pj-remove"
+                            (click)="removePVFile(i, $event)">✕</button>
+                  </div>
+                  <label style="cursor:pointer; margin-top:8px; display:inline-block">
+                    <input type="file" multiple
+                           accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+                           (change)="onPVFilesSelected($event)"
+                           style="display:none">
+                    <span class="btn-add-more">+ Ajouter d'autres fichiers</span>
+                  </label>
                 </div>
               </div>
-            </div>
-          </div>
 
-          <!-- ══════════════ COLONNE 2 : Facture ══════════════ -->
-          <div class="section-card facture-card">
-            <div class="card-header-strip gold-strip">
-              <div class="strip-number">02</div>
-              <div>
-                <h3>Facture d'Honoraires</h3>
-                <p>Soumettez votre note d'honoraires officielle</p>
-              </div>
-              <span class="strip-badge gold-badge" *ngIf="affaire?.mission?.factureRef">Émise ✓</span>
-            </div>
-
-            <div class="card-body">
-
-              <!-- Facture existante -->
-              <div class="existing-facture" *ngIf="affaire?.mission?.factureRef && !editFacture">
-                <div class="facture-display">
-                  <div class="facture-ref-block">
-                    <span class="fd-label">Référence</span>
-                    <span class="fd-value mono">{{ affaire.mission.factureRef }}</span>
-                  </div>
-                  <div class="facture-amount-block">
-                    <span class="fd-label">Montant</span>
-                    <span class="fd-amount">{{ affaire.mission.montantFacture | number:'1.3-3' }} <small>TND</small></span>
-                  </div>
-                </div>
-                <button class="btn-edit-inline gold-edit" (click)="editFacture = true; prefillFacture()">
-                  ✏️ Modifier la Facture
+              <div class="form-actions">
+                <button class="btn-secondary"
+                        *ngIf="hasPV()"
+                        (click)="annulerPV()">
+                  Annuler
+                </button>
+                <button class="btn-primary green-btn"
+                        (click)="soumettrePV()"
+                        [disabled]="savingPV || !pvTexte.trim()">
+                  <span *ngIf="!savingPV">
+                    ✓ {{ hasPV() ? 'Mettre à jour le PV' : 'Soumettre le PV' }}
+                  </span>
+                  <span *ngIf="savingPV">Envoi en cours...</span>
                 </button>
               </div>
 
-              <!-- Formulaire Facture -->
-              <div *ngIf="!affaire?.mission?.factureRef || editFacture">
+            </div>
+          </div>
 
-                <div class="form-grid-2">
-                  <div class="field-group">
-                    <label class="field-label">Référence Facture <span class="req">*</span></label>
-                    <input
-                      type="text"
-                      [(ngModel)]="facture.ref"
-                      placeholder="Ex: FAC-2024-001"
-                      class="field-input mono-input"
-                      [class.err]="factureSubmitted && !facture.ref"
-                      [disabled]="!affaire?.mission"
-                    >
-                    <span class="err-msg" *ngIf="factureSubmitted && !facture.ref">Référence obligatoire</span>
-                  </div>
-                  <div class="field-group">
-                    <label class="field-label">Montant (TND) <span class="req">*</span></label>
-                    <div class="amount-input-wrap">
-                      <input
-                        type="number"
-                        [(ngModel)]="facture.montant"
-                        placeholder="0.000"
-                        class="field-input amount-input"
-                        [class.err]="factureSubmitted && !facture.montant"
-                        [disabled]="!affaire?.mission"
-                        min="0"
-                        step="0.001"
-                      >
-                      <span class="currency-tag">TND</span>
-                    </div>
-                    <span class="err-msg" *ngIf="factureSubmitted && !facture.montant">Montant obligatoire</span>
-                  </div>
-                </div>
+          <!-- PV validé -->
+          <div class="success-card" *ngIf="pvStatut === 'VALIDE'">
+            <div class="success-icon">✅</div>
+            <h3>PV validé</h3>
+            <p>Votre PV a été validé par l'agent bancaire.</p>
+          </div>
 
-                <!-- Aperçu montant -->
-                <div class="amount-preview" *ngIf="facture.montant > 0">
-                  <span class="ap-label">Montant en lettres (approximatif)</span>
-                  <span class="ap-value">{{ facture.montant | number:'1.3-3' }} dinars tunisiens</span>
-                </div>
-
-                <!-- TVA indicative -->
-                <div class="tva-hint" *ngIf="facture.montant > 0">
-                  <div class="tva-row">
-                    <span>Montant HT</span>
-                    <span>{{ facture.montant | number:'1.3-3' }} TND</span>
-                  </div>
-                  <div class="tva-row">
-                    <span>TVA 19%</span>
-                    <span>{{ facture.montant * 0.19 | number:'1.3-3' }} TND</span>
-                  </div>
-                  <div class="tva-row total-row">
-                    <span>Total TTC</span>
-                    <span>{{ facture.montant * 1.19 | number:'1.3-3' }} TND</span>
-                  </div>
-                </div>
-
-                <div class="btn-row">
-                  <button
-                    class="btn-cancel-inline"
-                    *ngIf="editFacture"
-                    (click)="editFacture = false"
-                  >Annuler</button>
-                  <button
-                    class="btn-submit gold-btn"
-                    (click)="soumettreFacture()"
-                    [disabled]="!affaire?.mission || savingFacture"
-                  >
-                    <span *ngIf="!savingFacture">💳 Soumettre la Facture</span>
-                    <span *ngIf="savingFacture" class="saving-dots">Envoi<span>.</span><span>.</span><span>.</span></span>
-                  </button>
-                </div>
+          <!-- ══ Formulaire Facture ══ -->
+          <div class="form-card" *ngIf="factureStatut !== 'PAYEE'">
+            <div class="form-card-header gold-header">
+              <div class="header-num gold-num">02</div>
+              <div>
+                <h2>
+                  {{ hasFacture()
+                     ? '✏️ Modifier la Facture'
+                     : '➕ Soumettre une Facture' }}
+                </h2>
+                <p class="form-subtitle">
+                  Note d'honoraires officielle
+                </p>
               </div>
             </div>
+
+            <div class="form-body">
+
+              <!-- Facture rejetée -->
+              <div class="alert-refus" *ngIf="factureStatut === 'REJETEE'">
+                ⚠️ Facture rejetée — soumettez une nouvelle facture.
+              </div>
+
+              <div class="form-grid-2">
+                <div class="field">
+                  <label class="field-label">
+                    Référence <span class="required">*</span>
+                  </label>
+                  <input type="text"
+                         [(ngModel)]="facture.ref"
+                         placeholder="Ex: FACT-2024-001"
+                         class="field-input">
+                </div>
+                <div class="field">
+                  <label class="field-label">
+                    Montant HT (TND) <span class="required">*</span>
+                  </label>
+                  <div class="input-suffix">
+                    <input type="number"
+                           [(ngModel)]="facture.montant"
+                           min="0" step="0.001"
+                           placeholder="0.000"
+                           class="field-input">
+                    <span class="suffix">TND</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- TVA -->
+              <div class="tva-box"
+                   *ngIf="facture.montant > 0">
+                <div class="tva-row">
+                  <span>Montant HT</span>
+                  <span>{{ facture.montant | number:'1.3-3' }} TND</span>
+                </div>
+                <div class="tva-row">
+                  <span>TVA 19%</span>
+                  <span>{{ facture.montant * 0.19 | number:'1.3-3' }} TND</span>
+                </div>
+                <div class="tva-row tva-total">
+                  <span>Total TTC</span>
+                  <span>{{ facture.montant * 1.19 | number:'1.3-3' }} TND</span>
+                </div>
+              </div>
+
+              <div class="form-actions">
+                <button class="btn-secondary"
+                        *ngIf="hasFacture()"
+                        (click)="annulerFacture()">
+                  Annuler
+                </button>
+                <button class="btn-primary gold-btn"
+                        (click)="soumettreFacture()"
+                        [disabled]="savingFacture
+                                    || !facture.ref
+                                    || !facture.montant
+                                    || facture.montant <= 0">
+                  <span *ngIf="!savingFacture">
+                    ✓ {{ hasFacture()
+                         ? 'Mettre à jour la Facture'
+                         : 'Soumettre la Facture' }}
+                  </span>
+                  <span *ngIf="savingFacture">Envoi en cours...</span>
+                </button>
+              </div>
+
+            </div>
+          </div>
+
+          <!-- Facture payée -->
+          <div class="success-card" *ngIf="factureStatut === 'PAYEE'">
+            <div class="success-icon">✅</div>
+            <h3>Facture payée</h3>
+            <p>Votre facture a été réglée par l'agent bancaire.</p>
           </div>
 
         </div>
-
-        <!-- Récapitulatif global -->
-        <div class="recap-card" *ngIf="affaire?.mission?.pvTexte || affaire?.mission?.factureRef">
-          <h4>📊 Récapitulatif des Prestations</h4>
-          <div class="recap-grid">
-            <div class="recap-item">
-              <span class="ri-icon">📄</span>
-              <span class="ri-label">Rapport PV</span>
-              <span class="ri-status" [class.done]="affaire?.mission?.pvTexte">
-                {{ affaire?.mission?.pvTexte ? '✓ Soumis' : '⏳ En attente' }}
-              </span>
-            </div>
-            <div class="recap-item">
-              <span class="ri-icon">💳</span>
-              <span class="ri-label">Facture</span>
-              <span class="ri-status" [class.done]="affaire?.mission?.factureRef">
-                {{ affaire?.mission?.factureRef ? '✓ ' + affaire.mission.factureRef : '⏳ En attente' }}
-              </span>
-            </div>
-            <div class="recap-item" *ngIf="affaire?.mission?.montantFacture">
-              <span class="ri-icon">💰</span>
-              <span class="ri-label">Total Honoraires</span>
-              <span class="ri-amount">{{ affaire.mission.montantFacture | number:'1.3-3' }} TND</span>
-            </div>
-          </div>
-        </div>
-
       </div>
 
-      <!-- Toast -->
+      <!-- ══ Toast ══ -->
       <div class="toast"
-        [class.show]="toastVisible"
-        [class.success]="toastType === 'success'"
-        [class.error]="toastType === 'error'"
-      >
-        <span class="toast-icon">{{ toastType === 'success' ? '✓' : '✕' }}</span>
+           [class.show]="toastVisible"
+           [ngClass]="toastType">
         {{ toastMessage }}
       </div>
 
     </div>
   `,
   styles: [`
-    @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-
     * { box-sizing: border-box; }
 
-    .page-container {
-      padding: 35px;
-      min-height: 100vh;
-      font-family: 'Sora', sans-serif;
-      background: #f7f8fa;
-      position: relative;
-      overflow-x: hidden;
-    }
-
-    /* ── Background mesh ── */
-    .bg-mesh { position: fixed; inset: 0; pointer-events: none; z-index: 0; }
-    .mesh-blob {
-      position: absolute;
-      border-radius: 50%;
-      filter: blur(80px);
-      opacity: 0.07;
-    }
-    .b1 { width: 500px; height: 500px; background: #16a34a; top: -150px; right: -100px; }
-    .b2 { width: 400px; height: 400px; background: #ca8a04; bottom: 0; left: -100px; }
-    .b3 { width: 300px; height: 300px; background: #0f172a; top: 40%; left: 35%; }
-
-    .page-header, .loader-state, .content-wrapper { position: relative; z-index: 1; }
+    /* ── Page ── */
+    .page-container { padding: 30px; background: #f0f2f5; min-height: 100vh; font-family: 'Inter', sans-serif; }
 
     /* ── Header ── */
-    .page-header {
-      display: flex;
-      align-items: flex-start;
-      gap: 20px;
-      margin-bottom: 30px;
-      flex-wrap: wrap;
-    }
-
-    .btn-back {
-      background: white;
-      border: 1.5px solid #e2e8f0;
-      color: #475569;
-      padding: 10px 20px;
-      border-radius: 12px;
-      font-family: 'Sora', sans-serif;
-      font-weight: 700;
-      font-size: 0.88rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-top: 4px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.04);
-    }
-    .btn-back:hover { background: #f8fafc; transform: translateX(-2px); }
-
+    .page-header { display: flex; align-items: flex-start; gap: 20px; margin-bottom: 35px; flex-wrap: wrap; }
+    .btn-back { background: white; border: 1px solid #e2e8f0; color: #475569; padding: 10px 18px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; margin-top: 4px; }
+    .btn-back:hover { background: #f1f5f9; }
     .title-group { flex: 1; }
-
-    .role-badge {
-      background: #14532d;
-      color: #bbf7d0;
-      padding: 5px 12px;
-      border-radius: 8px;
-      font-weight: 800;
-      font-size: 0.7rem;
-      letter-spacing: 1.5px;
-      display: inline-block;
-      margin-bottom: 8px;
-    }
-
-    h1 {
-      margin: 0;
-      font-size: 2rem;
-      color: #0f172a;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-
-    .subtitle { color: #64748b; margin-top: 5px; font-size: 0.92rem; }
+    .role-badge { background: #d1fae5; color: #065f46; padding: 4px 10px; border-radius: 6px; font-weight: 800; font-size: 0.7rem; letter-spacing: 1px; display: inline-block; margin-bottom: 6px; }
+    h1 { margin: 0; font-size: 2rem; color: #1e293b; font-weight: 800; }
+    .subtitle { color: #64748b; margin-top: 6px; font-size: 0.95rem; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .status-pill { padding: 4px 10px; border-radius: 8px; font-size: 0.7rem; font-weight: 800; text-transform: uppercase; }
+    .pill-blue   { background: #e0f2fe; color: #0369a1; }
+    .pill-green  { background: #dcfce7; color: #15803d; }
+    .pill-grey   { background: #f1f5f9; color: #64748b; }
 
     /* ── Loader ── */
-    .loader-state {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 100px 0;
-      gap: 15px;
-      color: #94a3b8;
-    }
-    .coin-spin {
-      font-size: 3rem;
-      animation: spin 2s linear infinite;
-      display: inline-block;
-    }
-    @keyframes spin { to { transform: rotateY(360deg); } }
+    .loader-state { display: flex; flex-direction: column; align-items: center; padding: 80px 0; color: #94a3b8; }
+    .spinner { width: 40px; height: 40px; border: 3px solid #e2e8f0; border-top-color: #10b981; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 15px; }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    /* ── Mission Banner ── */
-    .mission-banner {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 18px 28px;
-      border-radius: 16px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
-      gap: 16px;
-    }
-    .mission-banner.active   { background: #f0fdf4; border: 1.5px solid #86efac; }
-    .mission-banner.inactive { background: #f8fafc; border: 1.5px solid #e2e8f0; }
-    .mission-banner.pending  { background: #fffbeb; border: 1.5px solid #fde68a; }
+    /* ── Layout ── */
+    .content-grid { display: grid; grid-template-columns: 340px 1fr; gap: 25px; align-items: start; }
+    @media (max-width: 900px) { .content-grid { grid-template-columns: 1fr; } }
 
-    .mission-left { display: flex; align-items: center; gap: 14px; }
-    .mission-icon { font-size: 1.8rem; }
-    .mission-label { display: block; font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 3px; }
-    .mission-status { font-size: 1rem; font-weight: 800; color: #0f172a; }
+    /* ── Side cards ── */
+    .info-card { background: white; border-radius: 20px; padding: 24px; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 20px; }
+    .pv-summary      { border-left: 4px solid #10b981; }
+    .facture-summary { border-left: 4px solid #f59e0b; }
+    .panel-title { margin: 0 0 16px; font-size: 1rem; font-weight: 700; color: #1e293b; padding-bottom: 12px; border-bottom: 1px solid #f1f5f9; }
 
-    .mission-right { display: flex; gap: 30px; flex-wrap: wrap; }
-    .mission-stat { display: flex; flex-direction: column; gap: 3px; }
-    .ms-label { font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; }
-    .ms-value { font-size: 0.95rem; font-weight: 700; color: #0f172a; }
-    .ms-value.mono { font-family: 'JetBrains Mono', monospace; }
-    .ms-value.green { color: #16a34a; font-size: 1.05rem; }
+    .statut-row { margin-bottom: 14px; }
+    .statut-badge { display: inline-block; padding: 5px 14px; border-radius: 20px; font-size: 0.75rem; font-weight: 800; }
+    .badge-success { background: #dcfce7; color: #15803d; }
+    .badge-warning { background: #fef9c3; color: #a16207; }
+    .badge-danger  { background: #fee2e2; color: #991b1b; }
 
-    /* ── No Mission Alert ── */
-    .no-mission-alert {
-      display: flex;
-      align-items: flex-start;
-      gap: 14px;
-      background: #fefce8;
-      border: 1.5px solid #fde047;
-      border-radius: 14px;
-      padding: 18px 22px;
-      margin-bottom: 24px;
-    }
-    .alert-icon { font-size: 1.5rem; flex-shrink: 0; }
-    .no-mission-alert strong { display: block; color: #713f12; margin-bottom: 4px; }
-    .no-mission-alert p { margin: 0; font-size: 0.85rem; color: #92400e; }
+    .info-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 1px solid #f8fafc; }
+    .info-row:last-of-type { border-bottom: none; }
+    .info-row.total-row { border-top: 2px solid #f1f5f9; margin-top: 4px; padding-top: 12px; }
+    .info-label { font-size: 0.75rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
+    .info-value { font-size: 0.9rem; font-weight: 600; color: #1e293b; }
+    .info-value.ttc { font-size: 1rem; font-weight: 800; color: #d97706; }
+    .info-value.mono { font-family: monospace; }
 
-    /* ── Two Col ── */
-    .two-col {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 24px;
-      margin-bottom: 24px;
-    }
-    @media (max-width: 860px) { .two-col { grid-template-columns: 1fr; } }
+    /* ── PV texte ── */
+    .pv-texte-box { background: #f8fafc; border-radius: 8px; padding: 12px; margin: 10px 0 14px; }
+    .pv-texte { margin: 6px 0 0; font-size: 0.85rem; color: #374151; line-height: 1.6; white-space: pre-wrap; max-height: 140px; overflow-y: auto; }
 
-    /* ── Section Cards ── */
-    .section-card {
-      background: white;
-      border-radius: 20px;
-      box-shadow: 0 6px 24px rgba(0,0,0,0.06);
-      border: 1px solid #e8edf2;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
+    /* ── Pièces jointes (side) ── */
+    .pj-section { margin-top: 14px; }
+    .pj-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+    .pj-item { display: flex; align-items: center; gap: 7px; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 7px; padding: 7px 10px; }
+    .pj-icon { font-size: 1.1rem; flex-shrink: 0; }
+    .pj-nom  { flex: 1; font-size: 0.8rem; color: #4338ca; text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pj-nom:hover { text-decoration: underline; }
+    .pj-dl  { font-size: 0.75rem; }
+    .pj-del { background: #fee2e2; border: none; color: #ef4444; width: 20px; height: 20px; border-radius: 5px; cursor: pointer; font-size: 0.65rem; font-weight: 800; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .pj-del:hover { background: #fecaca; }
+    .pj-empty { font-size: 0.8rem; color: #94a3b8; font-style: italic; margin-top: 10px; }
 
-    .card-header-strip {
-      display: flex;
-      align-items: flex-start;
-      gap: 16px;
-      padding: 22px 26px;
-      position: relative;
-    }
-    .green-strip { background: linear-gradient(135deg, #f0fdf4, #dcfce7); border-bottom: 1px solid #bbf7d0; }
-    .gold-strip  { background: linear-gradient(135deg, #fffbeb, #fef3c7); border-bottom: 1px solid #fde68a; }
+    /* ── Card actions ── */
+    .card-actions { margin-top: 16px; padding-top: 14px; border-top: 1px solid #f1f5f9; }
+    .btn-edit { background: #eef2ff; color: #4338ca; border: none; padding: 8px 16px; border-radius: 8px; font-weight: 700; font-size: 0.84rem; cursor: pointer; width: 100%; transition: all 0.2s; }
+    .btn-edit:hover { background: #e0e7ff; }
 
-    .strip-number {
-      font-size: 2.5rem;
-      font-weight: 800;
-      line-height: 1;
-      opacity: 0.15;
-      color: #0f172a;
-      font-family: 'JetBrains Mono', monospace;
-      flex-shrink: 0;
-    }
+    /* ── Empty card ── */
+    .empty-card { text-align: center; padding: 28px 16px; }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+    .empty-text { font-weight: 700; color: #374151; margin: 0 0 6px; }
+    .empty-sub  { color: #94a3b8; font-size: 0.82rem; margin: 0; line-height: 1.5; }
 
-    .card-header-strip h3 { margin: 0 0 4px; font-size: 1.05rem; font-weight: 800; color: #0f172a; }
-    .card-header-strip p  { margin: 0; font-size: 0.8rem; color: #64748b; }
-
-    .strip-badge {
-      position: absolute;
-      top: 18px; right: 18px;
-      background: #16a34a;
-      color: white;
-      padding: 4px 10px;
-      border-radius: 20px;
-      font-size: 0.7rem;
-      font-weight: 800;
-    }
-    .gold-badge { background: #ca8a04; }
-
-    .card-body { padding: 24px 26px; flex: 1; }
+    /* ── Form cards ── */
+    .form-card { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; overflow: hidden; margin-bottom: 24px; }
+    .form-card-header { padding: 24px 30px 18px; border-bottom: 1px solid #f1f5f9; display: flex; align-items: center; gap: 16px; }
+    .green-header { background: linear-gradient(135deg, #ecfdf5, #d1fae5); border-bottom-color: #a7f3d0; }
+    .gold-header  { background: linear-gradient(135deg, #fffbeb, #fef3c7); border-bottom-color: #fde68a; }
+    .header-num { width: 40px; height: 40px; border-radius: 12px; background: rgba(255,255,255,0.8); display: flex; align-items: center; justify-content: center; font-weight: 900; font-size: 1rem; color: #374151; flex-shrink: 0; }
+    .gold-num { color: #92400e; }
+    .form-card-header h2 { margin: 0; font-size: 1.1rem; font-weight: 800; color: #1e293b; }
+    .form-subtitle { margin: 4px 0 0; color: #64748b; font-size: 0.85rem; }
+    .form-body { padding: 28px 30px; }
 
     /* ── Fields ── */
-    .field-group { margin-bottom: 18px; }
-
-    .field-label {
-      display: block;
-      font-size: 0.75rem;
-      font-weight: 700;
-      color: #475569;
-      text-transform: uppercase;
-      letter-spacing: 0.6px;
-      margin-bottom: 8px;
-    }
-    .req { color: #dc2626; }
-
-    .field-textarea {
-      width: 100%;
-      padding: 14px 16px;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 12px;
-      outline: none;
-      font-family: 'Sora', sans-serif;
-      font-size: 0.88rem;
-      color: #0f172a;
-      background: #fafbfc;
-      resize: vertical;
-      min-height: 180px;
-      line-height: 1.7;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .field-textarea:focus {
-      border-color: #16a34a;
-      background: white;
-      box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.08);
-    }
-    .field-textarea:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .field-input {
-      width: 100%;
-      padding: 12px 15px;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 10px;
-      outline: none;
-      font-family: 'Sora', sans-serif;
-      font-size: 0.92rem;
-      color: #0f172a;
-      background: #fafbfc;
-      transition: border-color 0.2s, box-shadow 0.2s;
-    }
-    .field-input:focus { border-color: #ca8a04; background: white; box-shadow: 0 0 0 3px rgba(202, 138, 4, 0.08); }
-    .field-input.err   { border-color: #dc2626; }
-    .field-input:disabled { opacity: 0.5; cursor: not-allowed; }
-    .field-input.mono-input { font-family: 'JetBrains Mono', monospace; letter-spacing: 0.5px; }
-
-    .amount-input-wrap { position: relative; display: flex; align-items: center; }
-    .amount-input-wrap .field-input { padding-right: 55px; }
-    .currency-tag {
-      position: absolute; right: 14px;
-      font-size: 0.75rem; font-weight: 800;
-      color: #94a3b8; pointer-events: none;
-    }
-
-    .err-msg { display: block; color: #dc2626; font-size: 0.75rem; font-weight: 600; margin-top: 5px; }
-
-    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
-    @media (max-width: 500px) { .form-grid-2 { grid-template-columns: 1fr; } }
+    .field { margin-bottom: 20px; }
+    .field-label { display: block; font-size: 0.8rem; font-weight: 700; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+    .required { color: #dc2626; }
+    .field-input { width: 100%; padding: 12px 16px; border: 1.5px solid #e2e8f0; border-radius: 10px; outline: none; font-family: inherit; font-size: 0.95rem; color: #1e293b; background: #fafafa; transition: all 0.2s; }
+    .field-input:focus { border-color: #4338ca; background: white; box-shadow: 0 0 0 3px rgba(67,56,202,0.08); }
+    .field-input.textarea { resize: vertical; min-height: 150px; line-height: 1.6; }
+    .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+    .input-suffix { position: relative; }
+    .input-suffix .field-input { padding-right: 52px; }
+    .suffix { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); font-size: 0.8rem; font-weight: 700; color: #94a3b8; }
 
     /* ── Char count ── */
-    .char-row { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; margin-bottom: 16px; }
-    .char-count { font-size: 0.72rem; color: #94a3b8; }
-    .min-hint { font-size: 0.72rem; color: #dc2626; font-weight: 600; }
-    .min-hint.ok { color: #16a34a; }
+    .char-row { display: flex; justify-content: space-between; margin-top: 6px; font-size: 0.75rem; color: #94a3b8; }
+    .min-hint { transition: color 0.2s; }
+    .min-hint.ok { color: #059669; font-weight: 600; }
 
-    /* ── Amount Preview ── */
-    .amount-preview {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      border-radius: 10px;
-      padding: 12px 16px;
-      margin-bottom: 14px;
-      display: flex;
-      flex-direction: column;
-      gap: 3px;
-    }
-    .ap-label { font-size: 0.7rem; font-weight: 700; color: #15803d; text-transform: uppercase; letter-spacing: 0.5px; }
-    .ap-value { font-size: 0.9rem; font-weight: 700; color: #14532d; font-family: 'JetBrains Mono', monospace; }
+    /* ── TVA ── */
+    .tva-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 10px; padding: 14px 16px; margin-bottom: 20px; }
+    .tva-row { display: flex; justify-content: space-between; font-size: 0.85rem; color: #92400e; padding: 3px 0; }
+    .tva-total { font-weight: 800; border-top: 1px solid #fde68a; margin-top: 6px; padding-top: 8px; color: #78350f; }
 
-    /* ── TVA Hint ── */
-    .tva-hint {
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      border-radius: 10px;
-      padding: 14px 16px;
-      margin-bottom: 20px;
-    }
-    .tva-row {
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.82rem;
-      color: #78350f;
-      padding: 4px 0;
-      border-bottom: 1px dashed #fde68a;
-    }
-    .tva-row:last-child { border-bottom: none; }
-    .tva-row.total-row { font-weight: 800; font-size: 0.9rem; color: #92400e; padding-top: 8px; }
+    /* ── Upload ── */
+    .pj-count-badge { background: #4338ca; color: white; font-size: 0.7rem; font-weight: 800; padding: 1px 7px; border-radius: 10px; margin-left: 6px; }
+    .pj-drop-area { display: block; border: 2px dashed #cbd5e1; border-radius: 12px; cursor: pointer; transition: all 0.2s; min-height: 80px; }
+    .pj-drop-area:hover { border-color: #4338ca; background: #f5f3ff; }
+    .drop-content { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; gap: 6px; }
+    .drop-icon { font-size: 1.8rem; }
+    .drop-text { font-size: 0.85rem; font-weight: 600; color: #374151; }
+    .drop-hint { font-size: 0.75rem; color: #94a3b8; }
+    .pj-files-preview { border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 6px; }
+    .pj-file-item { display: flex; align-items: center; gap: 8px; background: white; border: 1px solid #e2e8f0; border-radius: 8px; padding: 8px 12px; }
+    .pj-icon-sm { font-size: 1rem; flex-shrink: 0; }
+    .pj-name { flex: 1; font-size: 0.82rem; color: #374151; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pj-size { font-size: 0.72rem; color: #94a3b8; white-space: nowrap; }
+    .pj-remove { background: #fee2e2; border: none; color: #ef4444; width: 22px; height: 22px; border-radius: 6px; cursor: pointer; font-size: 0.7rem; font-weight: 800; display: flex; align-items: center; justify-content: center; }
+    .pj-remove:hover { background: #fecaca; }
+    .btn-add-more { border: 1px solid #4338ca; color: #4338ca; font-size: 0.8rem; font-weight: 700; padding: 5px 12px; border-radius: 7px; cursor: pointer; display: inline-block; }
+    .btn-add-more:hover { background: #e0e7ff; }
 
-    /* ── Existing display ── */
-    .existing-pv { margin-bottom: 10px; }
-    .existing-label {
-      font-size: 0.7rem;
-      font-weight: 700;
-      color: #16a34a;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 10px;
-    }
-    .pv-text-display {
-      background: #f0fdf4;
-      border: 1px solid #bbf7d0;
-      border-left: 4px solid #16a34a;
-      border-radius: 10px;
-      padding: 16px;
-      font-size: 0.88rem;
-      color: #14532d;
-      line-height: 1.7;
-      white-space: pre-wrap;
-      margin-bottom: 14px;
-      max-height: 200px;
-      overflow-y: auto;
-    }
+    /* ── Alert ── */
+    .alert-refus { background: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 10px 14px; font-size: 0.82rem; color: #991b1b; margin-bottom: 18px; }
 
-    .facture-display {
-      display: flex;
-      gap: 20px;
-      background: #fffbeb;
-      border: 1px solid #fde68a;
-      border-radius: 12px;
-      padding: 18px 20px;
-      margin-bottom: 14px;
-      flex-wrap: wrap;
-    }
-    .facture-ref-block, .facture-amount-block { display: flex; flex-direction: column; gap: 5px; }
-    .fd-label { font-size: 0.7rem; font-weight: 700; color: #92400e; text-transform: uppercase; letter-spacing: 0.5px; }
-    .fd-value { font-size: 1rem; font-weight: 700; color: #78350f; }
-    .fd-value.mono { font-family: 'JetBrains Mono', monospace; }
-    .fd-amount { font-size: 1.4rem; font-weight: 800; color: #ca8a04; }
-    .fd-amount small { font-size: 0.8rem; font-weight: 600; }
+    /* ── Form actions ── */
+    .form-actions { display: flex; gap: 12px; justify-content: flex-end; padding-top: 16px; border-top: 1px solid #f1f5f9; margin-top: 8px; }
+    .btn-primary { border: none; padding: 13px 28px; border-radius: 10px; font-weight: 700; font-size: 0.95rem; cursor: pointer; transition: all 0.2s; min-width: 200px; color: white; }
+    .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+    .green-btn { background: linear-gradient(135deg, #059669, #10b981); }
+    .green-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(16,185,129,0.3); }
+    .gold-btn { background: linear-gradient(135deg, #d97706, #f59e0b); }
+    .gold-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 4px 15px rgba(245,158,11,0.3); }
+    .btn-secondary { background: white; color: #64748b; border: 1.5px solid #e2e8f0; padding: 13px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; }
+    .btn-secondary:hover { background: #f8fafc; }
 
-    .btn-edit-inline {
-      background: none;
-      border: 1.5px solid #16a34a;
-      color: #16a34a;
-      padding: 8px 16px;
-      border-radius: 8px;
-      font-family: 'Sora', sans-serif;
-      font-weight: 700;
-      font-size: 0.8rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      margin-bottom: 16px;
-    }
-    .btn-edit-inline:hover { background: #f0fdf4; }
-    .gold-edit { border-color: #ca8a04; color: #ca8a04; }
-    .gold-edit:hover { background: #fffbeb; }
-
-    /* ── Buttons ── */
-    .btn-row { display: flex; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 6px; }
-
-    .btn-submit {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 10px;
-      font-family: 'Sora', sans-serif;
-      font-weight: 700;
-      font-size: 0.88rem;
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-
-    .green-btn { background: #16a34a; color: white; }
-    .green-btn:hover:not(:disabled) { background: #15803d; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(22,163,74,0.3); }
-
-    .gold-btn { background: #ca8a04; color: white; }
-    .gold-btn:hover:not(:disabled) { background: #a16207; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(202,138,4,0.3); }
-
-    .btn-cancel-inline {
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      color: #64748b;
-      padding: 10px 18px;
-      border-radius: 10px;
-      font-family: 'Sora', sans-serif;
-      font-weight: 700;
-      font-size: 0.85rem;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .btn-cancel-inline:hover { background: #e2e8f0; }
-
-    /* ── Saving dots ── */
-    .saving-dots span {
-      animation: blink 1s infinite;
-    }
-    .saving-dots span:nth-child(2) { animation-delay: 0.2s; }
-    .saving-dots span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes blink { 0%, 80%, 100% { opacity: 0; } 40% { opacity: 1; } }
-
-    /* ── Recap Card ── */
-    .recap-card {
-      background: white;
-      border-radius: 18px;
-      padding: 24px 28px;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.05);
-      border: 1px solid #e8edf2;
-    }
-    .recap-card h4 { margin: 0 0 18px; font-size: 1rem; color: #0f172a; font-weight: 800; }
-
-    .recap-grid { display: flex; gap: 30px; flex-wrap: wrap; }
-    .recap-item { display: flex; align-items: center; gap: 12px; }
-    .ri-icon { font-size: 1.3rem; }
-    .ri-label { font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
-    .ri-status { font-size: 0.85rem; font-weight: 700; color: #94a3b8; margin-left: 8px; }
-    .ri-status.done { color: #16a34a; }
-    .ri-amount { font-size: 1rem; font-weight: 800; color: #ca8a04; margin-left: 8px; font-family: 'JetBrains Mono', monospace; }
+    /* ── Success card ── */
+    .success-card { background: white; border-radius: 20px; padding: 40px 30px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; margin-bottom: 24px; }
+    .success-icon { font-size: 3.5rem; margin-bottom: 12px; }
+    .success-card h3 { margin: 0 0 8px; font-size: 1.2rem; color: #1e293b; }
+    .success-card p { color: #64748b; margin: 0; }
 
     /* ── Toast ── */
-    .toast {
-      position: fixed;
-      bottom: 30px; right: 30px;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 16px 24px;
-      border-radius: 14px;
-      font-family: 'Sora', sans-serif;
-      font-weight: 700;
-      font-size: 0.88rem;
-      opacity: 0;
-      transform: translateY(20px) scale(0.97);
-      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-      z-index: 9999;
-      pointer-events: none;
-      min-width: 260px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    }
-    .toast.show { opacity: 1; transform: translateY(0) scale(1); }
-    .toast.success { background: #14532d; color: #bbf7d0; }
+    .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 0.9rem; opacity: 0; transform: translateY(20px); transition: all 0.3s; z-index: 9999; pointer-events: none; min-width: 260px; text-align: center; }
+    .toast.show    { opacity: 1; transform: translateY(0); }
+    .toast.success { background: #059669; color: white; }
     .toast.error   { background: #dc2626; color: white; }
-    .toast-icon {
-      width: 26px; height: 26px;
-      border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-weight: 900; font-size: 0.85rem;
-      background: rgba(255,255,255,0.15);
-      flex-shrink: 0;
-    }
   `]
 })
 export class AvocatHonorairesComponent implements OnInit {
 
+  affaire:    any  = null;
   affaireId!: number;
-  affaire: any = null;
-  loading = true;
+  loading   = false;
 
-  savingPV = false;
-  savingFacture = false;
-  factureSubmitted = false;
+  // ── PV ──
+  pvTexte      = '';
+  pvStatut     = '';
+  pvHistorique: any[] = [];
+  pvFiles:      File[] = [];
+  savingPV     = false;
 
-  editPV = false;
-  editFacture = false;
+  // ── Facture ──
+  facture          = { ref: '', montant: 0 };
+  factureStatut    = '';
+  savingFacture    = false;
+  editFacture      = false;
 
-  pvTexte = '';
-  facture = { ref: '', montant: 0 };
-
+  // ── Toast ──
   toastVisible = false;
   toastMessage = '';
   toastType: 'success' | 'error' = 'success';
 
   constructor(
-    private route: ActivatedRoute,
-    private router: Router,
+    private route:         ActivatedRoute,
+    private router:        Router,
     private avocatService: AvocatService
   ) {}
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.affaireId = Number(this.route.snapshot.paramMap.get('id'));
+    if (!this.affaireId || isNaN(this.affaireId)) {
+      this.showToast('ID affaire invalide.', 'error');
+      return;
+    }
     this.chargerAffaire();
   }
 
-  chargerAffaire() {
+  // ════════════════════════════════════════
+  // Chargement
+  // ════════════════════════════════════════
+
+  chargerAffaire(): void {
     this.loading = true;
     this.avocatService.getAffaireDetail(this.affaireId).subscribe({
-      next: (aff: any) => {
-        this.affaire = aff;
-        this.pvTexte = aff.mission?.pvTexte || '';
+      next: (res: any) => {
+        this.affaire       = res;
+        this.pvStatut      = res.pvStatut      || '';
+        this.pvTexte       = res.pvTexte       || '';
+        this.factureStatut = res.factureStatut || '';
         this.facture = {
-          ref: aff.mission?.factureRef || '',
-          montant: aff.mission?.montantFacture || 0
+          ref:     res.factureRef     || '',
+          montant: res.montantFacture || 0
         };
+
+        // Historique PV avec fichiers
+        if (res.pvTexte) {
+          this.pvHistorique = [{
+            statut:   res.pvStatut || 'EN_ATTENTE',
+            texte:    res.pvTexte  || '',
+            fichiers: (res.pvFichiers ?? []).map((f: any) => ({
+              nom:      f.nom,
+              typeMime: f.typeMime,
+              base64:   f.base64
+            }))
+          }];
+        } else {
+          this.pvHistorique = [];
+        }
+
         this.loading = false;
       },
       error: () => {
@@ -783,87 +599,228 @@ export class AvocatHonorairesComponent implements OnInit {
     });
   }
 
-  getMissionClass(): string {
-    const statut = this.affaire?.mission?.statut;
-    if (!statut) return 'inactive';
-    if (['ACCEPTEE', 'EN_COURS', 'ACTIVE'].includes(statut)) return 'active';
-    if (['EN_ATTENTE', 'SOUMISE'].includes(statut)) return 'pending';
-    return 'inactive';
+  // ════════════════════════════════════════
+  // Helpers affichage
+  // ════════════════════════════════════════
+
+  hasPV(): boolean {
+    return !!this.affaire?.pvTexte;
   }
 
-  getMissionIcon(): string {
-    const statut = this.affaire?.mission?.statut;
-    if (!statut) return '⚪';
-    if (['ACCEPTEE', 'EN_COURS', 'ACTIVE'].includes(statut)) return '🟢';
-    if (['EN_ATTENTE', 'SOUMISE'].includes(statut)) return '🟡';
-    return '⚫';
+  hasFacture(): boolean {
+    return !!this.affaire?.factureRef;
   }
 
-  prefillFacture() {
-    this.facture = {
-      ref: this.affaire?.mission?.factureRef || '',
-      montant: this.affaire?.mission?.montantFacture || 0
+  pvFichiers(): any[] {
+    return this.pvHistorique[0]?.fichiers ?? [];
+  }
+
+  pvBadgeClass(): string {
+    const map: Record<string, string> = {
+      'EN_ATTENTE': 'badge-warning',
+      'VALIDE':     'badge-success',
+      'REFUSE':     'badge-danger'
     };
+    return map[this.pvStatut] ?? 'badge-warning';
   }
 
-  soumettrePV() {
-    if (!this.pvTexte?.trim()) {
+  factureBadgeClass(): string {
+    const map: Record<string, string> = {
+      'EN_ATTENTE': 'badge-warning',
+      'PAYEE':      'badge-success',
+      'REJETEE':    'badge-danger'
+    };
+    return map[this.factureStatut] ?? 'badge-warning';
+  }
+
+  pvStatutLabel(): string {
+    const map: Record<string, string> = {
+      'EN_ATTENTE': '⏳ En attente',
+      'VALIDE':     '✅ Validé',
+      'REFUSE':     '❌ Refusé'
+    };
+    return map[this.pvStatut] ?? this.pvStatut;
+  }
+
+  factureStatutLabel(): string {
+    const map: Record<string, string> = {
+      'EN_ATTENTE': '⏳ En attente',
+      'PAYEE':      '✅ Payée',
+      'REJETEE':    '❌ Rejetée'
+    };
+    return map[this.factureStatut] ?? this.factureStatut;
+  }
+
+  statutClass(statut: string): string {
+    const map: Record<string, string> = {
+      'EN_COURS':       'pill-blue',
+      'JUGEMENT_RENDU': 'pill-green'
+    };
+    return map[statut] ?? 'pill-grey';
+  }
+
+  // ════════════════════════════════════════
+  // Actions PV
+  // ════════════════════════════════════════
+
+  editerPV(): void {
+    this.pvTexte = this.affaire?.pvTexte || '';
+    this.pvFiles = [];
+  }
+
+  annulerPV(): void {
+    this.pvTexte = this.affaire?.pvTexte || '';
+    this.pvFiles = [];
+  }
+
+  soumettrePV(): void {
+    if (!this.pvTexte.trim()) {
       this.showToast('Le contenu du PV est obligatoire.', 'error');
       return;
     }
     this.savingPV = true;
-    this.avocatService.soumettrePV(
-      this.affaireId,
-      this.affaire.mission.id,
-      this.pvTexte
-    ).subscribe({
-      next: () => {
-        this.savingPV = false;
-        this.editPV = false;
-        this.showToast('✓ PV soumis avec succès !', 'success');
-        setTimeout(() => this.chargerAffaire(), 500);
-      },
-      error: (e: any) => {
-        this.savingPV = false;
-        this.showToast(e.error?.error || e.error?.message || 'Erreur lors de la soumission.', 'error');
-      }
+
+    if (this.pvFiles.length === 0) {
+      this.avocatService.soumettrePV(this.affaireId, this.pvTexte).subscribe({
+        next:  () => this.onPVSuccess(),
+        error: (e) => this.onPVError(e)
+      });
+    } else {
+      const formData = new FormData();
+      formData.append('pvTexte', this.pvTexte.trim());
+      this.pvFiles.forEach(f => formData.append('piecesJointes', f, f.name));
+      this.avocatService.soumettrePVAvecFichiers(this.affaireId, formData).subscribe({
+        next:  () => this.onPVSuccess(),
+        error: (e) => this.onPVError(e)
+      });
+    }
+  }
+
+  private onPVSuccess(): void {
+    this.savingPV = false;
+    this.pvFiles  = [];
+    this.showToast('✓ PV soumis avec succès !', 'success');
+    setTimeout(() => this.chargerAffaire(), 500);
+  }
+
+  private onPVError(e: any): void {
+    this.savingPV = false;
+    const msg = e?.error?.error || e?.error?.message || e?.message
+                || 'Erreur lors de la soumission du PV.';
+    this.showToast(msg, 'error');
+  }
+
+  supprimerFichierPV(index: number): void {
+    if (!this.pvHistorique[0]?.fichiers) return;
+    this.pvHistorique[0].fichiers.splice(index, 1);
+    this.avocatService.supprimerFichierPV(this.affaireId, index).subscribe({
+      next:  () => this.showToast('Fichier supprimé.', 'success'),
+      error: () => this.showToast('Erreur suppression.', 'error')
     });
   }
 
-  soumettreFacture() {
-    this.factureSubmitted = true;
-    if (!this.facture.ref || !this.facture.montant) {
-      this.showToast('Référence et montant sont obligatoires.', 'error');
+  // ════════════════════════════════════════
+  // Actions Facture
+  // ════════════════════════════════════════
+
+  editerFacture(): void {
+    this.facture = {
+      ref:     this.affaire?.factureRef     || '',
+      montant: this.affaire?.montantFacture || 0
+    };
+  }
+
+  annulerFacture(): void {
+    this.facture = {
+      ref:     this.affaire?.factureRef     || '',
+      montant: this.affaire?.montantFacture || 0
+    };
+  }
+
+  soumettreFacture(): void {
+    const ref     = this.facture.ref?.trim();
+    const montant = Number(this.facture.montant);
+
+    if (!ref) {
+      this.showToast('La référence est obligatoire.', 'error');
       return;
     }
+    if (!montant || montant <= 0) {
+      this.showToast('Le montant doit être supérieur à 0.', 'error');
+      return;
+    }
+
     this.savingFacture = true;
-    const body = { factureRef: this.facture.ref, montantFacture: this.facture.montant };
     this.avocatService.soumettreFacture(
       this.affaireId,
-      this.affaire.mission.id,
-      body
+      { factureRef: ref, montantFacture: montant }
     ).subscribe({
       next: () => {
         this.savingFacture = false;
-        this.factureSubmitted = false;
-        this.editFacture = false;
+        this.facture       = { ref: '', montant: 0 };
         this.showToast('✓ Facture soumise avec succès !', 'success');
         setTimeout(() => this.chargerAffaire(), 500);
       },
       error: (e: any) => {
         this.savingFacture = false;
-        this.showToast(e.error?.error || e.error?.message || 'Erreur lors de la soumission.', 'error');
+        const msg = e?.error?.error || e?.error?.message || e?.message
+                    || 'Erreur soumission facture.';
+        this.showToast(msg, 'error');
       }
     });
   }
 
-  retour() {
+  // ════════════════════════════════════════
+  // Fichiers
+  // ════════════════════════════════════════
+
+  onPVFilesSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (!input.files) return;
+    const newFiles = Array.from(input.files).filter(f => {
+      if (f.size > 10 * 1024 * 1024) {
+        this.showToast(`"${f.name}" dépasse 10 Mo.`, 'error');
+        return false;
+      }
+      return true;
+    });
+    this.pvFiles = [...this.pvFiles, ...newFiles];
+    input.value  = '';
+  }
+
+  removePVFile(index: number, event: MouseEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.pvFiles = this.pvFiles.filter((_, i) => i !== index);
+  }
+
+  buildDownloadUrl(fichier: any): string {
+    return `data:${fichier.typeMime};base64,${fichier.base64}`;
+  }
+
+  getFileIcon(filename: string): string {
+    const ext = filename?.split('.').pop()?.toLowerCase();
+    const icons: Record<string, string> = {
+      pdf: '📄', doc: '📝', docx: '📝',
+      jpg: '🖼️', jpeg: '🖼️', png: '🖼️',
+      xls: '📊', xlsx: '📊', txt: '📃'
+    };
+    return icons[ext ?? ''] ?? '📎';
+  }
+
+  formatSize(bytes: number): string {
+    if (bytes < 1024)        return bytes + ' o';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
+  }
+
+  retour(): void {
     this.router.navigate(['/avocat/dashboard']);
   }
 
-  private showToast(message: string, type: 'success' | 'error') {
+  private showToast(message: string, type: 'success' | 'error'): void {
     this.toastMessage = message;
-    this.toastType = type;
+    this.toastType    = type;
     this.toastVisible = true;
     setTimeout(() => this.toastVisible = false, 3500);
   }

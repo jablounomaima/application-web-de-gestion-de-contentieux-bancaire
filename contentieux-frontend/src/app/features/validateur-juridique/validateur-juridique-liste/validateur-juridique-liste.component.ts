@@ -1,4 +1,4 @@
-import { Component, OnInit, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Output, EventEmitter, Input, OnChanges, SimpleChanges } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ValidateurService } from '../../../core/services/validateur.service';
@@ -10,8 +10,9 @@ import { ValidateurService } from '../../../core/services/validateur.service';
   templateUrl: './validateur-juridique-liste.component.html',
   styleUrls: ['./validateur-juridique-liste.component.scss']
 })
-export class ValidateurJuridiqueListeComponent implements OnInit {
-
+export class ValidateurJuridiqueListeComponent implements OnInit, OnChanges {
+  @Input()  recharger      = false;
+  @Output() dossiersCharges = new EventEmitter<any[]>();
   @Output() actionDemandee = new EventEmitter<{ dossier: any; type: 'valider' | 'rejeter' }>();
 
   dossiers:       any[]            = [];
@@ -29,10 +30,11 @@ export class ValidateurJuridiqueListeComponent implements OnInit {
     this.loading = true;
     this.dossierDetails.clear();
     this.dossierExpanded = null;
-
+  
     this.validateurService.getDossiersJuridique(this.recherche).subscribe({
       next: (data: any) => {
         this.dossiers = Array.isArray(data) ? data : (data?.dossiers ?? []);
+        this.dossiersCharges.emit(this.dossiers); // ← ajouter
         this.loading  = false;
       },
       error: (err: any) => {
@@ -40,6 +42,11 @@ export class ValidateurJuridiqueListeComponent implements OnInit {
         this.loading = false;
       }
     });
+  }
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['recharger'] && !changes['recharger'].firstChange) {
+      this.charger();
+    }
   }
 
   toggleExpand(d: any): void {

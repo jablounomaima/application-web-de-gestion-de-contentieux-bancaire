@@ -508,4 +508,9 @@ lancerProcedure() {
     this.router.navigate(['/agent/dossiers', this.dossier?.id, 'missions', 'creer']);
 
   }
+
+  // Dans le composant détail dossier
+voirResultats() {
+  this.router.navigate(['/agent/dossiers', this.dossier?.id, 'resultats-prestataires']);
+}
 }

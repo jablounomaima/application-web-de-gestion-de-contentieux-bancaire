@@ -18,38 +18,74 @@ public class EmailService {
         try {
             MimeMessage message = mailSender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
+    
             helper.setTo(destinataire);
             helper.setSubject("Vos identifiants de connexion — Plateforme Contentieux");
-
-            // Corps du mail en HTML
+    
             String html = """
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: auto;">
-                    <h2 style="color: #1a237e;">Bienvenue sur la Plateforme Contentieux</h2>
-                    <p>Votre compte prestataire a été créé avec succès.</p>
-                    <p>Voici vos identifiants de connexion :</p>
-                    <div style="background:#f5f5f5; padding:16px; border-radius:8px; margin:16px 0;">
-                        <p><strong>Nom d'utilisateur :</strong> %s</p>
-                        <p><strong>Mot de passe :</strong> %s</p>
+                <div style="font-family:Arial,sans-serif;max-width:600px;
+                            margin:auto;border:1px solid #e0e0e0;
+                            border-radius:8px;overflow:hidden;">
+    
+                  <div style="background:#1a237e;padding:24px;text-align:center;">
+                    <h2 style="color:#fff;margin:0;">Plateforme Contentieux</h2>
+                    <p style="color:#90caf9;margin:8px 0 0;">
+                      Vos identifiants de connexion
+                    </p>
+                  </div>
+    
+                  <div style="padding:24px;">
+                    <p>Bonjour,</p>
+                    <p>Votre compte a été créé. Voici vos identifiants temporaires :</p>
+    
+                    <div style="background:#f5f5f5;border-left:4px solid #1a237e;
+                                padding:16px;border-radius:4px;margin:16px 0;">
+                      <p style="margin:0 0 8px;">
+                        <strong>Nom d'utilisateur :</strong>
+                        <span style="font-family:monospace;font-size:15px;">
+                          %s
+                        </span>
+                      </p>
+                      <p style="margin:0;">
+                        <strong>Mot de passe temporaire :</strong>
+                        <span style="font-family:monospace;font-size:15px;">
+                          %s
+                        </span>
+                      </p>
                     </div>
-                    <p style="color:#e53935;">
-                        Pour des raisons de sécurité, veuillez changer votre mot de passe 
-                        lors de votre première connexion.
+    
+                    <!-- ✅ Message changement obligatoire -->
+                    <div style="background:#e8f5e9;border:1px solid #a5d6a7;
+                                padding:12px;border-radius:4px;margin:16px 0;">
+                      <p style="margin:0;color:#2e7d32;font-size:13px;">
+                        🔐 <strong>Action requise :</strong> 
+                        Lors de votre première connexion, vous serez automatiquement 
+                        redirigé vers une page pour changer votre mot de passe.
+                        Ce mot de passe temporaire ne peut être utilisé qu'une seule fois.
+                      </p>
+                    </div>
+    
+                    <div style="background:#fff3e0;border:1px solid #ffcc02;
+                                padding:12px;border-radius:4px;margin:16px 0;">
+                      <p style="margin:0;color:#e65100;font-size:13px;">
+                        ⚠️ Ne partagez jamais vos identifiants avec quiconque.
+                      </p>
+                    </div>
+    
+                    <p style="color:#757575;font-size:12px;margin-top:24px;
+                               border-top:1px solid #eee;padding-top:12px;">
+                      Cet email a été envoyé automatiquement. 
+                      Merci de ne pas y répondre.
                     </p>
-                    <hr/>
-                    <p style="color:#9e9e9e; font-size:12px;">
-                        Cet email a été envoyé automatiquement, merci de ne pas y répondre.
-                    </p>
+                  </div>
                 </div>
                 """.formatted(username, motDePasse);
-
-            helper.setText(html, true); // true = HTML
+    
+            helper.setText(html, true);
             mailSender.send(message);
-
             System.out.println("✅ Email credentials envoyé à : " + destinataire);
-
+    
         } catch (Exception e) {
-            System.out.println("❌ Erreur envoi email : " + e.getMessage());
             throw new RuntimeException("Impossible d'envoyer l'email : " + e.getMessage());
         }
     }

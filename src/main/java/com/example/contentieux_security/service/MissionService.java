@@ -51,10 +51,11 @@ public class MissionService {
     }
 
     @Transactional(readOnly = true)
-    public Mission getMissionWithDetails(Long id) {
-        return missionRepository.findByIdWithDetails(id)
-                .orElseThrow(() -> new RuntimeException("Mission introuvable : " + id));
-    }
+   // MissionService.java
+public Mission getMissionWithDetails(Long id) {
+    return missionRepository.findByIdWithDetails(id)
+            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+}
 
     // ── MODIFIER MISSION ─────────────────────
     @Transactional
@@ -329,5 +330,7 @@ public void resoumettreFactureApresRejet(Long missionId,
             mission.getNumeroMission(), username);
     missionRepository.save(mission);
 }
+
+
 
 }

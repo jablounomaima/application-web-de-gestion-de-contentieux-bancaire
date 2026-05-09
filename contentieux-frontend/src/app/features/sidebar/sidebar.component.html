@@ -5,7 +5,7 @@
   </div>
 
   <!-- MENU AGENT BANCAIRE -->
-  <div class="menu-section" *ngIf="hasRole('AGENT') || hasRole('ADMIN')">
+  <div class="menu-section" *ngIf="hasRole('AGENT')">
     <p class="menu-label">ESPACE AGENT</p>
     <ul>
       <li><a routerLink="/agent/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Tableau de Bord</a></li>

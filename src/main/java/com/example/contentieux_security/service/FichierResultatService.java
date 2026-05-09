@@ -28,8 +28,10 @@ public class FichierResultatService {
         return repository.findByNomFichierServeur(nomServeur).orElse(null);
     }
 
+   
+
     public FichierResultat findById(Long id) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'findById'");
+        return repository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Fichier introuvable : " + id));
     }
 }

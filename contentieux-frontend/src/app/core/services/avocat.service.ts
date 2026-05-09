@@ -42,22 +42,37 @@ export class AvocatService {
     return this.http.post(`${this.api}/${affaireId}/jugement`, body);
   }
 
-  soumettrePV(affaireId: number, missionId: number, pvTexte: string): Observable<any> {
-    return this.http.post(`${this.api}/${affaireId}/missions/${missionId}/pv`, { pvTexte });
+  soumettrePV(affaireId: number, pvTexte: string): Observable<any> {
+    return this.http.post(`${this.api}/${affaireId}/pv`, { pvTexte });
   }
 
-  soumettreFacture(affaireId: number, missionId: number, body: any): Observable<any> {
-    return this.http.post(`${this.api}/${affaireId}/missions/${missionId}/facture`, body);
+  soumettreFacture(affaireId: number, body: { factureRef: string; montantFacture: number }): Observable<any> {
+    return this.http.post(`${this.api}/${affaireId}/facture`, body);
   }
-
   modifierTribunal(affaireId: number, body: any): Observable<any> {
     return this.http.post(`${this.api}/${affaireId}/tribunal`, body);
   }
 
+  soumettrePVAvecFichiers(affaireId: number, formData: FormData): Observable<any> {
+    console.log('URL appelée:', `${this.api}/${affaireId}/pv/fichiers`); // ✅
+    return this.http.post(
+      `${this.api}/${affaireId}/pv/fichiers`,
+      formData
+    );
+  }
 
 
   getDossierAffaire(affaireId: number): Observable<any> {
     return this.http.get(`${this.api}/${affaireId}/dossier`);
+  }
+
+  supprimerFichierPV(affaireId: number, index: number): Observable<any> {
+    return this.http.delete(`${this.api}/${affaireId}/pv/fichiers/${index}`);
+  }
+
+
+  supprimerJugement(affaireId: number): Observable<any> {
+    return this.http.delete(`${this.api}/${affaireId}/jugement`);
   }
    
 }

@@ -52,7 +52,7 @@ public class PdfService {
                     cb.setFontAndSize(BaseFont.createFont(), 9);
                     cb.setColorFill(BaseColor.WHITE);
                     cb.moveText(40, PageSize.A4.getHeight() - 18);
-                    cb.showText("BANQUE — Dossier Contentieux Confidentiel");
+                    cb.showText("BANQUE — Dossier Contentieux Client");
                     cb.endText();
                 } catch (Exception ignored) {}
 
@@ -188,8 +188,8 @@ public class PdfService {
                 // Garanties
                 if (r.getGaranties() != null && !r.getGaranties().isEmpty()) {
                     Paragraph gTitre = new Paragraph("  Garanties :",
-                            new Font(Font.FontFamily.HELVETICA, 9,
-                                    Font.ITALIC, BaseColor.GRAY));
+                            new Font(Font.FontFamily.HELVETICA, 12,
+                                    Font.ITALIC, BaseColor.BLACK));
                     doc.add(gTitre);
 
                     PdfPTable gTable = new PdfPTable(new float[]{30, 25, 25, 20});

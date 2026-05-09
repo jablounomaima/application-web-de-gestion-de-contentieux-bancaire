@@ -15,7 +15,6 @@ export class ValidateurFinancierDashboardComponent implements OnInit {
 
   dossiers:           any[]                 = [];
   loading             = true;
-  recherche           = '';
   valides             = 0;
   rejetes             = 0;
   dossierSelectionne: any                   = null;
@@ -23,26 +22,20 @@ export class ValidateurFinancierDashboardComponent implements OnInit {
   commentaire         = '';
   erreur              = '';
   soumission          = false;
+  recharger           = false;
 
   constructor(private validateurService: ValidateurService) {}
 
-  ngOnInit(): void { this.charger(); }
+  ngOnInit(): void {
+    this.loading = true; // la liste enfant va émettre les données
+  }
 
-  charger(): void {
-    this.loading = true;
-    this.validateurService.getDossiersFinancier(this.recherche).subscribe({
-      next: (data: any) => {
-        const raw     = Array.isArray(data) ? data : (data?.dossiers ?? []);
-        this.dossiers = raw;
-        this.valides  = raw.filter((d: any) => d.validationFinanciere === true).length;
-        this.rejetes  = raw.filter((d: any) => d.validationFinanciere === false).length;
-        this.loading  = false;
-      },
-      error: (err: any) => {
-        console.error('❌ erreur chargement liste financier =', err);
-        this.loading = false;
-      }
-    });
+  // ── Stats alimentées par l'Output de la liste ─────────────────
+  mettreAJourStats(dossiers: any[]): void {
+    this.dossiers = dossiers;
+    this.valides  = dossiers.filter(d => d.validationFinanciere === true).length;
+    this.rejetes  = dossiers.filter(d => d.validationFinanciere === false && d.statut !== 'EN_TRAITEMENT').length;
+    this.loading  = false;
   }
 
   getNbEnAttente(): number {
@@ -79,7 +72,7 @@ export class ValidateurFinancierDashboardComponent implements OnInit {
       next: () => {
         this.soumission         = false;
         this.dossierSelectionne = null;
-        this.charger();
+        this.recharger          = !this.recharger; // déclenche rechargement liste
       },
       error: (err: any) => {
         this.erreur     = err.error?.error ?? 'Erreur lors de l\'opération.';

@@ -50,6 +50,7 @@ export const routes: Routes = [
 
   {
     path: 'avocat/affaires',
+    canActivate: [AuthGuard],
     loadComponent: () =>
       import('./features/avocat/avocat-affaires-list/avocat-affaires-list.component')
 
@@ -57,6 +58,7 @@ export const routes: Routes = [
   },
   {
     path: 'avocat/affaires/:affaireId/dossier',
+    canActivate: [AuthGuard],
     loadComponent: () =>
       import('./features/avocat/avocat-dossier-detail/avocat-dossier-detail.component')
         .then(m => m.AvocatDossierDetailComponent),
@@ -96,6 +98,7 @@ export const routes: Routes = [
 
 {
   path: 'avocat/affaires/:id/tribunal',
+  canActivate: [AuthGuard],
   loadComponent: () =>
     import('./features/avocat/avocat-tribunal/avocat-tribunal.component')
       .then(m => m.AvocatTribunalComponent)
@@ -103,6 +106,7 @@ export const routes: Routes = [
 
 {
   path: 'avocat/affaires/:id/honoraires',
+  canActivate: [AuthGuard],
   loadComponent: () =>
     import('./features/avocat/avocat-honoraires/avocat-honoraires.component')
       .then(m => m.AvocatHonorairesComponent)
@@ -227,12 +231,14 @@ export const routes: Routes = [
 
   {
     path: 'avocat/affaires/:affaireId/audiences',
+    canActivate: [AuthGuard],
     component: AvocatAudiencesComponent
   },
 
 
   {
     path: 'avocat/affaires/:id/jugement',
+    canActivate: [AuthGuard],
     component: AvocatJugementComponent
   },
 
@@ -336,6 +342,21 @@ export const routes: Routes = [
       .then(m => m.PrestataireMissionsListeComponent),
 },
 
+//afficher les resultats de mission dans agent bancaire
+
+{
+
+  path: 'agent/dossiers/:dossierId/resultats-prestataires',
+  canActivate: [AuthGuard],
+  data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
+  loadComponent: () =>
+     import('./features/agent/resultats-prestataires/resultats-prestataires.component')
+      .then(m => m.ResultatsPrestatairesComponent),
+
+  
+
+},
+
 
 
 
@@ -345,6 +366,13 @@ export const routes: Routes = [
   loadComponent: () =>
     import('./features/prestataire/prestataire-dossier-detail/prestataire-dossier-detail.component')
       .then(m => m.PrestataireDossierDetailComponent)
+},
+
+{
+  path: 'prestataire/mission/:id/resultats',
+  loadComponent: () =>
+    import('./features/prestataire/mission-resultats/mission-resultats.component')
+      .then(m => m.MissionResultatsComponent)
 },
 
 

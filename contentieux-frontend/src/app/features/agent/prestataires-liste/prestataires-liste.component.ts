@@ -45,9 +45,17 @@ export class PrestatairesListeComponent implements OnInit {
   constructor(private router: Router, private http: HttpClient) {}
 
   ngOnInit(): void {
+    // 🔍 LOG TEMPORAIRE — à supprimer après diagnostic
+    const kcInstance = (window as any).keycloak;
+    if (kcInstance?.token) {
+      const payload = JSON.parse(atob(kcInstance.token.split('.')[1]));
+      console.log('🔍 Roles:', payload.realm_access?.roles);
+      console.log('🔍 User:', payload.preferred_username);
+      console.log('🔍 Expire:', new Date(payload.exp * 1000));
+    }
+  
     this.charger();
   }
-
   // ══════════════════════════════════════════════════════════════
   // CHARGEMENT
   // ══════════════════════════════════════════════════════════════

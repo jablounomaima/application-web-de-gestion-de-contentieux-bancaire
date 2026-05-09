@@ -30,7 +30,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
-@RequestMapping("/api/prestataire/missions")
+@RequestMapping("/api/missions")
 @RequiredArgsConstructor
 @Slf4j
 public class MissionController {

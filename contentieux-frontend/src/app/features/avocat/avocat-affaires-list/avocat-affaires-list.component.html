@@ -10,44 +10,69 @@
       </div>
     </div>
   
-    <!-- ══ Métriques rapides ══════════════════════════════════════ -->
-    <div class="al-metrics" *ngIf="stats">
-      <div class="al-metric al-metric--blue">
-        <div class="al-metric-icon">📁</div>
-        <div class="al-metric-body">
-          <span class="al-metric-val">{{ stats.totalAffaires || 0 }}</span>
-          <span class="al-metric-lbl">Total affaires</span>
-        </div>
-      </div>
-      <div class="al-metric al-metric--indigo">
-        <div class="al-metric-icon">⚖️</div>
-        <div class="al-metric-body">
-          <span class="al-metric-val">{{ stats.affairesEnCours || 0 }}</span>
-          <span class="al-metric-lbl">En cours</span>
-        </div>
-      </div>
-      <div class="al-metric al-metric--amber">
-        <div class="al-metric-icon">🗓️</div>
-        <div class="al-metric-body">
-          <span class="al-metric-val">{{ stats.audiencesAVenir || 0 }}</span>
-          <span class="al-metric-lbl">Audiences à venir</span>
-        </div>
-      </div>
-      <div class="al-metric al-metric--green">
-        <div class="al-metric-icon">💰</div>
-        <div class="al-metric-body">
-          <span class="al-metric-val">{{ stats.totalHonoraires | number:'1.0-0' }}</span>
-          <span class="al-metric-lbl">Honoraires TND</span>
-        </div>
-      </div>
-      <div class="al-metric al-metric--purple">
-        <div class="al-metric-icon">📜</div>
-        <div class="al-metric-body">
-          <span class="al-metric-val">{{ stats.jugementRendu || 0 }}</span>
-          <span class="al-metric-lbl">Jugements rendus</span>
-        </div>
-      </div>
+   <!-- ══ Métriques rapides ══════════════════════════════════════ -->
+<!-- ══ Métriques rapides ══════════════════════════════════════ -->
+<div class="al-metrics">
+
+  <div class="al-metric al-metric--blue">
+    <div class="al-metric-icon">📁</div>
+    <div class="al-metric-body">
+      <span class="al-metric-val">{{ totalAffaires }}</span>
+      <span class="al-metric-lbl">Total affaires</span>
     </div>
+  </div>
+
+  <div class="al-metric al-metric--indigo">
+    <div class="al-metric-icon">⚖️</div>
+    <div class="al-metric-body">
+      <span class="al-metric-val">{{ affairesEnCours }}</span>
+      <span class="al-metric-lbl">En cours</span>
+    </div>
+  </div>
+
+  <div class="al-metric al-metric--amber">
+    <div class="al-metric-icon">🗓️</div>
+    <div class="al-metric-body">
+      <span class="al-metric-val">{{ audiencesAVenir }}</span>
+      <span class="al-metric-lbl">Audiences à venir</span>
+    </div>
+  </div>
+
+  <div class="al-metric al-metric--green">
+    <div class="al-metric-icon">💰</div>
+    <div class="al-metric-body">
+      <span class="al-metric-val">
+        {{ totalHonoraires | number:'1.3-3' }}
+      </span>
+      <span class="al-metric-lbl">Honoraires TND</span>
+    </div>
+  </div>
+
+  <div class="al-metric al-metric--purple">
+    <div class="al-metric-icon">📜</div>
+    <div class="al-metric-body">
+      <span class="al-metric-val">{{ jugementRendu }}</span>
+      <span class="al-metric-lbl">Jugements rendus</span>
+    </div>
+  </div>
+
+  <div class="al-metric al-metric--orange">
+    <div class="al-metric-icon">📋</div>
+    <div class="al-metric-body">
+      <span class="al-metric-val">{{ pvEnAttente }}</span>
+      <span class="al-metric-lbl">PV en attente</span>
+    </div>
+  </div>
+
+  <div class="al-metric al-metric--rose">
+    <div class="al-metric-icon">🧾</div>
+    <div class="al-metric-body">
+      <span class="al-metric-val">{{ facturesEnAttente }}</span>
+      <span class="al-metric-lbl">Factures en attente</span>
+    </div>
+  </div>
+
+</div>
   
     <!-- ══ Filtres statut ═════════════════════════════════════════ -->
     <div class="al-filters">

@@ -35,8 +35,10 @@
   
     <!-- ═══ LISTE (composant dédié) ═══ -->
     <app-validateur-financier-liste
-      (actionDemandee)="ouvrirAction($event)">
-    </app-validateur-financier-liste>
+    [recharger]="recharger"
+    (actionDemandee)="ouvrirAction($event)"
+    (dossiersCharges)="mettreAJourStats($event)">
+  </app-validateur-financier-liste>
   
   </div>
   

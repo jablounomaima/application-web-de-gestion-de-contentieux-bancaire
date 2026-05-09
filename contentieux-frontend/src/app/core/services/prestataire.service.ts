@@ -19,9 +19,7 @@ export class PrestataireService {
     return this.http.get<any>(`${this.api}/missions${params}`);
   }
 
-  getMissionDetail(missionId: number): Observable<any> {
-    return this.http.get<any>(`${this.api}/missions/${missionId}`);
-  }
+ 
 
   soumettreResultat(missionId: number, formData: FormData): Observable<any> {
     return this.http.post(`${this.api}/missions/${missionId}/resultat`, formData);
@@ -40,12 +38,7 @@ export class PrestataireService {
     return this.http.post(`${this.api}/missions/${missionId}/facture`, data);
   }
 
-  telechargerFichier(nomServeur: string): Observable<Blob> {
-    return this.http.get(
-      `${this.api}/missions/fichier/${nomServeur}`,
-      { responseType: 'blob' }
-    );
-  }
+  
 
   telechargerFichierParId(fichierId: number): Observable<Blob> {
     return this.http.get(
@@ -64,4 +57,42 @@ export class PrestataireService {
   getDossierMission(missionId: number): Observable<any> {
     return this.http.get<any>(`${this.api}/missions/${missionId}/dossier`);
   }
+
+  soumettresPV(missionId: number, pvTexte: string): Observable<any> {
+    return this.http.post<any>(
+      `${this.api}/missions/${missionId}/pv`,
+      { pvTexte }  // ✅ JSON, pas FormData
+    );
+  }
+
+
+  uploaderDocuments(missionId: number, formData: FormData): Observable<any> {
+    // ⚠️ NE PAS ajouter Content-Type manuellement — Angular le gère seul
+    return this.http.post(
+      `${this.api}/missions/${missionId}/documents`,
+      formData
+      // pas de headers ici
+    );
+  }
+  
+  getDocuments(missionId: number): Observable<any> {
+    return this.http.get(`${this.api}/missions/${missionId}/documents`);
+  }
+  
+  telechargerFichier(nomServeur: string): Observable<Blob> {
+    return this.http.get(
+      `${this.api}/documents/${nomServeur}`,
+      { responseType: 'blob' }
+    );
+  }
+
+  getResultatMission(missionId: number): Observable<any> {
+    return this.http.get(`${this.api}/missions/${missionId}/resultat`);
+  }
+  
+  getMissionDetail(missionId: number): Observable<any> {
+    return this.http.get(`${this.api}/missions/${missionId}`);
+  }
+
+
 }

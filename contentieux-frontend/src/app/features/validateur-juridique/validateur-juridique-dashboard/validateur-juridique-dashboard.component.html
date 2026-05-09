@@ -49,8 +49,10 @@
 
   <!-- ═══ LISTE ═══ -->
   <!-- ═══ LISTE ═══ -->
-<app-validateur-juridique-liste
-  (actionDemandee)="ouvrirAction($event.dossier, $event.type)">
+  <app-validateur-juridique-liste
+  [recharger]="recharger"
+  (actionDemandee)="ouvrirAction($event.dossier, $event.type)"
+  (dossiersCharges)="mettreAJourStats($event)">
 </app-validateur-juridique-liste>
 </div>
 

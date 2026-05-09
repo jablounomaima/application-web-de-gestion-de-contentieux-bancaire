@@ -9,7 +9,7 @@ import { Router } from '@angular/router';
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="page-container">
+ <div class="page-container">
       <div class="page-header">
         <div>
           <h1>Mon Espace Prestataire</h1>
@@ -63,38 +63,63 @@ import { Router } from '@angular/router';
           </thead>
           <tbody>
             <tr *ngIf="missionsFiltrees.length === 0">
-              <td colspan="6" class="empty-state">Aucune mission {{ activeTab === 'enCours' ? 'en cours' : '' }}</td>
+              <td colspan="6" class="empty-state">
+                Aucune mission {{ activeTab === 'enCours' ? 'en cours' : '' }}
+              </td>
             </tr>
             <tr *ngFor="let m of missionsFiltrees" class="table-row">
-              <td><strong>#{{ m.id }}</strong></td>
               <td>
-  <div *ngIf="m.prestation?.dossier as d; else noDossier">
-    <strong>{{ d.numeroDossier }}</strong><br>
-
-    <small>👤 {{ d.client?.nom }} {{ d.client?.prenom }}</small><br>
-
-    <small>📄 {{ d.libelle || '—' }}</small><br>
-
-    <small>💰 {{ d.montant || '—' }} TND</small><br>
-
-    <small>📅 {{ d.dateCreation | date:'dd/MM/yyyy' }}</small>
-  </div>
-
-  <ng-template #noDossier>
-    <span>N/A</span>
-  </ng-template>
-</td>
-              <td><span class="type-badge">{{ m.prestation?.type || 'N/A' }}</span></td>
+                <strong>{{ m.numeroMission }}</strong><br>
+                <small style="color:#888">#{{ m.id }}</small>
+              </td>
+              <td>
+                <div *ngIf="m.prestation?.dossier as d; else noDossier">
+                  <strong>{{ d.numeroDossier }}</strong><br>
+                  <small>👤 {{ d.client?.nom }} {{ d.client?.prenom }}</small><br>
+                  <small>📄 {{ d.libelle || '—' }}</small><br>
+                  <small>💰 {{ d.montant | number:'1.0-0' }} TND</small><br>
+                  <small>📅 {{ d.dateCreation | date:'dd/MM/yyyy' }}</small>
+                </div>
+                <ng-template #noDossier><span>N/A</span></ng-template>
+              </td>
+              <td>
+                <span class="type-badge">{{ m.prestation?.type || 'N/A' }}</span>
+              </td>
               <td>{{ m.dateAssignation | date:'dd/MM/yyyy' }}</td>
-              <td><span class="statut-badge" [ngClass]="getStatutClass(m.statut)">{{ m.statut }}</span></td>
+              <td>
+                <span class="statut-badge" [ngClass]="getStatutClass(m.statut)">
+                  {{ m.statut }}
+                </span>
+              </td>
               <td class="actions">
-              <button class="btn-action info"
-          (click)="voirDossier(m)">
-    👁️ Voir dossier
-  </button>
-                <button class="btn-action pv" (click)="ouvrirModalPV(m)" *ngIf="peutSoumettrePV(m)">📄 Soumettre PV</button>
-                <button class="btn-action facture" (click)="ouvrirModalFacture(m)" *ngIf="peutSoumettreFacture(m)">💳 Facture</button>
-                <span class="statut-final" *ngIf="!peutSoumettrePV(m) && !peutSoumettreFacture(m)">—</span>
+                <button class="btn-action info" (click)="voirDossier(m)">
+                  👁️ Voir dossier
+                </button>
+                <button class="btn-action results"
+        (click)="voirResultats(m)">
+  📊 Résultats
+</button>
+                <button class="btn-action pv"
+                        (click)="ouvrirModalPV(m)"
+                        *ngIf="peutSoumettrePV(m)">
+                  📄 Soumettre PV
+                </button>
+                <button class="btn-action facture"
+                        (click)="ouvrirModalFacture(m)"
+                        *ngIf="peutSoumettreFacture(m)">
+                  💳 Facture
+                </button>
+
+                <!-- ✅ BOUTON DOCUMENTS AJOUTÉ ICI -->
+                <button class="btn-action doc"
+                        (click)="ouvrirModalDocuments(m)">
+                  📎 Documents
+                </button>
+
+                <span class="statut-final"
+                      *ngIf="!peutSoumettrePV(m) && !peutSoumettreFacture(m)">
+                  —
+                </span>
               </td>
             </tr>
           </tbody>
@@ -103,7 +128,9 @@ import { Router } from '@angular/router';
     </div>
 
     <!-- MODAL PV -->
-    <div class="modal-overlay" *ngIf="missionSelectionnee && modalType === 'pv'" (click)="fermerModal()">
+    <div class="modal-overlay"
+         *ngIf="missionSelectionnee && modalType === 'pv'"
+         (click)="fermerModal()">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header indigo">
           <h2>📄 Soumettre un PV de Mission</h2>
@@ -111,18 +138,25 @@ import { Router } from '@angular/router';
         </div>
         <div class="modal-body">
           <div class="mission-info-box">
-            <p><strong>Mission :</strong> #{{ missionSelectionnee.id }}</p>
-            <p><strong>Dossier :</strong> {{ missionSelectionnee.prestation?.dossier?.numeroDossier }}</p>
+            <p><strong>Mission :</strong> {{ missionSelectionnee.numeroMission }}</p>
+            <p><strong>Dossier :</strong>
+              {{ missionSelectionnee.prestation?.dossier?.numeroDossier || '—' }}
+            </p>
           </div>
           <div class="form-group">
             <label>Contenu du Procès-Verbal *</label>
-            <textarea [(ngModel)]="formPV.pvTexte" rows="6" placeholder="Rédigez votre compte rendu de mission ici..."></textarea>
+            <textarea [(ngModel)]="formPV.pvTexte"
+                      rows="6"
+                      placeholder="Rédigez votre compte rendu de mission ici...">
+            </textarea>
           </div>
           <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
           <div class="success-banner" *ngIf="succes">{{ succes }}</div>
           <div class="modal-footer">
             <button class="btn-cancel" (click)="fermerModal()">Annuler</button>
-            <button class="btn-submit" (click)="soumettreResultat()" [disabled]="soumission">
+            <button class="btn-submit"
+                    (click)="soumettreResultat()"
+                    [disabled]="soumission">
               {{ soumission ? '⏳ En cours...' : '✅ Soumettre le PV' }}
             </button>
           </div>
@@ -131,7 +165,9 @@ import { Router } from '@angular/router';
     </div>
 
     <!-- MODAL FACTURE -->
-    <div class="modal-overlay" *ngIf="missionSelectionnee && modalType === 'facture'" (click)="fermerModal()">
+    <div class="modal-overlay"
+         *ngIf="missionSelectionnee && modalType === 'facture'"
+         (click)="fermerModal()">
       <div class="modal-card" (click)="$event.stopPropagation()">
         <div class="modal-header green">
           <h2>💳 Soumettre une Facture</h2>
@@ -139,27 +175,107 @@ import { Router } from '@angular/router';
         </div>
         <div class="modal-body">
           <div class="mission-info-box">
-            <p><strong>Mission :</strong> #{{ missionSelectionnee.id }}</p>
+            <p><strong>Mission :</strong> {{ missionSelectionnee.numeroMission }}</p>
           </div>
           <div class="form-group">
             <label>Référence Facture *</label>
-            <input type="text" [(ngModel)]="formFacture.factureRef" placeholder="Ex: FAC-2024-001">
+            <input type="text"
+                   [(ngModel)]="formFacture.factureRef"
+                   placeholder="Ex: FAC-2024-001">
           </div>
           <div class="form-group">
             <label>Montant (TND) *</label>
-            <input type="number" [(ngModel)]="formFacture.montant" placeholder="0.00" min="0" step="0.01">
+            <input type="number"
+                   [(ngModel)]="formFacture.montant"
+                   placeholder="0.00" min="0" step="0.01">
           </div>
           <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
           <div class="success-banner" *ngIf="succes">{{ succes }}</div>
           <div class="modal-footer">
             <button class="btn-cancel" (click)="fermerModal()">Annuler</button>
-            <button class="btn-submit green-btn" (click)="soumettreFacture()" [disabled]="soumission">
+            <button class="btn-submit green-btn"
+                    (click)="soumettreFacture()"
+                    [disabled]="soumission">
               {{ soumission ? '⏳ En cours...' : '💳 Soumettre la Facture' }}
             </button>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- ✅ MODAL DOCUMENTS AJOUTÉE ICI -->
+    <div class="modal-overlay"
+         *ngIf="missionSelectionnee && modalType === 'documents'"
+         (click)="fermerModal()">
+      <div class="modal-card modal-card--wide" (click)="$event.stopPropagation()">
+        <div class="modal-header teal">
+          <h2>📎 Documents de la mission</h2>
+          <button class="modal-close" (click)="fermerModal()">✕</button>
+        </div>
+        <div class="modal-body">
+          <div class="mission-info-box">
+            <p><strong>Mission :</strong> {{ missionSelectionnee.numeroMission }}</p>
+            <p><strong>Statut :</strong> {{ missionSelectionnee.statut }}</p>
+          </div>
+          <!-- Upload -->
+          <div class="upload-zone">
+            <label class="upload-label">
+              <input type="file"
+                     multiple
+                     (change)="onFichiersSelectionnes($event)"
+                     style="display:none">
+              <div class="upload-btn">
+                📂 Choisir des fichiers
+              </div>
+            </label>
+            <!-- Fichiers sélectionnés -->
+            <div class="fichiers-choisis" *ngIf="fichierSelectionnes.length > 0">
+              <div class="fichier-choisi" *ngFor="let f of fichierSelectionnes">
+                <span>{{ iconeType(f.type) }} {{ f.name }}</span>
+                <span class="taille">{{ formatTaille(f.size) }}</span>
+              </div>
+            </div>
+            <button class="btn-upload"
+                    (click)="uploaderDocuments()"
+                    [disabled]="uploadEnCours || fichierSelectionnes.length === 0">
+              {{ uploadEnCours ? '⏳ Upload en cours...' : '⬆️ Envoyer' }}
+            </button>
+          </div>
+          <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
+          <div class="success-banner" *ngIf="succes">{{ succes }}</div>
+          <!-- Documents existants -->
+          <div class="docs-existants">
+            <h3>Documents envoyés ({{ documentsExistants.length }})</h3>
+            <div *ngIf="documentsExistants.length === 0" class="empty-docs">
+              Aucun document envoyé pour cette mission.
+            </div>
+            <div class="doc-item"
+                 *ngFor="let d of documentsExistants">
+              <div class="doc-left">
+                <span class="doc-icone">{{ iconeType(d.typeMime) }}</span>
+                <div class="doc-info">
+                  <span class="doc-nom">{{ d.nomFichierOriginal }}</span>
+                  <span class="doc-meta">
+                    {{ formatTaille(d.tailleFichier) }} ·
+                    {{ d.dateUpload | date:'dd/MM/yyyy HH:mm' }}
+                  </span>
+                </div>
+              </div>
+              <button class="btn-dl"
+                      (click)="telechargerDocument(d.nomFichierServeur, d.nomFichierOriginal)">
+                ⬇️ Télécharger
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" (click)="fermerModal()">Fermer</button>
+        </div>
+      </div>
+    </div>
+
+    
+
   `,
   styles: [`
     .page-container { font-family: 'Inter', sans-serif; }
@@ -188,7 +304,7 @@ import { Router } from '@angular/router';
     .data-table { width: 100%; border-collapse: collapse; }
     .data-table thead { background: #1a237e; }
     .data-table th { padding: 15px; text-align: left; color: white; font-weight: 600; font-size: .9rem; }
-    .data-table td { padding: 14px 15px; border-bottom: 1px solid #f0f0f0; font-size: .9rem; }
+    .data-table td { padding: 14px 15px; border-bottom: 1px solid #f0f0f0; font-size: .9rem; vertical-align: top; }
     .table-row:hover { background: #f8f9ff; }
     .empty-state { text-align: center; padding: 40px !important; color: #aaa; font-style: italic; }
     .type-badge { background: #e8eaf6; color: #3949ab; padding: 4px 10px; border-radius: 12px; font-size: .8rem; font-weight: 600; }
@@ -198,8 +314,10 @@ import { Router } from '@angular/router';
     .s-pv-soumis { background: #d1ecf1; color: #0c5460; }
     .s-facture { background: #d4edda; color: #155724; }
     .s-terminee { background: #e2e3e5; color: #383d41; }
-    .actions { display: flex; gap: 8px; align-items: center; }
+    .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .btn-action { padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: .85rem; font-weight: 600; transition: all .2s; }
+    .btn-action.info { background: #e3f2fd; color: #0d47a1; }
+    .btn-action.info:hover { background: #bbdefb; }
     .btn-action.pv { background: #e8eaf6; color: #283593; }
     .btn-action.pv:hover { background: #c5cae9; }
     .btn-action.facture { background: #e8f5e9; color: #1b5e20; }
@@ -227,30 +345,43 @@ import { Router } from '@angular/router';
     .btn-submit { background: #1a237e; color: white; border: none; padding: 11px 26px; border-radius: 8px; cursor: pointer; font-weight: 700; }
     .btn-submit.green-btn { background: #2e7d32; }
     .btn-submit[disabled] { opacity: .6; cursor: not-allowed; }
+  
+  
   `]
 })
 export class PrestataireDashboardComponent implements OnInit {
+
   stats: any = null;
   missions: any[] = [];
   loading = true;
   activeTab: 'enCours' | 'toutes' = 'enCours';
 
   missionSelectionnee: any = null;
-  modalType: 'pv' | 'facture' | null = null;
-  formPV = { pvTexte: '' };
+  modalType: 'pv' | 'facture' | 'documents' | null = null;
+  formPV    = { pvTexte: '' };
   formFacture = { factureRef: '', montant: 0 };
-  erreur = '';
-  succes = '';
+  erreur  = '';
+  succes  = '';
   soumission = false;
 
-  constructor(private prestataireService: PrestataireService, private router: Router) {}
+    // Ajouter dans les propriétés du composant
+
+fichierSelectionnes: File[] = [];
+uploadEnCours = false;
+documentsExistants: any[] = [];
+
+  constructor(
+    private prestataireService: PrestataireService,
+    private router: Router
+  ) {}
 
   ngOnInit() {
+    this.loading = true;
     this.prestataireService.getDashboard().subscribe({
       next: (data) => {
-        this.stats = data;
+        this.stats    = data;
         this.missions = data.dernieresMissions || [];
-        this.loading = false;
+        this.loading  = false;
       },
       error: () => { this.loading = false; }
     });
@@ -258,15 +389,20 @@ export class PrestataireDashboardComponent implements OnInit {
 
   get missionsFiltrees(): any[] {
     if (this.activeTab === 'enCours') {
-      return this.missions.filter(m => ['ASSIGNEE', 'EN_COURS', 'PV_SOUMIS'].includes(m.statut));
+      return this.missions.filter(m =>
+        ['ASSIGNEE', 'EN_COURS', 'PV_SOUMIS'].includes(m.statut)
+      );
     }
     return this.missions;
   }
 
   getStatutClass(statut: string): string {
     const map: Record<string, string> = {
-      'ASSIGNEE': 's-assignee', 'EN_COURS': 's-en-cours',
-      'PV_SOUMIS': 's-pv-soumis', 'FACTURE_SOUMISE': 's-facture', 'TERMINEE': 's-terminee'
+      ASSIGNEE:        's-assignee',
+      EN_COURS:        's-en-cours',
+      PV_SOUMIS:       's-pv-soumis',
+      FACTURE_SOUMISE: 's-facture',
+      TERMINEE:        's-terminee'
     };
     return map[statut] || '';
   }
@@ -282,54 +418,181 @@ export class PrestataireDashboardComponent implements OnInit {
   ouvrirModalPV(mission: any) {
     this.missionSelectionnee = mission;
     this.modalType = 'pv';
-    this.formPV = { pvTexte: '' };
-    this.erreur = ''; this.succes = '';
+    this.formPV    = { pvTexte: '' };
+    this.erreur    = '';
+    this.succes    = '';
   }
 
   ouvrirModalFacture(mission: any) {
     this.missionSelectionnee = mission;
-    this.modalType = 'facture';
+    this.modalType  = 'facture';
     this.formFacture = { factureRef: '', montant: 0 };
-    this.erreur = ''; this.succes = '';
+    this.erreur = '';
+    this.succes = '';
   }
 
   fermerModal() {
     if (!this.soumission) {
       this.missionSelectionnee = null;
       this.modalType = null;
+      this.erreur = '';
+      this.succes = '';
     }
   }
 
+  // ── Soumettre PV ──────────────────────────────────────────
   soumettreResultat() {
-    this.erreur = ''; this.soumission = true;
-    const fd = new FormData();
-    fd.append('pvTexte', this.formPV.pvTexte);
+    if (!this.formPV.pvTexte?.trim()) {
+      this.erreur = 'Le contenu du PV est obligatoire.';
+      return;
+    }
 
-    this.prestataireService.soumettreResultat(this.missionSelectionnee.id, fd).subscribe({
+    this.erreur    = '';
+    this.soumission = true;
+
+    // ✅ Envoyer JSON directement — le backend attend @RequestBody Map<String, String>
+    this.prestataireService.soumettresPV(
+      this.missionSelectionnee.id,
+      this.formPV.pvTexte
+    ).subscribe({
       next: () => {
-        this.succes = '✅ PV soumis avec succès !';
+        this.succes    = '✅ PV soumis avec succès !';
         this.soumission = false;
         setTimeout(() => { this.fermerModal(); this.ngOnInit(); }, 1500);
       },
-      error: (err) => { this.erreur = err.error?.error || 'Erreur lors de la soumission.'; this.soumission = false; }
+      error: (err: any) => {
+        this.erreur    = err?.error?.error || 'Erreur lors de la soumission du PV.';
+        this.soumission = false;
+      }
     });
   }
 
+  // ── Soumettre Facture ─────────────────────────────────────
   soumettreFacture() {
-    this.erreur = ''; this.soumission = true;
-    this.prestataireService.soumettreFacture(this.missionSelectionnee.id, this.formFacture).subscribe({
+    if (!this.formFacture.factureRef?.trim()) {
+      this.erreur = 'La référence facture est obligatoire.';
+      return;
+    }
+    if (!this.formFacture.montant || this.formFacture.montant <= 0) {
+      this.erreur = 'Le montant doit être supérieur à 0.';
+      return;
+    }
+
+    this.erreur    = '';
+    this.soumission = true;
+
+    this.prestataireService.soumettreFacture(
+      this.missionSelectionnee.id,
+      this.formFacture
+    ).subscribe({
       next: () => {
-        this.succes = '✅ Facture soumise !';
+        this.succes    = '✅ Facture soumise avec succès !';
         this.soumission = false;
         setTimeout(() => { this.fermerModal(); this.ngOnInit(); }, 1500);
       },
-      error: (err) => { this.erreur = err.error?.error || 'Erreur lors de la soumission.'; this.soumission = false; }
+      error: (err: any) => {
+        this.erreur    = err?.error?.error || 'Erreur lors de la soumission de la facture.';
+        this.soumission = false;
+      }
     });
   }
 
   voirDossier(m: any) {
     this.router.navigate(['/prestataire/mission', m.id, 'dossier']);
   }
+
+
+
+
+ouvrirModalDocuments(mission: any) {
+  this.missionSelectionnee = mission;
+  this.modalType = 'documents';
+  this.fichierSelectionnes = [];
+  this.erreur = '';
+  this.succes = '';
+  this.documentsExistants = [];
+
+  // Charger les documents existants
+  this.prestataireService.getDocuments(mission.id).subscribe({
+    next: (res) => this.documentsExistants = res.fichiers || [],
+    error: () => {}
+  });
+}
+
+onFichiersSelectionnes(event: Event) {
+  const input = event.target as HTMLInputElement;
+  if (input.files) {
+    this.fichierSelectionnes = Array.from(input.files);
+  }
+}
+
+uploaderDocuments() {
+  if (this.fichierSelectionnes.length === 0) {
+    this.erreur = 'Sélectionnez au moins un fichier.';
+    return;
+  }
+
+  this.erreur = '';
+  this.succes = '';
+  this.uploadEnCours = true;
+
+  const formData = new FormData();
+  this.fichierSelectionnes.forEach(f => {
+    formData.append('fichiers', f, f.name);  // ← vérifier que "fichiers" correspond au @RequestParam backend
+  });
+
+  this.prestataireService.uploaderDocuments(
+    this.missionSelectionnee.id,
+    formData   // ← passer directement le FormData, pas les File[]
+  ).subscribe({
+    next: (res: any) => {
+      this.succes = `✅ ${res.fichiers?.length ?? this.fichierSelectionnes.length} document(s) ajouté(s) avec succès !`;
+      this.uploadEnCours = false;
+      this.fichierSelectionnes = [];
+      this.prestataireService.getDocuments(this.missionSelectionnee.id).subscribe({
+        next: (r: any) => this.documentsExistants = r.fichiers || [],
+        error: () => {}
+      });
+    },
+    error: (err: any) => {
+      this.erreur = err?.error?.message || err?.error?.error || 'Erreur lors de l\'upload.';
+      this.uploadEnCours = false;
+    }
+  });
+}
+
+formatTaille(taille: number): string {
+  if (!taille) return '0 B';
+  if (taille < 1024) return taille + ' B';
+  if (taille < 1024 * 1024) return (taille / 1024).toFixed(1) + ' KB';
+  return (taille / (1024 * 1024)).toFixed(1) + ' MB';
+}
+
+iconeType(mime: string): string {
+  if (!mime) return '📄';
+  if (mime === 'application/pdf') return '📕';
+  if (mime.startsWith('image/')) return '🖼️';
+  if (mime.includes('word')) return '📝';
+  if (mime.includes('sheet') || mime.includes('excel')) return '📊';
+  if (mime.includes('zip')) return '🗜️';
+  return '📄';
+}
+
+telechargerDocument(nomServeur: string, nomOriginal: string) {
+  this.prestataireService.telechargerFichier(nomServeur).subscribe({
+    next: (blob) => {
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = nomOriginal;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+  });
 }
 
 
+voirResultats(m: any) {
+  this.router.navigate(['/prestataire/mission', m.id, 'resultats']);
+}
+}

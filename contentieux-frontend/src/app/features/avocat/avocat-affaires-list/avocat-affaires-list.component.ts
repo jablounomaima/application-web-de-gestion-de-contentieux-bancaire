@@ -46,18 +46,36 @@ export class AvocatAffairesListComponent implements OnInit {
   chargerStats(): void {
     this.avocatService.getDashboard().subscribe({
       next: (s) => this.stats = s,
-      error: () => {}
+      error: () => this.stats = null  // fallback sur calcul local
     });
   }
 
   chargerAffaires(): void {
     this.loading = true;
+  
+    // ✅ Appeler les deux endpoints en parallèle
+    this.avocatService.getDashboard().subscribe({
+      next: (s) => this.stats = s,
+      error: () => this.stats = null
+    });
+  
     this.avocatService.getAffaires().subscribe({
       next: (data: any) => {
         this.affaires = (data.affaires || []).map((a: any) => ({
           ...a,
           missionStatut: data.missionStatuts?.[a.id] ?? null,
           missionId:     data.missionIds?.[a.id]     ?? null,
+  
+          // ✅ champs PV / Facture directs
+          pvTexte:        a.pvTexte        ?? null,
+          pvStatut:       a.pvStatut       ?? null,
+          pvFichiers:     a.pvFichiers     ?? [],
+          factureRef:     a.factureRef     ?? null,
+          montantFacture: a.montantFacture ?? null,
+          factureStatut:  a.factureStatut  ?? null,
+  
+          // ✅ nombre d'audiences depuis la liste
+          nombreAudiences: Array.isArray(a.audiences) ? a.audiences.length : 0,
         }));
         this.appliquerFiltres();
         this.loading = false;
@@ -153,4 +171,60 @@ export class AvocatAffairesListComponent implements OnInit {
   voirDossier(aff: any): void {
     this.router.navigate(['/avocat/affaires', aff.id, 'dossier']);
   }
+
+
+  // ── Calculé depuis la liste locale (fallback si backend ne renvoie pas) ──
+
+get totalHonorairesCalcule(): number {
+  return this.affaires
+    .filter(a => a.montantFacture)
+    .reduce((sum, a) => sum + (a.montantFacture || 0), 0);
+}
+
+
+
+// ════════ Getters calculés depuis affaires[] ════════
+
+get totalAffaires(): number {
+  return this.affaires.length;
+}
+
+get affairesEnCours(): number {
+  return this.affaires.filter(a => a.statut === 'EN_COURS').length;
+}
+
+get jugementRendu(): number {
+  return this.affaires.filter(a => a.statut === 'JUGEMENT_RENDU').length;
+}
+
+get totalAudiences(): number {
+  // Somme des audiences de toutes les affaires
+  return this.affaires.reduce((sum, a) => {
+    const nb = a.nombreAudiences ?? a.audiences?.length ?? 0;
+    return sum + nb;
+  }, 0);
+}
+
+
+
+get totalHonoraires(): number {
+  return this.affaires
+    .filter(a => a.montantFacture && a.factureStatut !== 'REJETEE')
+    .reduce((sum, a) => sum + (Number(a.montantFacture) || 0), 0);
+}
+
+get pvEnAttente(): number {
+  return this.affaires.filter(a => a.pvStatut === 'EN_ATTENTE').length;
+}
+
+get facturesEnAttente(): number {
+  return this.affaires.filter(a => a.factureStatut === 'EN_ATTENTE').length;
+}
+// ✅ Audiences à venir — vient du backend (getAudiencesAVenir)
+get audiencesAVenir(): number {
+  return this.stats?.audiencesAVenir ?? 0;
+}
+
+
+
 }

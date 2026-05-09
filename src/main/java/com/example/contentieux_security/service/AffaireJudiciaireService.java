@@ -16,7 +16,8 @@ import java.io.IOException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Comparator;
-
+import java.util.ArrayList;
+import java.util.Base64;
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -540,45 +541,88 @@ public void soumettreAvocatPV(Long affaireId, String pvTexte) {
     AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId)
             .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
 
-    Mission mission = affaire.getMission();
-    if (mission == null) {
-        throw new RuntimeException("Aucune mission liée à cette affaire.");
+    // ✅ Stocker directement dans l'affaire
+    affaire.setPvTexte(pvTexte);
+    affaire.setPvStatut(AffaireJudiciaire.StatutPV.EN_ATTENTE);
+    affaireJudiciaireRepository.save(affaire);
+
+    // ✅ Mettre à jour le statut mission si elle existe
+    if (affaire.getMission() != null) {
+        affaire.getMission().setStatut(StatutMission.PV_SOUMIS);
+        missionRepository.save(affaire.getMission());
+    }
+}
+
+// ─────────────────────────────────────────────
+// PV avec fichiers
+// ─────────────────────────────────────────────
+@Transactional
+public void soumettreAvocatPVAvecFichiers(Long affaireId,
+                                           String pvTexte,
+                                           List<MultipartFile> fichiers) throws IOException {
+    AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+
+    // ✅ Texte PV
+    affaire.setPvTexte(pvTexte);
+    affaire.setPvStatut(AffaireJudiciaire.StatutPV.EN_ATTENTE);
+
+    // ✅ Récupérer les fichiers existants et AJOUTER les nouveaux
+    List<String> fichiersExistants = new ArrayList<>(
+        affaire.getPvFichiers() != null ? affaire.getPvFichiers() : new ArrayList<>()
+    );
+
+    if (fichiers != null && !fichiers.isEmpty()) {
+        for (MultipartFile f : fichiers) {
+            if (f.isEmpty()) continue;
+
+            // ✅ Vérifier doublon par nom
+            String nomFichier = f.getOriginalFilename();
+            boolean dejaExiste = fichiersExistants.stream()
+                    .anyMatch(data -> data.startsWith(nomFichier + "|"));
+
+            if (!dejaExiste) {
+                String base64 = Base64.getEncoder().encodeToString(f.getBytes());
+                fichiersExistants.add(nomFichier + "|" + f.getContentType() + "|" + base64);
+                log.info("Fichier ajouté: {} taille={}", nomFichier, f.getSize());
+            } else {
+                log.info("Fichier ignoré (doublon): {}", nomFichier);
+            }
+        }
     }
 
-    // L'avocat peut soumettre depuis ASSIGNEE ou EN_COURS
-    if (mission.getStatut() != StatutMission.ASSIGNEE
-            && mission.getStatut() != StatutMission.EN_COURS) {
-        throw new RuntimeException("PV déjà soumis ou mission terminée.");
-    }
+    affaire.setPvFichiers(fichiersExistants);
+    affaireJudiciaireRepository.save(affaire);
 
-    mission.setPvMission(pvTexte);
-    mission.setStatut(StatutMission.PV_SOUMIS);
-    mission.setDateValidationPv(LocalDateTime.now());
-    missionRepository.save(mission);
+    // ✅ Mettre à jour statut mission
+    if (affaire.getMission() != null) {
+        affaire.getMission().setStatut(StatutMission.PV_SOUMIS);
+        missionRepository.save(affaire.getMission());
+    }
 }
 
 // =========================================================
 //  🧾 FACTURE — Soumission par l'avocat
 // =========================================================
+// ─────────────────────────────────────────────
+// Facture
+// ─────────────────────────────────────────────
 @Transactional
 public void soumettreAvocatFacture(Long affaireId, String factureRef, Double montant) {
     AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId)
             .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
 
-    Mission mission = affaire.getMission();
-    if (mission == null) {
-        throw new RuntimeException("Aucune mission liée à cette affaire.");
-    }
+    // ✅ Stocker directement dans l'affaire
+    affaire.setFactureRef(factureRef);
+    affaire.setMontantFacture(montant);
+    affaire.setFactureStatut(AffaireJudiciaire.StatutFacture.EN_ATTENTE);
+    affaireJudiciaireRepository.save(affaire);
 
-    if (mission.getStatut() != StatutMission.PV_SOUMIS) {
-        throw new RuntimeException("Soumettez d'abord le PV avant la facture.");
+    // ✅ Mettre à jour le statut mission si elle existe
+    if (affaire.getMission() != null) {
+        affaire.getMission().setStatut(StatutMission.FACTURE_SOUMISE);
+        missionRepository.save(affaire.getMission());
     }
-
-    mission.setFactureRef(factureRef);
-    mission.setMontantFacture(montant);
-    mission.setStatut(StatutMission.FACTURE_SOUMISE);
-    mission.setDateValidationFacture(LocalDateTime.now());
-    missionRepository.save(mission);
 }
 
 public AffaireJudiciaire findById(Long id) {
@@ -631,5 +675,11 @@ public void supprimerAvocatFacture(Long affaireId) {
     mission.setStatut(StatutMission.PV_SOUMIS);
     mission.setDateValidationFacture(null);
     missionRepository.save(mission);
+}
+
+
+@Transactional
+public AffaireJudiciaire sauvegarderAffaire(AffaireJudiciaire affaire) {
+    return affaireJudiciaireRepository.save(affaire);
 }
 }

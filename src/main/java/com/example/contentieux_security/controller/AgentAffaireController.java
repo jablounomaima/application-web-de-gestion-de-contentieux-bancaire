@@ -10,11 +10,13 @@ import com.example.contentieux_security.service.PrestationService;
 import com.example.contentieux_security.repository.AgentBancaireRepository;
 import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.enums.TypePrestataire;
-
+// ✅ Ajouter cet import en haut du fichier
+import com.example.contentieux_security.enums.StatutMission;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.security.Principal;
@@ -244,6 +246,8 @@ public class AgentAffaireController {
     }
 
     @GetMapping("/{dossierId}/affaire")
+    @Transactional(readOnly = true)  // ✅ AJOUTÉ
+
     public ResponseEntity<?> voirAffaire(@PathVariable Long dossierId) {
         AffaireJudiciaire affaire = affaireService.getAffaireParDossier(dossierId);
     
@@ -258,7 +262,7 @@ public class AgentAffaireController {
             Map<String, Object> affaireData = new HashMap<>();
             affaireData.put("id",                  affaire.getId());
             affaireData.put("numeroAffaire",        affaire.getNumeroAffaire());
-            affaireData.put("statut",              affaire.getStatut());
+            affaireData.put("statut",               affaire.getStatut());
             affaireData.put("dateLancement",        affaire.getDateLancement());
             affaireData.put("dateProchainAudience", affaire.getDateProchainAudience());
             affaireData.put("tribunal",             affaire.getTribunal());
@@ -270,8 +274,36 @@ public class AgentAffaireController {
             affaireData.put("delaiPaiementJuge",    affaire.getDelaiPaiementJuge());
             affaireData.put("descriptionJugement",  affaire.getDescriptionJugement());
             affaireData.put("dateLimiteAppel",      affaire.getDateLimiteAppel());
+            // Dans la section affaireData de voirAffaire()
+
+// ✅ PV
+affaireData.put("pvTexte",  affaire.getPvTexte());
+affaireData.put("pvStatut", affaire.getPvStatut() != null
+                            ? affaire.getPvStatut().name() : null);
+
+// ✅ Fichiers PV — l'agent peut les télécharger
+List<Map<String, Object>> fichiers = new ArrayList<>();
+if (affaire.getPvFichiers() != null) {
+    for (String data : affaire.getPvFichiers()) {
+        String[] parts = data.split("\\|", 3);
+        if (parts.length == 3) {
+            fichiers.add(Map.of(
+                "nom",      parts[0],
+                "typeMime", parts[1],
+                "base64",   parts[2]
+            ));
+        }
+    }
+}
+affaireData.put("pvFichiers", fichiers);
+
+// ✅ Facture
+affaireData.put("factureRef",     affaire.getFactureRef());
+affaireData.put("montantFacture", affaire.getMontantFacture());
+affaireData.put("factureStatut",  affaire.getFactureStatut() != null
+                                  ? affaire.getFactureStatut().name() : null);
     
-            // Avocat — accès direct aux champs sans proxy
+            // Avocat
             if (affaire.getAvocat() != null) {
                 try {
                     Prestataire av = affaire.getAvocat();
@@ -305,16 +337,30 @@ public class AgentAffaireController {
             }
             affaireData.put("audiences", audiences);
     
-            // Mission
+            // ✅ Mission — PV + Facture visibles par l'agent
             if (affaire.getMission() != null) {
                 try {
                     Mission m = affaire.getMission();
                     Map<String, Object> mission = new HashMap<>();
                     mission.put("id",             m.getId());
-                    mission.put("statut",         m.getStatut());
+                    mission.put("statut",         m.getStatut() != null ? m.getStatut().name() : null);
+    
+                    // ✅ PV
                     mission.put("pvTexte",        m.getPvMission());
-                    mission.put("factureRef",     m.getFactureRef());
-                    mission.put("montantFacture", m.getMontantFacture());
+                    mission.put("pvStatut",       m.getStatut() == StatutMission.PV_SOUMIS
+                                                  || m.getStatut() == StatutMission.FACTURE_SOUMISE
+                                                  || m.getStatut() == StatutMission.TERMINEE
+                                                  ? "EN_ATTENTE" : null);
+                    mission.put("dateValidationPv", m.getDateValidationPv());
+    
+                    // ✅ Facture
+                    mission.put("factureRef",       m.getFactureRef());
+                    mission.put("montantFacture",   m.getMontantFacture());
+                    mission.put("factureStatut",    m.getStatut() == StatutMission.FACTURE_SOUMISE
+                                                    || m.getStatut() == StatutMission.TERMINEE
+                                                    ? "EN_ATTENTE" : null);
+                    mission.put("dateValidationFacture", m.getDateValidationFacture());
+    
                     affaireData.put("mission", mission);
                 } catch (Exception e) {
                     log.warn("Mission lazy : {}", e.getMessage());
@@ -326,4 +372,6 @@ public class AgentAffaireController {
     
         return ResponseEntity.ok(response);
     }
+
+  
 }

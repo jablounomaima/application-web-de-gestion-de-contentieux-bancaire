@@ -112,6 +112,55 @@ public class AffaireJudiciaire {
 
     private LocalDate dateLimiteAppel; 
 
+    // ❌ Supprimer ces deux lignes (pas d'entités PVSoumis/FactureSoumise)
+// private List<PVSoumis> pvList;
+// private List<FactureSoumise> factureList;
+
+// ✅ Ajouter ces champs directement dans l'entité
+// ❌ Supprimer ces 2 lignes (entités inexistantes)
+// private List<PVSoumis> pvList;
+// private List<FactureSoumise> factureList;
+
+// ✅ Ajouter les champs directs PV
+@Column(columnDefinition = "TEXT")
+private String pvTexte;
+
+@Enumerated(EnumType.STRING)
+@Column(length = 20)
+private StatutPV pvStatut;
+
+// ✅ Ajouter les champs directs Facture  
+@Column(length = 100)
+private String factureRef;
+
+private Double montantFacture;
+
+@Enumerated(EnumType.STRING)
+@Column(length = 20)
+private StatutFacture factureStatut;
+
+
+// ✅ Ajouter ce champ dans AffaireJudiciaire.java
+@ElementCollection(fetch = FetchType.EAGER)
+@CollectionTable(name = "affaire_pv_fichiers",
+                 joinColumns = @JoinColumn(name = "affaire_id"))
+@Column(name = "fichier_data", columnDefinition = "LONGTEXT")
+@Builder.Default
+private List<String> pvFichiers = new ArrayList<>();
+
+// ✅ Enums à ajouter dans la classe
+public enum StatutPV {
+    EN_ATTENTE, VALIDE, REFUSE
+}
+
+public enum StatutFacture {
+    EN_ATTENTE, PAYEE, REJETEE
+}
+
+
+
+
+
     // ==============================
     // 🔗 RELATIONS
     // ==============================
