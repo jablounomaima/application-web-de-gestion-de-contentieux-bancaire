@@ -316,11 +316,22 @@ export const routes: Routes = [
       import('./features/validateur-financier/validateur-financier-liste/validateur-financier-liste.component')
         .then(m => m.ValidateurFinancierListeComponent)
   },
+
   {
     path: 'validateur/financier/factures',
-    redirectTo: 'validateur/financier/dashboard',
-    pathMatch: 'full'
+    canActivate: [AuthGuard, ValidateurActifGuard],
+    data: { roles: ['ROLE_VALIDATEUR_FINANCIER', 'ROLE_ADMIN'] },
+    loadComponent: () =>
+      import('./features/validateur-financier/validateur-financier-factures/validateur-financier-factures.component')
+        .then(m => m.ValidateurFinancierFacturesComponent)
   },
+ // {
+   // path: 'validateur/financier/factures',
+    //redirectTo: 'validateur/financier/dashboard',
+    //pathMatch: 'full'
+  //},
+
+  
 
   //---------mission 
 // app.routes.ts

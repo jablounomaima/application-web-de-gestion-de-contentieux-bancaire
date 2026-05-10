@@ -18,7 +18,8 @@ import com.example.contentieux_security.service.ClientService;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.MissionService;
 import com.example.contentieux_security.service.PrestataireService;
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
+
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,6 +32,7 @@ import org.springframework.web.bind.annotation.*;
 import com.example.contentieux_security.entity.FichierResultat;
 import com.example.contentieux_security.entity.ResultatMission;
 import com.example.contentieux_security.repository.ResultatMissionRepository;
+import lombok.extern.slf4j.Slf4j;
 
 import java.security.Principal;
 import java.time.LocalDate;
@@ -43,6 +45,8 @@ import java.util.ArrayList;
 @RequestMapping("/api/agent")
 @PreAuthorize("hasAnyRole('AGENT', 'ADMIN')")
 @RequiredArgsConstructor
+@Slf4j  // ← ajouter cette ligne
+
 public class AgentController {
 
     private final AgentBancaireService agentService;
@@ -376,8 +380,9 @@ public ResponseEntity<?> getMonProfil(Principal principal) {
 // ══════════════════════════════════════════════════════════════
 //  RÉSULTATS PRESTATAIRES PAR DOSSIER
 // ══════════════════════════════════════════════════════════════
+
 @GetMapping("/dossiers/{dossierId}/resultats-prestataires")
-@Transactional
+@Transactional(readOnly = true)
 public ResponseEntity<?> getResultatsPrestataires(@PathVariable Long dossierId,
                                                    Authentication auth) {
     try {
@@ -393,16 +398,18 @@ public ResponseEntity<?> getResultatsPrestataires(@PathVariable Long dossierId,
         List<Map<String, Object>> resultats = new ArrayList<>();
         for (Mission m : missions) {
             Map<String, Object> item = new HashMap<>();
-            item.put("missionId",      m.getId());
-            item.put("numeroMission",  m.getNumeroMission());
-            item.put("statut",         m.getStatut() != null ? m.getStatut().name() : null);
-            item.put("description",    m.getDescription());
+            item.put("missionId",       m.getId());
+            item.put("numeroMission",   m.getNumeroMission());
+            item.put("statut",          m.getStatut() != null ? m.getStatut().name() : null);
+            item.put("statutLibelle",   m.getStatut() != null ? m.getStatut().getLibelle() : null);
+            item.put("description",     m.getDescription());
             item.put("dateAssignation", m.getDateAssignation());
-            item.put("dateFinPrevue",  m.getDateFinPrevue());
-        
-            item.put("typePrestation", m.getPrestation() != null
+            item.put("dateFinPrevue",   m.getDateFinPrevue());
+
+            item.put("typePrestation",  m.getPrestation() != null
                     ? m.getPrestation().getType() : null);
-        
+
+            // Prestataire
             if (m.getPrestataire() != null) {
                 var p = m.getPrestataire();
                 item.put("prestataire", Map.of(
@@ -414,32 +421,48 @@ public ResponseEntity<?> getResultatsPrestataires(@PathVariable Long dossierId,
                     "type",       p.getType() != null ? p.getType().name() : ""
                 ));
             }
-        
-            item.put("pvTexte",               m.getPvMission());
-            item.put("dateValidationPv",      m.getDateValidationPv());
-            item.put("pvValide",              m.getStatut() == StatutMission.PV_SOUMIS
-                                           || m.getStatut() == StatutMission.FACTURE_SOUMISE
-                                           || m.getStatut() == StatutMission.TERMINEE
-                                           || m.getStatut() == StatutMission.REALISEE);
+
+            // PV
+            item.put("pvTexte",          m.getPvMission());
+            item.put("dateValidationPv", m.getDateValidationPv());
+
+            // ✅ Facture + validation financière
             item.put("factureRef",            m.getFactureRef());
             item.put("montantFacture",        m.getMontantFacture());
             item.put("dateValidationFacture", m.getDateValidationFacture());
-            item.put("factureValide",         m.getStatut() == StatutMission.FACTURE_SOUMISE
-                                           || m.getStatut() == StatutMission.TERMINEE
-                                           || m.getStatut() == StatutMission.REALISEE);
-            item.put("commentaireAgent",      m.getCommentaireAgent());
-        
+            item.put("factureValide",         m.getFactureValide()); // ✅ Boolean null/true/false
+            item.put("valideParValidateur",   m.getValideParAgent()); // ✅ nom du validateur
+            item.put("commentaireValidateur", m.getCommentaireAgent()); // ✅ motif rejet
+
+            // ✅ Statut validation financière
+            boolean factureValideeFinancier =
+                Boolean.TRUE.equals(m.getFactureValide())
+                && m.getStatut() == StatutMission.FACTURE_VALIDEE;
+
+            boolean factureRejeteeFinancier =
+                Boolean.FALSE.equals(m.getFactureValide())
+                && m.getStatut() == StatutMission.FACTURE_REJETEE;
+
+            item.put("factureValideeParFinancier", factureValideeFinancier);
+            item.put("factureRejeteeParFinancier", factureRejeteeFinancier);
+
+            // ✅ L'agent peut valider SEULEMENT si facture validée par le financier
+            item.put("peutEtreValideeParAgent", factureValideeFinancier);
+
+            item.put("commentaireAgent", m.getCommentaireAgent());
+
+            // Fichiers
             List<Map<String, Object>> fichiersList = new ArrayList<>();
             resultatMissionRepository.findByMissionIdWithFichiers(m.getId()).ifPresent(r -> {
                 if (r.getFichiers() != null) {
                     for (FichierResultat f : r.getFichiers()) {
                         Map<String, Object> fm = new HashMap<>();
-                        fm.put("id",                 f.getId());
-                        fm.put("nomFichierOriginal",  f.getNomFichierOriginal());
-                        fm.put("nomFichierServeur",   f.getNomFichierServeur());
-                        fm.put("typeMime",            f.getTypeMime() != null ? f.getTypeMime() : "");
-                        fm.put("tailleFichier",       f.getTailleFichier());
-                        fm.put("dateUpload",          f.getDateUpload());
+                        fm.put("id",                f.getId());
+                        fm.put("nomFichierOriginal", f.getNomFichierOriginal());
+                        fm.put("nomFichierServeur",  f.getNomFichierServeur());
+                        fm.put("typeMime",           f.getTypeMime() != null ? f.getTypeMime() : "");
+                        fm.put("tailleFichier",      f.getTailleFichier());
+                        fm.put("dateUpload",         f.getDateUpload());
                         fichiersList.add(fm);
                     }
                 }
@@ -448,9 +471,10 @@ public ResponseEntity<?> getResultatsPrestataires(@PathVariable Long dossierId,
                 item.put("dateSoumission", r.getDateSoumission());
             });
             item.put("fichiers", fichiersList);
-        
-            resultats.add(item); // ✅ LIGNE MANQUANTE — c'était ça le bug
+
+            resultats.add(item);
         }
+
         Map<String, Object> response = new HashMap<>();
         response.put("numeroDossier", dossier.getNumeroDossier());
         response.put("libelle",       dossier.getLibelle());
@@ -459,7 +483,9 @@ public ResponseEntity<?> getResultatsPrestataires(@PathVariable Long dossierId,
         return ResponseEntity.ok(response);
 
     } catch (Exception e) {
+        log.error("Erreur resultats-prestataires: {}", e.getMessage(), e);
         return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
     }
 }
+
 }

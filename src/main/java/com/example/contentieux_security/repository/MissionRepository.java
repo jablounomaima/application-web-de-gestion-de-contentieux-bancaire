@@ -191,4 +191,30 @@ List<Mission> findByDossierIdWithFullDetails(@Param("dossierId") Long dossierId)
     WHERE p.dossier.id = :dossierId
 """)
 List<Mission> findMissionsByDossierId(@Param("dossierId") Long dossierId);
+
+// Toutes les missions avec facture pour un dossier
+@Query("""
+    SELECT m FROM Mission m
+    JOIN FETCH m.prestataire p
+    JOIN m.prestation pr
+    WHERE pr.dossier.id = :dossierId
+    AND m.factureRef IS NOT NULL
+""")
+List<Mission> findFacturesParDossier(@Param("dossierId") Long dossierId);
+
+// Toutes les missions avec facture pour tous les dossiers d'une agence
+@Query("""
+    SELECT m FROM Mission m
+    JOIN FETCH m.prestataire p
+    JOIN m.prestation pr
+    JOIN pr.dossier d
+    JOIN d.agence a
+    WHERE a.id = :agenceId
+    AND m.factureRef IS NOT NULL
+""")
+List<Mission> findFacturesParAgence(@Param("agenceId") Long agenceId);
+
+
+
+
 }

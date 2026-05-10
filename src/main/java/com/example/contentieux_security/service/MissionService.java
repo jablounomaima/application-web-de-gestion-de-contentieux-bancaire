@@ -120,9 +120,15 @@ public Mission getMissionWithDetails(Long id) {
         Mission mission = missionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable"));
     
-        // ❌ sécurité métier
         if (mission.getStatut() == StatutMission.ANNULEE) {
             throw new RuntimeException("Mission rejetée : validation impossible");
+        }
+    
+        // ✅ L'agent ne peut valider que si la facture a été validée par le financier
+        if (mission.getStatut() != StatutMission.FACTURE_VALIDEE) {
+            throw new RuntimeException(
+                "La facture doit être validée par le validateur financier avant votre validation. Statut actuel : "
+                + mission.getStatut());
         }
     
         mission.setStatut(StatutMission.TERMINEE);
@@ -130,9 +136,58 @@ public Mission getMissionWithDetails(Long id) {
         mission.setValideParAgent(agentUsername);
         mission.setDateValidationAgent(LocalDateTime.now());
     
+        log.info("Mission {} validée par l'agent {}", mission.getNumeroMission(), agentUsername);
         missionRepository.save(mission);
     }
-   
+
+    // ── VALIDATION PAR LE VALIDATEUR FINANCIER ──
+@Transactional
+public void validerFactureParFinancier(Long id, String commentaire, String validateurUsername) {
+
+    Mission mission = missionRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+    if (mission.getStatut() != StatutMission.FACTURE_SOUMISE) {
+        throw new RuntimeException(
+            "Aucune facture à valider. Statut actuel : " + mission.getStatut());
+    }
+
+    mission.setFactureValide(true);
+    mission.setStatut(StatutMission.FACTURE_VALIDEE);
+    mission.setDateValidationFacture(LocalDateTime.now());
+    mission.setValideParAgent(validateurUsername); // ✅ stocke le nom du validateur financier
+
+    if (commentaire != null && !commentaire.isBlank()) {
+        mission.setCommentaireAgent(commentaire);
+    }
+
+    log.info("Facture mission {} validée par le financier {}",
+             mission.getNumeroMission(), validateurUsername);
+    missionRepository.save(mission);
+}
+
+// ── REJET FACTURE PAR LE VALIDATEUR FINANCIER ──
+@Transactional
+public void rejeterFactureParFinancier(Long id, String commentaire, String validateurUsername) {
+
+    Mission mission = missionRepository.findById(id)
+            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+    if (mission.getStatut() != StatutMission.FACTURE_SOUMISE) {
+        throw new RuntimeException(
+            "Aucune facture à rejeter. Statut actuel : " + mission.getStatut());
+    }
+
+    mission.setFactureValide(false);
+    mission.setStatut(StatutMission.FACTURE_REJETEE);
+    mission.setDateValidationFacture(LocalDateTime.now());
+    mission.setValideParAgent(validateurUsername);
+    mission.setCommentaireAgent(commentaire);
+
+    log.info("Facture mission {} rejetée par le financier {}",
+             mission.getNumeroMission(), validateurUsername);
+    missionRepository.save(mission);
+}
     // ── REJET MISSION ───────────────────────
     @Transactional
     public void rejeterMission(Long id, String commentaire, String agentUsername) {
@@ -140,24 +195,22 @@ public Mission getMissionWithDetails(Long id) {
         Mission mission = missionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable"));
     
-        // ❌ éviter double traitement
         if (mission.getStatut() == StatutMission.TERMINEE) {
             throw new RuntimeException("Mission déjà validée : rejet impossible");
         }
     
-        if (mission.getStatut() == StatutMission.ANNULEE) {
+        if (mission.getStatut() == StatutMission.REJETEE) {
             throw new RuntimeException("Mission déjà rejetée");
         }
     
-        mission.setStatut(StatutMission.ANNULEE);
+        mission.setStatut(StatutMission.REJETEE);
         mission.setCommentaireAgent(commentaire);
         mission.setValideParAgent(agentUsername);
         mission.setDateValidationAgent(LocalDateTime.now());
     
+        log.info("Mission {} rejetée par l'agent {}", mission.getNumeroMission(), agentUsername);
         missionRepository.save(mission);
     }
-
-
 // MissionService.java
 @Transactional(readOnly = true)
 public Mission getMissionForPrestataire(Long id, String username) {

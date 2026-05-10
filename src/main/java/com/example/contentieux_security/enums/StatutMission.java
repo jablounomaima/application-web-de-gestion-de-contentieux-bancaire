@@ -9,6 +9,9 @@ public enum StatutMission {
     VALIDEE_AGENT("Validée par l'agent"), // ✅ AJOUT IMPORTANT
     TERMINEE("Terminée"),
     ANNULEE("Annulée"),
+    // ✅ Ajouter ces deux
+    FACTURE_VALIDEE("Facture validée"),
+    FACTURE_REJETEE("Facture rejetée"),
     REJETEE("Rejetée par l'agent"); // ✅ AJOUT
 
 

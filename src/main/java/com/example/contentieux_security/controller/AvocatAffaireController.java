@@ -128,41 +128,58 @@ public class AvocatAffaireController {
     public ResponseEntity<?> dashboard(Principal principal) {
         String username = principal.getName();
         List<AffaireJudiciaire> affaires = affaireService.getAffairesParAvocat(username);
-
-        long totalMissions     = affaires.stream().filter(a -> a.getMission() != null).count();
-        long enCours           = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.EN_COURS).count();
-        long pvSoumis          = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.PV_SOUMIS).count();
-        long factureSoumise    = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.FACTURE_SOUMISE).count();
-        long terminees         = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.TERMINEE).count();
-        long annulees          = affaires.stream().filter(a -> a.getMission() != null && a.getMission().getStatut() == StatutMission.ANNULEE).count();
+    
+        // ── Affaires ──
+        long totalAffaires   = affaires.size();
+        long affairesEnCours = affaires.stream()
+            .filter(a -> a.getStatut() == AffaireJudiciaire.StatutAffaire.EN_COURS)
+            .count();
+        long jugementRendu   = affaires.stream()
+            .filter(a -> a.getStatut() == AffaireJudiciaire.StatutAffaire.JUGEMENT_RENDU)
+            .count();
+    
+        // ── Audiences ──
+        long audiencesAVenir = affaireService.getAudiencesAVenir(username).size();
+    
+        // ── Honoraires — depuis affaire.montantFacture (pas mission) ──
         double totalHonoraires = affaires.stream()
-        .filter(a -> a.getMontantFacture() != null
-                  && a.getFactureStatut() != null
-                  && a.getFactureStatut() != AffaireJudiciaire.StatutFacture.REJETEE)
-        .mapToDouble(a -> a.getMontantFacture())
-        .sum();
-        long totalAffaires     = affaires.size();
-        long affairesEnCours   = affaires.stream().filter(a -> a.getStatut() == AffaireJudiciaire.StatutAffaire.EN_COURS).count();
-        long jugementRendu     = affaires.stream().filter(a -> a.getStatut() == AffaireJudiciaire.StatutAffaire.JUGEMENT_RENDU).count();
-        long audiencesAVenir   = affaireService.getAudiencesAVenir(username).size();
-        List<AffaireJudiciaire> affairesRecentes = affaires.stream().limit(5).toList();
-
+            .filter(a -> a.getMontantFacture() != null
+                      && a.getFactureStatut() != null
+                      && a.getFactureStatut() != AffaireJudiciaire.StatutFacture.REJETEE)
+            .mapToDouble(AffaireJudiciaire::getMontantFacture)
+            .sum();
+    
+        // ── Nombre de factures ──
+        long nombreFactures = affaires.stream()
+            .filter(a -> a.getFactureRef() != null && !a.getFactureRef().isBlank())
+            .count();
+    
+        long facturesPayees = affaires.stream()
+            .filter(a -> a.getFactureStatut() == AffaireJudiciaire.StatutFacture.PAYEE)
+            .count();
+    
+        // ── PV ──
+        long pvEnAttente = affaires.stream()
+            .filter(a -> a.getPvStatut() == AffaireJudiciaire.StatutPV.EN_ATTENTE)
+            .count();
+    
+        long facturesEnAttente = affaires.stream()
+            .filter(a -> a.getFactureStatut() == AffaireJudiciaire.StatutFacture.EN_ATTENTE)
+            .count();
+    
         Map<String, Object> response = new HashMap<>();
-        response.put("totalMissions", totalMissions);
-        response.put("enCours", enCours);
-        response.put("pvSoumis", pvSoumis);
-        response.put("factureSoumise", factureSoumise);
-        response.put("terminees", terminees);
-        response.put("annulees", annulees);
-        response.put("totalHonoraires", totalHonoraires);
-        response.put("totalAffaires", totalAffaires);
-        response.put("affairesEnCours", affairesEnCours);
-        response.put("jugementRendu", jugementRendu);
-        response.put("audiencesAVenir", audiencesAVenir);
-        response.put("affairesRecentes", affairesRecentes);
+        response.put("totalAffaires",     totalAffaires);
+        response.put("affairesEnCours",   affairesEnCours);
+        response.put("jugementRendu",     jugementRendu);
+        response.put("audiencesAVenir",   audiencesAVenir);
+        response.put("totalHonoraires",   totalHonoraires);
+        response.put("nombreFactures",    nombreFactures);
+        response.put("facturesPayees",    facturesPayees);
+        response.put("pvEnAttente",       pvEnAttente);
+        response.put("facturesEnAttente", facturesEnAttente);
+    
         return ResponseEntity.ok(response);
     }
-
     // ─────────────────── DOSSIER ───────────────────
 
     @GetMapping("/{affaireId}/dossier")

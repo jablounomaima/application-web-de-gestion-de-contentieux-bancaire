@@ -46,16 +46,28 @@ import { Router } from '@angular/router';
         <h4>Audiences à venir</h4>
       </div>
     </div>
-
     <div class="stat-card">
-      <div class="stat-icon green-icon">💰</div>
-      <div class="stat-info">
-        <span class="stat-value">
-          {{ totalHonoraires | number:'1.3-3' }} <small>TND</small>
-        </span>
-        <h4>Honoraires</h4>
-      </div>
-    </div>
+  <div class="stat-icon green-icon">💰</div>
+  <div class="stat-info">
+    <span class="stat-value">
+      {{ totalHonoraires | number:'1.3-3' }} <small>TND</small>
+    </span>
+    <h4>Total Honoraires HT</h4>
+  </div>
+</div>
+
+<div class="stat-card">
+  <div class="stat-icon teal-icon">🧾</div>
+  <div class="stat-info">
+    <span class="stat-value">
+      {{ nombreFactures }}
+      <small *ngIf="facturesPayees > 0" class="payees-hint">
+        dont {{ facturesPayees }} payée(s)
+      </small>
+    </span>
+    <h4>Factures soumises</h4>
+  </div>
+</div>
 
     <div class="stat-card">
       <div class="stat-icon purple-icon">📜</div>
@@ -249,7 +261,8 @@ import { Router } from '@angular/router';
     .loader-state { text-align: center; padding: 60px; color: #94a3b8; }
     .spin { font-size: 2.5rem; display: block; animation: spin 1s linear infinite; margin-bottom: 12px; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-
+    .teal-icon { background: #ccfbf1; }
+    .payees-hint { font-size: 0.65rem; color: #0d9488; font-weight: 700; display: block; margin-top: 2px; }
     /* ── Content card ── */
     .content-card { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; overflow: hidden; }
     .card-header { padding: 22px 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
@@ -440,5 +453,15 @@ export class AvocatDashboardComponent implements OnInit {
       CLOSE:             'Clôturée'
     };
     return m[s] ?? s;
+  }
+
+  get nombreFactures(): number {
+    return this.stats?.nombreFactures ?? 
+      this.affaires.filter(a => a.factureRef).length;
+  }
+  
+  get facturesPayees(): number {
+    return this.stats?.facturesPayees ??
+      this.affaires.filter(a => a.factureStatut === 'PAYEE').length;
   }
 }

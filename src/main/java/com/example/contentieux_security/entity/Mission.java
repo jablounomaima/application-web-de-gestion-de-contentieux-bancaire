@@ -39,7 +39,7 @@ public class Mission {
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 30)
+    @Column(nullable = false, length = 50)
     private StatutMission statut;
 
     private LocalDate dateAssignation;
@@ -56,7 +56,7 @@ public class Mission {
     @Column(length = 100)
     private String  factureRef;
     private Boolean pvValide = false;
-private Boolean factureValide = false;
+private Boolean factureValide = null;
 
 
     private LocalDateTime dateValidationAgent;

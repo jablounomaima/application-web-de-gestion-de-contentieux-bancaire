@@ -49,6 +49,10 @@ public class SecurityConfig {
                         .requestMatchers("/api/prestataire/**").hasAnyRole(
                                 "HUISSIER", "EXPERT", "AVOCAT")
 
+                                // Dans SecurityConfig.java
+.requestMatchers("/api/validateur/financier/**")
+.hasAnyRole("VALIDATEUR_FINANCIER", "ADMIN")
+
                                 .requestMatchers("/api/validateur/mon-profil")
                                 .hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE")       
                         .anyRequest().authenticated())
