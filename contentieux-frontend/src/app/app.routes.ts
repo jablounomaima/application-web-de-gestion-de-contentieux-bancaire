@@ -160,15 +160,14 @@ export const routes: Routes = [
       import('./features/prestataire/prestataire-dashboard/prestataire-dashboard.component')
         .then(m => m.PrestataireDashboardComponent)
   },
-  {
-    path: 'prestataire/missions',
-    redirectTo: 'prestataire/dashboard',
-    pathMatch: 'full'
-  },
+
   {
     path: 'prestataire/factures',
-    redirectTo: 'prestataire/dashboard',
-    pathMatch: 'full'
+    canActivate: [AuthGuard, PrestataireActifGuard],
+    data: { roles: ['ROLE_PRESTATAIRE', 'ROLE_EXPERT', 'ROLE_HUISSIER'] },
+    loadComponent: () =>
+      import('./features/prestataire/prestataire-factures/prestataire-factures-expert.component')
+        .then(m => m.PrestataireFacturesComponent),
   },
 
 

@@ -5,6 +5,7 @@ import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.repository.MissionRepository;
 import com.example.contentieux_security.service.*;
 import java.security.Principal;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -16,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
 import java.nio.file.*;
 import java.util.*;
-
 import com.example.contentieux_security.repository.ResultatMissionRepository;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -46,30 +46,29 @@ public class PrestataireController {
     public ResponseEntity<?> dashboard(Authentication auth) {
         List<Mission> missions = prestationService.getMissionsPrestataire(auth.getName());
 
-        long enCours       = missions.stream().filter(m -> m.getStatut() == StatutMission.ASSIGNEE   || m.getStatut() == StatutMission.EN_COURS).count();
-        long pvSoumis      = missions.stream().filter(m -> m.getStatut() == StatutMission.PV_SOUMIS).count();
-        long factureSoumise= missions.stream().filter(m -> m.getStatut() == StatutMission.FACTURE_SOUMISE).count();
-        long terminees     = missions.stream().filter(m -> m.getStatut() == StatutMission.TERMINEE   || m.getStatut() == StatutMission.REALISEE).count();
+        long enCours        = missions.stream().filter(m -> m.getStatut() == StatutMission.ASSIGNEE   || m.getStatut() == StatutMission.EN_COURS).count();
+        long pvSoumis       = missions.stream().filter(m -> m.getStatut() == StatutMission.PV_SOUMIS).count();
+        long factureSoumise = missions.stream().filter(m -> m.getStatut() == StatutMission.FACTURE_SOUMISE).count();
+        long terminees      = missions.stream().filter(m -> m.getStatut() == StatutMission.TERMINEE || m.getStatut() == StatutMission.REALISEE).count();
 
         List<Map<String, Object>> missionsMap = new ArrayList<>();
         for (Mission m : missions) {
             Map<String, Object> mm = new HashMap<>();
-            mm.put("id",              m.getId());
-            mm.put("numeroMission",   m.getNumeroMission());
-            mm.put("statut",          m.getStatut());
-            mm.put("dateAssignation", m.getDateAssignation());
-            mm.put("description",     m.getDescription());
+            mm.put("id",               m.getId());
+            mm.put("numeroMission",    m.getNumeroMission());
+            mm.put("statut",           m.getStatut());
+            mm.put("dateAssignation",  m.getDateAssignation());
+            mm.put("description",      m.getDescription());
+            mm.put("commentaireAgent", m.getCommentaireAgent()); // ✅ motif rejet visible
 
             if (m.getPrestation() != null && m.getPrestation().getDossier() != null) {
                 var d = m.getPrestation().getDossier();
                 var c = d.getClient();
-
                 Map<String, Object> clientMap = new HashMap<>();
                 if (c != null) {
                     clientMap.put("nom",    c.getNom());
                     clientMap.put("prenom", c.getPrenom());
                 }
-
                 Map<String, Object> dossierMap = new HashMap<>();
                 dossierMap.put("numeroDossier", d.getNumeroDossier());
                 dossierMap.put("libelle",       d.getLibelle());
@@ -92,12 +91,115 @@ public class PrestataireController {
         response.put("pvSoumis",          pvSoumis);
         response.put("factureSoumise",    factureSoumise);
         response.put("missionsTerminees", terminees);
-
         return ResponseEntity.ok(response);
     }
 
     // ─────────────────────────────────────────────────────────
-    // FORMULAIRES PV / FACTURE
+    // LISTE DES MISSIONS
+    // ─────────────────────────────────────────────────────────
+    @GetMapping("/missions")
+    @PreAuthorize("hasAnyRole('AVOCAT','EXPERT','PRESTATAIRE','HUISSIER')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getMissions(
+            @RequestParam(required = false) String recherche,
+            Authentication auth) {
+
+        List<Mission> missions = prestationService.getMissionsPrestataire(auth.getName());
+
+        if (recherche != null && !recherche.isBlank()) {
+            String q = recherche.toLowerCase();
+            missions = missions.stream()
+                .filter(m -> (m.getNumeroMission() != null && m.getNumeroMission().toLowerCase().contains(q))
+                          || (m.getDescription()   != null && m.getDescription().toLowerCase().contains(q)))
+                .toList();
+        }
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (Mission m : missions) {
+            Map<String, Object> mm = new HashMap<>();
+            mm.put("id",               m.getId());
+            mm.put("numeroMission",    m.getNumeroMission());
+            mm.put("statut",           m.getStatut());
+            mm.put("dateAssignation",  m.getDateAssignation());
+            mm.put("description",      m.getDescription());
+            mm.put("commentaireAgent", m.getCommentaireAgent()); // ✅ motif rejet
+
+            if (m.getPrestation() != null && m.getPrestation().getDossier() != null) {
+                var d = m.getPrestation().getDossier();
+                Map<String, Object> clientMap = new HashMap<>();
+                if (d.getClient() != null) {
+                    clientMap.put("nom",    d.getClient().getNom());
+                    clientMap.put("prenom", d.getClient().getPrenom());
+                }
+                Map<String, Object> dossierMap = new HashMap<>();
+                dossierMap.put("numeroDossier", d.getNumeroDossier());
+                dossierMap.put("libelle",       d.getLibelle());
+                dossierMap.put("montant",       d.calculerSolde());
+                dossierMap.put("client",        clientMap);
+
+                Map<String, Object> prestationMap = new HashMap<>();
+                prestationMap.put("type",    m.getPrestation().getType());
+                prestationMap.put("dossier", dossierMap);
+                mm.put("prestation", prestationMap);
+            }
+            result.add(mm);
+        }
+
+        return ResponseEntity.ok(Map.of("missions", result, "total", result.size()));
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // LISTE DES FACTURES
+    // ─────────────────────────────────────────────────────────
+    @GetMapping("/factures")
+    @PreAuthorize("hasAnyRole('AVOCAT','EXPERT','PRESTATAIRE','HUISSIER')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<List<Map<String, Object>>> getMesFactures(Authentication auth) {
+        List<Mission> missions = prestationService.getMissionsPrestataire(auth.getName());
+
+        List<Map<String, Object>> factures = missions.stream()
+            .filter(m -> m.getFactureRef() != null)
+            .map(m -> {
+                Map<String, Object> f = new HashMap<>();
+                f.put("factureRef",     m.getFactureRef());
+                f.put("montant",        m.getMontantFacture());
+                f.put("dateSoumission", m.getDateValidationFacture());
+                f.put("statut", switch (m.getStatut()) {
+                    case FACTURE_SOUMISE              -> "EN_ATTENTE";
+                    case FACTURE_VALIDEE              -> "APPROUVEE";
+                    case FACTURE_REJETEE              -> "REJETEE";
+                    case TERMINEE, REALISEE           -> "PAYEE";
+                    default                           -> m.getStatut().name();
+                });
+
+                Map<String, Object> missionMap = new HashMap<>();
+                missionMap.put("numeroMission", m.getNumeroMission());
+
+                if (m.getPrestation() != null && m.getPrestation().getDossier() != null) {
+                    var d = m.getPrestation().getDossier();
+                    Map<String, Object> clientMap = new HashMap<>();
+                    if (d.getClient() != null) {
+                        clientMap.put("nom",    d.getClient().getNom());
+                        clientMap.put("prenom", d.getClient().getPrenom());
+                    }
+                    Map<String, Object> dossierMap = new HashMap<>();
+                    dossierMap.put("numeroDossier", d.getNumeroDossier());
+                    dossierMap.put("client",        clientMap);
+
+                    Map<String, Object> prestationMap = new HashMap<>();
+                    prestationMap.put("dossier", dossierMap);
+                    missionMap.put("prestation", prestationMap);
+                }
+                f.put("mission", missionMap);
+                return f;
+            })
+            .toList();
+
+        return ResponseEntity.ok(factures);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // FORMULAIRES GET PV / FACTURE
     // ─────────────────────────────────────────────────────────
     @GetMapping("/missions/{missionId}/pv")
     @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
@@ -122,114 +224,314 @@ public class PrestataireController {
     }
 
     // ─────────────────────────────────────────────────────────
-    // SOUMETTRE PV
+    // SOUMETTRE PV (première soumission)
+    // ASSIGNEE / EN_COURS → PV_SOUMIS
     // ─────────────────────────────────────────────────────────
     @PostMapping("/missions/{id}/pv")
+    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
     public ResponseEntity<?> soumettrePV(@PathVariable Long id,
                                          @RequestBody Map<String, String> body,
-                                         Authentication authentication) {
+                                         Authentication auth) {
         try {
-            String pvTexte = body.get("pvTexte");
             Mission mission = missionRepository.findByIdWithDetails(id)
                     .orElseThrow(() -> new RuntimeException("Mission introuvable"));
 
-            StatutMission statut = mission.getStatut();
-            if (statut != StatutMission.ASSIGNEE &&
-                statut != StatutMission.EN_COURS  &&
-                statut != StatutMission.REJETEE) {
-                return ResponseEntity.badRequest()
-                       .body(Map.of("error", "PV déjà soumis ou mission non active."));
+            if (mission.getPrestataire() == null ||
+                !mission.getPrestataire().getUsername().equals(auth.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
 
-            mission.setPvMission(pvTexte);
+            StatutMission statut = mission.getStatut();
+            if (statut != StatutMission.ASSIGNEE && statut != StatutMission.EN_COURS) {
+                return ResponseEntity.badRequest()
+                       .body(Map.of("error", "PV déjà soumis ou mission non active. Statut : " + statut));
+            }
+
+            mission.setPvMission(body.get("pvTexte"));
             mission.setStatut(StatutMission.PV_SOUMIS);
-            mission.setDateValidationPv(java.time.LocalDateTime.now());
+            mission.setDateValidationPv(LocalDateTime.now());
             missionRepository.save(mission);
 
             return ResponseEntity.ok(Map.of("message", "PV soumis avec succès."));
         } catch (Exception e) {
             log.error("Erreur soumission PV mission {} : {}", id, e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Erreur : " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     // ─────────────────────────────────────────────────────────
-    // SOUMETTRE FACTURE
+    // SOUMETTRE FACTURE (première soumission)
+    // PV_SOUMIS → FACTURE_SOUMISE
     // ─────────────────────────────────────────────────────────
     @PostMapping("/missions/{id}/facture")
+    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
     public ResponseEntity<?> soumettreFacture(@PathVariable Long id,
                                               @RequestBody Map<String, Object> body,
-                                              Authentication authentication) {
+                                              Authentication auth) {
         try {
-            String factureRef = (String) body.get("factureRef");
-            Double montant    = Double.valueOf(body.get("montant").toString());
-            Mission mission   = missionRepository.findById(id)
+            Mission mission = missionRepository.findById(id)
                     .orElseThrow(() -> new RuntimeException("Mission introuvable"));
 
-            if (mission.getStatut() != StatutMission.PV_SOUMIS &&
-                mission.getStatut() != StatutMission.REJETEE) {
-                return ResponseEntity.badRequest()
-                       .body(Map.of("error", "Soumettez d'abord le PV."));
+            if (mission.getPrestataire() == null ||
+                !mission.getPrestataire().getUsername().equals(auth.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
 
-            mission.setFactureRef(factureRef);
-            mission.setMontantFacture(montant);
+            // ✅ Uniquement depuis PV_SOUMIS — REJETEE n'est plus autorisé ici
+            if (mission.getStatut() != StatutMission.PV_SOUMIS) {
+                return ResponseEntity.badRequest()
+                       .body(Map.of("error", "Soumettez d'abord le PV. Statut actuel : " + mission.getStatut()));
+            }
+
+            mission.setFactureRef((String) body.get("factureRef"));
+            mission.setMontantFacture(Double.valueOf(body.get("montant").toString()));
             mission.setStatut(StatutMission.FACTURE_SOUMISE);
-            mission.setDateValidationFacture(java.time.LocalDateTime.now());
+            mission.setDateValidationFacture(LocalDateTime.now());
             missionRepository.save(mission);
 
             return ResponseEntity.ok(Map.of("message", "Facture soumise avec succès."));
         } catch (Exception e) {
             log.error("Erreur soumission facture mission {} : {}", id, e.getMessage());
-            return ResponseEntity.badRequest().body(Map.of("error", "Erreur : " + e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
 
     // ─────────────────────────────────────────────────────────
-    // TÉLÉCHARGEMENT FICHIERS
+    // CAS 1 — REJET AGENT : resoumettre PV + facture + documents
+    // REJETEE → PV_SOUMIS (via service) → FACTURE_SOUMISE
     // ─────────────────────────────────────────────────────────
-    @GetMapping("/missions/fichier/id/{id}")
-    public ResponseEntity<byte[]> telechargerFichierById(@PathVariable Long id) throws IOException {
-        FichierResultat fichier = fichierResultatService.findById(id);
-        if (fichier == null) return ResponseEntity.notFound().build();
-        Path chemin = Paths.get(uploadDir, fichier.getNomFichierServeur());
-        byte[] contenu = Files.readAllBytes(chemin);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(fichier.getTypeMime()))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fichier.getNomFichierOriginal() + "\"")
-                .body(contenu);
-    }
-
-    @GetMapping("/missions/fichier/{nomFichierServeur}")
-    public ResponseEntity<byte[]> telechargerFichier(
-            @PathVariable String nomFichierServeur) throws IOException {
-        FichierResultat fichier = fichierResultatService.findByNomFichierServeur(nomFichierServeur);
-        if (fichier == null) return ResponseEntity.notFound().build();
-        Path chemin = Paths.get(uploadDir, nomFichierServeur);
-        byte[] contenu = Files.readAllBytes(chemin);
-        return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(fichier.getTypeMime()))
-                .header(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"" + fichier.getNomFichierOriginal() + "\"")
-                .body(contenu);
-    }
-
-    // ─────────────────────────────────────────────────────────
-    // PROFIL
-    // ─────────────────────────────────────────────────────────
-    @GetMapping("/mon-profil")
-    public ResponseEntity<?> getMonProfil(Principal principal) {
+    @PostMapping("/missions/{missionId}/resoumettre-pv")
+    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
+    @Transactional
+    public ResponseEntity<?> resoumettreApresRejetAgent(
+            @PathVariable Long missionId,
+            @RequestParam("pvTexte")                             String pvTexte,
+            @RequestParam("factureRef")                          String factureRef,
+            @RequestParam("montant")                             Double montant,
+            @RequestParam(value = "fichiers", required = false)  List<MultipartFile> fichiers,
+            Authentication auth) {
         try {
-            Prestataire p = prestataireService.findByUsername(principal.getName());
-            return ResponseEntity.ok(Map.of(
-                "username", p.getUsername(),
-                "nom",      p.getNom(),
-                "prenom",   p.getPrenom(),
-                "actif",    p.isActif()
-            ));
+            // Vérifie statut REJETEE + ownership
+            missionService.resoumettreApresRejetAgent(missionId, pvTexte, auth.getName());
+
+            // Enchaîne avec la facture : PV_SOUMIS → FACTURE_SOUMISE
+            missionService.soumettreFacture(missionId, factureRef, montant, auth.getName());
+
+            // Upload pièces jointes
+            _uploadDocuments(missionId, fichiers, auth.getName());
+
+            return ResponseEntity.ok(Map.of("message", "PV, facture et documents soumis avec succès."));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         } catch (Exception e) {
-            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+            log.error("Erreur resoumettre-pv mission {} : {}", missionId, e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // CAS 2 — REJET FINANCIER : resoumettre facture seule + documents
+    // FACTURE_REJETEE → FACTURE_SOUMISE
+    // ─────────────────────────────────────────────────────────
+    @PostMapping("/missions/{missionId}/resoumettre-facture")
+    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
+    @Transactional
+    public ResponseEntity<?> resoumettreFactureApresRejetFinancier(
+            @PathVariable Long missionId,
+            @RequestParam("factureRef")                          String factureRef,
+            @RequestParam("montant")                             Double montant,
+            @RequestParam(value = "fichiers", required = false)  List<MultipartFile> fichiers,
+            Authentication auth) {
+        try {
+            // Vérifie statut FACTURE_REJETEE + ownership, PV conservé
+            missionService.resoumettreFactureApresRejetFinancier(
+                missionId, factureRef, montant, auth.getName());
+
+            // Upload pièces jointes
+            _uploadDocuments(missionId, fichiers, auth.getName());
+
+            return ResponseEntity.ok(Map.of("message", "Facture et documents resoumis avec succès."));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error("Erreur resoumettre-facture mission {} : {}", missionId, e.getMessage(), e);
+            return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // MÉTHODE PRIVÉE — upload documents (réutilisée partout)
+    // ─────────────────────────────────────────────────────────
+    private void _uploadDocuments(Long missionId,
+        List<MultipartFile> fichiers,
+        String username) throws Exception {
+
+if (fichiers == null || fichiers.isEmpty()) return;
+
+Mission mission = missionRepository.findByIdWithDetails(missionId)
+.orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+ResultatMission resultat = resultatMissionRepository
+.findByMission_Id(missionId)
+.orElseGet(() -> {
+
+ResultatMission r = new ResultatMission();
+
+r.setMission(mission);
+
+r.setDateCreation(LocalDateTime.now());
+r.setDateModification(LocalDateTime.now());
+r.setDateSoumission(LocalDateTime.now());
+
+r.setSoumisePar(username);
+r.setCommentaire("");
+
+return resultatMissionRepository.save(r);
+});
+
+resultat.setDateSoumission(LocalDateTime.now());
+resultat.setDateModification(LocalDateTime.now());
+
+resultatMissionRepository.save(resultat);
+
+Path uploadPath = Paths.get(uploadDir);
+
+if (!Files.exists(uploadPath)) {
+Files.createDirectories(uploadPath);
+}
+
+for (MultipartFile f : fichiers) {
+
+String nomServeur =
+UUID.randomUUID() + "_" + f.getOriginalFilename();
+
+Files.copy(
+f.getInputStream(),
+uploadPath.resolve(nomServeur),
+StandardCopyOption.REPLACE_EXISTING
+);
+
+fichierResultatService.save(
+FichierResultat.builder()
+  .nomFichierOriginal(f.getOriginalFilename())
+  .nomFichierServeur(nomServeur)
+  .typeMime(f.getContentType())
+  .tailleFichier(f.getSize())
+  .dateUpload(LocalDateTime.now())
+  .resultat(resultat)
+  .build()
+);
+}
+}
+
+    // ─────────────────────────────────────────────────────────
+    // GET RÉSULTAT MISSION
+    // ─────────────────────────────────────────────────────────
+    @GetMapping("/missions/{missionId}/resultat")
+    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getResultatMission(@PathVariable Long missionId,
+                                                Authentication auth) {
+        try {
+            Mission mission = missionRepository.findById(missionId)
+                    .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+            if (mission.getPrestataire() == null ||
+                !mission.getPrestataire().getUsername().equals(auth.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("pvTexte",              mission.getPvMission());
+            response.put("dateSoumissionPV",      mission.getDateValidationPv());
+            response.put("factureRef",            mission.getFactureRef());
+            response.put("montant",               mission.getMontantFacture());
+            response.put("dateSoumissionFacture", mission.getDateValidationFacture());
+            response.put("commentaireAgent",      mission.getCommentaireAgent());
+
+            Optional<ResultatMission> opt = resultatMissionRepository.findByMission_Id(missionId);
+            response.put("commentaire", opt.map(ResultatMission::getCommentaire).orElse(null));
+            response.put("soumisePar",  opt.map(ResultatMission::getSoumisePar).orElse(null));
+
+            List<Map<String, Object>> fichiers = new ArrayList<>();
+            opt.ifPresent(r -> {
+                if (r.getFichiers() != null) {
+                    for (FichierResultat f : r.getFichiers()) {
+                        fichiers.add(Map.of(
+                            "id",                f.getId(),
+                            "nomFichierOriginal", f.getNomFichierOriginal(),
+                            "nomFichierServeur",  f.getNomFichierServeur(),
+                            "typeMime",           f.getTypeMime(),
+                            "tailleFichier",      f.getTailleFichier(),
+                            "dateUpload",         f.getDateUpload()
+                        ));
+                    }
+                }
+            });
+            response.put("fichiers", fichiers);
+
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            log.error("Erreur getResultatMission {} : {}", missionId, e.getMessage(), e);
+            return ResponseEntity.status(500)
+                   .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue",
+                                "cause", e.getClass().getSimpleName()));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // GET MISSION DÉTAIL
+    // ─────────────────────────────────────────────────────────
+    @GetMapping("/missions/{missionId}")
+    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> getMissionDetail(@PathVariable Long missionId,
+                                              Authentication auth) {
+        try {
+            Mission mission = missionRepository.findByIdWithDetails(missionId)
+                    .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+            if (mission.getPrestataire() == null ||
+                !mission.getPrestataire().getUsername().equals(auth.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("id",               mission.getId());
+            response.put("numeroMission",    mission.getNumeroMission());
+            response.put("statut",           mission.getStatut() != null ? mission.getStatut().name() : null);
+            response.put("dateAssignation",  mission.getDateAssignation());
+            response.put("commentaireAgent", mission.getCommentaireAgent());
+
+            if (mission.getPrestation() != null) {
+                Map<String, Object> prestation = new HashMap<>();
+                prestation.put("type", mission.getPrestation().getType());
+
+                if (mission.getPrestation().getDossier() != null) {
+                    var d = mission.getPrestation().getDossier();
+                    Map<String, Object> dossier = new HashMap<>();
+                    dossier.put("numeroDossier", d.getNumeroDossier());
+                    dossier.put("libelle",       d.getLibelle());
+                    dossier.put("dateCreation",  d.getDateCreation());
+                    dossier.put("montant",       d.calculerSolde());
+
+                    if (d.getClient() != null) {
+                        dossier.put("client", Map.of(
+                            "nom",    d.getClient().getNom(),
+                            "prenom", d.getClient().getPrenom()
+                        ));
+                    }
+                    prestation.put("dossier", dossier);
+                }
+                response.put("prestation", prestation);
+            }
+            return ResponseEntity.ok(response);
+
+        } catch (Exception e) {
+            log.error("Erreur getMissionDetail {} : {}", missionId, e.getMessage(), e);
+            return ResponseEntity.status(500)
+                   .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue",
+                                "cause", e.getClass().getSimpleName()));
         }
     }
 
@@ -242,7 +544,6 @@ public class PrestataireController {
     public ResponseEntity<?> getDossierMission(@PathVariable Long missionId,
                                                Authentication auth) {
         Mission mission = missionService.getMissionWithDetails(missionId);
-
         if (mission.getPrestataire() == null ||
             !mission.getPrestataire().getUsername().equals(auth.getName())) {
             return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
@@ -273,12 +574,12 @@ public class PrestataireController {
                 List<Map<String, Object>> garantiesMap = new ArrayList<>();
                 if (r.getGaranties() != null) {
                     for (var g : r.getGaranties()) {
-                        Map<String, Object> gm = new HashMap<>();
-                        gm.put("typeGarantie",  g.getTypeGarantie());
-                        gm.put("valeurEstimee", g.getValeurEstimee());
-                        gm.put("description",   g.getDescription());
-                        gm.put("statut",        g.getStatut());
-                        garantiesMap.add(gm);
+                        garantiesMap.add(Map.of(
+                            "typeGarantie",  g.getTypeGarantie(),
+                            "valeurEstimee", g.getValeurEstimee(),
+                            "description",   g.getDescription() != null ? g.getDescription() : "",
+                            "statut",        g.getStatut()
+                        ));
                     }
                 }
                 Map<String, Object> rm = new HashMap<>();
@@ -308,7 +609,7 @@ public class PrestataireController {
     }
 
     // ─────────────────────────────────────────────────────────
-    // UPLOAD DOCUMENTS
+    // UPLOAD DOCUMENTS (endpoint séparé)
     // ─────────────────────────────────────────────────────────
     @PostMapping("/missions/{missionId}/documents")
     @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
@@ -318,57 +619,15 @@ public class PrestataireController {
             Authentication auth) {
         try {
             Mission mission = missionRepository.findByIdWithDetails(missionId)
-        .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-           
+                    .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
             if (mission.getPrestataire() == null ||
                 !mission.getPrestataire().getUsername().equals(auth.getName())) {
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
 
-            ResultatMission resultat = resultatMissionRepository
-                    .findByMission_Id(missionId)
-                    .orElseGet(() -> {
-                        ResultatMission r = new ResultatMission();
-                        r.setMission(mission);
-                        r.setDateCreation(java.time.LocalDateTime.now());
-                        r.setDateSoumission(java.time.LocalDateTime.now());
-                        r.setSoumisePar(auth.getName());
-                        r.setCommentaire("");
-                        return resultatMissionRepository.save(r);
-                    });
-
-            Path uploadPath = Paths.get(uploadDir);
-            if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
-
-            List<Map<String, Object>> fichiersInfo = new ArrayList<>();
-            for (MultipartFile f : fichiers) {
-                String nomServeur = UUID.randomUUID() + "_" + f.getOriginalFilename();
-                Files.copy(f.getInputStream(), uploadPath.resolve(nomServeur));
-
-                FichierResultat fichier = FichierResultat.builder()
-                        .nomFichierOriginal(f.getOriginalFilename())
-                        .nomFichierServeur(nomServeur)
-                        .typeMime(f.getContentType())
-                        .tailleFichier(f.getSize())
-                        .dateUpload(java.time.LocalDateTime.now())
-                        .resultat(resultat)
-                        .build();
-                fichierResultatService.save(fichier);
-
-                Map<String, Object> info = new HashMap<>();
-                info.put("id",                fichier.getId());
-                info.put("nomFichierOriginal", fichier.getNomFichierOriginal());
-                info.put("nomFichierServeur",  fichier.getNomFichierServeur());
-                info.put("typeMime",           fichier.getTypeMime());
-                info.put("tailleFichier",      fichier.getTailleFichier());
-                info.put("dateUpload",         fichier.getDateUpload());
-                fichiersInfo.add(info);
-            }
-
-            return ResponseEntity.ok(Map.of(
-                    "message",  "Documents ajoutés avec succès",
-                    "fichiers", fichiersInfo
-            ));
+            _uploadDocuments(missionId, fichiers, auth.getName());
+            return ResponseEntity.ok(Map.of("message", "Documents ajoutés avec succès"));
         } catch (Exception e) {
             log.error("Erreur upload documents mission {} : {}", missionId, e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -381,12 +640,11 @@ public class PrestataireController {
     @GetMapping("/missions/{missionId}/documents")
     @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
     @Transactional
-    public ResponseEntity<?> getDocuments(@PathVariable Long missionId,
-                                          Authentication auth) {
+    public ResponseEntity<?> getDocuments(@PathVariable Long missionId, Authentication auth) {
         try {
             Mission mission = missionRepository.findByIdWithDetails(missionId)
-            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-    
+                    .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
             if (mission.getPrestataire() == null ||
                 !mission.getPrestataire().getUsername().equals(auth.getName())) {
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
@@ -396,14 +654,14 @@ public class PrestataireController {
             resultatMissionRepository.findByMissionIdWithFichiers(missionId)
                     .ifPresent(resultat -> {
                         for (FichierResultat f : resultat.getFichiers()) {
-                            Map<String, Object> info = new HashMap<>();
-                            info.put("id",                f.getId());
-                            info.put("nomFichierOriginal", f.getNomFichierOriginal());
-                            info.put("nomFichierServeur",  f.getNomFichierServeur());
-                            info.put("typeMime",           f.getTypeMime());
-                            info.put("tailleFichier",      f.getTailleFichier());
-                            info.put("dateUpload",         f.getDateUpload());
-                            fichiersInfo.add(info);
+                            fichiersInfo.add(Map.of(
+                                "id",                f.getId(),
+                                "nomFichierOriginal", f.getNomFichierOriginal(),
+                                "nomFichierServeur",  f.getNomFichierServeur(),
+                                "typeMime",           f.getTypeMime(),
+                                "tailleFichier",      f.getTailleFichier(),
+                                "dateUpload",         f.getDateUpload()
+                            ));
                         }
                     });
 
@@ -415,118 +673,48 @@ public class PrestataireController {
     }
 
     // ─────────────────────────────────────────────────────────
-    // GET RÉSULTAT MISSION  ✅ CORRIGÉ
+    // TÉLÉCHARGEMENT FICHIERS
     // ─────────────────────────────────────────────────────────
-    @GetMapping("/missions/{missionId}/resultat")
-    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
-    @Transactional(readOnly = true)
-    public ResponseEntity<?> getResultatMission(@PathVariable Long missionId,
-                                                Authentication auth) {
-        try {
-            Mission mission = missionRepository.findById(missionId)
-                    .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+    @GetMapping("/missions/fichier/id/{id}")
+    public ResponseEntity<byte[]> telechargerFichierById(@PathVariable Long id) throws IOException {
+        FichierResultat fichier = fichierResultatService.findById(id);
+        if (fichier == null) return ResponseEntity.notFound().build();
+        byte[] contenu = Files.readAllBytes(Paths.get(uploadDir, fichier.getNomFichierServeur()));
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(fichier.getTypeMime()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + fichier.getNomFichierOriginal() + "\"")
+                .body(contenu);
+    }
 
-            if (mission.getPrestataire() == null ||
-                !mission.getPrestataire().getUsername().equals(auth.getName())) {
-                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
-            }
-
-            // PV + Facture directement sur Mission
-            Map<String, Object> response = new HashMap<>();
-            response.put("pvTexte",               mission.getPvMission());
-            response.put("dateSoumissionPV",       mission.getDateValidationPv());
-            response.put("factureRef",             mission.getFactureRef());
-            response.put("montant",                mission.getMontantFacture());
-            response.put("dateSoumissionFacture",  mission.getDateValidationFacture());
-
-            // Commentaire depuis ResultatMission
-            Optional<ResultatMission> opt = resultatMissionRepository
-                    .findByMission_Id(missionId);
-            response.put("commentaire", opt.map(ResultatMission::getCommentaire).orElse(null));
-            response.put("soumisePar",  opt.map(ResultatMission::getSoumisePar).orElse(null));
-
-            // Fichiers
-            List<Map<String, Object>> fichiers = new ArrayList<>();
-            opt.ifPresent(r -> {
-                if (r.getFichiers() != null) {
-                    for (FichierResultat f : r.getFichiers()) {
-                        Map<String, Object> fm = new HashMap<>();
-                        fm.put("id",                f.getId());
-                        fm.put("nomFichierOriginal", f.getNomFichierOriginal());
-                        fm.put("nomFichierServeur",  f.getNomFichierServeur());
-                        fm.put("typeMime",           f.getTypeMime());
-                        fm.put("tailleFichier",      f.getTailleFichier());
-                        fm.put("dateUpload",         f.getDateUpload());
-                        fichiers.add(fm);
-                    }
-                }
-            });
-            response.put("fichiers", fichiers);
-
-            return ResponseEntity.ok(response);
-
-        } catch (Exception e) {
-            log.error("Erreur getResultatMission {} : {}", missionId, e.getMessage(), e);
-            return ResponseEntity.status(500)
-                   .body(Map.of("error",  e.getMessage() != null ? e.getMessage() : "Erreur inconnue",
-                                "cause",  e.getClass().getSimpleName()));
-        }
+    @GetMapping("/missions/fichier/{nomFichierServeur}")
+    public ResponseEntity<byte[]> telechargerFichier(
+            @PathVariable String nomFichierServeur) throws IOException {
+        FichierResultat fichier = fichierResultatService.findByNomFichierServeur(nomFichierServeur);
+        if (fichier == null) return ResponseEntity.notFound().build();
+        byte[] contenu = Files.readAllBytes(Paths.get(uploadDir, nomFichierServeur));
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType(fichier.getTypeMime()))
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"" + fichier.getNomFichierOriginal() + "\"")
+                .body(contenu);
     }
 
     // ─────────────────────────────────────────────────────────
-    // GET MISSION DÉTAIL  ✅ CORRIGÉ (double @GetMapping supprimé)
+    // PROFIL
     // ─────────────────────────────────────────────────────────
-    @GetMapping("/missions/{missionId}")
-    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
-    @Transactional(readOnly = true)
-    public ResponseEntity<?> getMissionDetail(@PathVariable Long missionId,
-                                              Authentication auth) {
+    @GetMapping("/mon-profil")
+    public ResponseEntity<?> getMonProfil(Principal principal) {
         try {
-            Mission mission = missionRepository.findByIdWithDetails(missionId)
-                    .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-
-            if (mission.getPrestataire() == null ||
-                !mission.getPrestataire().getUsername().equals(auth.getName())) {
-                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
-            }
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("id",              mission.getId());
-            response.put("numeroMission",   mission.getNumeroMission());
-            response.put("statut",          mission.getStatut() != null
-                                            ? mission.getStatut().name() : null);
-            response.put("dateAssignation", mission.getDateAssignation());
-
-            if (mission.getPrestation() != null) {
-                Map<String, Object> prestation = new HashMap<>();
-                prestation.put("type", mission.getPrestation().getType());
-
-                if (mission.getPrestation().getDossier() != null) {
-                    var d = mission.getPrestation().getDossier();
-                    Map<String, Object> dossier = new HashMap<>();
-                    dossier.put("numeroDossier", d.getNumeroDossier());
-                    dossier.put("libelle",       d.getLibelle());
-                    dossier.put("dateCreation",  d.getDateCreation());
-                    dossier.put("montant",       d.calculerSolde());
-
-                    if (d.getClient() != null) {
-                        Map<String, Object> client = new HashMap<>();
-                        client.put("nom",    d.getClient().getNom());
-                        client.put("prenom", d.getClient().getPrenom());
-                        dossier.put("client", client);
-                    }
-                    prestation.put("dossier", dossier);
-                }
-                response.put("prestation", prestation);
-            }
-
-            return ResponseEntity.ok(response);
-
+            Prestataire p = prestataireService.findByUsername(principal.getName());
+            return ResponseEntity.ok(Map.of(
+                "username", p.getUsername(),
+                "nom",      p.getNom(),
+                "prenom",   p.getPrenom(),
+                "actif",    p.isActif()
+            ));
         } catch (Exception e) {
-            log.error("Erreur getMissionDetail {} : {}", missionId, e.getMessage(), e);
-            return ResponseEntity.status(500)
-                   .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue",
-                                "cause", e.getClass().getSimpleName()));
+            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
         }
     }
 }

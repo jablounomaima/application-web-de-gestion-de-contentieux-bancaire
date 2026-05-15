@@ -52,6 +52,10 @@ public class SecurityConfig {
                                 // Dans SecurityConfig.java
 .requestMatchers("/api/validateur/financier/**")
 .hasAnyRole("VALIDATEUR_FINANCIER", "ADMIN")
+.requestMatchers(
+    "/api/public/**",
+    "/error"
+).permitAll()
 
                                 .requestMatchers("/api/validateur/mon-profil")
                                 .hasAnyRole("VALIDATEUR_FINANCIER", "VALIDATEUR_JURIDIQUE")       

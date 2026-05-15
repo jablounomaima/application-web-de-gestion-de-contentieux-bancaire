@@ -105,14 +105,31 @@
                             </td>
                             <td>
                                 <div class="btn-group">
-                                    <button class="btn-icon edit" (click)="openEditModal('agent', agent)"
-                                        title="Modifier">✏️</button>
-                                    <button class="btn-icon toggle" (click)="toggleAgent(agent.id)"
-                                        [title]="agent.actif ? 'Désactiver' : 'Activer'">
+
+                                    <button class="btn-icon edit"
+                                            (click)="openEditModal('agent', agent)"
+                                            title="Modifier">
+                                        ✏️
+                                    </button>
+                                
+                                    <button class="btn-icon key"
+                                            (click)="reinitialiserMotDePasse(agent.username)"
+                                            title="Réinitialiser mot de passe">
+                                        🔑
+                                    </button>
+                                
+                                    <button class="btn-icon toggle"
+                                            (click)="toggleAgent(agent.id)"
+                                            [title]="agent.actif ? 'Désactiver' : 'Activer'">
                                         {{ agent.actif ? '🔒' : '🔓' }}
                                     </button>
-                                    <button class="btn-icon delete" (click)="supprimerAgent(agent.id)"
-                                        title="Supprimer">🗑️</button>
+                                
+                                    <button class="btn-icon delete"
+                                            (click)="supprimerAgent(agent.id)"
+                                            title="Supprimer">
+                                        🗑️
+                                    </button>
+                                
                                 </div>
                             </td>
                         </tr>

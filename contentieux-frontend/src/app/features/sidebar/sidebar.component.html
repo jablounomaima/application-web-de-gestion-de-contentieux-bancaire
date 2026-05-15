@@ -35,14 +35,35 @@
   </div>
 
   <!-- MENU PRESTATAIRE -->
-  <div class="menu-section" *ngIf="hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER')">
-    <p class="menu-label">ESPACE PRESTATAIRE</p>
-    <ul>
-      <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
-      <li><a routerLink="/prestataire/missions" routerLinkActive="active-link"><i class="icon">⏳</i> Mes Missions</a></li>
-      <li><a routerLink="/prestataire/factures" routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
-    </ul>
-  </div>
+  <!-- MENU PRESTATAIRE générique -->
+<div class="menu-section" *ngIf="hasRole('PRESTATAIRE')">
+  <p class="menu-label">ESPACE PRESTATAIRE</p>
+  <ul>
+    <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
+    <li><a routerLink="/prestataire/missions" routerLinkActive="active-link"><i class="icon">⏳</i> Mes Missions</a></li>
+    <li><a routerLink="/prestataire/factures" routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
+  </ul>
+</div>
+
+<!-- MENU EXPERT -->
+<div class="menu-section" *ngIf="hasRole('EXPERT')">
+  <p class="menu-label">ESPACE EXPERT</p>
+  <ul>
+    <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
+    <li><a routerLink="/prestataire/missions" routerLinkActive="active-link"><i class="icon">🔍</i> Mes Missions</a></li>
+    <li><a routerLink="/prestataire/factures" routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
+  </ul>
+</div>
+
+<!-- MENU HUISSIER -->
+<div class="menu-section" *ngIf="hasRole('HUISSIER')">
+  <p class="menu-label">ESPACE HUISSIER</p>
+  <ul>
+    <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
+    <li><a routerLink="/prestataire/missions" routerLinkActive="active-link"><i class="icon">📋</i> Mes Missions</a></li>
+    <li><a routerLink="/prestataire/factures" routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
+  </ul>
+</div>
 
   <!-- MENU AVOCAT -->
   <div class="menu-section" *ngIf="hasRole('AVOCAT')">

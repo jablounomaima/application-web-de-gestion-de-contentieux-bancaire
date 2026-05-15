@@ -388,4 +388,29 @@ submitValidateur() {
       type: 'VALIDATEUR_JURIDIQUE', agenceId: 0
     };
   }
+
+
+
+
+
+
+
+  // Dans admin-dashboard.component.ts
+reinitialiserMotDePasse(username: string): void {
+  this.confirmDialog = {
+    visible: true,
+    title: 'Réinitialiser le mot de passe',
+    message: `Générer un nouveau mot de passe pour "${username}" 
+              et l'envoyer par email ?`,
+    onConfirm: () => {
+      this.confirmDialog.visible = false;
+      this.adminService.reinitialiserMotDePasse(username).subscribe({
+        next: () => this.showToast(
+          `Nouveau mot de passe envoyé à ${username} ✅`
+        ),
+        error: () => this.showToast('Erreur réinitialisation', true)
+      });
+    }
+  };
+}
 }

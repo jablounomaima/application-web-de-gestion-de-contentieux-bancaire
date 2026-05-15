@@ -2,9 +2,8 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { HttpClient } from '@angular/common/http';
-import { environment } from '../../../../environments/environment';
 import { PrestataireService } from '../../../core/services/prestataire.service';
+
 @Component({
   selector: 'app-prestataire-missions-liste',
   standalone: true,
@@ -14,44 +13,54 @@ import { PrestataireService } from '../../../core/services/prestataire.service';
 })
 export class PrestataireMissionsListeComponent implements OnInit {
 
-  private apiUrl = `${environment.apiUrl}/api/prestataire/missions`;
-
   missions: any[] = [];
   missionsFiltrees: any[] = [];
   loading = true;
   errorMsg = '';
 
   // Filtres
-  filtreStatut = 'TOUS';
+  filtreStatut    = 'TOUS';
   filtreRecherche = '';
 
   // Stats
   stats = { total: 0, assignee: 0, enCours: 0, terminee: 0, rejetee: 0 };
 
-  // Modal résultat
+  // Modal
   missionSelectionnee: any = null;
   modalOuverte = false;
-  submitting = false;
-  successMsg = '';
-  modalError = '';
+  submitting   = false;
+  successMsg   = '';
+  modalError   = '';
 
-  // Formulaire soumission résultat
+  // Formulaire commun
   commentaire = '';
   fichiers: File[] = [];
 
+  // ✅ Champs resoumission
+  pvTexte    = '';
+  factureRef = '';
+  montant: number | null = null;
+
   readonly STATUTS = [
-    { value: 'TOUS',             label: 'Toutes',       color: 'gray'   },
-    { value: 'ASSIGNEE',         label: 'Assignées',    color: 'amber'  },
-    { value: 'EN_COURS',         label: 'En cours',     color: 'blue'   },
-    { value: 'PV_SOUMIS',        label: 'PV soumis',    color: 'purple' },
-    { value: 'FACTURE_SOUMISE',  label: 'Facture',      color: 'teal'   },
-    { value: 'TERMINEE',         label: 'Terminées',    color: 'green'  },
-    { value: 'REJETEE',          label: 'Rejetées',     color: 'red'    },
+    { value: 'TOUS',            label: 'Toutes',          color: 'gray'   },
+    { value: 'ASSIGNEE',        label: 'Assignées',       color: 'amber'  },
+    { value: 'EN_COURS',        label: 'En cours',        color: 'blue'   },
+    { value: 'PV_SOUMIS',       label: 'PV soumis',       color: 'purple' },
+    { value: 'FACTURE_SOUMISE', label: 'Facture soumise', color: 'teal'   },
+    { value: 'FACTURE_REJETEE', label: 'Facture rejetée', color: 'orange' },
+    { value: 'VALIDEE_AGENT',   label: 'Validée',         color: 'green'  },
+    { value: 'REALISEE',        label: 'Réalisée',        color: 'green'  },
+    { value: 'TERMINEE',        label: 'Terminées',       color: 'green'  },
+    { value: 'REJETEE',         label: 'Rejetées',        color: 'red'    },
   ];
+
+  // ✅ Getters pour le template
+  get casRejetAgent():     boolean { return this.missionSelectionnee?.statut === 'REJETEE'; }
+  get casRejetFinancier(): boolean { return this.missionSelectionnee?.statut === 'FACTURE_REJETEE'; }
+  get casNormal():         boolean { return ['ASSIGNEE', 'EN_COURS'].includes(this.missionSelectionnee?.statut); }
 
   constructor(
     private prestataireService: PrestataireService,
-    private http: HttpClient,
     private router: Router
   ) {}
 
@@ -60,9 +69,8 @@ export class PrestataireMissionsListeComponent implements OnInit {
   }
 
   charger(): void {
-    this.loading = true;
+    this.loading  = true;
     this.errorMsg = '';
-    // ✅ Utiliser le service au lieu de this.http.get(...)
     this.prestataireService.getMissions().subscribe({
       next: (res) => {
         this.missions = res.missions || [];
@@ -72,17 +80,22 @@ export class PrestataireMissionsListeComponent implements OnInit {
       },
       error: (err) => {
         this.errorMsg = err?.error?.error || 'Impossible de charger les missions.';
-        this.loading = false;
+        this.loading  = false;
       }
     });
   }
+
   calculerStats(): void {
     this.stats = {
       total:    this.missions.length,
       assignee: this.missions.filter(m => m.statut === 'ASSIGNEE').length,
       enCours:  this.missions.filter(m => m.statut === 'EN_COURS').length,
-      terminee: this.missions.filter(m => m.statut === 'TERMINEE').length,
-      rejetee:  this.missions.filter(m => m.statut === 'REJETEE').length,
+      terminee: this.missions.filter(m =>
+        ['TERMINEE', 'REALISEE', 'VALIDEE_AGENT'].includes(m.statut)
+      ).length,
+      rejetee:  this.missions.filter(m =>
+        ['REJETEE', 'FACTURE_REJETEE'].includes(m.statut)
+      ).length,
     };
   }
 
@@ -106,63 +119,100 @@ export class PrestataireMissionsListeComponent implements OnInit {
     this.missionsFiltrees = liste;
   }
 
-  // ── Modal soumission résultat ──────────────────────────────
+  // ── Modal ────────────────────────────────────────────────────
   ouvrirModal(mission: any): void {
     this.missionSelectionnee = mission;
-    this.modalOuverte  = true;
-    this.commentaire   = '';
-    this.fichiers      = [];
-    this.successMsg    = '';
-    this.modalError    = '';
+    this.modalOuverte = true;
+    // Reset tous les champs
+    this.pvTexte     = '';
+    this.factureRef  = '';
+    this.montant     = null;
+    this.commentaire = '';
+    this.fichiers    = [];
+    this.successMsg  = '';
+    this.modalError  = '';
   }
 
   fermerModal(): void {
     if (!this.submitting) {
-      this.modalOuverte = false;
+      this.modalOuverte        = false;
       this.missionSelectionnee = null;
     }
   }
 
   onFichiersChange(event: Event): void {
     const input = event.target as HTMLInputElement;
-    if (input.files) {
-      this.fichiers = Array.from(input.files);
-    }
+    if (input.files) this.fichiers = Array.from(input.files);
   }
 
   supprimerFichier(index: number): void {
     this.fichiers.splice(index, 1);
   }
 
+  // ── Soumission selon le cas ──────────────────────────────────
   soumettrResultat(): void {
-    if (!this.commentaire.trim() && this.fichiers.length === 0) {
-      this.modalError = 'Ajoutez un commentaire ou au moins un fichier.';
-      return;
-    }
-  
-    this.submitting = true;
     this.modalError = '';
-  
-    const fd = new FormData();
-    if (this.commentaire.trim()) fd.append('commentaire', this.commentaire.trim());
-    this.fichiers.forEach(f => fd.append('fichiers', f));
-  
-    // ✅ Utiliser le service
-    this.prestataireService.soumettreResultat(this.missionSelectionnee.id, fd)
-      .subscribe({
-        next: (res) => {
-          this.submitting = false;
-          this.successMsg = res?.message || 'Résultat soumis avec succès !';
-          setTimeout(() => {
-            this.fermerModal();
-            this.charger();
-          }, 1800);
-        },
-        error: (err) => {
-          this.submitting = false;
-          this.modalError = err?.error?.error || 'Erreur lors de la soumission.';
-        }
+
+    // CAS 1 — rejet agent : PV + facture + fichiers
+    if (this.casRejetAgent) {
+      if (!this.pvTexte.trim())              { this.modalError = 'Le PV est obligatoire.'; return; }
+      if (!this.factureRef.trim())           { this.modalError = 'La référence facture est obligatoire.'; return; }
+      if (!this.montant || this.montant <= 0){ this.modalError = 'Le montant est obligatoire.'; return; }
+
+      this.submitting = true;
+      this.prestataireService.resoumettreApresRejetAgent(this.missionSelectionnee.id, {
+        pvTexte:    this.pvTexte,
+        factureRef: this.factureRef,
+        montant:    this.montant,
+        fichiers:   this.fichiers
+      }).subscribe({
+        next:  (res) => this._onSuccess(res?.message || 'Soumission envoyée avec succès !'),
+        error: (err) => this._onError(err)
       });
+
+    // CAS 2 — rejet financier : facture seule + fichiers
+    } else if (this.casRejetFinancier) {
+      if (!this.factureRef.trim())           { this.modalError = 'La référence facture est obligatoire.'; return; }
+      if (!this.montant || this.montant <= 0){ this.modalError = 'Le montant est obligatoire.'; return; }
+
+      this.submitting = true;
+      this.prestataireService.resoumettreFactureApresRejetFinancier(this.missionSelectionnee.id, {
+        factureRef: this.factureRef,
+        montant:    this.montant,
+        fichiers:   this.fichiers
+      }).subscribe({
+        next:  (res) => this._onSuccess(res?.message || 'Facture resoumise avec succès !'),
+        error: (err) => this._onError(err)
+      });
+
+    // CAS NORMAL — première soumission (ASSIGNEE / EN_COURS)
+    } else if (this.casNormal) {
+      if (!this.commentaire.trim() && this.fichiers.length === 0) {
+        this.modalError = 'Ajoutez un commentaire ou au moins un fichier.';
+        return;
+      }
+
+      this.submitting = true;
+      const fd = new FormData();
+      if (this.commentaire.trim()) fd.append('commentaire', this.commentaire.trim());
+      this.fichiers.forEach(f => fd.append('fichiers', f));
+
+      this.prestataireService.soumettreResultat(this.missionSelectionnee.id, fd).subscribe({
+        next:  (res) => this._onSuccess(res?.message || 'Résultat soumis avec succès !'),
+        error: (err) => this._onError(err)
+      });
+    }
+  }
+
+  private _onSuccess(message: string): void {
+    this.submitting = false;
+    this.successMsg = message;
+    setTimeout(() => { this.fermerModal(); this.charger(); }, 1800);
+  }
+
+  private _onError(err: any): void {
+    this.submitting = false;
+    this.modalError = err?.error?.error || 'Erreur lors de la soumission.';
   }
 
   // ── Helpers ──────────────────────────────────────────────────
@@ -171,18 +221,20 @@ export class PrestataireMissionsListeComponent implements OnInit {
   }
 
   peutSoumettre(m: any): boolean {
-    return ['ASSIGNEE', 'EN_COURS', 'REJETEE'].includes(m.statut);
+    return ['ASSIGNEE', 'EN_COURS', 'REJETEE', 'FACTURE_REJETEE'].includes(m.statut);
   }
 
   getStatutConfig(statut: string): { label: string; bg: string; color: string } {
     const map: Record<string, { label: string; bg: string; color: string }> = {
-      'ASSIGNEE':        { label: 'Assignée',       bg: '#FAEEDA', color: '#633806' },
-      'EN_COURS':        { label: 'En cours',        bg: '#E6F1FB', color: '#0C447C' },
-      'PV_SOUMIS':       { label: 'PV soumis',       bg: '#EEEDFE', color: '#3C3489' },
-      'FACTURE_SOUMISE': { label: 'Facture soumise', bg: '#E1F5EE', color: '#085041' },
-      'TERMINEE':        { label: 'Terminée',        bg: '#EAF3DE', color: '#27500A' },
-      'REJETEE':         { label: 'Rejetée',         bg: '#FCEBEB', color: '#791F1F' },
-      'VALIDEE_AGENT':   { label: 'Validée',         bg: '#EAF3DE', color: '#27500A' },
+      'ASSIGNEE':        { label: 'Assignée',        bg: '#FAEEDA', color: '#633806' },
+      'EN_COURS':        { label: 'En cours',         bg: '#E6F1FB', color: '#0C447C' },
+      'PV_SOUMIS':       { label: 'PV soumis',        bg: '#EEEDFE', color: '#3C3489' },
+      'FACTURE_SOUMISE': { label: 'Facture soumise',  bg: '#E1F5EE', color: '#085041' },
+      'FACTURE_REJETEE': { label: 'Facture rejetée',  bg: '#FEF0E7', color: '#7A3B0A' },
+      'VALIDEE_AGENT':   { label: 'Validée',          bg: '#EAF3DE', color: '#27500A' },
+      'REALISEE':        { label: 'Réalisée',         bg: '#EAF3DE', color: '#27500A' },
+      'TERMINEE':        { label: 'Terminée',         bg: '#EAF3DE', color: '#27500A' },
+      'REJETEE':         { label: 'Rejetée',          bg: '#FCEBEB', color: '#791F1F' },
     };
     return map[statut] || { label: statut, bg: '#F1EFE8', color: '#444441' };
   }
@@ -208,7 +260,7 @@ export class PrestataireMissionsListeComponent implements OnInit {
   }
 
   formatTaille(bytes: number): string {
-    if (bytes < 1024) return bytes + ' o';
+    if (bytes < 1024)        return bytes + ' o';
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' Ko';
     return (bytes / (1024 * 1024)).toFixed(1) + ' Mo';
   }

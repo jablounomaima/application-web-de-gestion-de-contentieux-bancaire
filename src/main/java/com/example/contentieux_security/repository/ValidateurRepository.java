@@ -44,4 +44,8 @@ public interface ValidateurRepository extends JpaRepository<Validateur, Long> {
         TypeValidateur typeValidateur, Long agenceId);
 
 
+        // ✅ Ajouter dans ValidateurRepository.java
+Optional<Validateur> findByEmail(String email);
+
+
 }

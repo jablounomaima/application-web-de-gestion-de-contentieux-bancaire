@@ -11,6 +11,7 @@ import java.security.Principal;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import com.example.contentieux_security.service.MotDePasseOublieService;
 
 /**
  * Contrôleur d'administration pour la gestion des ressources du système en mode REST API.
@@ -25,6 +26,8 @@ public class AdminController {
     private final AgenceService agenceService;
     private final AgentBancaireService agentService;
     private final ValidateurService validateurService;
+    private final MotDePasseOublieService motDePasseOublieService; // ← ADD THIS
+
 
     // ═══════════════════════════════════════════════════════════════════════
     // DASHBOARD ADMIN
@@ -213,6 +216,23 @@ public class AdminController {
             return ResponseEntity.ok(Map.of("message", "Validateur supprimé !"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+
+// ✅ Dans AdminController.java — ajouter
+  // ✅ Endpoint réinitialisation mot de passe
+    @PostMapping("/reinitialiser-mdp/{username}")
+    public ResponseEntity<?> reinitialiserMotDePasse(
+            @PathVariable String username) {
+        try {
+            motDePasseOublieService.reinitialiserMotDePasse(username);
+            return ResponseEntity.ok(Map.of(
+                "message", "Mot de passe réinitialisé et envoyé !"
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                    .body(Map.of("error", e.getMessage()));
         }
     }
 }

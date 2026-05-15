@@ -34,7 +34,8 @@ public interface PrestataireRepository extends JpaRepository<Prestataire, Long> 
     List<Prestataire> findByTypeInAndActifTrue(List<TypePrestataire> types);
 
     List<Prestataire> findByAgence_Id(Long agenceId);
-
+// ✅ Ajouter dans PrestataireRepository.java
+Optional<Prestataire> findByEmail(String email);
     
 
 }

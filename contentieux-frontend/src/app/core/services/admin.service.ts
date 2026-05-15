@@ -23,6 +23,8 @@ export interface Agent {
   nom: string;
   prenom: string;
   email: string;
+  username: string;  // ✅ ajouter
+
   matricule: string;
   telephone: string;
   agenceId: number;
@@ -168,4 +170,13 @@ export class AdminService {
   deleteValidateur(id: number): Observable<ApiMessage> {
     return this.http.delete<ApiMessage>(`${this.api}/validateurs/${id}`);
   }
+
+
+
+  // Dans admin.service.ts
+reinitialiserMotDePasse(username: string): Observable<any> {
+  return this.http.post<any>(
+    `${this.api}/reinitialiser-mdp/${username}`, {}
+  );
+}
 }

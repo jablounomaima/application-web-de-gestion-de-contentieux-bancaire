@@ -19,8 +19,6 @@ export class PrestataireService {
     return this.http.get<any>(`${this.api}/missions${params}`);
   }
 
- 
-
   soumettreResultat(missionId: number, formData: FormData): Observable<any> {
     return this.http.post(`${this.api}/missions/${missionId}/resultat`, formData);
   }
@@ -29,7 +27,6 @@ export class PrestataireService {
     return this.http.put(`${this.api}/missions/${missionId}/resultat`, formData);
   }
 
-  // ✅ Méthode ajoutée — utilisée par prestataire-dashboard
   soumettreFacture(missionId: number, data: {
     factureRef: string;
     montant: number;
@@ -38,7 +35,33 @@ export class PrestataireService {
     return this.http.post(`${this.api}/missions/${missionId}/facture`, data);
   }
 
-  
+  // ✅ CAS 1 — Rejet agent : PV + facture + fichiers → /resoumettre-pv
+  resoumettreApresRejetAgent(missionId: number, data: {
+    pvTexte: string;
+    factureRef: string;
+    montant: number;
+    fichiers?: File[];
+  }): Observable<any> {
+    const fd = new FormData();
+    fd.append('pvTexte',    data.pvTexte);
+    fd.append('factureRef', data.factureRef);
+    fd.append('montant',    String(data.montant));
+    (data.fichiers || []).forEach(f => fd.append('fichiers', f));
+    return this.http.post(`${this.api}/missions/${missionId}/resoumettre-pv`, fd);
+  }
+
+  // ✅ CAS 2 — Rejet financier : facture seule + fichiers → /resoumettre-facture
+  resoumettreFactureApresRejetFinancier(missionId: number, data: {
+    factureRef: string;
+    montant: number;
+    fichiers?: File[];
+  }): Observable<any> {
+    const fd = new FormData();
+    fd.append('factureRef', data.factureRef);
+    fd.append('montant',    String(data.montant));
+    (data.fichiers || []).forEach(f => fd.append('fichiers', f));
+    return this.http.post(`${this.api}/missions/${missionId}/resoumettre-facture`, fd);
+  }
 
   telechargerFichierParId(fichierId: number): Observable<Blob> {
     return this.http.get(
@@ -61,24 +84,18 @@ export class PrestataireService {
   soumettresPV(missionId: number, pvTexte: string): Observable<any> {
     return this.http.post<any>(
       `${this.api}/missions/${missionId}/pv`,
-      { pvTexte }  // ✅ JSON, pas FormData
+      { pvTexte }
     );
   }
-
 
   uploaderDocuments(missionId: number, formData: FormData): Observable<any> {
-    // ⚠️ NE PAS ajouter Content-Type manuellement — Angular le gère seul
-    return this.http.post(
-      `${this.api}/missions/${missionId}/documents`,
-      formData
-      // pas de headers ici
-    );
+    return this.http.post(`${this.api}/missions/${missionId}/documents`, formData);
   }
-  
+
   getDocuments(missionId: number): Observable<any> {
     return this.http.get(`${this.api}/missions/${missionId}/documents`);
   }
-  
+
   telechargerFichier(nomServeur: string): Observable<Blob> {
     return this.http.get(
       `${this.api}/documents/${nomServeur}`,
@@ -89,10 +106,12 @@ export class PrestataireService {
   getResultatMission(missionId: number): Observable<any> {
     return this.http.get(`${this.api}/missions/${missionId}/resultat`);
   }
-  
+
   getMissionDetail(missionId: number): Observable<any> {
     return this.http.get(`${this.api}/missions/${missionId}`);
   }
 
-
+  getMesFactures(): Observable<any[]> {
+    return this.http.get<any[]>(`${this.api}/factures`);
+  }
 }

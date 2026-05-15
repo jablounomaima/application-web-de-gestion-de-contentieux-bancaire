@@ -136,19 +136,21 @@
           </div>
   
           <!-- Actions carte -->
-          <div class="pm-card-actions">
-            <button class="pm-btn pm-btn--ghost" (click)="voirDetail(m.id)">
-              Voir le détail →
-            </button>
-            <button class="pm-btn pm-btn--primary"
-                    *ngIf="peutSoumettre(m)"
-                    (click)="ouvrirModal(m)">
-              {{ m.statut === 'REJETEE' ? '↩ Resoumettre' : '📤 Soumettre résultat' }}
-            </button>
-            <span class="pm-termine-badge" *ngIf="m.statut === 'TERMINEE'">
-              ✅ Mission terminée
-            </span>
-          </div>
+       <!-- Actions carte -->
+<div class="pm-card-actions">
+  <button class="pm-btn pm-btn--ghost" (click)="voirDetail(m.id)">
+    Voir le détail →
+  </button>
+  <button class="pm-btn pm-btn--primary"
+          *ngIf="peutSoumettre(m)"
+          (click)="ouvrirModal(m)">
+    {{ m.statut === 'REJETEE' || m.statut === 'FACTURE_REJETEE' ? '↩ Resoumettre' : '📤 Soumettre résultat' }}
+  </button>
+  <span class="pm-termine-badge"
+        *ngIf="['TERMINEE','REALISEE','VALIDEE_AGENT'].includes(m.statut)">
+    ✅ Mission terminée
+  </span>
+</div>
   
         </div>
       </div>
@@ -168,56 +170,66 @@
       </div>
   
       <div class="pm-modal-body">
-  
+
         <!-- Infos mission -->
         <div class="pm-modal-info">
           <div class="pm-modal-info-row">
             <span>Mission</span>
             <strong>{{ missionSelectionnee?.numeroMission }}</strong>
           </div>
-          <div class="pm-modal-info-row">
-            <span>Dossier</span>
-            <strong>{{ missionSelectionnee?.prestation?.dossier?.numeroDossier || '—' }}</strong>
-          </div>
-          <div class="pm-modal-info-row" *ngIf="missionSelectionnee?.statut === 'REJETEE'">
-            <span>Motif rejet</span>
-            <strong class="pm-rejet-text">{{ missionSelectionnee?.commentaireAgent || '—' }}</strong>
+          <div class="pm-modal-info-row" *ngIf="missionSelectionnee?.commentaireAgent">
+            <span>Motif de rejet</span>
+            <strong class="pm-rejet-text">{{ missionSelectionnee?.commentaireAgent }}</strong>
           </div>
         </div>
-  
-        <!-- Succès -->
-        <div class="pm-alert pm-alert--success" *ngIf="successMsg">
-          ✅ {{ successMsg }}
-        </div>
-  
-        <!-- Erreur -->
-        <div class="pm-alert pm-alert--error" *ngIf="modalError">
-          ⚠️ {{ modalError }}
-        </div>
-  
-        <!-- Commentaire -->
+      
+        <div class="pm-alert pm-alert--success" *ngIf="successMsg">✅ {{ successMsg }}</div>
+        <div class="pm-alert pm-alert--error"   *ngIf="modalError">⚠️ {{ modalError }}</div>
+      
+        <!-- CAS 1 : rejet agent → PV + facture -->
+        <ng-container *ngIf="casRejetAgent">
+          <div class="pm-field">
+            <label class="pm-label">Procès-verbal (PV) <span class="pm-required">*</span></label>
+            <textarea class="pm-textarea" [(ngModel)]="pvTexte" rows="4"
+              placeholder="Décrivez le travail réalisé, les observations…"></textarea>
+          </div>
+          <div class="pm-field">
+            <label class="pm-label">Référence facture <span class="pm-required">*</span></label>
+            <input class="pm-input" type="text" [(ngModel)]="factureRef"
+              placeholder="Ex: FACT-2024-0042" />
+          </div>
+          <div class="pm-field">
+            <label class="pm-label">Montant (TND) <span class="pm-required">*</span></label>
+            <input class="pm-input" type="number" [(ngModel)]="montant"
+              placeholder="Ex: 350.00" min="0" step="0.01" />
+          </div>
+        </ng-container>
+      
+        <!-- CAS 2 : rejet financier → facture seule -->
+        <ng-container *ngIf="casRejetFinancier">
+          <div class="pm-alert pm-alert--info">
+            ℹ️ Votre PV a déjà été accepté. Corrigez uniquement votre facture.
+          </div>
+          <div class="pm-field">
+            <label class="pm-label">Nouvelle référence facture <span class="pm-required">*</span></label>
+            <input class="pm-input" type="text" [(ngModel)]="factureRef"
+              placeholder="Ex: FACT-2024-0043" />
+          </div>
+          <div class="pm-field">
+            <label class="pm-label">Montant corrigé (TND) <span class="pm-required">*</span></label>
+            <input class="pm-input" type="number" [(ngModel)]="montant"
+              placeholder="Ex: 320.00" min="0" step="0.01" />
+          </div>
+        </ng-container>
+      
+        <!-- Fichiers joints (commun aux deux cas) -->
         <div class="pm-field">
-          <label class="pm-label">
-            Commentaire / Compte rendu
-            <span class="pm-opt">(optionnel si fichier joint)</span>
-          </label>
-          <textarea class="pm-textarea"
-                    [(ngModel)]="commentaire"
-                    rows="5"
-                    placeholder="Décrivez le travail réalisé, les observations, les conclusions…">
-          </textarea>
-        </div>
-  
-        <!-- Fichiers -->
-        <div class="pm-field">
-          <label class="pm-label">Fichiers joints <span class="pm-opt">(max 20 Mo/fichier)</span></label>
+          <label class="pm-label">Pièces jointes <span class="pm-opt">(max 20 Mo/fichier)</span></label>
           <label class="pm-file-zone">
             <input type="file" multiple (change)="onFichiersChange($event)" style="display:none" />
             <span class="pm-file-icon">📎</span>
             <span>Cliquez ou glissez vos fichiers ici</span>
-            <span class="pm-opt">PDF, Word, images…</span>
           </label>
-          <!-- Liste fichiers sélectionnés -->
           <div class="pm-fichier-list" *ngIf="fichiers.length > 0">
             <div class="pm-fichier-row" *ngFor="let f of fichiers; let i = index">
               <span class="pm-fichier-nom">{{ f.name }}</span>
@@ -226,7 +238,7 @@
             </div>
           </div>
         </div>
-  
+      
       </div>
   
       <div class="pm-modal-foot">

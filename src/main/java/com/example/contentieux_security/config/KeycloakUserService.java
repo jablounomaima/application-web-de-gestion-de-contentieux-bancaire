@@ -487,4 +487,31 @@ public class KeycloakUserService {
             throw new RuntimeException("Utilisateur Keycloak non trouvé: " + username);
         return users.get(0).getId();
     }
+
+
+
+
+    /**
+ * Réinitialise le mot de passe avec un mot de passe temporaire.
+ * Force le changement à la prochaine connexion.
+ */
+public void reinitialiserAvecTemporaire(String username, String newPassword) {
+    String userId = getUserId(username);
+
+    // Mot de passe temporaire
+    CredentialRepresentation credential = new CredentialRepresentation();
+    credential.setType(CredentialRepresentation.PASSWORD);
+    credential.setValue(newPassword);
+    credential.setTemporary(true); // ✅ force changement à la connexion
+
+    keycloak.realm(realm).users().get(userId).resetPassword(credential);
+
+    // ✅ Ajouter l'action UPDATE_PASSWORD
+    UserRepresentation user = keycloak.realm(realm)
+            .users().get(userId).toRepresentation();
+    user.setRequiredActions(List.of("UPDATE_PASSWORD"));
+    keycloak.realm(realm).users().get(userId).update(user);
+
+    System.out.println("✅ Mot de passe temporaire défini pour: " + username);
+}
 }

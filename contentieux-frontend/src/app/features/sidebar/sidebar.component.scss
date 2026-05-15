@@ -1,55 +1,91 @@
+
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+}
+
+app-root {
+  margin: 0;
+  padding: 0;
+  display: block;
+}
+
+.main-layout,
+.layout,
+.container,
+.page-container {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
 .sidebar {
-  width: 280px;
-  background-color: #0b2b4a;  /* Changé : bleu principal */
-  border-right: 1px solid #011832;  /* Bordure plus foncée pour contraster */
-  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.02);
+  margin: 0 !important;
+  padding: 0 !important;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+.sidebar {
+  width: 290px;
+  height: 100vh;
+  background: linear-gradient(180deg, #071a2f 0%, #0b2b4a 100%);
   display: flex;
   flex-direction: column;
-  position: relative;   /* Fix: empêche le header de bloquer les clics */
-  z-index: 20;
-  height: calc(100vh - 65px);
   overflow-y: auto;
-  pointer-events: all;  /* ← force les clics */
+  position: relative;
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.2);
+    border-radius: 10px;
+  }
 }
 
 .sidebar-header {
-  padding: 20px;
-  border-bottom: 1px solid #00162e;  /* Bordure bleue plus foncée */
-  background: #02213e;  /* Bleu légèrement plus clair pour le header */
+  padding: 12px;
+  margin: 0;
+  background: transparent;
+  border: none;
 }
 
 .role-badge {
   display: inline-block;
-  background: #ffffff;  /* Fond blanc pour contraster sur le bleu */
-  color: #1976d2;  /* Texte bleu */
+  background: #1976d2;
+  color: white;
   padding: 6px 12px;
   border-radius: 20px;
-  font-size: 0.8rem;
-  font-weight: bold;
-  margin: 0 0 5px 0;
-  letter-spacing: 0.5px;
-  border: 1px solid #bbdefb;
+  font-size: 0.75rem;
+  font-weight: 700;
+  margin-bottom: 4px;
 }
 
 .user-name-small {
-  margin: 5px 0 0 0;
+  color: #d7e9ff;
   font-size: 0.85rem;
-  color: #e3f2fd;  /* Texte blanc-bleuté pour meilleur contraste */
+  margin: 0;
 }
 
 .menu-section {
-  padding: 20px 0;
-  border-bottom: 1px solid #1565c0;  /* Bordure bleue foncée */
+  padding: 0;
+  margin: 0;
+  border: none;
 }
 
 .menu-label {
-  padding: 0 25px;
-  color: #e3f2fd;  /* Texte clair pour contraster avec le fond bleu */
-  font-size: 0.75rem;
+  color: #8bb8e8;
+  font-size: 0.7rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
-  margin-bottom: 10px;
+  margin: 8px 12px;
 }
 
 ul {
@@ -58,49 +94,42 @@ ul {
   margin: 0;
 }
 
+li {
+  margin: 0;
+  padding: 0;
+}
+
 li a {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 25px;
-  color: #ffffff;  /* Texte blanc pour meilleure lisibilité */
+  gap: 10px;
+  padding: 11px 14px;
+  margin: 0;
+  color: #ffffff;
   text-decoration: none;
-  font-size: 0.95rem;
-  transition: all 0.2s ease;
-  border-left: 4px solid transparent;
-  position: relative;
-  z-index: 21;
-  cursor: pointer;
-  pointer-events: all;
+  font-size: 0.92rem;
+  transition: background 0.2s ease;
 
   .icon {
-    font-size: 1.1rem;
-    opacity: 0.8;
+    min-width: 18px;
+    font-size: 1rem;
   }
 
   &:hover {
-    background-color: #001833;  /* Bleu plus foncé au survol */
-    color: #ffffff;  /* Maintient le texte blanc */
-
-    .icon { opacity: 1; }
+    background: rgba(255,255,255,0.08);
   }
 
   &.active-link {
-    background-color: #021e4a;  /* Bleu très foncé pour l'élément actif */
-    color: #ffffff;
+    background: #1976d2;
     font-weight: 600;
-    border-left-color: #ffffff;  /* Bordure blanche pour l'élément actif */
-
-    .icon { opacity: 1; }
   }
 }
 
 .debug-info {
-  padding: 10px 25px;
+  padding: 5px 12px;
 
   small {
-    color: #bbdefb;  /* Bleu clair pour le texte debug */
-    font-size: 0.75rem;
-    font-style: italic;
+    color: #9cc7f3;
+    font-size: 0.7rem;
   }
 }

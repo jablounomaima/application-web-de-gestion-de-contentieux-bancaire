@@ -3,6 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PrestataireService } from '../../../core/services/prestataire.service';
 import { Router } from '@angular/router';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-prestataire-dashboard',
@@ -372,7 +373,9 @@ documentsExistants: any[] = [];
 
   constructor(
     private prestataireService: PrestataireService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute   // ← ajouter
+
   ) {}
 
   ngOnInit() {

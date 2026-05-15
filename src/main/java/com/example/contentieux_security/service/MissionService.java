@@ -8,21 +8,31 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.access.AccessDeniedException;
+import jakarta.persistence.EntityNotFoundException;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
-
-
-import org.springframework.transaction.annotation.Transactional;
-import org.springframework.security.access.AccessDeniedException;
-import jakarta.persistence.EntityNotFoundException;
-
-// Entités — adapte le package à ton projet
-import com.example.contentieux_security.entity.Mission;
-
-
+/**
+ * ╔══════════════════════════════════════════════════════════════════╗
+ * ║                      MissionService                             ║
+ * ╠══════════════════════════════════════════════════════════════════╣
+ * ║  Gère le cycle de vie complet d'une mission :                   ║
+ * ║                                                                  ║
+ * ║  ASSIGNEE → EN_COURS → PV_SOUMIS → FACTURE_SOUMISE             ║
+ * ║                                          ↓                      ║
+ * ║                             Validateur financier examine        ║
+ * ║                            ↙                        ↘          ║
+ * ║                   FACTURE_VALIDEE           FACTURE_REJETEE     ║
+ * ║                          ↓                       ↓             ║
+ * ║                   Agent examine         Prestataire resoumet    ║
+ * ║                  ↙          ↘           la facture             ║
+ * ║              TERMINEE      REJETEE                              ║
+ * ║                               ↓                                 ║
+ * ║                    Prestataire resoumet PV + facture            ║
+ * ╚══════════════════════════════════════════════════════════════════╝
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -31,38 +41,80 @@ public class MissionService {
 
     private final MissionRepository missionRepository;
 
-    // ── FIND BY ID ─────────────────────────────
+    // ══════════════════════════════════════════════════════════════
+    //  LECTURE / RECHERCHE
+    //  Méthodes en lecture seule — pas de modification en base
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Recherche une mission par son ID.
+     * Retourne un Optional vide si introuvable.
+     */
     @Transactional(readOnly = true)
     public Optional<Mission> findById(Long id) {
         return missionRepository.findById(id);
     }
 
-    // ── MISSION AVOCAT DU DOSSIER ─────────────
+    /**
+     * Retourne la mission de l'avocat associée à un dossier.
+     * Utilisé dans le détail dossier pour afficher la mission judiciaire.
+     * Retourne null si aucune mission avocat n'existe.
+     */
     @Transactional(readOnly = true)
     public Mission getMissionAvocatDuDossier(Long dossierId) {
         List<Mission> missions = missionRepository.findMissionsAvocatDuDossier(dossierId);
         return missions.isEmpty() ? null : missions.get(0);
     }
 
-    // ── LISTE PRESTATAIRE ─────────────────────
+    /**
+     * Retourne toutes les missions assignées à un prestataire,
+     * triées par date d'assignation décroissante (plus récente en premier).
+     */
     @Transactional(readOnly = true)
     public List<Mission> getMissionsPrestataire(String username) {
         return missionRepository.findByPrestataire_UsernameOrderByDateAssignationDesc(username);
     }
 
+    /**
+     * Charge une mission avec toutes ses relations (prestataire, prestation, dossier).
+     * Lève une exception si la mission est introuvable.
+     */
     @Transactional(readOnly = true)
-   // MissionService.java
-public Mission getMissionWithDetails(Long id) {
-    return missionRepository.findByIdWithDetails(id)
-            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-}
+    public Mission getMissionWithDetails(Long id) {
+        return missionRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+    }
 
-    // ── MODIFIER MISSION ─────────────────────
+    /**
+     * Charge une mission et vérifie que l'utilisateur connecté
+     * est bien le prestataire assigné à cette mission.
+     * Lève AccessDeniedException si ce n'est pas le cas.
+     */
+    @Transactional(readOnly = true)
+    public Mission getMissionForPrestataire(Long id, String username) {
+        Mission mission = missionRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new EntityNotFoundException("Mission introuvable"));
+
+        if (!mission.getPrestataire().getUsername().equals(username)) {
+            throw new AccessDeniedException("Accès refusé");
+        }
+        return mission;
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  GESTION MISSION (AGENT)
+    //  Création, modification, suppression — réservé à l'agent
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Modifie la description et/ou la date de fin d'une mission.
+     * CONTRAINTE : uniquement si la mission est au statut ASSIGNEE.
+     * Une mission déjà en cours ne peut plus être modifiée.
+     */
     @Transactional
     public Mission modifierMission(Long missionId, String description,
                                    LocalDate dateFinPrevue,
                                    String agentUsername) {
-
         Mission mission = missionRepository.findById(missionId)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
 
@@ -82,10 +134,13 @@ public Mission getMissionWithDetails(Long id) {
         return missionRepository.save(mission);
     }
 
-    // ── SUPPRIMER MISSION ─────────────────────
+    /**
+     * Supprime définitivement une mission.
+     * CONTRAINTE : uniquement si la mission est au statut ASSIGNEE.
+     * Impossible de supprimer une mission déjà en cours de traitement.
+     */
     @Transactional
     public void supprimerMission(Long missionId, String agentUsername) {
-
         Mission mission = missionRepository.findById(missionId)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
 
@@ -98,292 +153,331 @@ public Mission getMissionWithDetails(Long id) {
         missionRepository.delete(mission);
     }
 
-    // ── CHANGER STATUT ───────────────────────
+    /**
+     * Change le statut d'une mission sans autre logique métier.
+     * Utilisé par le prestataire pour passer EN_COURS, PV_SOUMIS, etc.
+     * CONTRAINTE : interdit si la mission est ANNULEE.
+     */
     @Transactional
     public void changerStatut(Long missionId, StatutMission nouveauStatut) {
-    
         Mission mission = missionRepository.findById(missionId)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-    
-        // ❌ BLOQUAGE IMPORTANT
+
         if (mission.getStatut() == StatutMission.ANNULEE) {
-            throw new RuntimeException("Mission rejetée : modification interdite");
+            throw new RuntimeException("Mission annulée : modification de statut interdite");
         }
-    
+
         mission.setStatut(nouveauStatut);
+        log.info("Statut mission {} changé vers {}", missionId, nouveauStatut);
     }
 
-    // ── VALIDATION AGENT (PV + FACTURE) ──────
+    // ══════════════════════════════════════════════════════════════
+    //  ÉTAPE 1 — PRESTATAIRE : SOUMETTRE LE PV
+    //  Le prestataire soumet son procès-verbal après intervention
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Permet au prestataire de soumettre le PV de sa mission.
+     * Le statut passe à PV_SOUMIS.
+     * CONTRAINTE : mission ne doit pas être ANNULEE.
+     * Note : la vérification d'accès est faite dans le controller.
+     */
     @Transactional
-    public void validerMission(Long id, String commentaire, String agentUsername) {
-    
+    public void soumettrePV(Long missionId, String pvTexte, String prestataireUsername) {
+        Mission mission = missionRepository.findByIdWithDetails(missionId)
+                .orElseThrow(() -> new EntityNotFoundException("Mission introuvable"));
+
+        if (mission.getStatut() == StatutMission.ANNULEE) {
+            throw new IllegalStateException(
+                "Mission annulée — contactez l'agent pour la rouvrir");
+        }
+
+        mission.setStatut(StatutMission.PV_SOUMIS);
+        mission.setPvMission(pvTexte);
+        mission.setPvValide(true);
+
+        log.info("PV soumis pour mission {} par {}",
+                 mission.getNumeroMission(), prestataireUsername);
+        missionRepository.save(mission);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ÉTAPE 2 — PRESTATAIRE : SOUMETTRE LA FACTURE
+    //  Après le PV accepté, le prestataire envoie sa facture
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Permet au prestataire de soumettre sa facture.
+     * Le statut passe à FACTURE_SOUMISE.
+     * CONTRAINTE : le PV doit avoir été soumis avant (statut PV_SOUMIS).
+     * La facture sera ensuite examinée par le validateur financier.
+     */
+    @Transactional
+    public void soumettreFacture(Long missionId, String factureRef,
+                                  Double montantFacture, String username) {
+        Mission mission = missionRepository.findById(missionId)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
+
+        if (mission.getStatut() == StatutMission.ANNULEE) {
+            throw new IllegalStateException("Mission annulée — facture impossible.");
+        }
+        if (mission.getStatut() != StatutMission.PV_SOUMIS
+                && mission.getStatut() != StatutMission.TERMINEE) {
+            throw new IllegalStateException(
+                "Soumettez d'abord le PV. Statut actuel : " + mission.getStatut());
+        }
+
+        mission.setFactureRef(factureRef);
+        mission.setMontantFacture(montantFacture);
+        mission.setFactureValide(null); // en attente de validation financière
+        mission.setStatut(StatutMission.FACTURE_SOUMISE);
+
+        log.info("Facture soumise pour mission {} par {}",
+                 mission.getNumeroMission(), username);
+        missionRepository.save(mission);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ÉTAPE 3 — VALIDATEUR FINANCIER : EXAMINER LA FACTURE
+    //  Le validateur financier valide ou rejette la facture soumise
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Le validateur financier VALIDE la facture du prestataire.
+     * Le statut passe à FACTURE_VALIDEE.
+     * Après cette étape, l'agent bancaire peut valider la mission.
+     * CONTRAINTE : la facture doit être au statut FACTURE_SOUMISE.
+     */
+    @Transactional
+    public void validerFactureParFinancier(Long id, String commentaire,
+                                            String validateurUsername) {
         Mission mission = missionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-    
-        if (mission.getStatut() == StatutMission.ANNULEE) {
-            throw new RuntimeException("Mission rejetée : validation impossible");
+
+        if (mission.getStatut() != StatutMission.FACTURE_SOUMISE) {
+            throw new RuntimeException(
+                "Aucune facture à valider. Statut actuel : " + mission.getStatut());
         }
-    
-        // ✅ L'agent ne peut valider que si la facture a été validée par le financier
+
+        mission.setFactureValide(true);
+        mission.setStatut(StatutMission.FACTURE_VALIDEE);
+        mission.setDateValidationFacture(LocalDateTime.now());
+        mission.setValideParAgent(validateurUsername); // nom du validateur financier
+
+        if (commentaire != null && !commentaire.isBlank()) {
+            mission.setCommentaireAgent(commentaire);
+        }
+
+        log.info("Facture mission {} validée par le financier {}",
+                 mission.getNumeroMission(), validateurUsername);
+        missionRepository.save(mission);
+    }
+
+    /**
+     * Le validateur financier REJETTE la facture du prestataire.
+     * Le statut passe à FACTURE_REJETEE.
+     * Le prestataire devra soumettre une nouvelle facture corrigée.
+     * CONTRAINTE : la facture doit être au statut FACTURE_SOUMISE.
+     */
+    @Transactional
+    public void rejeterFactureParFinancier(Long id, String commentaire,
+                                            String validateurUsername) {
+        Mission mission = missionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+        if (mission.getStatut() != StatutMission.FACTURE_SOUMISE) {
+            throw new RuntimeException(
+                "Aucune facture à rejeter. Statut actuel : " + mission.getStatut());
+        }
+
+        mission.setFactureValide(false);
+        mission.setStatut(StatutMission.FACTURE_REJETEE);
+        mission.setDateValidationFacture(LocalDateTime.now());
+        mission.setValideParAgent(validateurUsername);
+        mission.setCommentaireAgent(commentaire);
+
+        log.info("Facture mission {} rejetée par le financier {}",
+                 mission.getNumeroMission(), validateurUsername);
+        missionRepository.save(mission);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ÉTAPE 4 — AGENT BANCAIRE : VALIDER OU REJETER LA MISSION
+    //  L'agent intervient UNIQUEMENT après validation du financier
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * L'agent bancaire VALIDE définitivement la mission.
+     * Le statut passe à TERMINEE — fin du cycle de vie.
+     * CONTRAINTE IMPORTANTE : la facture doit avoir été validée
+     * par le validateur financier (statut FACTURE_VALIDEE).
+     * L'agent ne peut pas valider directement sans ce passage.
+     */
+    @Transactional
+    public void validerMission(Long id, String commentaire, String agentUsername) {
+        Mission mission = missionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+        if (mission.getStatut() == StatutMission.ANNULEE) {
+            throw new RuntimeException("Mission annulée : validation impossible");
+        }
+
         if (mission.getStatut() != StatutMission.FACTURE_VALIDEE) {
             throw new RuntimeException(
-                "La facture doit être validée par le validateur financier avant votre validation. Statut actuel : "
-                + mission.getStatut());
+                "La facture doit être validée par le validateur financier avant. " +
+                "Statut actuel : " + mission.getStatut());
         }
-    
+
         mission.setStatut(StatutMission.TERMINEE);
         mission.setCommentaireAgent(commentaire);
         mission.setValideParAgent(agentUsername);
         mission.setDateValidationAgent(LocalDateTime.now());
-    
-        log.info("Mission {} validée par l'agent {}", mission.getNumeroMission(), agentUsername);
+
+        log.info("Mission {} validée (TERMINEE) par l'agent {}",
+                 mission.getNumeroMission(), agentUsername);
         missionRepository.save(mission);
     }
 
-    // ── VALIDATION PAR LE VALIDATEUR FINANCIER ──
-@Transactional
-public void validerFactureParFinancier(Long id, String commentaire, String validateurUsername) {
-
-    Mission mission = missionRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-
-    if (mission.getStatut() != StatutMission.FACTURE_SOUMISE) {
-        throw new RuntimeException(
-            "Aucune facture à valider. Statut actuel : " + mission.getStatut());
-    }
-
-    mission.setFactureValide(true);
-    mission.setStatut(StatutMission.FACTURE_VALIDEE);
-    mission.setDateValidationFacture(LocalDateTime.now());
-    mission.setValideParAgent(validateurUsername); // ✅ stocke le nom du validateur financier
-
-    if (commentaire != null && !commentaire.isBlank()) {
-        mission.setCommentaireAgent(commentaire);
-    }
-
-    log.info("Facture mission {} validée par le financier {}",
-             mission.getNumeroMission(), validateurUsername);
-    missionRepository.save(mission);
-}
-
-// ── REJET FACTURE PAR LE VALIDATEUR FINANCIER ──
-@Transactional
-public void rejeterFactureParFinancier(Long id, String commentaire, String validateurUsername) {
-
-    Mission mission = missionRepository.findById(id)
-            .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-
-    if (mission.getStatut() != StatutMission.FACTURE_SOUMISE) {
-        throw new RuntimeException(
-            "Aucune facture à rejeter. Statut actuel : " + mission.getStatut());
-    }
-
-    mission.setFactureValide(false);
-    mission.setStatut(StatutMission.FACTURE_REJETEE);
-    mission.setDateValidationFacture(LocalDateTime.now());
-    mission.setValideParAgent(validateurUsername);
-    mission.setCommentaireAgent(commentaire);
-
-    log.info("Facture mission {} rejetée par le financier {}",
-             mission.getNumeroMission(), validateurUsername);
-    missionRepository.save(mission);
-}
-    // ── REJET MISSION ───────────────────────
+    /**
+     * L'agent bancaire REJETTE la mission après examen.
+     * Le statut passe à REJETEE.
+     * Le prestataire devra resoumettre son PV ET sa facture.
+     * CONTRAINTE : impossible de rejeter une mission déjà TERMINEE ou déjà REJETEE.
+     */
     @Transactional
     public void rejeterMission(Long id, String commentaire, String agentUsername) {
-    
         Mission mission = missionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-    
+
         if (mission.getStatut() == StatutMission.TERMINEE) {
             throw new RuntimeException("Mission déjà validée : rejet impossible");
         }
-    
         if (mission.getStatut() == StatutMission.REJETEE) {
             throw new RuntimeException("Mission déjà rejetée");
         }
-    
+
         mission.setStatut(StatutMission.REJETEE);
         mission.setCommentaireAgent(commentaire);
         mission.setValideParAgent(agentUsername);
         mission.setDateValidationAgent(LocalDateTime.now());
-    
-        log.info("Mission {} rejetée par l'agent {}", mission.getNumeroMission(), agentUsername);
+
+        log.info("Mission {} rejetée par l'agent {}",
+                 mission.getNumeroMission(), agentUsername);
         missionRepository.save(mission);
     }
-// MissionService.java
-@Transactional(readOnly = true)
-public Mission getMissionForPrestataire(Long id, String username) {
-    Mission mission = missionRepository.findByIdWithDetails(id)  // ← était findByIdWithPrestataire
-            .orElseThrow(() -> new EntityNotFoundException("Mission introuvable"));
 
-    if (!mission.getPrestataire().getUsername().equals(username)) {
-        throw new AccessDeniedException("Accès refusé");
-    }
-    return mission;
-}
-    
-   // MissionService.java — corriger soumettrePV
-   @Transactional
-   public void soumettrePV(Long missionId, String pvTexte, String prestataireUsername) {
-       Mission mission = missionRepository.findByIdWithDetails(missionId)
-               .orElseThrow(() -> new EntityNotFoundException("Mission introuvable"));
-   
-       // ✅ Vérification accès — accepte soit le prestataire soit l'avocat de l'affaire
-       boolean isOwner = false;
-   
-       if (mission.getPrestataire() != null &&
-           mission.getPrestataire().getUsername().equals(prestataireUsername)) {
-           isOwner = true;
-       }
-   
-       // Cherche aussi via l'affaire judiciaire liée
-       if (!isOwner) {
-           boolean avocatMatch = missionRepository
-                   .findByIdWithDetails(missionId)
-                   .map(m -> m.getPrestataire())
-                   .map(p -> p.getUsername().equals(prestataireUsername))
-                   .orElse(false);
-           isOwner = avocatMatch;
-       }
-   
-       // ⚠️ Ne pas bloquer — la vérification est faite dans le controller
-       // isOwner check retiré ici car AvocatAffaireController vérifie via isAvocatOwner
-   
-       if (mission.getStatut() == StatutMission.ANNULEE) {
-           throw new IllegalStateException(
-               "Mission annulée - Contactez l'agent pour la rouvrir");
-       }
-   
-       if (mission.getStatut() != StatutMission.ANNULEE) {
-           throw new IllegalStateException(
-               "Impossible de soumettre PV - Statut: " + mission.getStatut());
-       }
-   
-       mission.setStatut(StatutMission.PV_SOUMIS);
-       mission.setPvMission(pvTexte);
-       mission.setPvValide(true);
-       log.info("PV soumis pour mission {} par {}",
-                mission.getNumeroMission(), prestataireUsername);
-   }
-   
-   // ─────────────────────────────────────────────
-//  FACTURE — soumettre
-// ─────────────────────────────────────────────
-@Transactional
-public void soumettreFacture(Long missionId,
-                              String factureRef,
-                              Double montantFacture,
-                              String username) {
-    Mission mission = missionRepository.findById(missionId)
-            .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
+    // ══════════════════════════════════════════════════════════════
+    //  RESOUMISSION PRESTATAIRE APRÈS REJET
+    //  Deux cas : rejet agent (PV + facture) ou rejet financier (facture seule)
+    // ══════════════════════════════════════════════════════════════
 
-    if (mission.getStatut() == StatutMission.ANNULEE) {
-        throw new IllegalStateException("Mission annulée — facture impossible.");
-    }
-    if (mission.getStatut() != StatutMission.PV_SOUMIS
-            && mission.getStatut() != StatutMission.TERMINEE) {
-        throw new IllegalStateException(
-            "Soumettez d'abord le PV. Statut actuel : " + mission.getStatut());
-    }
+    /**
+     * CAS 1 — Rejet par l'AGENT BANCAIRE.
+     * Le prestataire resoumet son PV après rejet complet de la mission.
+     * Reset total : PV, facture, commentaires, dates de validation.
+     * Le statut repasse à PV_SOUMIS pour recommencer le cycle.
+     * CONTRAINTE : mission doit être au statut REJETEE.
+     */
+    @Transactional
+    public void resoumettreApresRejetAgent(Long missionId, String pvTexte,
+                                            String username) {
+        Mission mission = missionRepository.findById(missionId)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
 
-    mission.setFactureRef(factureRef);
-    mission.setMontantFacture(montantFacture);
-    mission.setFactureValide(true);
-    mission.setStatut(StatutMission.FACTURE_SOUMISE);
-    log.info("Facture soumise pour mission {} par {}", mission.getNumeroMission(), username);
-    missionRepository.save(mission);
-}
-
-
-
-// ─────────────────────────────────────────────
-//  STATS — pour dashboard avocat
-// ─────────────────────────────────────────────
-@Transactional(readOnly = true)
-public long countByStatutAndAvocat(String username, StatutMission statut) {
-    return missionRepository
-            .findByPrestataire_UsernameAndStatut(username, statut)
-            .size();
-}
-
-@Transactional(readOnly = true)
-public double totalHonoraires(String username) {
-    return missionRepository
-            .findByPrestataire_Username(username)
-            .stream()
-            .filter(m -> m.getMontantFacture() != null)
-            .mapToDouble(Mission::getMontantFacture)
-            .sum();
-}
-
-
-
-
-// prestataire de resoumettre PV + facture après rejet.
-
-@Transactional
-public void resoumettreApresRejet(Long missionId,
-                                   String pvTexte,
-                                   String username) {
-    Mission mission = missionRepository.findById(missionId)
-            .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
-
-    if (mission.getStatut() != StatutMission.REJETEE) {
-        throw new IllegalStateException(
+        if (mission.getStatut() != StatutMission.REJETEE) {
+            throw new IllegalStateException(
                 "Impossible de resoumettre — statut actuel : " + mission.getStatut());
+        }
+
+        if (mission.getPrestataire() == null ||
+            !username.equals(mission.getPrestataire().getUsername())) {
+            throw new RuntimeException("Accès refusé");
+        }
+
+        // Reset complet avant resoumission
+        mission.setPvMission(pvTexte);
+        mission.setPvValide(false);
+        mission.setFactureRef(null);
+        mission.setMontantFacture(null);
+        mission.setFactureValide(null);
+        mission.setCommentaireAgent(null);
+        mission.setValideParAgent(null);
+        mission.setDateValidationAgent(null);
+        mission.setDateValidationFacture(null);
+        mission.setStatut(StatutMission.PV_SOUMIS);
+
+        log.info("Mission {} resoumise (PV) après rejet agent par {}",
+                mission.getNumeroMission(), username);
+        missionRepository.save(mission);
     }
 
-    // Vérifier que c'est bien le prestataire de la mission
-    if (mission.getPrestataire() == null ||
-        !username.equals(mission.getPrestataire().getUsername())) {
-        throw new RuntimeException("Accès refusé");
-    }
+    /**
+     * CAS 2 — Rejet par le VALIDATEUR FINANCIER.
+     * Le prestataire resoumet uniquement sa facture corrigée.
+     * Le PV existant est conservé — pas besoin de le resoumettre.
+     * Le statut repasse à FACTURE_SOUMISE pour réexamen financier.
+     * CONTRAINTE : mission doit être au statut FACTURE_REJETEE.
+     */
+    @Transactional
+    public void resoumettreFactureApresRejetFinancier(Long missionId,
+                                                       String factureRef,
+                                                       Double montantFacture,
+                                                       String username) {
+        Mission mission = missionRepository.findById(missionId)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
 
-    // Reset complet : repartir de EN_COURS avec nouveau PV
-    mission.setPvMission(pvTexte);
-    mission.setPvValide(false);
-    mission.setFactureRef(null);
-    mission.setMontantFacture(null);
-    mission.setFactureValide(false);
-    mission.setCommentaireAgent(null);
-    mission.setStatut(StatutMission.PV_SOUMIS);
-
-    log.info("Mission {} resoumise après rejet par {}",
-            mission.getNumeroMission(), username);
-    missionRepository.save(mission);
-}
-
-@Transactional
-public void resoumettreFactureApresRejet(Long missionId,
-                                          String factureRef,
-                                          Double montantFacture,
-                                          String username) {
-    Mission mission = missionRepository.findById(missionId)
-            .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
-
-    if (mission.getStatut() != StatutMission.REJETEE) {
-        throw new IllegalStateException(
+        if (mission.getStatut() != StatutMission.FACTURE_REJETEE) {
+            throw new IllegalStateException(
                 "Impossible de resoumettre — statut actuel : " + mission.getStatut());
+        }
+
+        if (mission.getPrestataire() == null ||
+            !username.equals(mission.getPrestataire().getUsername())) {
+            throw new RuntimeException("Accès refusé");
+        }
+
+        // Reset uniquement la partie facture — le PV reste intact
+        mission.setFactureRef(factureRef);
+        mission.setMontantFacture(montantFacture);
+        mission.setFactureValide(null);
+        mission.setCommentaireAgent(null);
+        mission.setValideParAgent(null);
+        mission.setDateValidationFacture(null);
+        mission.setStatut(StatutMission.FACTURE_SOUMISE);
+
+        log.info("Facture resoumise après rejet financier — mission {} par {}",
+                mission.getNumeroMission(), username);
+        missionRepository.save(mission);
     }
 
-    if (mission.getPrestataire() == null ||
-        !username.equals(mission.getPrestataire().getUsername())) {
-        throw new RuntimeException("Accès refusé");
+    // ══════════════════════════════════════════════════════════════
+    //  STATISTIQUES
+    //  Utilisées pour les dashboards (avocat, agent, prestataire)
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Compte le nombre de missions d'un prestataire/avocat
+     * pour un statut donné. Utilisé dans le dashboard avocat.
+     */
+    @Transactional(readOnly = true)
+    public long countByStatutAndAvocat(String username, StatutMission statut) {
+        return missionRepository
+                .findByPrestataire_UsernameAndStatut(username, statut)
+                .size();
     }
 
-    // Garder le PV existant, resoumettre uniquement la facture
-    mission.setFactureRef(factureRef);
-    mission.setMontantFacture(montantFacture);
-    mission.setFactureValide(false);
-    mission.setCommentaireAgent(null);
-    mission.setStatut(StatutMission.FACTURE_SOUMISE);
-
-    log.info("Facture resoumise après rejet mission {} par {}",
-            mission.getNumeroMission(), username);
-    missionRepository.save(mission);
-}
-
-
-
+    /**
+     * Calcule le total des honoraires facturés par un prestataire/avocat.
+     * Additionne tous les montants de facture non nuls.
+     * Utilisé dans le dashboard avocat pour afficher le CA total.
+     */
+    @Transactional(readOnly = true)
+    public double totalHonoraires(String username) {
+        return missionRepository
+                .findByPrestataire_Username(username)
+                .stream()
+                .filter(m -> m.getMontantFacture() != null)
+                .mapToDouble(Mission::getMontantFacture)
+                .sum();
+    }
 }
