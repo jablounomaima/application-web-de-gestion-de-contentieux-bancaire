@@ -1,239 +1,405 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- AGENT — LISTE DES MISSIONS DU DOSSIER                            -->
+<!-- DÉTAIL D'UNE MISSION (Agent + Prestataire)                       -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 
-<div class="ml-page">
+<div class="md-page">
 
-    <!-- ── Loading ─────────────────────────────────────────────────── -->
-    <div class="ml-loading" *ngIf="loading">
-      <div class="ml-spinner"></div>
-      <p>Chargement des missions…</p>
+  <!-- ── Loading ─────────────────────────────────────────────────── -->
+  <div class="md-loading" *ngIf="loading">
+    <div class="md-spinner"></div>
+    <p>Chargement de la mission…</p>
+  </div>
+
+  <div *ngIf="!loading && mission">
+
+    <!-- ── Header ─────────────────────────────────────────────────── -->
+    <div class="md-header">
+      <button class="md-back-btn" (click)="retour()">←</button>
+      <div class="md-header-text">
+        <div class="md-header-top">
+          <span class="md-tag">MISSION</span>
+          <span class="md-ref">{{ mission.numeroMission }}</span>
+          <span class="md-statut-badge" [class]="getStatutClass(mission.statut)">
+            {{ getStatutLabel(mission.statut) }}
+          </span>
+        </div>
+        <h1 class="md-title">
+          {{ getEmojiType(mission.prestataire?.type || mission.prestation?.type) }}
+          {{ nomPrestataire() }}
+        </h1>
+        <p class="md-subtitle">
+          <span *ngIf="mission.dateAssignation">Assignée le {{ mission.dateAssignation | date:'dd/MM/yyyy' }}</span>
+          <span *ngIf="mission.dateFinPrevue"> · Échéance : <strong>{{ mission.dateFinPrevue | date:'dd/MM/yyyy' }}</strong></span>
+        </p>
+      </div>
+
+      <!-- Actions rapides -->
+      <div class="md-header-actions">
+        <button class="md-action-btn md-action-btn--validate"
+                *ngIf="isAgent && peutValider()"
+                (click)="showModalValidation = true">
+          ✅ Valider
+        </button>
+        <button class="md-action-btn md-action-btn--reject"
+                *ngIf="isAgent && peutRejeter()"
+                (click)="showModalRejet = true">
+          ❌ Rejeter
+        </button>
+        <button class="md-action-btn md-action-btn--submit"
+                *ngIf="peutSoumettreResultat()"
+                (click)="showModalResultat = true">
+          📤 Soumettre résultat
+        </button>
+      </div>
     </div>
-  
-    <div *ngIf="!loading">
-  
-      <!-- ── Header ─────────────────────────────────────────────────── -->
-      <div class="ml-header">
-        <button class="ml-back-btn" (click)="retour()">←</button>
-        <div class="ml-header-text">
-          <div class="ml-header-top">
-            <span class="ml-tag">MISSIONS</span>
-            <span class="ml-dossier-ref" *ngIf="dossier">
-              {{ dossier.numeroDossier }}
-            </span>
+
+    <!-- ── Alertes ─────────────────────────────────────────────────── -->
+    <div class="md-alert md-alert--success" *ngIf="successMsg"><span>✅</span> {{ successMsg }}</div>
+    <div class="md-alert md-alert--error"   *ngIf="errorMsg">  <span>⚠️</span> {{ errorMsg }}</div>
+
+    <!-- ── Onglets ──────────────────────────────────────────────────── -->
+    <div class="md-tabs">
+      <button class="md-tab" [class.active]="onglet==='detail'" (click)="onglet='detail'">📋 Détail</button>
+      <button class="md-tab" [class.active]="onglet==='resultats'" (click)="onglet='resultats'">
+        📎 Résultats
+        <span class="md-tab-count" *ngIf="resultats.length > 0">{{ resultats.length }}</span>
+      </button>
+      <button class="md-tab" [class.active]="onglet==='historique'" (click)="onglet='historique'">
+        🕐 Historique
+        <span class="md-tab-count" *ngIf="historique.length > 0">{{ historique.length }}</span>
+      </button>
+      <button class="md-tab" [class.active]="onglet==='affaire'" *ngIf="affaire" (click)="onglet='affaire'">
+        ⚖️ Affaire
+      </button>
+    </div>
+
+    <!-- ── Corps ───────────────────────────────────────────────────── -->
+    <div class="md-body">
+
+      <!-- ════ ONGLET DÉTAIL ════ -->
+      <div *ngIf="onglet === 'detail'" class="md-grid">
+
+        <div class="md-col-main">
+
+          <!-- Prestataire -->
+          <section class="md-card">
+            <div class="md-card-head"><h2><span>👤</span> Prestataire assigné</h2></div>
+            <div class="md-card-body">
+              <div class="md-prest-row">
+                <div class="md-avatar" *ngIf="mission.prestataire"
+                     [class]="'md-avatar--' + mission.prestataire?.type?.toLowerCase()">
+                  {{ (mission.prestataire?.prenom?.[0] || '') + (mission.prestataire?.nom?.[0] || '') }}
+                </div>
+                <div class="md-prest-info">
+                  <span class="md-prest-nom">{{ mission.prestataire ? nomPrestataire() : 'Non renseigné' }}</span>
+                  <span class="md-prest-meta" *ngIf="mission.prestataire?.type || mission.prestation?.type">
+                    {{ getEmojiType(mission.prestataire?.type || mission.prestation?.type) }}
+                    {{ mission.prestataire?.type || mission.prestation?.type }}
+                  </span>
+                  <span class="md-prest-contact" *ngIf="mission.prestataire?.email">
+                    ✉ {{ mission.prestataire.email }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Description -->
+          <section class="md-card">
+            <div class="md-card-head"><h2><span>📝</span> Description de la mission</h2></div>
+            <div class="md-card-body">
+              <p class="md-desc">{{ mission.description || '—' }}</p>
+            </div>
+          </section>
+
+          <!-- PV & Facture -->
+          <section class="md-card" *ngIf="mission.pvMission || mission.montantFacture || mission.factureRef">
+            <div class="md-card-head"><h2><span>💼</span> Rapport & Honoraires</h2></div>
+            <div class="md-card-body">
+              <div class="md-info-grid">
+                <div class="md-info-item" *ngIf="mission.montantFacture">
+                  <span class="md-info-label">Montant facture</span>
+                  <span class="md-info-val md-accent">{{ mission.montantFacture | number:'1.2-2' }} TND</span>
+                </div>
+                <div class="md-info-item" *ngIf="mission.factureRef">
+                  <span class="md-info-label">Réf. facture</span>
+                  <span class="md-info-val md-mono">{{ mission.factureRef }}</span>
+                </div>
+                <div class="md-info-item" *ngIf="mission.pvValide !== null">
+                  <span class="md-info-label">PV validé</span>
+                  <span class="md-info-val">{{ mission.pvValide ? '✅ Oui' : '⏳ En attente' }}</span>
+                </div>
+                <div class="md-info-item" *ngIf="mission.factureValide !== null">
+                  <span class="md-info-label">Facture validée</span>
+                  <span class="md-info-val">{{ mission.factureValide ? '✅ Oui' : '⏳ En attente' }}</span>
+                </div>
+              </div>
+              <div class="md-pv-text" *ngIf="mission.pvMission">
+                <span class="md-info-label">Rapport PV</span>
+                <p>{{ mission.pvMission }}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Commentaire agent -->
+          <section class="md-card md-card--warn" *ngIf="mission.commentaireAgent">
+            <div class="md-card-head"><h2><span>💬</span> Commentaire de l'agent</h2></div>
+            <div class="md-card-body">
+              <p class="md-desc">{{ mission.commentaireAgent }}</p>
+              <div class="md-comment-meta" *ngIf="mission.valideParAgent">
+                Par <strong>{{ mission.valideParAgent }}</strong>
+                <span *ngIf="mission.dateValidationAgent"> le {{ mission.dateValidationAgent | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- Colonne droite -->
+        <div class="md-col-side">
+
+          <!-- Dates -->
+          <section class="md-card">
+            <div class="md-card-head"><h2><span>📅</span> Dates</h2></div>
+            <div class="md-card-body">
+              <div class="md-dates">
+                <div class="md-date-row" *ngIf="mission.dateAssignation">
+                  <span class="md-info-label">Assignation</span>
+                  <span>{{ mission.dateAssignation | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="md-date-row" *ngIf="mission.dateFinPrevue">
+                  <span class="md-info-label">Fin prévue</span>
+                  <span [class.md-date--retard]="mission.dateFinPrevue < today">
+                    {{ mission.dateFinPrevue | date:'dd/MM/yyyy' }}
+                  </span>
+                </div>
+                <div class="md-date-row" *ngIf="mission.dateRealisation">
+                  <span class="md-info-label">Réalisée le</span>
+                  <span>{{ mission.dateRealisation | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="md-date-row" *ngIf="mission.dateValidationAgent">
+                  <span class="md-info-label">Validée le</span>
+                  <span>{{ mission.dateValidationAgent | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Statut verrou -->
+          <div class="md-verrou-banner" *ngIf="resultatVerrouille">
+            🔒 Le résultat est verrouillé (mission clôturée)
           </div>
-          <h1 class="ml-title">Gestion des Missions</h1>
-          <p class="ml-subtitle" *ngIf="dossier">
-            {{ dossier.libelle || 'Dossier contentieux' }}
-          </p>
-        </div>
-        <button class="ml-add-btn" (click)="naviguerVersCreation()">
-          <span>+</span> Nouvelle mission
-        </button>
-      </div>
-  
-      <!-- ── Alertes ─────────────────────────────────────────────────── -->
-      <div class="ml-alert ml-alert--success" *ngIf="successMsg">
-        <span>✅</span> {{ successMsg }}
-      </div>
-      <div class="ml-alert ml-alert--error" *ngIf="errorMsg">
-        <span>⚠️</span> {{ errorMsg }}
-      </div>
-  
-      <!-- ── Stats ───────────────────────────────────────────────────── -->
-      <div class="ml-stats">
-        <div class="ml-stat ml-stat--blue">
-          <span class="ml-stat-val">{{ stats.assignee }}</span>
-          <span class="ml-stat-label">Assignées</span>
-        </div>
-        <div class="ml-stat ml-stat--orange">
-          <span class="ml-stat-val">{{ stats.enCours }}</span>
-          <span class="ml-stat-label">En cours</span>
-        </div>
-        <div class="ml-stat ml-stat--purple">
-          <span class="ml-stat-val">{{ stats.pvSoumis }}</span>
-          <span class="ml-stat-label">PV soumis</span>
-        </div>
-        <div class="ml-stat ml-stat--pink">
-          <span class="ml-stat-val">{{ stats.factureSoumise }}</span>
-          <span class="ml-stat-label">Facture soumise</span>
-        </div>
-        <div class="ml-stat ml-stat--green">
-          <span class="ml-stat-val">{{ stats.terminee }}</span>
-          <span class="ml-stat-label">Terminées</span>
-        </div>
-        <div class="ml-stat ml-stat--red" *ngIf="stats.retard > 0">
-          <span class="ml-stat-val">{{ stats.retard }}</span>
-          <span class="ml-stat-label">En retard ⚠️</span>
+
+          <!-- Actions côté droit — agent -->
+          <div class="md-side-actions" *ngIf="isAgent && (peutValider() || peutRejeter())">
+            <button class="md-btn md-btn--success" *ngIf="peutValider()"
+                    (click)="showModalValidation = true">
+              ✅ Valider la mission
+            </button>
+            <button class="md-btn md-btn--danger" *ngIf="peutRejeter()"
+                    (click)="showModalRejet = true">
+              ❌ Rejeter la mission
+            </button>
+          </div>
+
+          <!-- Actions côté droit — prestataire -->
+          <div class="md-side-actions" *ngIf="peutSoumettreResultat()">
+            <button class="md-btn md-btn--primary" (click)="showModalResultat = true">
+              📤 Soumettre un résultat
+            </button>
+          </div>
+
         </div>
       </div>
-  
-      <!-- ── Filtres ──────────────────────────────────────────────────── -->
-      <div class="ml-toolbar">
-        <div class="ml-search">
-          <span class="ml-search-icon">🔍</span>
-          <input type="text" [(ngModel)]="search"
-                 (ngModelChange)="appliquerFiltres()"
-                 placeholder="Rechercher par prestataire, N° mission…" />
-          <button *ngIf="search" (click)="search=''; appliquerFiltres()" class="ml-clear">✕</button>
-        </div>
-        <div class="ml-filters">
-          <button class="ml-filter-btn" [class.active]="filtreStatut === null"
-                  (click)="filtrerParStatut(null)">
-            Tous ({{ missions.length }})
-          </button>
-          <button class="ml-filter-btn"
-                  *ngFor="let s of statutOptions"
-                  [class.active]="filtreStatut === s.value"
-                  (click)="filtrerParStatut(s.value)">
-            {{ s.label }}
+
+      <!-- ════ ONGLET RÉSULTATS ════ -->
+      <div *ngIf="onglet === 'resultats'">
+        <div class="md-empty" *ngIf="resultats.length === 0">
+          <span>📭</span>
+          <p>Aucun résultat soumis pour cette mission.</p>
+          <button class="md-btn md-btn--primary" *ngIf="peutSoumettreResultat()"
+                  (click)="showModalResultat = true" style="margin-top:16px">
+            📤 Soumettre un résultat
           </button>
         </div>
-      </div>
-  
-      <!-- ── Vide ────────────────────────────────────────────────────── -->
-      <div class="ml-empty" *ngIf="missions.length === 0">
-        <span>📋</span>
-        <h3>Aucune mission</h3>
-        <p>Créez la première mission pour ce dossier.</p>
-        <button class="ml-add-btn" (click)="naviguerVersCreation()">+ Nouvelle mission</button>
-      </div>
-  
-      <div class="ml-empty ml-empty--sm"
-           *ngIf="missions.length > 0 && filtrees.length === 0">
-        <span>🔍</span>
-        <p>Aucun résultat pour <strong>"{{ search }}"</strong></p>
-      </div>
-  
-      <!-- ── Table missions ───────────────────────────────────────────── -->
-      <div class="ml-table-wrap" *ngIf="filtrees.length > 0">
-        <table class="ml-table">
-          <thead>
-            <tr>
-              <th>N° Mission</th>
-              <th>Prestataire</th>
-              <th>Description</th>
-              <th>Échéance</th>
-              <th>Statut</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngFor="let m of filtrees; trackBy: trackById"
-                [class.ml-row--retard]="isEnRetard(m)">
-              <td>
-                <div class="ml-mission-ref">
-                  <span class="ml-ref-num">{{ m.numeroMission }}</span>
-                  <span class="ml-retard-badge" *ngIf="isEnRetard(m)">⚠️ Retard</span>
-                </div>
-              </td>
-              <td>
-                <div class="ml-prestataire">
-                  <span class="ml-prest-emoji">{{ getEmojiType(typePrestataire(m)) }}</span>
-                  <div>
-                    <span class="ml-prest-nom">{{ nomPrestataire(m) }}</span>
-                    <span class="ml-prest-type">{{ typePrestataire(m) }}</span>
-                  </div>
-                </div>
-              </td>
-              <td>
-                <span class="ml-desc">{{ m.description | slice:0:60 }}{{ m.description?.length > 60 ? '…' : '' }}</span>
-              </td>
-              <td>
-                <span class="ml-date" [class.ml-date--retard]="isEnRetard(m)">
-                  {{ m.dateFinPrevue ? (m.dateFinPrevue | date:'dd/MM/yyyy') : '—' }}
-                </span>
-              </td>
-              <td>
-                <span class="ml-statut-badge" [class]="getStatutClass(m.statut)">
-                  {{ getStatutLabel(m.statut) }}
-                </span>
-              </td>
-              <td>
-                <div class="ml-actions">
-                  <button class="ml-action-btn ml-action-btn--view"
-                          (click)="naviguerVersDetail(m.id)"
-                          title="Voir le détail">
-                    👁️
+
+        <div class="md-resultats" *ngIf="resultats.length > 0">
+          <div class="md-resultat-card" *ngFor="let r of resultats">
+            <div class="md-resultat-head">
+              <div>
+                <span class="md-resultat-par">Soumis par <strong>{{ r.soumisePar }}</strong></span>
+                <span class="md-resultat-date">{{ r.dateSoumission | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            </div>
+            <div class="md-resultat-body">
+              <p class="md-resultat-commentaire" *ngIf="r.commentaire">{{ r.commentaire }}</p>
+              <div class="md-fichiers" *ngIf="r.fichiers?.length > 0">
+                <span class="md-fichiers-titre">Fichiers joints :</span>
+
+                <!-- ✅ BOUTON SUPPRIMER — dans l'onglet résultats, au bon endroit -->
+                <div class="md-fichier-row" *ngFor="let f of r.fichiers">
+                  <span class="md-fichier-icon">{{ getIconFichier(f.typeMime) }}</span>
+                  <span class="md-fichier-nom">{{ f.nomFichierOriginal }}</span>
+                  <span class="md-fichier-taille">{{ formatTaille(f.tailleFichier) }}</span>
+                  <button class="md-dl-btn" (click)="telechargerFichier(f.id, f.nomFichierOriginal)">
+                    ⬇️ Télécharger
                   </button>
-                  <button class="ml-action-btn ml-action-btn--validate"
-                          *ngIf="peutValider(m)"
-                          (click)="ouvrirValidation(m)"
-                          title="Valider">
-                    ✅
-                  </button>
-                  <button class="ml-action-btn ml-action-btn--reject"
-                          *ngIf="peutRejeter(m)"
-                          (click)="ouvrirRejet(m)"
-                          title="Rejeter">
-                    ❌
+                  <button class="md-del-btn"
+                          *ngIf="peutSupprimerResultat()"
+                          (click)="supprimerResultat(f.id)">
+                    🗑️ Supprimer
                   </button>
                 </div>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-  
-    </div>
-  </div>
-  
-  <!-- ═══ MODAL VALIDATION ═══ -->
-  <div class="ml-overlay" *ngIf="showModalValidation" (click)="showModalValidation=false">
-    <div class="ml-modal" (click)="$event.stopPropagation()">
-      <div class="ml-modal-head ml-modal-head--success">
-        <h3>✅ Valider la mission</h3>
-        <button class="ml-modal-close" (click)="showModalValidation=false">✕</button>
-      </div>
-      <div class="ml-modal-body">
-        <p class="ml-modal-desc">
-          Valider la mission <strong>{{ missionSelectionnee?.numeroMission }}</strong>
-          de <strong>{{ nomPrestataire(missionSelectionnee) }}</strong> ?
-        </p>
-        <div class="ml-field">
-          <label class="ml-label">Commentaire <span class="ml-opt">(optionnel)</span></label>
-          <textarea class="ml-input ml-textarea" [(ngModel)]="commentaireValidation"
-                    rows="3" placeholder="Ajoutez un commentaire…"></textarea>
+
+              </div>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="ml-modal-foot">
-        <button class="ml-btn ml-btn--ghost" (click)="showModalValidation=false" [disabled]="submitting">
-          Annuler
-        </button>
-        <button class="ml-btn ml-btn--success" (click)="validerMission()" [disabled]="submitting">
-          <span class="ml-spin" *ngIf="submitting"></span>
-          {{ submitting ? 'Validation…' : '✅ Confirmer la validation' }}
-        </button>
-      </div>
-    </div>
-  </div>
-  
-  <!-- ═══ MODAL REJET ═══ -->
-  <div class="ml-overlay" *ngIf="showModalRejet" (click)="showModalRejet=false">
-    <div class="ml-modal" (click)="$event.stopPropagation()">
-      <div class="ml-modal-head ml-modal-head--danger">
-        <h3>❌ Rejeter la mission</h3>
-        <button class="ml-modal-close" (click)="showModalRejet=false">✕</button>
-      </div>
-      <div class="ml-modal-body">
-        <p class="ml-modal-desc">
-          Rejeter la mission <strong>{{ missionSelectionnee?.numeroMission }}</strong> ?
-          Le prestataire devra soumettre à nouveau son travail.
-        </p>
-        <div class="ml-field">
-          <label class="ml-label">Motif du rejet <span class="ml-req">*</span></label>
-          <textarea class="ml-input ml-textarea" [(ngModel)]="commentaireRejet"
-                    rows="3" placeholder="Expliquez pourquoi vous rejetez cette mission…"></textarea>
+
+      <!-- ════ ONGLET HISTORIQUE ════ -->
+      <div *ngIf="onglet === 'historique'">
+        <div class="md-empty" *ngIf="historique.length === 0">
+          <span>🕐</span>
+          <p>Aucun historique disponible.</p>
+        </div>
+        <div class="md-historique" *ngIf="historique.length > 0">
+          <div class="md-histo-item" *ngFor="let h of historique">
+            <div class="md-histo-dot"></div>
+            <div class="md-histo-content">
+              <span class="md-histo-action">{{ h.action }}</span>
+              <span class="md-histo-meta">
+                {{ h.utilisateur }}
+                <span *ngIf="h.dateAction"> · {{ h.dateAction | date:'dd/MM/yyyy HH:mm' }}</span>
+              </span>
+              <p class="md-histo-detail" *ngIf="h.details">{{ h.details }}</p>
+            </div>
+          </div>
         </div>
       </div>
-      <div class="ml-modal-foot">
-        <button class="ml-btn ml-btn--ghost" (click)="showModalRejet=false" [disabled]="submitting">
-          Annuler
-        </button>
-        <button class="ml-btn ml-btn--danger" (click)="rejeterMission()" [disabled]="submitting || !commentaireRejet.trim()">
-          <span class="ml-spin ml-spin--white" *ngIf="submitting"></span>
-          {{ submitting ? 'Rejet…' : '❌ Confirmer le rejet' }}
-        </button>
+
+      <!-- ════ ONGLET AFFAIRE ════ -->
+      <div *ngIf="onglet === 'affaire' && affaire">
+        <div class="md-affaire-card">
+          <div class="md-card-head"><h2>⚖️ Affaire judiciaire liée</h2></div>
+          <div class="md-card-body">
+            <div class="md-info-grid">
+              <div class="md-info-item">
+                <span class="md-info-label">N° Affaire</span>
+                <span class="md-info-val md-mono">{{ affaire.numeroAffaire }}</span>
+              </div>
+              <div class="md-info-item">
+                <span class="md-info-label">Statut</span>
+                <span class="md-info-val">{{ affaire.statut }}</span>
+              </div>
+              <div class="md-info-item" *ngIf="affaire.tribunal">
+                <span class="md-info-label">Tribunal</span>
+                <span class="md-info-val">{{ affaire.tribunal }}</span>
+              </div>
+              <div class="md-info-item" *ngIf="affaire.dateLancement">
+                <span class="md-info-label">Date lancement</span>
+                <span class="md-info-val">{{ affaire.dateLancement | date:'dd/MM/yyyy' }}</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
+
     </div>
   </div>
+</div>
+
+<!-- ═══ MODAL VALIDATION ═══ -->
+<div class="md-overlay" *ngIf="showModalValidation" (click)="showModalValidation=false">
+  <div class="md-modal" (click)="$event.stopPropagation()">
+    <div class="md-modal-head md-modal-head--success">
+      <h3>✅ Valider la mission</h3>
+      <button class="md-modal-close" (click)="showModalValidation=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">
+        Valider la mission <strong>{{ mission?.numeroMission }}</strong> de <strong>{{ nomPrestataire() }}</strong> ?
+      </p>
+      <div class="md-field">
+        <label class="md-label">Commentaire <span class="md-opt">(optionnel)</span></label>
+        <textarea class="md-input md-textarea" [(ngModel)]="commentaireValidation"
+                  rows="3" placeholder="Ajoutez un commentaire…"></textarea>
+      </div>
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost" (click)="showModalValidation=false" [disabled]="submitting">Annuler</button>
+      <button class="md-btn md-btn--success" (click)="validerMission()" [disabled]="submitting">
+        <span class="md-spin" *ngIf="submitting"></span>
+        {{ submitting ? 'Validation…' : '✅ Confirmer' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL REJET ═══ -->
+<div class="md-overlay" *ngIf="showModalRejet" (click)="showModalRejet=false">
+  <div class="md-modal" (click)="$event.stopPropagation()">
+    <div class="md-modal-head md-modal-head--danger">
+      <h3>❌ Rejeter la mission</h3>
+      <button class="md-modal-close" (click)="showModalRejet=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">Motif du rejet obligatoire — le prestataire devra soumettre à nouveau.</p>
+      <div class="md-field">
+        <label class="md-label">Motif <span class="md-req">*</span></label>
+        <textarea class="md-input md-textarea" [(ngModel)]="commentaireRejet"
+                  rows="3" placeholder="Expliquez le motif du rejet…"></textarea>
+      </div>
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost" (click)="showModalRejet=false" [disabled]="submitting">Annuler</button>
+      <button class="md-btn md-btn--danger" (click)="rejeterMission()"
+              [disabled]="submitting || !commentaireRejet.trim()">
+        <span class="md-spin md-spin--white" *ngIf="submitting"></span>
+        {{ submitting ? 'Rejet…' : '❌ Confirmer le rejet' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL SOUMETTRE RÉSULTAT ═══ -->
+<div class="md-overlay" *ngIf="showModalResultat" (click)="showModalResultat=false">
+  <div class="md-modal" (click)="$event.stopPropagation()">
+    <div class="md-modal-head" style="background:#f0f7ff; border-bottom:2px solid #007bff;">
+      <h3>📤 Soumettre un résultat</h3>
+      <button class="md-modal-close" (click)="showModalResultat=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">
+        Mission <strong>{{ mission?.numeroMission }}</strong>
+      </p>
+      <div class="md-field">
+        <label class="md-label">Commentaire <span class="md-opt">(optionnel)</span></label>
+        <textarea class="md-input md-textarea"
+                  [(ngModel)]="resultatForm.commentaire"
+                  rows="3"
+                  placeholder="Décrivez le travail effectué…"></textarea>
+      </div>
+      <div class="md-field">
+        <label class="md-label">Fichiers joints <span class="md-opt">(optionnel)</span></label>
+        <input type="file" multiple class="md-input" (change)="onFichiersChange($event)" />
+        <small style="color:#999;" *ngIf="resultatForm.fichiers.length > 0">
+          {{ resultatForm.fichiers.length }} fichier(s) sélectionné(s)
+        </small>
+      </div>
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost"
+              (click)="showModalResultat=false"
+              [disabled]="submittingResultat">
+        Annuler
+      </button>
+      <button class="md-btn md-btn--success"
+              (click)="soumettreResultat()"
+              [disabled]="submittingResultat">
+        <span class="md-spin" *ngIf="submittingResultat"></span>
+        {{ submittingResultat ? 'Envoi…' : '📤 Soumettre' }}
+      </button>
+    </div>
+  </div>
+</div>

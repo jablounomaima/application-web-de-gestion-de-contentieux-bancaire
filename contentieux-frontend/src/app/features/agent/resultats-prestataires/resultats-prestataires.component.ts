@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
+import { Subscription } from 'rxjs';
 import { environment } from '../../../../environments/environment';
+import { NotificationService, NotificationDTO } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-resultats-prestataires',
@@ -39,7 +41,9 @@ import { environment } from '../../../../environments/environment';
         </div>
 
         <!-- Cards missions -->
-        <div class="mission-card" *ngFor="let r of resultats">
+        <div class="mission-card"
+             *ngFor="let r of resultats"
+             [id]="'mission-' + r.missionId">
 
           <!-- Header -->
           <div class="mission-header" [ngClass]="getStatutClass(r.statut)">
@@ -277,7 +281,7 @@ import { environment } from '../../../../environments/environment';
     .empty { text-align: center; color: #bbb; padding: 60px; font-style: italic; }
 
     /* ── Mission card ── */
-    .mission-card { background: white; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.07); margin-bottom: 24px; overflow: hidden; }
+    .mission-card { background: white; border-radius: 14px; box-shadow: 0 4px 20px rgba(0,0,0,.07); margin-bottom: 24px; overflow: hidden; border: 2px solid transparent; }
     .mission-header { padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; }
     .mission-header.s-assignee      { background: linear-gradient(135deg,#f57f17,#f9a825); }
     .mission-header.s-en-cours      { background: linear-gradient(135deg,#1565c0,#1976d2); }
@@ -385,9 +389,19 @@ import { environment } from '../../../../environments/environment';
     .toast.show    { opacity: 1; transform: translateY(0); }
     .toast.success { background: #059669; color: white; }
     .toast.error   { background: #dc2626; color: white; }
+
+    /* ── Mission highlight (scroll cible) ── */
+    @keyframes highlight-pulse {
+      0%   { box-shadow: 0 0 0 4px #f59e0b66; border: 2px solid #f59e0b; }
+      60%  { box-shadow: 0 0 0 3px #f59e0b33; border: 2px solid #fbbf24; }
+      100% { box-shadow: 0 4px 20px rgba(0,0,0,.07); border: 2px solid transparent; }
+    }
+    .mission-highlight {
+      animation: highlight-pulse 4s ease-out forwards;
+    }
   `]
 })
-export class ResultatsPrestatairesComponent implements OnInit {
+export class ResultatsPrestatairesComponent implements OnInit, OnDestroy {
 
   dossierId!:    number;
   numeroDossier = '';
@@ -395,6 +409,9 @@ export class ResultatsPrestatairesComponent implements OnInit {
   resultats:    any[] = [];
   loading       = true;
   erreur        = '';
+
+  // ── (1) Propriété missionCibleId ──
+  missionCibleId: number | null = null;
 
   dlEnCours:     Record<number, boolean> = {};
   actionEnCours: Record<number, boolean> = {};
@@ -411,15 +428,50 @@ export class ResultatsPrestatairesComponent implements OnInit {
 
   private api = environment.apiUrl;
 
+  private notifSub: Subscription | null = null;
+  private _derniereNotifId: number | null = null;
+
   constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private http:   HttpClient
+    private route:        ActivatedRoute,
+    private router:       Router,
+    private http:         HttpClient,
+    private notifService: NotificationService
   ) {}
 
+  // ── (2) ngOnInit : lire missionId depuis l'URL avant charger() ──
   ngOnInit(): void {
     this.dossierId = Number(this.route.snapshot.paramMap.get('dossierId'));
+    const missionIdParam = this.route.snapshot.queryParamMap.get('missionId');
+    if (missionIdParam) {
+      this.missionCibleId = Number(missionIdParam);
+    }
     this.charger();
+    this._ecouterNotifications();
+  }
+
+  ngOnDestroy(): void {
+    this.notifSub?.unsubscribe();
+  }
+
+  // ── Écoute WebSocket — mise à jour en temps réel après décision financière ──
+  private _ecouterNotifications(): void {
+    this.notifSub = this.notifService.notifications$.subscribe(
+      (notifs: NotificationDTO[]) => {
+        if (!notifs.length) return;
+        const derniere = notifs[0];
+        if (this._derniereNotifId === derniere.id) return;
+        this._derniereNotifId = derniere.id;
+
+        const typesConcernes = [
+          'VALIDATION_FINANCIERE_OK', 'REJET_FINANCIER',
+          'MISSION_CLOTUREE', 'MISSION_REJETEE'
+        ];
+        if (typesConcernes.includes(derniere.type)) {
+          this.showToast('🔄 Mise à jour disponible — rechargement automatique…', 'success');
+          setTimeout(() => this.charger(), 800);
+        }
+      }
+    );
   }
 
   // ════════════════════════════════════════
@@ -431,17 +483,30 @@ export class ResultatsPrestatairesComponent implements OnInit {
     this.http.get<any>(
       `${this.api}/api/agent/dossiers/${this.dossierId}/resultats-prestataires`
     ).subscribe({
+      // ── (3) Scroll vers la mission ciblée après chargement ──
       next: (data) => {
         this.numeroDossier = data.numeroDossier;
         this.libelle       = data.libelle;
         this.resultats     = data.resultats;
         this.loading       = false;
+        if (this.missionCibleId) {
+          setTimeout(() => this._scrollVersMission(this.missionCibleId!), 400);
+        }
       },
       error: (err) => {
         this.erreur  = err?.error?.error || 'Erreur chargement';
         this.loading = false;
       }
     });
+  }
+
+  // ── (4) Méthode privée de scroll + highlight ──
+  private _scrollVersMission(missionId: number): void {
+    const el = document.getElementById('mission-' + missionId);
+    if (!el) return;
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('mission-highlight');
+    setTimeout(() => el.classList.remove('mission-highlight'), 4000);
   }
 
   // ════════════════════════════════════════

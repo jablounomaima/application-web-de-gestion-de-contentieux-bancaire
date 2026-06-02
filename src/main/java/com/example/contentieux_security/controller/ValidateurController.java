@@ -98,41 +98,17 @@ public class ValidateurController {
     @PostMapping("/financier/dossiers/{id}/valider")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
     @Transactional
-    public ResponseEntity<?> validerFinancier(@PathVariable Long id, @RequestBody Map<String, String> body, Principal principal) {
+    public ResponseEntity<?> validerFinancier(@PathVariable Long id,
+            @RequestBody Map<String, String> body, Principal principal) {
         try {
             String commentaire = body.get("commentaire");
-            DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-                    .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-
-            d.setValidationFinanciere(true);
-            d.setCommentaireFinancier(commentaire);
-            d.setValidateurFinancierUsername(principal.getName());
-
-            if (Boolean.TRUE.equals(d.getValidationFinanciere()) && Boolean.TRUE.equals(d.getValidationJuridique())) {
-                d.setStatut(DossierStatus.VALIDE);
-            }
-
-            dossierRepository.save(d);
-
-            historiqueService.enregistrer(d, HistoriqueService.VALIDATION_FIN,
-                    "Validation financière accordée." + (commentaire != null ? " " + commentaire : ""),
-                    principal.getName());
-
-            if (d.getAgentCreateur() != null) {
-                notificationService.notifier(
-                        d.getAgentCreateur().getUsername(),
-                        "Validation financière accordée",
-                        "Le dossier " + d.getNumeroDossier() + " a été validé financièrement par " + principal.getName()
-                        + (commentaire != null ? ". Commentaire : " + commentaire : "."),
-                        "VALIDATION_FINANCIERE_OK", d);
-            }
-
+            // ✅ Déléguer à DossierService qui notifie l'agent créateur
+            dossierService.validerFinancier(id, principal.getName(), true, commentaire);
             return ResponseEntity.ok(Map.of("message", "Validation financière accordée."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-
     // ════════════════════════════════════════════════════
     //  VALIDATEUR FINANCIER — REJETER
     // ════════════════════════════════════════════════════
@@ -140,36 +116,17 @@ public class ValidateurController {
     @PostMapping("/financier/dossiers/{id}/rejeter")
     @PreAuthorize("hasRole('VALIDATEUR_FINANCIER')")
     @Transactional
-    public ResponseEntity<?> rejeterFinancier(@PathVariable Long id, @RequestBody Map<String, String> body, Principal principal) {
+    public ResponseEntity<?> rejeterFinancier(@PathVariable Long id,
+            @RequestBody Map<String, String> body, Principal principal) {
         try {
             String commentaire = body.get("commentaire");
-            DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-                    .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-    
-            d.setValidationFinanciere(false);
-            d.setCommentaireFinancier(commentaire);
-            d.setValidateurFinancierUsername(principal.getName());
-            d.setStatut(DossierStatus.EN_TRAITEMENT);
-            dossierRepository.save(d);
-    
-            historiqueService.enregistrer(d, HistoriqueService.REJET_FIN,
-                    "Rejet financier. Motif : " + commentaire,
-                    principal.getName());
-    
-            if (d.getAgentCreateur() != null) {
-                notificationService.notifier(
-                        d.getAgentCreateur().getUsername(),
-                        "Dossier rejeté — validation financière",
-                        "Le dossier " + d.getNumeroDossier() + " a été rejeté par " + principal.getName() + ". Motif : " + commentaire,
-                        "REJET_FINANCIER", d);
-            }
-    
+            // ✅ Déléguer à DossierService
+            dossierService.validerFinancier(id, principal.getName(), false, commentaire);
             return ResponseEntity.ok(Map.of("message", "Dossier rejeté."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
-
     // ════════════════════════════════════════════════════
     //  VALIDATEUR JURIDIQUE — LISTE
     // ════════════════════════════════════════════════════
@@ -215,43 +172,19 @@ public class ValidateurController {
     // ════════════════════════════════════════════════════
 
     @PostMapping("/juridique/dossiers/{id}/valider")
-    @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
-    @Transactional
-    public ResponseEntity<?> validerJuridique(@PathVariable Long id, @RequestBody Map<String, String> body, Principal principal) {
-        try {
-            String commentaire = body.get("commentaire");
-            DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-                    .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
+@PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
 
-            d.setValidationJuridique(true);
-            d.setCommentaireJuridique(commentaire);
-            d.setValidateurJuridiqueUsername(principal.getName());
-
-            if (Boolean.TRUE.equals(d.getValidationFinanciere()) && Boolean.TRUE.equals(d.getValidationJuridique())) {
-                d.setStatut(DossierStatus.VALIDE);
-            }
-
-            dossierRepository.save(d);
-
-            historiqueService.enregistrer(d, HistoriqueService.VALIDATION_JUR,
-                    "Validation juridique accordée." + (commentaire != null ? " " + commentaire : ""),
-                    principal.getName());
-
-            if (d.getAgentCreateur() != null) {
-                notificationService.notifier(
-                        d.getAgentCreateur().getUsername(),
-                        "Validation juridique accordée",
-                        "Le dossier " + d.getNumeroDossier() + " a été validé juridiquement par " + principal.getName()
-                        + (commentaire != null ? ". Commentaire : " + commentaire : "."),
-                        "VALIDATION_JURIDIQUE_OK", d);
-            }
-
-            return ResponseEntity.ok(Map.of("message", "Validation juridique accordée."));
-        } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-        }
+public ResponseEntity<?> validerJuridique(@PathVariable Long id,
+        @RequestBody Map<String, String> body, Principal principal) {
+    try {
+        String commentaire = body.get("commentaire");
+        // ✅ Déléguer à DossierService
+        dossierService.validerJuridique(id, principal.getName(), true, commentaire);
+        return ResponseEntity.ok(Map.of("message", "Validation juridique accordée."));
+    } catch (Exception e) {
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
-
+        }
     // ════════════════════════════════════════════════════
     //  VALIDATEUR JURIDIQUE — REJETER
     // ════════════════════════════════════════════════════
@@ -259,38 +192,16 @@ public class ValidateurController {
     @PostMapping("/juridique/dossiers/{id}/rejeter")
     @PreAuthorize("hasRole('VALIDATEUR_JURIDIQUE')")
     @Transactional
-    public ResponseEntity<?> rejeterJuridique(@PathVariable Long id, @RequestBody Map<String, String> body, Principal principal) {
+    public ResponseEntity<?> rejeterJuridique(@PathVariable Long id,@RequestBody Map<String, String> body, Principal principal) {
         try {
             String commentaire = body.get("commentaire");
-            DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-                    .orElseThrow(() -> new RuntimeException("Dossier introuvable : " + id));
-
-            d.setValidationJuridique(false);
-            d.setCommentaireJuridique(commentaire);
-            d.setValidateurJuridiqueUsername(principal.getName());
-            if (Boolean.FALSE.equals(d.getValidationFinanciere())) {
-                d.setStatut(DossierStatus.REJETE);
-            } else {
-                d.setStatut(DossierStatus.EN_CORRECTION);
-            }
-            dossierRepository.save(d);
-
-            historiqueService.enregistrer(d, HistoriqueService.REJET_JUR,
-                    "Rejet juridique. Motif : " + commentaire,
-                    principal.getName());
-
-            if (d.getAgentCreateur() != null) {
-                notificationService.notifier(
-                        d.getAgentCreateur().getUsername(),
-                        "Dossier rejeté — validation juridique",
-                        "Le dossier " + d.getNumeroDossier() + " a été rejeté par " + principal.getName() + ". Motif : " + commentaire,
-                        "REJET_JURIDIQUE", d);
-            }
-
+            // ✅ Déléguer à DossierService
+            dossierService.validerJuridique(id, principal.getName(), false, commentaire);
             return ResponseEntity.ok(Map.of("message", "Dossier rejeté."));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
     }
+
 }
 

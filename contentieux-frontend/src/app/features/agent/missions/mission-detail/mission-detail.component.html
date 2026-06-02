@@ -1,337 +1,580 @@
 <!-- ═══════════════════════════════════════════════════════════════ -->
-<!-- AGENT — DÉTAIL D'UNE MISSION                                     -->
+<!-- DÉTAIL D'UNE MISSION (Agent + Prestataire)                       -->
 <!-- ═══════════════════════════════════════════════════════════════ -->
 
 <div class="md-page">
 
-    <!-- ── Loading ─────────────────────────────────────────────────── -->
-    <div class="md-loading" *ngIf="loading">
-      <div class="md-spinner"></div>
-      <p>Chargement de la mission…</p>
+  <!-- ── Loading ─────────────────────────────────────────────────── -->
+  <div class="md-loading" *ngIf="loading">
+    <div class="md-spinner"></div>
+    <p>Chargement de la mission…</p>
+  </div>
+
+  <div *ngIf="!loading && mission">
+
+    <!-- ── Header ─────────────────────────────────────────────────── -->
+    <div class="md-header">
+      <button class="md-back-btn" (click)="retour()">←</button>
+      <div class="md-header-text">
+        <div class="md-header-top">
+          <span class="md-tag">MISSION</span>
+          <span class="md-ref">{{ mission.numeroMission }}</span>
+          <span class="md-statut-badge" [class]="getStatutClass(mission.statut)">
+            {{ getStatutLabel(mission.statut) }}
+          </span>
+        </div>
+        <h1 class="md-title">
+          {{ getEmojiType(mission.prestataire?.type || mission.prestation?.type) }}
+          {{ nomPrestataire() }}
+        </h1>
+        <p class="md-subtitle">
+          <span *ngIf="mission.dateAssignation">Assignée le {{ mission.dateAssignation | date:'dd/MM/yyyy' }}</span>
+          <span *ngIf="mission.dateFinPrevue"> · Échéance : <strong>{{ mission.dateFinPrevue | date:'dd/MM/yyyy' }}</strong></span>
+        </p>
+      </div>
+
+      <!-- Actions rapides header -->
+      <div class="md-header-actions">
+        <!-- Agent -->
+        <button class="md-action-btn md-action-btn--validate"
+                *ngIf="isAgent && peutValider()"
+                (click)="showModalValidation = true">
+          ✅ Valider
+        </button>
+        <button class="md-action-btn md-action-btn--reject"
+                *ngIf="isAgent && peutRejeter()"
+                (click)="showModalRejet = true">
+          ❌ Rejeter
+        </button>
+        <!-- Prestataire -->
+        <button class="md-action-btn md-action-btn--submit"
+                *ngIf="peutSoumettreResultat()"
+                (click)="showModalResultat = true">
+          📤 Soumettre résultat
+        </button>
+        <button class="md-action-btn md-action-btn--pv"
+                *ngIf="peutSoumettrePV()"
+                (click)="showModalPV = true">
+          📄 Soumettre PV
+        </button>
+        <button class="md-action-btn md-action-btn--facture"
+                *ngIf="peutSoumettreFacture()"
+                (click)="showModalFacture = true">
+          💳 Facture
+        </button>
+        <button class="md-action-btn md-action-btn--doc"
+                *ngIf="!isAgent"
+                (click)="ouvrirModalDocuments()">
+          📎 Documents
+        </button>
+      </div>
     </div>
-  
-    <div *ngIf="!loading && mission">
-  
-      <!-- ── Header ─────────────────────────────────────────────────── -->
-      <div class="md-header">
-        <button class="md-back-btn" (click)="retour()">←</button>
-        <div class="md-header-text">
-          <div class="md-header-top">
-            <span class="md-tag">MISSION</span>
-            <span class="md-ref">{{ mission.numeroMission }}</span>
-            <span class="md-statut-badge" [class]="getStatutClass(mission.statut)">
-              {{ getStatutLabel(mission.statut) }}
-            </span>
-          </div>
-          <h1 class="md-title">{{ getEmojiType(mission.prestataire?.type) }} {{ nomPrestataire() }}</h1>
-          <p class="md-subtitle">
-            <span *ngIf="mission.dateAssignation">Assignée le {{ mission.dateAssignation | date:'dd/MM/yyyy' }}</span>
-            <span *ngIf="mission.dateFinPrevue"> · Échéance : <strong>{{ mission.dateFinPrevue | date:'dd/MM/yyyy' }}</strong></span>
-          </p>
-        </div>
-  
-        <!-- Actions rapides -->
-        <div class="md-header-actions" *ngIf="isAgent">
-          <button class="md-action-btn md-action-btn--validate"
-                  *ngIf="peutValider()"
-                  (click)="showModalValidation = true">
-            ✅ Valider
-          </button>
-          <button class="md-action-btn md-action-btn--reject"
-                  *ngIf="peutRejeter()"
-                  (click)="showModalRejet = true">
-            ❌ Rejeter
-          </button>
-        </div>
-      </div>
-  
-      <!-- ── Alertes ─────────────────────────────────────────────────── -->
-      <div class="md-alert md-alert--success" *ngIf="successMsg"><span>✅</span> {{ successMsg }}</div>
-      <div class="md-alert md-alert--error"   *ngIf="errorMsg">  <span>⚠️</span> {{ errorMsg }}</div>
-  
-      <!-- ── Onglets ──────────────────────────────────────────────────── -->
-      <div class="md-tabs">
-        <button class="md-tab" [class.active]="onglet==='detail'"    (click)="onglet='detail'">    📋 Détail</button>
-        <button class="md-tab" [class.active]="onglet==='resultats'" (click)="onglet='resultats'">
-          📎 Résultats
-          <span class="md-tab-count" *ngIf="resultats.length > 0">{{ resultats.length }}</span>
-        </button>
-        <button class="md-tab" [class.active]="onglet==='historique'" (click)="onglet='historique'">
-          🕐 Historique
-          <span class="md-tab-count" *ngIf="historique.length > 0">{{ historique.length }}</span>
-        </button>
-        <button class="md-tab" [class.active]="onglet==='affaire'" *ngIf="affaire" (click)="onglet='affaire'">
-          ⚖️ Affaire
-        </button>
-      </div>
-  
-      <!-- ── Corps ───────────────────────────────────────────────────── -->
-      <div class="md-body">
-  
-        <!-- ════ ONGLET DÉTAIL ════ -->
-        <div *ngIf="onglet === 'detail'" class="md-grid">
-  
-          <!-- Infos mission -->
-          <div class="md-col-main">
-  
-            <!-- Prestataire -->
-            <section class="md-card">
-              <div class="md-card-head"><h2><span>👤</span> Prestataire assigné</h2></div>
-              <div class="md-card-body">
-                <div class="md-prest-row">
-                  <div class="md-avatar" [class]="'md-avatar--' + mission.prestataire?.type?.toLowerCase()">
-                    {{ (mission.prestataire?.prenom?.[0] || '') + (mission.prestataire?.nom?.[0] || '') }}
-                  </div>
-                  <div class="md-prest-info">
-                    <span class="md-prest-nom">{{ nomPrestataire() }}</span>
-                    <span class="md-prest-meta">
-                      {{ getEmojiType(mission.prestataire?.type) }} {{ mission.prestataire?.type }}
-                      <span *ngIf="mission.prestataire?.specialite"> · {{ mission.prestataire?.specialite }}</span>
-                    </span>
-                    <span class="md-prest-contact" *ngIf="mission.prestataire?.email">
-                      ✉ {{ mission.prestataire.email }}
-                    </span>
-                  </div>
+
+    <!-- ── Alertes ─────────────────────────────────────────────────── -->
+    <div class="md-alert md-alert--success" *ngIf="successMsg"><span>✅</span> {{ successMsg }}</div>
+    <div class="md-alert md-alert--error"   *ngIf="errorMsg">  <span>⚠️</span> {{ errorMsg }}</div>
+
+    <!-- ── Onglets ──────────────────────────────────────────────────── -->
+    <div class="md-tabs">
+      <button class="md-tab" [class.active]="onglet==='detail'"    (click)="onglet='detail'">📋 Détail</button>
+      <button class="md-tab" [class.active]="onglet==='resultats'" (click)="onglet='resultats'">
+        📎 Résultats
+        <span class="md-tab-count" *ngIf="resultats.length > 0">{{ resultats.length }}</span>
+      </button>
+     
+      <button class="md-tab" [class.active]="onglet==='affaire'" *ngIf="affaire" (click)="onglet='affaire'">
+        ⚖️ Affaire
+      </button>
+    </div>
+
+    <!-- ── Corps ───────────────────────────────────────────────────── -->
+    <div class="md-body">
+
+      <!-- ════ ONGLET DÉTAIL ════ -->
+      <div *ngIf="onglet === 'detail'" class="md-grid">
+
+        <div class="md-col-main">
+
+          <!-- Prestataire -->
+          <section class="md-card">
+            <div class="md-card-head"><h2><span>👤</span> Prestataire assigné</h2></div>
+            <div class="md-card-body">
+              <div class="md-prest-row">
+                <div class="md-avatar" *ngIf="mission.prestataire"
+                     [class]="'md-avatar--' + mission.prestataire?.type?.toLowerCase()">
+                  {{ (mission.prestataire?.prenom?.[0] || '') + (mission.prestataire?.nom?.[0] || '') }}
                 </div>
-              </div>
-            </section>
-  
-            <!-- Description -->
-            <section class="md-card">
-              <div class="md-card-head"><h2><span>📝</span> Description de la mission</h2></div>
-              <div class="md-card-body">
-                <p class="md-desc">{{ mission.description || '—' }}</p>
-              </div>
-            </section>
-  
-            <!-- PV & Facture -->
-            <section class="md-card" *ngIf="mission.pvMission || mission.montantFacture || mission.factureRef">
-              <div class="md-card-head"><h2><span>💼</span> Rapport & Honoraires</h2></div>
-              <div class="md-card-body">
-                <div class="md-info-grid">
-                  <div class="md-info-item" *ngIf="mission.montantFacture">
-                    <span class="md-info-label">Montant facture</span>
-                    <span class="md-info-val md-accent">{{ mission.montantFacture | number:'1.2-2' }} TND</span>
-                  </div>
-                  <div class="md-info-item" *ngIf="mission.factureRef">
-                    <span class="md-info-label">Réf. facture</span>
-                    <span class="md-info-val md-mono">{{ mission.factureRef }}</span>
-                  </div>
-                  <div class="md-info-item" *ngIf="mission.pvValide !== null">
-                    <span class="md-info-label">PV validé</span>
-                    <span class="md-info-val">{{ mission.pvValide ? '✅ Oui' : '⏳ En attente' }}</span>
-                  </div>
-                  <div class="md-info-item" *ngIf="mission.factureValide !== null">
-                    <span class="md-info-label">Facture validée</span>
-                    <span class="md-info-val">{{ mission.factureValide ? '✅ Oui' : '⏳ En attente' }}</span>
-                  </div>
-                </div>
-                <div class="md-pv-text" *ngIf="mission.pvMission">
-                  <span class="md-info-label">Rapport PV</span>
-                  <p>{{ mission.pvMission }}</p>
-                </div>
-              </div>
-            </section>
-  
-            <!-- Commentaire agent -->
-            <section class="md-card md-card--warn" *ngIf="mission.commentaireAgent">
-              <div class="md-card-head"><h2><span>💬</span> Commentaire de l'agent</h2></div>
-              <div class="md-card-body">
-                <p class="md-desc">{{ mission.commentaireAgent }}</p>
-                <div class="md-comment-meta" *ngIf="mission.valideParAgent">
-                  Par <strong>{{ mission.valideParAgent }}</strong>
-                  <span *ngIf="mission.dateValidationAgent"> le {{ mission.dateValidationAgent | date:'dd/MM/yyyy HH:mm' }}</span>
-                </div>
-              </div>
-            </section>
-  
-          </div>
-  
-          <!-- Colonne droite -->
-          <div class="md-col-side">
-  
-            <!-- Dates -->
-            <section class="md-card">
-              <div class="md-card-head"><h2><span>📅</span> Dates</h2></div>
-              <div class="md-card-body">
-                <div class="md-dates">
-                  <div class="md-date-row" *ngIf="mission.dateAssignation">
-                    <span class="md-info-label">Assignation</span>
-                    <span>{{ mission.dateAssignation | date:'dd/MM/yyyy' }}</span>
-                  </div>
-                  <div class="md-date-row" *ngIf="mission.dateFinPrevue">
-                    <span class="md-info-label">Fin prévue</span>
-                    <span [class.md-date--retard]="mission.dateFinPrevue < today">
-                      {{ mission.dateFinPrevue | date:'dd/MM/yyyy' }}
-                    </span>
-                  </div>
-                  <div class="md-date-row" *ngIf="mission.dateRealisation">
-                    <span class="md-info-label">Réalisée le</span>
-                    <span>{{ mission.dateRealisation | date:'dd/MM/yyyy' }}</span>
-                  </div>
-                  <div class="md-date-row" *ngIf="mission.dateValidationAgent">
-                    <span class="md-info-label">Validée le</span>
-                    <span>{{ mission.dateValidationAgent | date:'dd/MM/yyyy HH:mm' }}</span>
-                  </div>
-                </div>
-              </div>
-            </section>
-  
-            <!-- Statut verrou -->
-            <div class="md-verrou-banner" *ngIf="resultatVerrouille">
-              🔒 Le résultat est verrouillé (mission clôturée)
-            </div>
-  
-            <!-- Actions -->
-            <div class="md-side-actions" *ngIf="isAgent && (peutValider() || peutRejeter())">
-              <button class="md-btn md-btn--success" *ngIf="peutValider()"
-                      (click)="showModalValidation = true">
-                ✅ Valider la mission
-              </button>
-              <button class="md-btn md-btn--danger" *ngIf="peutRejeter()"
-                      (click)="showModalRejet = true">
-                ❌ Rejeter la mission
-              </button>
-            </div>
-  
-          </div>
-        </div>
-  
-        <!-- ════ ONGLET RÉSULTATS ════ -->
-        <div *ngIf="onglet === 'resultats'">
-          <div class="md-empty" *ngIf="resultats.length === 0">
-            <span>📭</span>
-            <p>Aucun résultat soumis pour cette mission.</p>
-          </div>
-  
-          <div class="md-resultats" *ngIf="resultats.length > 0">
-            <div class="md-resultat-card" *ngFor="let r of resultats">
-              <div class="md-resultat-head">
-                <div>
-                  <span class="md-resultat-par">Soumis par <strong>{{ r.soumisePar }}</strong></span>
-                  <span class="md-resultat-date">{{ r.dateSoumission | date:'dd/MM/yyyy HH:mm' }}</span>
-                </div>
-              </div>
-              <div class="md-resultat-body">
-                <p class="md-resultat-commentaire" *ngIf="r.commentaire">{{ r.commentaire }}</p>
-                <div class="md-fichiers" *ngIf="r.fichiers?.length > 0">
-                  <span class="md-fichiers-titre">Fichiers joints :</span>
-                  <div class="md-fichier-row" *ngFor="let f of r.fichiers">
-                    <span class="md-fichier-icon">{{ getIconFichier(f.typeMime) }}</span>
-                    <span class="md-fichier-nom">{{ f.nomFichierOriginal }}</span>
-                    <span class="md-fichier-taille">{{ formatTaille(f.tailleFichier) }}</span>
-                    <button class="md-dl-btn" (click)="telechargerFichier(f.id, f.nomFichierOriginal)">
-                      ⬇️ Télécharger
-                    </button>
-                  </div>
+                <div class="md-prest-info">
+                  <span class="md-prest-nom">{{ mission.prestataire ? nomPrestataire() : 'Non renseigné' }}</span>
+                  <span class="md-prest-meta" *ngIf="mission.prestataire?.type || mission.prestation?.type">
+                    {{ getEmojiType(mission.prestataire?.type || mission.prestation?.type) }}
+                    {{ mission.prestataire?.type || mission.prestation?.type }}
+                  </span>
+                  <span class="md-prest-contact" *ngIf="mission.prestataire?.email">
+                    ✉ {{ mission.prestataire.email }}
+                  </span>
                 </div>
               </div>
             </div>
-          </div>
-        </div>
-  
-        <!-- ════ ONGLET HISTORIQUE ════ -->
-        <div *ngIf="onglet === 'historique'">
-          <div class="md-empty" *ngIf="historique.length === 0">
-            <span>🕐</span>
-            <p>Aucun historique disponible.</p>
-          </div>
-  
-          <div class="md-historique" *ngIf="historique.length > 0">
-            <div class="md-histo-item" *ngFor="let h of historique">
-              <div class="md-histo-dot"></div>
-              <div class="md-histo-content">
-                <span class="md-histo-action">{{ h.action }}</span>
-                <span class="md-histo-meta">
-                  {{ h.utilisateur }}
-                  <span *ngIf="h.dateAction"> · {{ h.dateAction | date:'dd/MM/yyyy HH:mm' }}</span>
-                </span>
-                <p class="md-histo-detail" *ngIf="h.details">{{ h.details }}</p>
-              </div>
+          </section>
+
+          <!-- Description -->
+          <section class="md-card">
+            <div class="md-card-head"><h2><span>📝</span> Description de la mission</h2></div>
+            <div class="md-card-body">
+              <p class="md-desc">{{ mission.description || '—' }}</p>
             </div>
-          </div>
-        </div>
-  
-        <!-- ════ ONGLET AFFAIRE ════ -->
-        <div *ngIf="onglet === 'affaire' && affaire">
-          <div class="md-affaire-card">
-            <div class="md-card-head"><h2>⚖️ Affaire judiciaire liée</h2></div>
+          </section>
+
+          <!-- PV & Facture -->
+          <section class="md-card" *ngIf="mission.pvMission || mission.montantFacture || mission.factureRef">
+            <div class="md-card-head"><h2><span>💼</span> Rapport & Honoraires</h2></div>
             <div class="md-card-body">
               <div class="md-info-grid">
-                <div class="md-info-item">
-                  <span class="md-info-label">N° Affaire</span>
-                  <span class="md-info-val md-mono">{{ affaire.numeroAffaire }}</span>
+                <div class="md-info-item" *ngIf="mission.montantFacture">
+                  <span class="md-info-label">Montant facture</span>
+                  <span class="md-info-val md-accent">{{ mission.montantFacture | number:'1.2-2' }} TND</span>
                 </div>
-                <div class="md-info-item">
-                  <span class="md-info-label">Statut</span>
-                  <span class="md-info-val">{{ affaire.statut }}</span>
+                <div class="md-info-item" *ngIf="mission.factureRef">
+                  <span class="md-info-label">Réf. facture</span>
+                  <span class="md-info-val md-mono">{{ mission.factureRef }}</span>
                 </div>
-                <div class="md-info-item" *ngIf="affaire.tribunal">
-                  <span class="md-info-label">Tribunal</span>
-                  <span class="md-info-val">{{ affaire.tribunal }}</span>
+                <div class="md-info-item" *ngIf="mission.pvValide !== null">
+                  <span class="md-info-label">PV validé</span>
+                  <span class="md-info-val">{{ mission.pvValide ? '✅ Oui' : '⏳ En attente' }}</span>
                 </div>
-                <div class="md-info-item" *ngIf="affaire.dateLancement">
-                  <span class="md-info-label">Date lancement</span>
-                  <span class="md-info-val">{{ affaire.dateLancement | date:'dd/MM/yyyy' }}</span>
+                <div class="md-info-item" *ngIf="mission.factureValide !== null">
+                  <span class="md-info-label">Facture validée</span>
+                  <span class="md-info-val">{{ mission.factureValide ? '✅ Oui' : '⏳ En attente' }}</span>
                 </div>
+              </div>
+              <div class="md-pv-text" *ngIf="mission.pvMission">
+                <span class="md-info-label">Rapport PV</span>
+                <p>{{ mission.pvMission }}</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- Commentaire agent -->
+          <section class="md-card md-card--warn" *ngIf="mission.commentaireAgent">
+            <div class="md-card-head"><h2><span>💬</span> Commentaire de l'agent</h2></div>
+            <div class="md-card-body">
+              <p class="md-desc">{{ mission.commentaireAgent }}</p>
+              <div class="md-comment-meta" *ngIf="mission.valideParAgent">
+                Par <strong>{{ mission.valideParAgent }}</strong>
+                <span *ngIf="mission.dateValidationAgent"> le {{ mission.dateValidationAgent | date:'dd/MM/yyyy HH:mm' }}</span>
+              </div>
+            </div>
+          </section>
+
+        </div>
+
+        <!-- Colonne droite -->
+        <div class="md-col-side">
+
+          <!-- Dates -->
+          <section class="md-card">
+            <div class="md-card-head"><h2><span>📅</span> Dates</h2></div>
+            <div class="md-card-body">
+              <div class="md-dates">
+                <div class="md-date-row" *ngIf="mission.dateAssignation">
+                  <span class="md-info-label">Assignation</span>
+                  <span>{{ mission.dateAssignation | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="md-date-row" *ngIf="mission.dateFinPrevue">
+                  <span class="md-info-label">Fin prévue</span>
+                  <span [class.md-date--retard]="mission.dateFinPrevue < today">
+                    {{ mission.dateFinPrevue | date:'dd/MM/yyyy' }}
+                  </span>
+                </div>
+                <div class="md-date-row" *ngIf="mission.dateRealisation">
+                  <span class="md-info-label">Réalisée le</span>
+                  <span>{{ mission.dateRealisation | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="md-date-row" *ngIf="mission.dateValidationAgent">
+                  <span class="md-info-label">Validée le</span>
+                  <span>{{ mission.dateValidationAgent | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Statut verrou -->
+          <div class="md-verrou-banner" *ngIf="resultatVerrouille">
+            🔒 Le résultat est verrouillé (mission clôturée)
+          </div>
+
+          <!-- Actions côté droit — agent -->
+          <div class="md-side-actions" *ngIf="isAgent && (peutValider() || peutRejeter())">
+            <button class="md-btn md-btn--success" *ngIf="peutValider()"
+                    (click)="showModalValidation = true">
+              ✅ Valider la mission
+            </button>
+            <button class="md-btn md-btn--danger" *ngIf="peutRejeter()"
+                    (click)="showModalRejet = true">
+              ❌ Rejeter la mission
+            </button>
+          </div>
+
+          <!-- Actions côté droit — prestataire -->
+          <div class="md-side-actions"
+               *ngIf="peutSoumettreResultat() || peutSoumettrePV() || peutSoumettreFacture() || !isAgent">
+            <button class="md-btn md-btn--primary"
+                    *ngIf="peutSoumettreResultat()"
+                    (click)="showModalResultat = true">
+              📤 Soumettre un résultat
+            </button>
+            <button class="md-btn md-btn--indigo"
+                    *ngIf="peutSoumettrePV()"
+                    (click)="showModalPV = true">
+              📄 Soumettre un PV
+            </button>
+            <button class="md-btn md-btn--green"
+                    *ngIf="peutSoumettreFacture()"
+                    (click)="showModalFacture = true">
+              💳 Soumettre une facture
+            </button>
+            <button class="md-btn md-btn--teal"
+                    *ngIf="!isAgent"
+                    (click)="ouvrirModalDocuments()">
+              📎 Documents
+            </button>
+          </div>
+
+        </div>
+      </div>
+
+     <!-- ════ ONGLET RÉSULTATS ════ -->
+<div *ngIf="onglet === 'resultats'">
+
+  <!-- ✅ Bouton soumettre si aucun résultat -->
+  <div class="md-empty" *ngIf="resultats.length === 0 && !mission.pvMission && !mission.montantFacture">
+    <span>📭</span>
+    <p>Aucun résultat soumis pour cette mission.</p>
+    <button class="md-btn md-btn--primary" *ngIf="peutSoumettreResultat()"
+            (click)="showModalResultat = true" style="margin-top:16px">
+      📤 Soumettre un résultat
+    </button>
+  </div>
+
+  <!-- ✅ PV soumis -->
+  <div class="md-resultat-card" *ngIf="mission.pvMission">
+    <div class="md-resultat-head">
+      <span class="md-resultat-par">📄 <strong>Procès-Verbal</strong></span>
+      <span class="md-resultat-date" *ngIf="mission.dateValidationPv">
+        {{ mission.dateValidationPv | date:'dd/MM/yyyy HH:mm' }}
+      </span>
+    </div>
+    <div class="md-resultat-body">
+      <div class="md-pv-box">
+        <p>{{ mission.pvMission }}</p>
+      </div>
+      <div class="md-statut-pv" *ngIf="mission.pvValide !== null">
+        <span *ngIf="mission.pvValide"  class="md-badge md-badge--green">✅ PV validé</span>
+        <span *ngIf="!mission.pvValide" class="md-badge md-badge--orange">⏳ En attente de validation</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Facture soumise -->
+  <div class="md-resultat-card" *ngIf="mission.montantFacture || mission.factureRef">
+    <div class="md-resultat-head">
+      <span class="md-resultat-par">🧾 <strong>Facture</strong></span>
+      <span class="md-resultat-date" *ngIf="mission.dateValidationFacture">
+        {{ mission.dateValidationFacture | date:'dd/MM/yyyy HH:mm' }}
+      </span>
+    </div>
+    <div class="md-resultat-body">
+      <div class="md-info-grid">
+        <div class="md-info-item" *ngIf="mission.factureRef">
+          <span class="md-info-label">Référence</span>
+          <span class="md-info-val md-mono">{{ mission.factureRef }}</span>
+        </div>
+        <div class="md-info-item" *ngIf="mission.montantFacture">
+          <span class="md-info-label">Montant</span>
+          <span class="md-info-val md-accent">{{ mission.montantFacture | number:'1.2-2' }} TND</span>
+        </div>
+      </div>
+      <div class="md-statut-pv" *ngIf="mission.factureValide !== null">
+        <span *ngIf="mission.factureValide"  class="md-badge md-badge--green">✅ Facture validée</span>
+        <span *ngIf="!mission.factureValide" class="md-badge md-badge--orange">⏳ En attente de validation</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Résultats (fichiers + commentaires) -->
+  <div class="md-resultats" *ngIf="resultats.length > 0">
+    <div class="md-resultat-card" *ngFor="let r of resultats">
+      <div class="md-resultat-head">
+        <div>
+          <span class="md-resultat-par">📎 Soumis par <strong>{{ r.soumisePar }}</strong></span>
+          <span class="md-resultat-date">{{ r.dateSoumission | date:'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+      </div>
+      <div class="md-resultat-body">
+        <p class="md-resultat-commentaire" *ngIf="r.commentaire">{{ r.commentaire }}</p>
+        <div class="md-fichiers" *ngIf="r.fichiers?.length > 0">
+          <span class="md-fichiers-titre">Fichiers joints :</span>
+          <div class="md-fichier-row" *ngFor="let f of r.fichiers">
+            <span class="md-fichier-icon">{{ getIconFichier(f.typeMime) }}</span>
+            <span class="md-fichier-nom">{{ f.nomFichierOriginal }}</span>
+            <span class="md-fichier-taille">{{ formatTaille(f.tailleFichier) }}</span>
+            <button class="md-dl-btn" (click)="telechargerFichier(f.id, f.nomFichierOriginal)">
+              ⬇️ Télécharger
+            </button>
+            <button class="md-del-btn"
+                    *ngIf="peutSupprimerResultat()"
+                    (click)="supprimerResultat(f.id)">
+              🗑️ Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+      <!-- ════ ONGLET AFFAIRE ════ -->
+      <div *ngIf="onglet === 'affaire' && affaire">
+        <div class="md-affaire-card">
+          <div class="md-card-head"><h2>⚖️ Affaire judiciaire liée</h2></div>
+          <div class="md-card-body">
+            <div class="md-info-grid">
+              <div class="md-info-item">
+                <span class="md-info-label">N° Affaire</span>
+                <span class="md-info-val md-mono">{{ affaire.numeroAffaire }}</span>
+              </div>
+              <div class="md-info-item">
+                <span class="md-info-label">Statut</span>
+                <span class="md-info-val">{{ affaire.statut }}</span>
+              </div>
+              <div class="md-info-item" *ngIf="affaire.tribunal">
+                <span class="md-info-label">Tribunal</span>
+                <span class="md-info-val">{{ affaire.tribunal }}</span>
+              </div>
+              <div class="md-info-item" *ngIf="affaire.dateLancement">
+                <span class="md-info-label">Date lancement</span>
+                <span class="md-info-val">{{ affaire.dateLancement | date:'dd/MM/yyyy' }}</span>
               </div>
             </div>
           </div>
         </div>
-  
       </div>
+
     </div>
   </div>
-  
-  <!-- ═══ MODAL VALIDATION ═══ -->
-  <div class="md-overlay" *ngIf="showModalValidation" (click)="showModalValidation=false">
-    <div class="md-modal" (click)="$event.stopPropagation()">
-      <div class="md-modal-head md-modal-head--success">
-        <h3>✅ Valider la mission</h3>
-        <button class="md-modal-close" (click)="showModalValidation=false">✕</button>
+</div>
+
+<!-- ═══ MODAL VALIDATION ═══ -->
+<div class="md-overlay" *ngIf="showModalValidation" (click)="showModalValidation=false">
+  <div class="md-modal" (click)="$event.stopPropagation()">
+    <div class="md-modal-head md-modal-head--success">
+      <h3>✅ Valider la mission</h3>
+      <button class="md-modal-close" (click)="showModalValidation=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">
+        Valider la mission <strong>{{ mission?.numeroMission }}</strong> de <strong>{{ nomPrestataire() }}</strong> ?
+      </p>
+      <div class="md-field">
+        <label class="md-label">Commentaire <span class="md-opt">(optionnel)</span></label>
+        <textarea class="md-input md-textarea" [(ngModel)]="commentaireValidation"
+                  rows="3" placeholder="Ajoutez un commentaire…"></textarea>
       </div>
-      <div class="md-modal-body">
-        <p class="md-modal-desc">
-          Valider la mission <strong>{{ mission?.numeroMission }}</strong> de <strong>{{ nomPrestataire() }}</strong> ?
-        </p>
-        <div class="md-field">
-          <label class="md-label">Commentaire <span class="md-opt">(optionnel)</span></label>
-          <textarea class="md-input md-textarea" [(ngModel)]="commentaireValidation"
-                    rows="3" placeholder="Ajoutez un commentaire…"></textarea>
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost"   (click)="showModalValidation=false" [disabled]="submitting">Annuler</button>
+      <button class="md-btn md-btn--success" (click)="validerMission()"          [disabled]="submitting">
+        <span class="md-spin" *ngIf="submitting"></span>
+        {{ submitting ? 'Validation…' : '✅ Confirmer' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL REJET ═══ -->
+<div class="md-overlay" *ngIf="showModalRejet" (click)="showModalRejet=false">
+  <div class="md-modal" (click)="$event.stopPropagation()">
+    <div class="md-modal-head md-modal-head--danger">
+      <h3>❌ Rejeter la mission</h3>
+      <button class="md-modal-close" (click)="showModalRejet=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">Motif du rejet obligatoire — le prestataire devra soumettre à nouveau.</p>
+      <div class="md-field">
+        <label class="md-label">Motif <span class="md-req">*</span></label>
+        <textarea class="md-input md-textarea" [(ngModel)]="commentaireRejet"
+                  rows="3" placeholder="Expliquez le motif du rejet…"></textarea>
+      </div>
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost"  (click)="showModalRejet=false" [disabled]="submitting">Annuler</button>
+      <button class="md-btn md-btn--danger" (click)="rejeterMission()"
+              [disabled]="submitting || !commentaireRejet.trim()">
+        <span class="md-spin md-spin--white" *ngIf="submitting"></span>
+        {{ submitting ? 'Rejet…' : '❌ Confirmer le rejet' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL SOUMETTRE RÉSULTAT ═══ -->
+<div class="md-overlay" *ngIf="showModalResultat" (click)="showModalResultat=false">
+  <div class="md-modal" (click)="$event.stopPropagation()">
+    <div class="md-modal-head" style="background:#f0f7ff; border-bottom:2px solid #007bff;">
+      <h3>📤 Soumettre un résultat</h3>
+      <button class="md-modal-close" (click)="showModalResultat=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">Mission <strong>{{ mission?.numeroMission }}</strong></p>
+      <div class="md-field">
+        <label class="md-label">Commentaire <span class="md-opt">(optionnel)</span></label>
+        <textarea class="md-input md-textarea" [(ngModel)]="resultatForm.commentaire"
+                  rows="3" placeholder="Décrivez le travail effectué…"></textarea>
+      </div>
+      <div class="md-field">
+        <label class="md-label">Fichiers joints <span class="md-opt">(optionnel)</span></label>
+        <input type="file" multiple class="md-input" (change)="onFichiersChange($event)" />
+        <small style="color:#999;" *ngIf="resultatForm.fichiers.length > 0">
+          {{ resultatForm.fichiers.length }} fichier(s) sélectionné(s)
+        </small>
+      </div>
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost"    (click)="showModalResultat=false"  [disabled]="submittingResultat">Annuler</button>
+      <button class="md-btn md-btn--success"  (click)="soumettreResultat()"      [disabled]="submittingResultat">
+        <span class="md-spin" *ngIf="submittingResultat"></span>
+        {{ submittingResultat ? 'Envoi…' : '📤 Soumettre' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL SOUMETTRE PV ═══ -->
+<div class="md-overlay" *ngIf="showModalPV" (click)="showModalPV=false">
+  <div class="md-modal" (click)="$event.stopPropagation()">
+    <div class="md-modal-head md-modal-head--indigo">
+      <h3>📄 Soumettre un PV de mission</h3>
+      <button class="md-modal-close" (click)="showModalPV=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">
+        Mission <strong>{{ mission?.numeroMission }}</strong> ·
+        Dossier <strong>{{ mission?.prestation?.dossier?.numeroDossier || '—' }}</strong>
+      </p>
+      <div class="md-field">
+        <label class="md-label">Contenu du Procès-Verbal <span class="md-req">*</span></label>
+        <textarea class="md-input md-textarea" [(ngModel)]="pvForm.pvTexte"
+                  rows="6" placeholder="Rédigez votre compte rendu de mission ici…"></textarea>
+      </div>
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost"   (click)="showModalPV=false" [disabled]="submittingPV">Annuler</button>
+      <button class="md-btn md-btn--indigo"  (click)="soumettrePV()"     [disabled]="submittingPV || !pvForm.pvTexte.trim()">
+        <span class="md-spin" *ngIf="submittingPV"></span>
+        {{ submittingPV ? 'Envoi…' : '📄 Soumettre le PV' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL SOUMETTRE FACTURE ═══ -->
+<div class="md-overlay" *ngIf="showModalFacture" (click)="showModalFacture=false">
+  <div class="md-modal" (click)="$event.stopPropagation()">
+    <div class="md-modal-head md-modal-head--green">
+      <h3>💳 Soumettre une facture</h3>
+      <button class="md-modal-close" (click)="showModalFacture=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">Mission <strong>{{ mission?.numeroMission }}</strong></p>
+      <div class="md-field">
+        <label class="md-label">Référence facture <span class="md-req">*</span></label>
+        <input type="text" class="md-input" [(ngModel)]="factureForm.factureRef"
+               placeholder="Ex : FAC-2024-001" />
+      </div>
+      <div class="md-field">
+        <label class="md-label">Montant (TND) <span class="md-req">*</span></label>
+        <input type="number" class="md-input" [(ngModel)]="factureForm.montant"
+               placeholder="0.00" min="0" step="0.01" />
+      </div>
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost"  (click)="showModalFacture=false" [disabled]="submittingFacture">Annuler</button>
+      <button class="md-btn md-btn--green"  (click)="soumettreFacture()"
+              [disabled]="submittingFacture || !factureForm.factureRef.trim() || factureForm.montant <= 0">
+        <span class="md-spin" *ngIf="submittingFacture"></span>
+        {{ submittingFacture ? 'Envoi…' : '💳 Soumettre la facture' }}
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL DOCUMENTS ═══ -->
+<div class="md-overlay" *ngIf="showModalDocuments" (click)="showModalDocuments=false">
+  <div class="md-modal md-modal--wide" (click)="$event.stopPropagation()">
+    <div class="md-modal-head md-modal-head--teal">
+      <h3>📎 Documents de la mission</h3>
+      <button class="md-modal-close" (click)="showModalDocuments=false">✕</button>
+    </div>
+    <div class="md-modal-body">
+      <p class="md-modal-desc">Mission <strong>{{ mission?.numeroMission }}</strong></p>
+
+      <!-- Zone upload -->
+      <div class="md-upload-zone">
+        <label class="md-upload-label">
+          <input type="file" multiple style="display:none"
+                 (change)="onDocumentsFichiersChange($event)" />
+          <span class="md-upload-btn">📂 Choisir des fichiers</span>
+        </label>
+        <div class="md-fichiers-choisis" *ngIf="fichiersSelectionnes.length > 0">
+          <div class="md-fichier-choisi" *ngFor="let f of fichiersSelectionnes">
+            <span>{{ iconeType(f.type) }} {{ f.name }}</span>
+            <span class="md-taille">{{ formatTaille(f.size) }}</span>
+          </div>
         </div>
-      </div>
-      <div class="md-modal-foot">
-        <button class="md-btn md-btn--ghost" (click)="showModalValidation=false" [disabled]="submitting">Annuler</button>
-        <button class="md-btn md-btn--success" (click)="validerMission()" [disabled]="submitting">
-          <span class="md-spin" *ngIf="submitting"></span>
-          {{ submitting ? 'Validation…' : '✅ Confirmer' }}
+        <button class="md-btn md-btn--primary" style="margin-top:10px"
+                (click)="uploaderDocuments()"
+                [disabled]="uploadEnCours || fichiersSelectionnes.length === 0">
+          <span class="md-spin" *ngIf="uploadEnCours"></span>
+          {{ uploadEnCours ? 'Upload en cours…' : '⬆️ Envoyer' }}
         </button>
       </div>
-    </div>
-  </div>
-  
-  <!-- ═══ MODAL REJET ═══ -->
-  <div class="md-overlay" *ngIf="showModalRejet" (click)="showModalRejet=false">
-    <div class="md-modal" (click)="$event.stopPropagation()">
-      <div class="md-modal-head md-modal-head--danger">
-        <h3>❌ Rejeter la mission</h3>
-        <button class="md-modal-close" (click)="showModalRejet=false">✕</button>
+
+      <!-- Alertes inline dans la modal -->
+      <div class="md-alert md-alert--success" *ngIf="successMsg" style="margin-top:12px">
+        <span>✅</span> {{ successMsg }}
       </div>
-      <div class="md-modal-body">
-        <p class="md-modal-desc">Motif du rejet obligatoire — le prestataire devra soumettre à nouveau.</p>
-        <div class="md-field">
-          <label class="md-label">Motif <span class="md-req">*</span></label>
-          <textarea class="md-input md-textarea" [(ngModel)]="commentaireRejet"
-                    rows="3" placeholder="Expliquez le motif du rejet…"></textarea>
+      <div class="md-alert md-alert--error" *ngIf="errorMsg" style="margin-top:12px">
+        <span>⚠️</span> {{ errorMsg }}
+      </div>
+
+      <!-- Documents existants -->
+      <div class="md-docs-existants">
+        <h4>Documents envoyés ({{ documentsExistants.length }})</h4>
+        <div class="md-empty" *ngIf="documentsExistants.length === 0">
+          <span>📭</span><p>Aucun document pour cette mission.</p>
+        </div>
+        <div class="md-doc-item" *ngFor="let d of documentsExistants">
+          <div class="md-doc-left">
+            <span class="md-doc-icone">{{ iconeType(d.typeMime) }}</span>
+            <div class="md-doc-info">
+              <span class="md-doc-nom">{{ d.nomFichierOriginal }}</span>
+              <span class="md-doc-meta">
+                {{ formatTaille(d.tailleFichier) }} · {{ d.dateUpload | date:'dd/MM/yyyy HH:mm' }}
+              </span>
+            </div>
+          </div>
+          <button class="md-dl-btn" (click)="telechargerDocument(d.id, d.nomFichierOriginal)">
+            ⬇️ Télécharger
+          </button>
         </div>
       </div>
-      <div class="md-modal-foot">
-        <button class="md-btn md-btn--ghost" (click)="showModalRejet=false" [disabled]="submitting">Annuler</button>
-        <button class="md-btn md-btn--danger" (click)="rejeterMission()"
-                [disabled]="submitting || !commentaireRejet.trim()">
-          <span class="md-spin md-spin--white" *ngIf="submitting"></span>
-          {{ submitting ? 'Rejet…' : '❌ Confirmer le rejet' }}
-        </button>
-      </div>
+
+    </div>
+    <div class="md-modal-foot">
+      <button class="md-btn md-btn--ghost" (click)="showModalDocuments=false">Fermer</button>
     </div>
   </div>
+</div>

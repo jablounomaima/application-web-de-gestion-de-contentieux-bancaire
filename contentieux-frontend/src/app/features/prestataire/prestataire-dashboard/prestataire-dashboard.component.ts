@@ -93,34 +93,20 @@ import { ActivatedRoute } from '@angular/router';
                 </span>
               </td>
               <td class="actions">
+                <!-- ✅ Voir dossier -->
                 <button class="btn-action info" (click)="voirDossier(m)">
                   👁️ Voir dossier
                 </button>
-                <button class="btn-action results"
-        (click)="voirResultats(m)">
-  📊 Résultats
-</button>
-                <button class="btn-action pv"
-                        (click)="ouvrirModalPV(m)"
-                        *ngIf="peutSoumettrePV(m)">
-                  📄 Soumettre PV
-                </button>
-                <button class="btn-action facture"
-                        (click)="ouvrirModalFacture(m)"
-                        *ngIf="peutSoumettreFacture(m)">
-                  💳 Facture
+
+                <!-- ✅ Bouton unique vers détail mission (soumettre résultat, PV, facture) -->
+                <button class="btn-action detail" (click)="voirMission(m)">
+                  📋 Voir mission
                 </button>
 
-                <!-- ✅ BOUTON DOCUMENTS AJOUTÉ ICI -->
-                <button class="btn-action doc"
-                        (click)="ouvrirModalDocuments(m)">
+                <!-- ✅ Documents -->
+                <button class="btn-action doc" (click)="ouvrirModalDocuments(m)">
                   📎 Documents
                 </button>
-
-                <span class="statut-final"
-                      *ngIf="!peutSoumettrePV(m) && !peutSoumettreFacture(m)">
-                  —
-                </span>
               </td>
             </tr>
           </tbody>
@@ -128,83 +114,7 @@ import { ActivatedRoute } from '@angular/router';
       </div>
     </div>
 
-    <!-- MODAL PV -->
-    <div class="modal-overlay"
-         *ngIf="missionSelectionnee && modalType === 'pv'"
-         (click)="fermerModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header indigo">
-          <h2>📄 Soumettre un PV de Mission</h2>
-          <button class="modal-close" (click)="fermerModal()">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="mission-info-box">
-            <p><strong>Mission :</strong> {{ missionSelectionnee.numeroMission }}</p>
-            <p><strong>Dossier :</strong>
-              {{ missionSelectionnee.prestation?.dossier?.numeroDossier || '—' }}
-            </p>
-          </div>
-          <div class="form-group">
-            <label>Contenu du Procès-Verbal *</label>
-            <textarea [(ngModel)]="formPV.pvTexte"
-                      rows="6"
-                      placeholder="Rédigez votre compte rendu de mission ici...">
-            </textarea>
-          </div>
-          <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
-          <div class="success-banner" *ngIf="succes">{{ succes }}</div>
-          <div class="modal-footer">
-            <button class="btn-cancel" (click)="fermerModal()">Annuler</button>
-            <button class="btn-submit"
-                    (click)="soumettreResultat()"
-                    [disabled]="soumission">
-              {{ soumission ? '⏳ En cours...' : '✅ Soumettre le PV' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- MODAL FACTURE -->
-    <div class="modal-overlay"
-         *ngIf="missionSelectionnee && modalType === 'facture'"
-         (click)="fermerModal()">
-      <div class="modal-card" (click)="$event.stopPropagation()">
-        <div class="modal-header green">
-          <h2>💳 Soumettre une Facture</h2>
-          <button class="modal-close" (click)="fermerModal()">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="mission-info-box">
-            <p><strong>Mission :</strong> {{ missionSelectionnee.numeroMission }}</p>
-          </div>
-          <div class="form-group">
-            <label>Référence Facture *</label>
-            <input type="text"
-                   [(ngModel)]="formFacture.factureRef"
-                   placeholder="Ex: FAC-2024-001">
-          </div>
-          <div class="form-group">
-            <label>Montant (TND) *</label>
-            <input type="number"
-                   [(ngModel)]="formFacture.montant"
-                   placeholder="0.00" min="0" step="0.01">
-          </div>
-          <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
-          <div class="success-banner" *ngIf="succes">{{ succes }}</div>
-          <div class="modal-footer">
-            <button class="btn-cancel" (click)="fermerModal()">Annuler</button>
-            <button class="btn-submit green-btn"
-                    (click)="soumettreFacture()"
-                    [disabled]="soumission">
-              {{ soumission ? '⏳ En cours...' : '💳 Soumettre la Facture' }}
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ✅ MODAL DOCUMENTS AJOUTÉE ICI -->
+    <!-- ✅ MODAL DOCUMENTS -->
     <div class="modal-overlay"
          *ngIf="missionSelectionnee && modalType === 'documents'"
          (click)="fermerModal()">
@@ -250,8 +160,7 @@ import { ActivatedRoute } from '@angular/router';
             <div *ngIf="documentsExistants.length === 0" class="empty-docs">
               Aucun document envoyé pour cette mission.
             </div>
-            <div class="doc-item"
-                 *ngFor="let d of documentsExistants">
+            <div class="doc-item" *ngFor="let d of documentsExistants">
               <div class="doc-left">
                 <span class="doc-icone">{{ iconeType(d.typeMime) }}</span>
                 <div class="doc-info">
@@ -274,9 +183,6 @@ import { ActivatedRoute } from '@angular/router';
         </div>
       </div>
     </div>
-
-    
-
   `,
   styles: [`
     .page-container { font-family: 'Inter', sans-serif; }
@@ -317,37 +223,50 @@ import { ActivatedRoute } from '@angular/router';
     .s-terminee { background: #e2e3e5; color: #383d41; }
     .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
     .btn-action { padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: .85rem; font-weight: 600; transition: all .2s; }
-    .btn-action.info { background: #e3f2fd; color: #0d47a1; }
+    .btn-action.info   { background: #e3f2fd; color: #0d47a1; }
     .btn-action.info:hover { background: #bbdefb; }
-    .btn-action.pv { background: #e8eaf6; color: #283593; }
-    .btn-action.pv:hover { background: #c5cae9; }
-    .btn-action.facture { background: #e8f5e9; color: #1b5e20; }
-    .btn-action.facture:hover { background: #c8e6c9; }
-    .statut-final { color: #ccc; }
+    .btn-action.detail { background: #f3e5f5; color: #6a1b9a; }
+    .btn-action.detail:hover { background: #e1bee7; }
+    .btn-action.doc    { background: #e0f2f1; color: #00695c; }
+    .btn-action.doc:hover { background: #b2dfdb; }
 
+    /* ── Modal ── */
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
     .modal-card { background: white; border-radius: 16px; width: 560px; max-width: 95vw; box-shadow: 0 25px 50px rgba(0,0,0,0.25); animation: slideUp .3s ease; }
+    .modal-card--wide { width: 680px; }
     @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
     .modal-header { padding: 22px 28px; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0; }
-    .modal-header.indigo { background: #1a237e; } .modal-header.green { background: #2e7d32; }
+    .modal-header.teal { background: #00695c; }
     .modal-header h2 { margin: 0; color: white; font-size: 1.2rem; }
-    .modal-close { background: rgba(255,255,255,.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; }
+    .modal-close { background: rgba(255,255,255,.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
     .modal-body { padding: 28px; }
-    .mission-info-box { background: #f8f9fa; border-radius: 8px; padding: 14px; margin-bottom: 20px; border-left: 4px solid #1a237e; }
+    .mission-info-box { background: #f8f9fa; border-radius: 8px; padding: 14px; margin-bottom: 20px; border-left: 4px solid #00695c; }
     .mission-info-box p { margin: 4px 0; font-size: .9rem; }
-    .form-group { margin-bottom: 18px; }
-    .form-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #333; font-size: .9rem; }
-    .form-group input, .form-group textarea { width: 100%; box-sizing: border-box; padding: 11px 14px; border: 1px solid #ddd; border-radius: 8px; font-size: .95rem; font-family: 'Inter',sans-serif; outline: none; }
-    .form-group input:focus, .form-group textarea:focus { border-color: #1a237e; box-shadow: 0 0 0 3px rgba(26,35,126,.1); }
     .error-banner { background: #fdecea; color: #c62828; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #c62828; font-size: .9rem; }
     .success-banner { background: #e8f5e9; color: #2e7d32; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #2e7d32; font-size: .9rem; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding-top: 15px; border-top: 1px solid #f0f0f0; }
+    .modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 28px; border-top: 1px solid #f0f0f0; }
     .btn-cancel { background: #f5f5f5; color: #555; border: none; padding: 11px 22px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-    .btn-submit { background: #1a237e; color: white; border: none; padding: 11px 26px; border-radius: 8px; cursor: pointer; font-weight: 700; }
-    .btn-submit.green-btn { background: #2e7d32; }
-    .btn-submit[disabled] { opacity: .6; cursor: not-allowed; }
-  
-  
+
+    /* ── Upload zone ── */
+    .upload-zone { border: 2px dashed #b2dfdb; border-radius: 10px; padding: 20px; margin-bottom: 20px; text-align: center; }
+    .upload-btn { display: inline-block; background: #e0f2f1; color: #00695c; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-bottom: 12px; }
+    .fichiers-choisis { margin: 10px 0; text-align: left; }
+    .fichier-choisi { display: flex; justify-content: space-between; padding: 6px 10px; background: #f5f5f5; border-radius: 6px; margin-bottom: 4px; font-size: .85rem; }
+    .taille { color: #888; }
+    .btn-upload { background: #00695c; color: white; border: none; padding: 10px 22px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 8px; }
+    .btn-upload:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* ── Docs existants ── */
+    .docs-existants h3 { font-size: 1rem; color: #333; margin-bottom: 12px; }
+    .empty-docs { color: #aaa; font-style: italic; font-size: .9rem; }
+    .doc-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 8px; }
+    .doc-left { display: flex; align-items: center; gap: 10px; }
+    .doc-icone { font-size: 1.4rem; }
+    .doc-info { display: flex; flex-direction: column; }
+    .doc-nom { font-size: .9rem; font-weight: 600; color: #333; }
+    .doc-meta { font-size: .75rem; color: #888; }
+    .btn-dl { background: #e3f2fd; color: #0d47a1; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: .82rem; font-weight: 600; }
+    .btn-dl:hover { background: #bbdefb; }
   `]
 })
 export class PrestataireDashboardComponent implements OnInit {
@@ -358,24 +277,18 @@ export class PrestataireDashboardComponent implements OnInit {
   activeTab: 'enCours' | 'toutes' = 'enCours';
 
   missionSelectionnee: any = null;
-  modalType: 'pv' | 'facture' | 'documents' | null = null;
-  formPV    = { pvTexte: '' };
-  formFacture = { factureRef: '', montant: 0 };
+  modalType: 'documents' | null = null;
   erreur  = '';
   succes  = '';
-  soumission = false;
 
-    // Ajouter dans les propriétés du composant
-
-fichierSelectionnes: File[] = [];
-uploadEnCours = false;
-documentsExistants: any[] = [];
+  fichierSelectionnes: File[] = [];
+  uploadEnCours = false;
+  documentsExistants: any[] = [];
 
   constructor(
     private prestataireService: PrestataireService,
     private router: Router,
-    private route: ActivatedRoute   // ← ajouter
-
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit() {
@@ -410,192 +323,105 @@ documentsExistants: any[] = [];
     return map[statut] || '';
   }
 
-  peutSoumettrePV(m: any): boolean {
-    return ['ASSIGNEE', 'EN_COURS'].includes(m.statut);
-  }
-
-  peutSoumettreFacture(m: any): boolean {
-    return m.statut === 'PV_SOUMIS';
-  }
-
-  ouvrirModalPV(mission: any) {
-    this.missionSelectionnee = mission;
-    this.modalType = 'pv';
-    this.formPV    = { pvTexte: '' };
-    this.erreur    = '';
-    this.succes    = '';
-  }
-
-  ouvrirModalFacture(mission: any) {
-    this.missionSelectionnee = mission;
-    this.modalType  = 'facture';
-    this.formFacture = { factureRef: '', montant: 0 };
-    this.erreur = '';
-    this.succes = '';
-  }
-
-  fermerModal() {
-    if (!this.soumission) {
-      this.missionSelectionnee = null;
-      this.modalType = null;
-      this.erreur = '';
-      this.succes = '';
-    }
-  }
-
-  // ── Soumettre PV ──────────────────────────────────────────
-  soumettreResultat() {
-    if (!this.formPV.pvTexte?.trim()) {
-      this.erreur = 'Le contenu du PV est obligatoire.';
-      return;
-    }
-
-    this.erreur    = '';
-    this.soumission = true;
-
-    // ✅ Envoyer JSON directement — le backend attend @RequestBody Map<String, String>
-    this.prestataireService.soumettresPV(
-      this.missionSelectionnee.id,
-      this.formPV.pvTexte
-    ).subscribe({
-      next: () => {
-        this.succes    = '✅ PV soumis avec succès !';
-        this.soumission = false;
-        setTimeout(() => { this.fermerModal(); this.ngOnInit(); }, 1500);
-      },
-      error: (err: any) => {
-        this.erreur    = err?.error?.error || 'Erreur lors de la soumission du PV.';
-        this.soumission = false;
-      }
-    });
-  }
-
-  // ── Soumettre Facture ─────────────────────────────────────
-  soumettreFacture() {
-    if (!this.formFacture.factureRef?.trim()) {
-      this.erreur = 'La référence facture est obligatoire.';
-      return;
-    }
-    if (!this.formFacture.montant || this.formFacture.montant <= 0) {
-      this.erreur = 'Le montant doit être supérieur à 0.';
-      return;
-    }
-
-    this.erreur    = '';
-    this.soumission = true;
-
-    this.prestataireService.soumettreFacture(
-      this.missionSelectionnee.id,
-      this.formFacture
-    ).subscribe({
-      next: () => {
-        this.succes    = '✅ Facture soumise avec succès !';
-        this.soumission = false;
-        setTimeout(() => { this.fermerModal(); this.ngOnInit(); }, 1500);
-      },
-      error: (err: any) => {
-        this.erreur    = err?.error?.error || 'Erreur lors de la soumission de la facture.';
-        this.soumission = false;
-      }
-    });
+  // ✅ Navigation vers détail mission (soumettre résultat depuis là)
+  voirMission(m: any) {
+    this.router.navigate(['/prestataire/missions', m.id]);
   }
 
   voirDossier(m: any) {
     this.router.navigate(['/prestataire/mission', m.id, 'dossier']);
   }
 
-
-
-
-ouvrirModalDocuments(mission: any) {
-  this.missionSelectionnee = mission;
-  this.modalType = 'documents';
-  this.fichierSelectionnes = [];
-  this.erreur = '';
-  this.succes = '';
-  this.documentsExistants = [];
-
-  // Charger les documents existants
-  this.prestataireService.getDocuments(mission.id).subscribe({
-    next: (res) => this.documentsExistants = res.fichiers || [],
-    error: () => {}
-  });
-}
-
-onFichiersSelectionnes(event: Event) {
-  const input = event.target as HTMLInputElement;
-  if (input.files) {
-    this.fichierSelectionnes = Array.from(input.files);
-  }
-}
-
-uploaderDocuments() {
-  if (this.fichierSelectionnes.length === 0) {
-    this.erreur = 'Sélectionnez au moins un fichier.';
-    return;
+  fermerModal() {
+    this.missionSelectionnee = null;
+    this.modalType = null;
+    this.erreur = '';
+    this.succes = '';
+    this.fichierSelectionnes = [];
+    this.documentsExistants = [];
   }
 
-  this.erreur = '';
-  this.succes = '';
-  this.uploadEnCours = true;
+  // ── Documents ─────────────────────────────────────────────
+  ouvrirModalDocuments(mission: any) {
+    this.missionSelectionnee = mission;
+    this.modalType = 'documents';
+    this.fichierSelectionnes = [];
+    this.erreur = '';
+    this.succes = '';
+    this.documentsExistants = [];
 
-  const formData = new FormData();
-  this.fichierSelectionnes.forEach(f => {
-    formData.append('fichiers', f, f.name);  // ← vérifier que "fichiers" correspond au @RequestParam backend
-  });
+    this.prestataireService.getDocuments(mission.id).subscribe({
+      next: (res) => this.documentsExistants = res.fichiers || [],
+      error: () => {}
+    });
+  }
 
-  this.prestataireService.uploaderDocuments(
-    this.missionSelectionnee.id,
-    formData   // ← passer directement le FormData, pas les File[]
-  ).subscribe({
-    next: (res: any) => {
-      this.succes = `✅ ${res.fichiers?.length ?? this.fichierSelectionnes.length} document(s) ajouté(s) avec succès !`;
-      this.uploadEnCours = false;
-      this.fichierSelectionnes = [];
-      this.prestataireService.getDocuments(this.missionSelectionnee.id).subscribe({
-        next: (r: any) => this.documentsExistants = r.fichiers || [],
-        error: () => {}
-      });
-    },
-    error: (err: any) => {
-      this.erreur = err?.error?.message || err?.error?.error || 'Erreur lors de l\'upload.';
-      this.uploadEnCours = false;
+  onFichiersSelectionnes(event: Event) {
+    const input = event.target as HTMLInputElement;
+    if (input.files) {
+      this.fichierSelectionnes = Array.from(input.files);
     }
-  });
-}
+  }
 
-formatTaille(taille: number): string {
-  if (!taille) return '0 B';
-  if (taille < 1024) return taille + ' B';
-  if (taille < 1024 * 1024) return (taille / 1024).toFixed(1) + ' KB';
-  return (taille / (1024 * 1024)).toFixed(1) + ' MB';
-}
-
-iconeType(mime: string): string {
-  if (!mime) return '📄';
-  if (mime === 'application/pdf') return '📕';
-  if (mime.startsWith('image/')) return '🖼️';
-  if (mime.includes('word')) return '📝';
-  if (mime.includes('sheet') || mime.includes('excel')) return '📊';
-  if (mime.includes('zip')) return '🗜️';
-  return '📄';
-}
-
-telechargerDocument(nomServeur: string, nomOriginal: string) {
-  this.prestataireService.telechargerFichier(nomServeur).subscribe({
-    next: (blob) => {
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = nomOriginal;
-      a.click();
-      URL.revokeObjectURL(url);
+  uploaderDocuments() {
+    if (this.fichierSelectionnes.length === 0) {
+      this.erreur = 'Sélectionnez au moins un fichier.';
+      return;
     }
-  });
-}
+    this.erreur = '';
+    this.succes = '';
+    this.uploadEnCours = true;
 
+    const formData = new FormData();
+    this.fichierSelectionnes.forEach(f => formData.append('fichiers', f, f.name));
 
-voirResultats(m: any) {
-  this.router.navigate(['/prestataire/mission', m.id, 'resultats']);
-}
+    this.prestataireService.uploaderDocuments(
+      this.missionSelectionnee.id,
+      formData
+    ).subscribe({
+      next: (res: any) => {
+        this.succes = `✅ ${res.fichiers?.length ?? this.fichierSelectionnes.length} document(s) ajouté(s) avec succès !`;
+        this.uploadEnCours = false;
+        this.fichierSelectionnes = [];
+        this.prestataireService.getDocuments(this.missionSelectionnee.id).subscribe({
+          next: (r: any) => this.documentsExistants = r.fichiers || [],
+          error: () => {}
+        });
+      },
+      error: (err: any) => {
+        this.erreur = err?.error?.message || err?.error?.error || 'Erreur lors de l\'upload.';
+        this.uploadEnCours = false;
+      }
+    });
+  }
+
+  formatTaille(taille: number): string {
+    if (!taille) return '0 B';
+    if (taille < 1024) return taille + ' B';
+    if (taille < 1024 * 1024) return (taille / 1024).toFixed(1) + ' KB';
+    return (taille / (1024 * 1024)).toFixed(1) + ' MB';
+  }
+
+  iconeType(mime: string): string {
+    if (!mime) return '📄';
+    if (mime === 'application/pdf') return '📕';
+    if (mime.startsWith('image/')) return '🖼️';
+    if (mime.includes('word')) return '📝';
+    if (mime.includes('sheet') || mime.includes('excel')) return '📊';
+    if (mime.includes('zip')) return '🗜️';
+    return '📄';
+  }
+
+  telechargerDocument(nomServeur: string, nomOriginal: string) {
+    this.prestataireService.telechargerFichier(nomServeur).subscribe({
+      next: (blob) => {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = nomOriginal;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    });
+  }
 }

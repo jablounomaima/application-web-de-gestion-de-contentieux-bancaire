@@ -1,5 +1,3 @@
-
-
 html,
 body {
   margin: 0;
@@ -55,6 +53,14 @@ app-root {
   margin: 0;
   background: transparent;
   border: none;
+}
+
+/* ✅ Alignement cloche + info utilisateur */
+.sidebar-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
 }
 
 .role-badge {

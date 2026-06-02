@@ -33,6 +33,7 @@ public class PrestataireController {
     private final MissionService            missionService;
     private final MissionRepository         missionRepository;
     private final PrestataireService        prestataireService;
+    private final NotificationService       notificationService;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -46,7 +47,7 @@ public class PrestataireController {
     public ResponseEntity<?> dashboard(Authentication auth) {
         List<Mission> missions = prestationService.getMissionsPrestataire(auth.getName());
 
-        long enCours        = missions.stream().filter(m -> m.getStatut() == StatutMission.ASSIGNEE   || m.getStatut() == StatutMission.EN_COURS).count();
+        long enCours        = missions.stream().filter(m -> m.getStatut() == StatutMission.ASSIGNEE || m.getStatut() == StatutMission.EN_COURS).count();
         long pvSoumis       = missions.stream().filter(m -> m.getStatut() == StatutMission.PV_SOUMIS).count();
         long factureSoumise = missions.stream().filter(m -> m.getStatut() == StatutMission.FACTURE_SOUMISE).count();
         long terminees      = missions.stream().filter(m -> m.getStatut() == StatutMission.TERMINEE || m.getStatut() == StatutMission.REALISEE).count();
@@ -59,7 +60,7 @@ public class PrestataireController {
             mm.put("statut",           m.getStatut());
             mm.put("dateAssignation",  m.getDateAssignation());
             mm.put("description",      m.getDescription());
-            mm.put("commentaireAgent", m.getCommentaireAgent()); // ✅ motif rejet visible
+            mm.put("commentaireAgent", m.getCommentaireAgent());
 
             if (m.getPrestation() != null && m.getPrestation().getDossier() != null) {
                 var d = m.getPrestation().getDossier();
@@ -122,7 +123,7 @@ public class PrestataireController {
             mm.put("statut",           m.getStatut());
             mm.put("dateAssignation",  m.getDateAssignation());
             mm.put("description",      m.getDescription());
-            mm.put("commentaireAgent", m.getCommentaireAgent()); // ✅ motif rejet
+            mm.put("commentaireAgent", m.getCommentaireAgent());
 
             if (m.getPrestation() != null && m.getPrestation().getDossier() != null) {
                 var d = m.getPrestation().getDossier();
@@ -165,11 +166,11 @@ public class PrestataireController {
                 f.put("montant",        m.getMontantFacture());
                 f.put("dateSoumission", m.getDateValidationFacture());
                 f.put("statut", switch (m.getStatut()) {
-                    case FACTURE_SOUMISE              -> "EN_ATTENTE";
-                    case FACTURE_VALIDEE              -> "APPROUVEE";
-                    case FACTURE_REJETEE              -> "REJETEE";
-                    case TERMINEE, REALISEE           -> "PAYEE";
-                    default                           -> m.getStatut().name();
+                    case FACTURE_SOUMISE     -> "EN_ATTENTE";
+                    case FACTURE_VALIDEE     -> "APPROUVEE";
+                    case FACTURE_REJETEE     -> "REJETEE";
+                    case TERMINEE, REALISEE  -> "PAYEE";
+                    default                  -> m.getStatut().name();
                 });
 
                 Map<String, Object> missionMap = new HashMap<>();
@@ -224,8 +225,7 @@ public class PrestataireController {
     }
 
     // ─────────────────────────────────────────────────────────
-    // SOUMETTRE PV (première soumission)
-    // ASSIGNEE / EN_COURS → PV_SOUMIS
+    // SOUMETTRE PV  ASSIGNEE / EN_COURS → PV_SOUMIS
     // ─────────────────────────────────────────────────────────
     @PostMapping("/missions/{id}/pv")
     @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
@@ -252,6 +252,20 @@ public class PrestataireController {
             mission.setDateValidationPv(LocalDateTime.now());
             missionRepository.save(mission);
 
+            DossierContentieux dossierPV = mission.getPrestation() != null
+                    ? mission.getPrestation().getDossier() : null;
+            if (dossierPV != null && dossierPV.getAgentCreateur() != null) {
+                notificationService.notifier(
+                    dossierPV.getAgentCreateur().getUsername(),
+                    "📄 PV de mission soumis",
+                    "Le prestataire a soumis le PV de la mission "
+                    + mission.getNumeroMission()
+                    + " (dossier " + dossierPV.getNumeroDossier() + ").",
+                    "PV_SOUMIS",
+                    dossierPV
+                );
+            }
+
             return ResponseEntity.ok(Map.of("message", "PV soumis avec succès."));
         } catch (Exception e) {
             log.error("Erreur soumission PV mission {} : {}", id, e.getMessage());
@@ -260,8 +274,7 @@ public class PrestataireController {
     }
 
     // ─────────────────────────────────────────────────────────
-    // SOUMETTRE FACTURE (première soumission)
-    // PV_SOUMIS → FACTURE_SOUMISE
+    // SOUMETTRE FACTURE  PV_SOUMIS → FACTURE_SOUMISE
     // ─────────────────────────────────────────────────────────
     @PostMapping("/missions/{id}/facture")
     @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
@@ -269,7 +282,7 @@ public class PrestataireController {
                                               @RequestBody Map<String, Object> body,
                                               Authentication auth) {
         try {
-            Mission mission = missionRepository.findById(id)
+            Mission mission = missionRepository.findByIdWithDetails(id)
                     .orElseThrow(() -> new RuntimeException("Mission introuvable"));
 
             if (mission.getPrestataire() == null ||
@@ -277,7 +290,6 @@ public class PrestataireController {
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
 
-            // ✅ Uniquement depuis PV_SOUMIS — REJETEE n'est plus autorisé ici
             if (mission.getStatut() != StatutMission.PV_SOUMIS) {
                 return ResponseEntity.badRequest()
                        .body(Map.of("error", "Soumettez d'abord le PV. Statut actuel : " + mission.getStatut()));
@@ -289,6 +301,38 @@ public class PrestataireController {
             mission.setDateValidationFacture(LocalDateTime.now());
             missionRepository.save(mission);
 
+            DossierContentieux dossierFact = mission.getPrestation() != null
+                    ? mission.getPrestation().getDossier() : null;
+
+                    if (dossierFact != null && dossierFact.getAgentCreateur() != null) {
+                        String urlFacture = "/agent/dossiers/" + dossierFact.getId()
+                                          + "/resultats-prestataires?missionId=" + mission.getId();
+                        notificationService.notifier(
+                            dossierFact.getAgentCreateur().getUsername(),
+                            "🧾 Facture soumise — mission " + mission.getNumeroMission(),
+                            "Le prestataire a soumis une facture de "
+                            + mission.getMontantFacture() + " DT pour la mission "
+                            + mission.getNumeroMission()
+                            + " — dossier " + dossierFact.getNumeroDossier() + ".",
+                            "FACTURE_SOUMISE",
+                            dossierFact,
+                            urlFacture    // ← URL explicite avec missionId
+                        );
+                    }
+
+            // ✅ FIX : getValidateurFinancierUsername() retourne un String directement
+            if (dossierFact != null && dossierFact.getValidateurFinancierUsername() != null) {
+                notificationService.notifier(
+                    dossierFact.getValidateurFinancierUsername(),
+                    "🧾 Facture en attente de validation",
+                    "Une facture a été soumise pour la mission "
+                    + mission.getNumeroMission()
+                    + " (dossier " + dossierFact.getNumeroDossier() + "). Votre validation est requise.",
+                    "FACTURE_SOUMISE",
+                    dossierFact
+                );
+            }
+
             return ResponseEntity.ok(Map.of("message", "Facture soumise avec succès."));
         } catch (Exception e) {
             log.error("Erreur soumission facture mission {} : {}", id, e.getMessage());
@@ -298,28 +342,50 @@ public class PrestataireController {
 
     // ─────────────────────────────────────────────────────────
     // CAS 1 — REJET AGENT : resoumettre PV + facture + documents
-    // REJETEE → PV_SOUMIS (via service) → FACTURE_SOUMISE
+    // REJETEE → PV_SOUMIS → FACTURE_SOUMISE
     // ─────────────────────────────────────────────────────────
     @PostMapping("/missions/{missionId}/resoumettre-pv")
     @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
     @Transactional
     public ResponseEntity<?> resoumettreApresRejetAgent(
             @PathVariable Long missionId,
-            @RequestParam("pvTexte")                             String pvTexte,
-            @RequestParam("factureRef")                          String factureRef,
-            @RequestParam("montant")                             Double montant,
-            @RequestParam(value = "fichiers", required = false)  List<MultipartFile> fichiers,
+            @RequestParam("pvTexte")                            String pvTexte,
+            @RequestParam("factureRef")                         String factureRef,
+            @RequestParam("montant")                            Double montant,
+            @RequestParam(value = "fichiers", required = false) List<MultipartFile> fichiers,
             Authentication auth) {
         try {
-            // Vérifie statut REJETEE + ownership
             missionService.resoumettreApresRejetAgent(missionId, pvTexte, auth.getName());
-
-            // Enchaîne avec la facture : PV_SOUMIS → FACTURE_SOUMISE
             missionService.soumettreFacture(missionId, factureRef, montant, auth.getName());
-
-            // Upload pièces jointes
             _uploadDocuments(missionId, fichiers, auth.getName());
 
+            Mission missionResout = missionRepository.findByIdWithDetails(missionId).orElse(null);
+            if (missionResout != null) {
+                DossierContentieux dossierR = missionResout.getPrestation() != null
+                        ? missionResout.getPrestation().getDossier() : null;
+
+                if (dossierR != null && dossierR.getAgentCreateur() != null) {
+                    notificationService.notifier(
+                        dossierR.getAgentCreateur().getUsername(),
+                        "🔄 Resoumission — mission " + missionResout.getNumeroMission(),
+                        "Le prestataire a resoumis le PV et la facture de la mission "
+                        + missionResout.getNumeroMission() + " après rejet.",
+                        "RESOUMISSION",
+                        dossierR
+                    );
+                }
+                // ✅ FIX : String — pas de .getUsername() supplémentaire
+                if (dossierR != null && dossierR.getValidateurFinancierUsername() != null) {
+                    notificationService.notifier(
+                        dossierR.getValidateurFinancierUsername(),
+                        "🔄 Nouvelle facture à valider — mission " + missionResout.getNumeroMission(),
+                        "Le prestataire a resoumis sa facture pour la mission "
+                        + missionResout.getNumeroMission() + ". Votre validation est requise.",
+                        "FACTURE_SOUMISE",
+                        dossierR
+                    );
+                }
+            }
             return ResponseEntity.ok(Map.of("message", "PV, facture et documents soumis avec succès."));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -330,7 +396,7 @@ public class PrestataireController {
     }
 
     // ─────────────────────────────────────────────────────────
-    // CAS 2 — REJET FINANCIER : resoumettre facture seule + documents
+    // CAS 2 — REJET FINANCIER : resoumettre facture seule
     // FACTURE_REJETEE → FACTURE_SOUMISE
     // ─────────────────────────────────────────────────────────
     @PostMapping("/missions/{missionId}/resoumettre-facture")
@@ -338,18 +404,41 @@ public class PrestataireController {
     @Transactional
     public ResponseEntity<?> resoumettreFactureApresRejetFinancier(
             @PathVariable Long missionId,
-            @RequestParam("factureRef")                          String factureRef,
-            @RequestParam("montant")                             Double montant,
-            @RequestParam(value = "fichiers", required = false)  List<MultipartFile> fichiers,
+            @RequestParam("factureRef")                         String factureRef,
+            @RequestParam("montant")                            Double montant,
+            @RequestParam(value = "fichiers", required = false) List<MultipartFile> fichiers,
             Authentication auth) {
         try {
-            // Vérifie statut FACTURE_REJETEE + ownership, PV conservé
-            missionService.resoumettreFactureApresRejetFinancier(
-                missionId, factureRef, montant, auth.getName());
-
-            // Upload pièces jointes
+            missionService.resoumettreFactureApresRejetFinancier(missionId, factureRef, montant, auth.getName());
             _uploadDocuments(missionId, fichiers, auth.getName());
 
+            Mission missionResoumise = missionRepository.findByIdWithDetails(missionId).orElse(null);
+            if (missionResoumise != null) {
+                DossierContentieux dossierRF = missionResoumise.getPrestation() != null
+                        ? missionResoumise.getPrestation().getDossier() : null;
+
+                if (dossierRF != null && dossierRF.getAgentCreateur() != null) {
+                    notificationService.notifier(
+                        dossierRF.getAgentCreateur().getUsername(),
+                        "🔄 Facture corrigée soumise — mission " + missionResoumise.getNumeroMission(),
+                        "Le prestataire a resoumis sa facture corrigée pour la mission "
+                        + missionResoumise.getNumeroMission() + " après rejet financier.",
+                        "RESOUMISSION",
+                        dossierRF
+                    );
+                }
+                // ✅ FIX : String — pas de .getUsername() supplémentaire
+                if (dossierRF != null && dossierRF.getValidateurFinancierUsername() != null) {
+                    notificationService.notifier(
+                        dossierRF.getValidateurFinancierUsername(),
+                        "🔄 Nouvelle facture à valider — mission " + missionResoumise.getNumeroMission(),
+                        "Le prestataire a resoumis une nouvelle facture pour la mission "
+                        + missionResoumise.getNumeroMission() + ". Votre validation est requise.",
+                        "FACTURE_SOUMISE",
+                        dossierRF
+                    );
+                }
+            }
             return ResponseEntity.ok(Map.of("message", "Facture et documents resoumis avec succès."));
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
@@ -360,69 +449,51 @@ public class PrestataireController {
     }
 
     // ─────────────────────────────────────────────────────────
-    // MÉTHODE PRIVÉE — upload documents (réutilisée partout)
+    // MÉTHODE PRIVÉE — upload documents
     // ─────────────────────────────────────────────────────────
     private void _uploadDocuments(Long missionId,
-        List<MultipartFile> fichiers,
-        String username) throws Exception {
+                                  List<MultipartFile> fichiers,
+                                  String username) throws Exception {
+        if (fichiers == null || fichiers.isEmpty()) return;
 
-if (fichiers == null || fichiers.isEmpty()) return;
+        Mission mission = missionRepository.findByIdWithDetails(missionId)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable"));
 
-Mission mission = missionRepository.findByIdWithDetails(missionId)
-.orElseThrow(() -> new RuntimeException("Mission introuvable"));
+        ResultatMission resultat = resultatMissionRepository
+                .findByMission_Id(missionId)
+                .orElseGet(() -> {
+                    ResultatMission r = new ResultatMission();
+                    r.setMission(mission);
+                    r.setDateCreation(LocalDateTime.now());
+                    r.setDateModification(LocalDateTime.now());
+                    r.setDateSoumission(LocalDateTime.now());
+                    r.setSoumisePar(username);
+                    r.setCommentaire("");
+                    return resultatMissionRepository.save(r);
+                });
 
-ResultatMission resultat = resultatMissionRepository
-.findByMission_Id(missionId)
-.orElseGet(() -> {
+        resultat.setDateSoumission(LocalDateTime.now());
+        resultat.setDateModification(LocalDateTime.now());
+        resultatMissionRepository.save(resultat);
 
-ResultatMission r = new ResultatMission();
+        Path uploadPath = Paths.get(uploadDir);
+        if (!Files.exists(uploadPath)) Files.createDirectories(uploadPath);
 
-r.setMission(mission);
-
-r.setDateCreation(LocalDateTime.now());
-r.setDateModification(LocalDateTime.now());
-r.setDateSoumission(LocalDateTime.now());
-
-r.setSoumisePar(username);
-r.setCommentaire("");
-
-return resultatMissionRepository.save(r);
-});
-
-resultat.setDateSoumission(LocalDateTime.now());
-resultat.setDateModification(LocalDateTime.now());
-
-resultatMissionRepository.save(resultat);
-
-Path uploadPath = Paths.get(uploadDir);
-
-if (!Files.exists(uploadPath)) {
-Files.createDirectories(uploadPath);
-}
-
-for (MultipartFile f : fichiers) {
-
-String nomServeur =
-UUID.randomUUID() + "_" + f.getOriginalFilename();
-
-Files.copy(
-f.getInputStream(),
-uploadPath.resolve(nomServeur),
-StandardCopyOption.REPLACE_EXISTING
-);
-
-fichierResultatService.save(
-FichierResultat.builder()
-  .nomFichierOriginal(f.getOriginalFilename())
-  .nomFichierServeur(nomServeur)
-  .typeMime(f.getContentType())
-  .tailleFichier(f.getSize())
-  .dateUpload(LocalDateTime.now())
-  .resultat(resultat)
-  .build()
-);
-}
-}
+        for (MultipartFile f : fichiers) {
+            String nomServeur = UUID.randomUUID() + "_" + f.getOriginalFilename();
+            Files.copy(f.getInputStream(), uploadPath.resolve(nomServeur), StandardCopyOption.REPLACE_EXISTING);
+            fichierResultatService.save(
+                FichierResultat.builder()
+                    .nomFichierOriginal(f.getOriginalFilename())
+                    .nomFichierServeur(nomServeur)
+                    .typeMime(f.getContentType())
+                    .tailleFichier(f.getSize())
+                    .dateUpload(LocalDateTime.now())
+                    .resultat(resultat)
+                    .build()
+            );
+        }
+    }
 
     // ─────────────────────────────────────────────────────────
     // GET RÉSULTAT MISSION
@@ -443,11 +514,11 @@ FichierResultat.builder()
 
             Map<String, Object> response = new HashMap<>();
             response.put("pvTexte",              mission.getPvMission());
-            response.put("dateSoumissionPV",      mission.getDateValidationPv());
-            response.put("factureRef",            mission.getFactureRef());
-            response.put("montant",               mission.getMontantFacture());
-            response.put("dateSoumissionFacture", mission.getDateValidationFacture());
-            response.put("commentaireAgent",      mission.getCommentaireAgent());
+            response.put("dateSoumissionPV",     mission.getDateValidationPv());
+            response.put("factureRef",           mission.getFactureRef());
+            response.put("montant",              mission.getMontantFacture());
+            response.put("dateSoumissionFacture",mission.getDateValidationFacture());
+            response.put("commentaireAgent",     mission.getCommentaireAgent());
 
             Optional<ResultatMission> opt = resultatMissionRepository.findByMission_Id(missionId);
             response.put("commentaire", opt.map(ResultatMission::getCommentaire).orElse(null));
@@ -474,8 +545,8 @@ FichierResultat.builder()
         } catch (Exception e) {
             log.error("Erreur getResultatMission {} : {}", missionId, e.getMessage(), e);
             return ResponseEntity.status(500)
-                   .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue",
-                                "cause", e.getClass().getSimpleName()));
+                   .body(Map.of("error",  e.getMessage() != null ? e.getMessage() : "Erreur inconnue",
+                                "cause",  e.getClass().getSimpleName()));
         }
     }
 
@@ -501,7 +572,30 @@ FichierResultat.builder()
             response.put("numeroMission",    mission.getNumeroMission());
             response.put("statut",           mission.getStatut() != null ? mission.getStatut().name() : null);
             response.put("dateAssignation",  mission.getDateAssignation());
+            response.put("dateFinPrevue",    mission.getDateFinPrevue());
+            response.put("dateRealisation",  mission.getDateRealisation());
+            response.put("description",      mission.getDescription());
             response.put("commentaireAgent", mission.getCommentaireAgent());
+            response.put("pvMission",        mission.getPvMission());
+            response.put("montantFacture",   mission.getMontantFacture());
+            response.put("factureRef",       mission.getFactureRef());
+            response.put("isAgent",          false);
+            response.put("dateValidationPv",      mission.getDateValidationPv());
+            response.put("dateValidationFacture", mission.getDateValidationFacture());
+            response.put("pvValide",      mission.getStatut() == StatutMission.VALIDEE_AGENT
+                                       || mission.getStatut() == StatutMission.TERMINEE);
+            response.put("factureValide", mission.getStatut() == StatutMission.TERMINEE);
+
+            if (mission.getPrestataire() != null) {
+                var p = mission.getPrestataire();
+                response.put("prestataire", Map.of(
+                    "nom",      p.getNom()    != null ? p.getNom()    : "",
+                    "prenom",   p.getPrenom() != null ? p.getPrenom() : "",
+                    "username", p.getUsername(),
+                    "type",     p.getType()   != null ? p.getType().name() : "",
+                    "email",    p.getEmail()  != null ? p.getEmail()  : ""
+                ));
+            }
 
             if (mission.getPrestation() != null) {
                 Map<String, Object> prestation = new HashMap<>();
@@ -510,11 +604,11 @@ FichierResultat.builder()
                 if (mission.getPrestation().getDossier() != null) {
                     var d = mission.getPrestation().getDossier();
                     Map<String, Object> dossier = new HashMap<>();
+                    dossier.put("id",            d.getId());
                     dossier.put("numeroDossier", d.getNumeroDossier());
                     dossier.put("libelle",       d.getLibelle());
                     dossier.put("dateCreation",  d.getDateCreation());
                     dossier.put("montant",       d.calculerSolde());
-
                     if (d.getClient() != null) {
                         dossier.put("client", Map.of(
                             "nom",    d.getClient().getNom(),
@@ -525,13 +619,39 @@ FichierResultat.builder()
                 }
                 response.put("prestation", prestation);
             }
-            return ResponseEntity.ok(response);
 
+            List<Map<String, Object>> resultats = new ArrayList<>();
+            resultatMissionRepository.findByMission_Id(missionId).ifPresent(r -> {
+                List<Map<String, Object>> fichiers = new ArrayList<>();
+                if (r.getFichiers() != null) {
+                    for (FichierResultat f : r.getFichiers()) {
+                        fichiers.add(Map.of(
+                            "id",                 f.getId(),
+                            "nomFichierOriginal", f.getNomFichierOriginal(),
+                            "nomFichierServeur",  f.getNomFichierServeur(),
+                            "typeMime",           f.getTypeMime() != null ? f.getTypeMime() : "",
+                            "tailleFichier",      f.getTailleFichier(),
+                            "dateUpload",         f.getDateUpload()
+                        ));
+                    }
+                }
+                Map<String, Object> resultat = new HashMap<>();
+                resultat.put("commentaire",    r.getCommentaire());
+                resultat.put("soumisePar",     r.getSoumisePar());
+                resultat.put("dateSoumission", r.getDateSoumission());
+                resultat.put("fichiers",       fichiers);
+                resultats.add(resultat);
+            });
+
+            response.put("resultats",          resultats);
+            response.put("historique",         List.of());
+            response.put("resultatVerrouille", false);
+
+            return ResponseEntity.ok(response);
         } catch (Exception e) {
             log.error("Erreur getMissionDetail {} : {}", missionId, e.getMessage(), e);
             return ResponseEntity.status(500)
-                   .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue",
-                                "cause", e.getClass().getSimpleName()));
+                   .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue"));
         }
     }
 
@@ -620,12 +740,10 @@ FichierResultat.builder()
         try {
             Mission mission = missionRepository.findByIdWithDetails(missionId)
                     .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-
             if (mission.getPrestataire() == null ||
                 !mission.getPrestataire().getUsername().equals(auth.getName())) {
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
-
             _uploadDocuments(missionId, fichiers, auth.getName());
             return ResponseEntity.ok(Map.of("message", "Documents ajoutés avec succès"));
         } catch (Exception e) {
@@ -644,12 +762,10 @@ FichierResultat.builder()
         try {
             Mission mission = missionRepository.findByIdWithDetails(missionId)
                     .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-
             if (mission.getPrestataire() == null ||
                 !mission.getPrestataire().getUsername().equals(auth.getName())) {
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             }
-
             List<Map<String, Object>> fichiersInfo = new ArrayList<>();
             resultatMissionRepository.findByMissionIdWithFichiers(missionId)
                     .ifPresent(resultat -> {
@@ -664,7 +780,6 @@ FichierResultat.builder()
                             ));
                         }
                     });
-
             return ResponseEntity.ok(Map.of("fichiers", fichiersInfo));
         } catch (Exception e) {
             log.error("Erreur get documents mission {} : {}", missionId, e.getMessage());
@@ -688,8 +803,7 @@ FichierResultat.builder()
     }
 
     @GetMapping("/missions/fichier/{nomFichierServeur}")
-    public ResponseEntity<byte[]> telechargerFichier(
-            @PathVariable String nomFichierServeur) throws IOException {
+    public ResponseEntity<byte[]> telechargerFichier(@PathVariable String nomFichierServeur) throws IOException {
         FichierResultat fichier = fichierResultatService.findByNomFichierServeur(nomFichierServeur);
         if (fichier == null) return ResponseEntity.notFound().build();
         byte[] contenu = Files.readAllBytes(Paths.get(uploadDir, nomFichierServeur));

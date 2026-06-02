@@ -28,6 +28,7 @@
     <div class="dossiers-list" *ngIf="!loading && dossiers.length > 0">
       <div class="dossier-card"
            *ngFor="let d of dossiers"
+           [id]="'dossier-' + d.id"
            [class.expanded]="dossierExpanded === d.id"
            [class.dossier-valide]="isValide(d)"
            [class.dossier-rejete]="isRejete(d)">

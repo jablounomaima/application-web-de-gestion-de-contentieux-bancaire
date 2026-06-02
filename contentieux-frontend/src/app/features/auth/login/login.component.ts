@@ -22,7 +22,7 @@ import { environment } from '../../../../environments/environment';
         <!-- ── Bouton connexion — masqué si formulaire mdp oublié ouvert ── -->
         <button class="login-btn" (click)="login()" *ngIf="!mdpOublieMode">
           <span>🔐</span>
-          Se connecter
+          Se connecter 
         </button>
 
         <!-- ── Lien mot de passe oublié ── -->
@@ -241,35 +241,41 @@ export class LoginComponent implements OnInit {
   ) {}
 
   async ngOnInit() {
-
-    // ✅ Détecter ?mdpOublie=true → ouvrir automatiquement le formulaire
     this.route.queryParams.subscribe(params => {
       if (params['mdpOublie'] === 'true') {
         this.mdpOublieMode = true;
       }
     });
-
-    const isLoggedIn = await Promise.resolve(
-      this.keycloak.isLoggedIn() as unknown as boolean | Promise<boolean>
-    );
-
-    if (!isLoggedIn) return;
-
-    // ✅ Vérifier UPDATE_PASSWORD avant de rediriger
-    const keycloakInstance = this.keycloak.getKeycloakInstance();
-    const requiredActions: string[] =
-      keycloakInstance?.tokenParsed?.['required_actions'] ?? [];
-
-    if (requiredActions.includes('UPDATE_PASSWORD')) {
-      console.log('🔐 UPDATE_PASSWORD détecté → redirection Keycloak');
-      await keycloakInstance.login({
-        action: 'UPDATE_PASSWORD',
-        redirectUri: window.location.origin + '/login'
-      });
-      return;
+  
+    try {
+      const isLoggedIn = await this.keycloak.isLoggedIn();
+      if (!isLoggedIn) return;
+  
+      // ✅ Vérifier que l'instance existe avant d'y accéder
+      const keycloakInstance = this.keycloak.getKeycloakInstance();
+      if (!keycloakInstance) {
+        this.redirectByRole();
+        return;
+      }
+  
+      const requiredActions: string[] =
+        keycloakInstance?.tokenParsed?.['required_actions'] ?? [];
+  
+      if (requiredActions.includes('UPDATE_PASSWORD')) {
+        console.log('🔐 UPDATE_PASSWORD détecté → redirection Keycloak');
+        await keycloakInstance.login({
+          action: 'UPDATE_PASSWORD',
+          redirectUri: window.location.origin + '/login'
+        });
+        return;
+      }
+  
+      this.redirectByRole();
+  
+    } catch (err) {
+      console.warn('Erreur ngOnInit login:', err);
+      // Ne pas bloquer — laisser l'utilisateur cliquer sur Se connecter
     }
-
-    this.redirectByRole();
   }
 
   async login() {

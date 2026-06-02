@@ -1,9 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { ActivatedRoute } from '@angular/router';
 import { ValidateurService } from '../../../core/services/validateur.service';
 import { ValidateurJuridiqueListeComponent } from '../validateur-juridique-liste/validateur-juridique-liste.component';
-
+import { NotificationService } from '../../../core/services/notification.service';
 @Component({
   selector: 'app-validateur-juridique-dashboard',
   standalone: true,
@@ -26,14 +27,36 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit {
   commentaire         = '';
   erreur              = '';
   soumission          = false;
+  dossierId:          number | null         = null;
 
   // ── Signal de rechargement pour la liste enfant ───────────────
   recharger = false;
 
-  constructor(private validateurService: ValidateurService) {}
+  constructor(
+    private validateurService: ValidateurService,
+    private route: ActivatedRoute,
+    private notifService: NotificationService
+
+  ) {}
 
   ngOnInit(): void {
-    this.loading = true; // la liste enfant va émettre les données
+    this.loading = true;
+  
+    this.route.queryParams.subscribe(params => {
+      const id = params['dossierId'] ? Number(params['dossierId']) : null;
+      if (id) this.dossierId = id;
+    });
+  
+    // Écouter les navigations depuis notifications (même URL)
+    this.notifService.dossierCible$.subscribe(id => {
+      if (id !== null) {
+        this.dossierId = null;
+        setTimeout(() => {
+          this.dossierId = id;
+          this.notifService.signalerDossierCible(null);
+        }, 50);
+      }
+    });
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -45,6 +68,10 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit {
     this.valides  = dossiers.filter(d => this.isValide(d)).length;
     this.rejetes  = dossiers.filter(d => this.isRejete(d)).length;
     this.loading  = false;
+    if (this.dossierId) {
+      const dossier = dossiers.find(d => Number(d.id) === Number(this.dossierId));
+      if (dossier) this.dossierSelectionne = dossier;
+    }
   }
 
   // ── Helpers statut ────────────────────────────────────────────

@@ -2,332 +2,426 @@
 <!-- PAGE PRINCIPALE                                                          -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 
-<!-- En-tête de page -->
 <div class="page-header">
-    <div class="page-header-left">
-      <h1>🏦 Tableau de Bord</h1>
-      <p class="page-subtitle">Gestion des dossiers contentieux</p>
-    </div>
-    <button class="btn-nouveau" (click)="ouvrirNouveauDossier()">
-      ➕ Nouveau Dossier
-    </button>
+  <div class="page-header-left">
+    <h1>🏦 Tableau de Bord</h1>
+    <p class="page-subtitle">Gestion des dossiers contentieux</p>
   </div>
-  
-  <!-- ── Cartes statistiques ── -->
-  <div class="stats-grid">
-    <div class="stat-card total">
-      <div class="stat-icon">📁</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.total }}</span>
-        <span class="stat-label">Total dossiers</span>
-      </div>
-    </div>
-    <div class="stat-card en-cours">
-      <div class="stat-icon">⏳</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.enCours }}</span>
-        <span class="stat-label">En cours</span>
-      </div>
-    </div>
-    <div class="stat-card valides">
-      <div class="stat-icon">✅</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.valides }}</span>
-        <span class="stat-label">Validés</span>
-      </div>
-    </div>
-    <div class="stat-card rejetes">
-      <div class="stat-icon">❌</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.rejetes }}</span>
-        <span class="stat-label">Rejetés</span>
-      </div>
-    </div>
-    <div class="stat-card montant">
-      <div class="stat-icon">💰</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ stats.montantTotal | number:'1.0-0' }}</span>
-        <span class="stat-label">Montant total (TND)</span>
-      </div>
+  <button class="btn-nouveau" (click)="ouvrirNouveauDossier()">
+    ➕ Nouveau Dossier
+  </button>
+</div>
+
+<!-- ── Cartes statistiques ── -->
+<div class="stats-grid">
+  <div class="stat-card total">
+    <div class="stat-icon">📁</div>
+    <div class="stat-info">
+      <span class="stat-value">{{ stats.total }}</span>
+      <span class="stat-label">Total dossiers</span>
     </div>
   </div>
-  
-  <!-- ── Chargement ── -->
-  <div class="loading-state" *ngIf="loading">
-    <div class="spinner"></div>
-    <p>Chargement des dossiers...</p>
+  <div class="stat-card en-cours">
+    <div class="stat-icon">⏳</div>
+    <div class="stat-info">
+      <span class="stat-value">{{ stats.enCours }}</span>
+      <span class="stat-label">En cours</span>
+    </div>
   </div>
-  
-  <!-- ── État vide ── -->
-  <div class="empty-state" *ngIf="!loading && dossiers.length === 0">
-    <div class="empty-icon">📂</div>
-    <h3>Aucun dossier pour le moment</h3>
-    <p>Commencez par créer votre premier dossier contentieux.</p>
-    <button class="btn-nouveau" (click)="ouvrirNouveauDossier()">➕ Créer un dossier</button>
+  <div class="stat-card valides">
+    <div class="stat-icon">✅</div>
+    <div class="stat-info">
+      <span class="stat-value">{{ stats.valides }}</span>
+      <span class="stat-label">Validés</span>
+    </div>
   </div>
-  
-  <!-- ── Tableau des dossiers ── -->
- <!-- ── Liste complète des dossiers ── -->
+  <div class="stat-card rejetes">
+    <div class="stat-icon">❌</div>
+    <div class="stat-info">
+      <span class="stat-value">{{ stats.rejetes }}</span>
+      <span class="stat-label">Rejetés</span>
+    </div>
+  </div>
+  <div class="stat-card montant">
+    <div class="stat-icon">💰</div>
+    <div class="stat-info">
+      <span class="stat-value">{{ stats.montantTotal | number:'1.0-0' }}</span>
+      <span class="stat-label">Montant total (TND)</span>
+    </div>
+  </div>
+</div>
+
+<!-- ── Chargement ── -->
+<div class="loading-state" *ngIf="loading">
+  <div class="spinner"></div>
+  <p>Chargement des dossiers...</p>
+</div>
+
+<!-- ── État vide ── -->
+<div class="empty-state" *ngIf="!loading && dossiers.length === 0">
+  <div class="empty-icon">📂</div>
+  <h3>Aucun dossier pour le moment</h3>
+  <p>Commencez par créer votre premier dossier contentieux.</p>
+  <button class="btn-nouveau" (click)="ouvrirNouveauDossier()">➕ Créer un dossier</button>
+</div>
+
+<!-- ── Liste complète des dossiers ── -->
 <app-agent-dossiers-liste></app-agent-dossiers-liste>
-  
-  
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <!-- MODAL NOUVEAU DOSSIER - 4 étapes                                         -->
-  <!-- ════════════════════════════════════════════════════════════════════════ -->
-  <div class="modal-overlay" *ngIf="showModal" (click)="showModal = false">
-    <div class="modal-card large" (click)="$event.stopPropagation()">
-  
-      <div class="modal-header">
-        <h3>➕ Nouveau Dossier Contentieux</h3>
-        <button class="modal-close" (click)="showModal = false">✕</button>
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL NOUVEAU DOSSIER - 4 étapes                                         -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="showModal" (click)="showModal = false">
+  <div class="modal-card large" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h3>➕ Nouveau Dossier Contentieux</h3>
+      <button class="modal-close" (click)="showModal = false">✕</button>
+    </div>
+
+    <!-- Barre de progression -->
+    <div class="steps-bar">
+      <div class="step" [class.active]="step >= 1" [class.done]="step > 1">
+        <span class="step-num">{{ step > 1 ? '✓' : '1' }}</span>
+        <span class="step-label">Client</span>
       </div>
-  
-      <!-- Barre de progression -->
-      <div class="steps-bar">
-        <div class="step" [class.active]="step >= 1" [class.done]="step > 1">
-          <span class="step-num">1</span><span class="step-label">Client</span>
-        </div>
-        <div class="step-line" [class.done]="step > 1"></div>
-        <div class="step" [class.active]="step >= 2" [class.done]="step > 2">
-          <span class="step-num">2</span><span class="step-label">Dossier</span>
-        </div>
-        <div class="step-line" [class.done]="step > 2"></div>
-        <div class="step" [class.active]="step >= 3" [class.done]="step > 3">
-          <span class="step-num">3</span><span class="step-label">Risques</span>
-        </div>
-        <div class="step-line" [class.done]="step > 3"></div>
-        <div class="step" [class.active]="step >= 4">
-          <span class="step-num">4</span><span class="step-label">Confirmation</span>
-        </div>
+      <div class="step-line" [class.done]="step > 1"></div>
+      <div class="step" [class.active]="step >= 2" [class.done]="step > 2">
+        <span class="step-num">{{ step > 2 ? '✓' : '2' }}</span>
+        <span class="step-label">Dossier</span>
       </div>
-  
-      <div class="modal-body">
-  
-        <!-- ══ ÉTAPE 1 : CLIENT ══ -->
-        <div class="form-section" *ngIf="step === 1">
-          <p class="step-title">ÉTAPE 1 / 4 — Informations du client</p>
-  
-          <div class="type-choice">
-            <div class="type-btn" [class.selected]="form.typeClient === 'PARTICULIER'"
-                 (click)="form.typeClient = 'PARTICULIER'">
-              <span>👤</span><strong>Particulier</strong><small>Personne physique</small>
-            </div>
-            <div class="type-btn" [class.selected]="form.typeClient === 'ENTREPRISE'"
-                 (click)="form.typeClient = 'ENTREPRISE'">
-              <span>🏢</span><strong>Entreprise</strong><small>Personne morale</small>
-            </div>
+      <div class="step-line" [class.done]="step > 2"></div>
+      <div class="step" [class.active]="step >= 3" [class.done]="step > 3">
+        <span class="step-num">{{ step > 3 ? '✓' : '3' }}</span>
+        <span class="step-label">Risques</span>
+      </div>
+      <div class="step-line" [class.done]="step > 3"></div>
+      <div class="step" [class.active]="step >= 4">
+        <span class="step-num">4</span>
+        <span class="step-label">Confirmation</span>
+      </div>
+    </div>
+
+    <div class="modal-body">
+
+      <!-- ══ ÉTAPE 1 : CLIENT ══ -->
+      <div class="form-section" *ngIf="step === 1">
+        <p class="step-title">ÉTAPE 1 / 4 — Informations du client</p>
+
+        <div class="type-choice">
+          <div class="type-btn" [class.selected]="form.typeClient === 'PARTICULIER'"
+               (click)="form.typeClient = 'PARTICULIER'">
+            <span>👤</span><strong>Particulier</strong><small>Personne physique</small>
           </div>
-  
-          <ng-container *ngIf="form.typeClient === 'PARTICULIER'">
-            <div class="form-row">
-              <div class="form-group">
-                <label>Nom *</label>
-                <input type="text" [(ngModel)]="form.clientNom" placeholder="Nom du client">
-              </div>
-              <div class="form-group">
-                <label>Prénom *</label>
-                <input type="text" [(ngModel)]="form.clientPrenom" placeholder="Prénom">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>CIN *</label>
-                <input type="text" [(ngModel)]="form.clientCin" placeholder="Ex: 12345678">
-              </div>
-              <div class="form-group">
-                <label>Téléphone</label>
-                <input type="text" [(ngModel)]="form.clientTelephone" placeholder="+216 XX XXX XXX">
-              </div>
-            </div>
-          </ng-container>
-  
-          <ng-container *ngIf="form.typeClient === 'ENTREPRISE'">
-            <div class="form-group">
-              <label>Raison Sociale *</label>
-              <input type="text" [(ngModel)]="form.clientRaisonSociale" placeholder="Nom de la société">
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>RNE</label>
-                <input type="text" [(ngModel)]="form.clientRne" placeholder="Ex: B12345678">
-              </div>
-              <div class="form-group">
-                <label>Téléphone</label>
-                <input type="text" [(ngModel)]="form.clientTelephone" placeholder="+216 XX XXX XXX">
-              </div>
-            </div>
-          </ng-container>
-  
+          <div class="type-btn" [class.selected]="form.typeClient === 'ENTREPRISE'"
+               (click)="form.typeClient = 'ENTREPRISE'">
+            <span>🏢</span><strong>Entreprise</strong><small>Personne morale</small>
+          </div>
+        </div>
+
+        <ng-container *ngIf="form.typeClient === 'PARTICULIER'">
           <div class="form-row">
             <div class="form-group">
-              <label>Email</label>
-              <input type="email" [(ngModel)]="form.clientEmail" placeholder="email@exemple.tn">
+              <label>Nom *</label>
+              <input type="text" [(ngModel)]="form.clientNom" placeholder="Nom du client">
             </div>
             <div class="form-group">
-              <label>Adresse</label>
-              <input type="text" [(ngModel)]="form.clientAdresse" placeholder="Adresse complète">
+              <label>Prénom *</label>
+              <input type="text" [(ngModel)]="form.clientPrenom" placeholder="Prénom">
             </div>
           </div>
-  
-          <div class="error-banner" *ngIf="erreurCreation">{{ erreurCreation }}</div>
-        </div>
-  
-        <!-- ══ ÉTAPE 2 : DOSSIER ══ -->
-        <div class="form-section" *ngIf="step === 2">
-          <p class="step-title">ÉTAPE 2 / 4 — Informations du dossier</p>
-  
+          <div class="form-row">
+            <div class="form-group">
+              <label>CIN *</label>
+              <input type="text" [(ngModel)]="form.clientCin" placeholder="Ex: 12345678">
+            </div>
+            <div class="form-group">
+              <label>Téléphone</label>
+              <input type="text" [(ngModel)]="form.clientTelephone" placeholder="+216 XX XXX XXX">
+            </div>
+          </div>
+        </ng-container>
+
+        <ng-container *ngIf="form.typeClient === 'ENTREPRISE'">
           <div class="form-group">
-            <label>Libellé du dossier *</label>
-            <input type="text" [(ngModel)]="form.libelle" placeholder="Ex: Impayé crédit immobilier - Ben Ali">
+            <label>Raison Sociale *</label>
+            <input type="text" [(ngModel)]="form.clientRaisonSociale" placeholder="Nom de la société">
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>RNE</label>
+              <input type="text" [(ngModel)]="form.clientRne" placeholder="Ex: B12345678">
+            </div>
+            <div class="form-group">
+              <label>Téléphone</label>
+              <input type="text" [(ngModel)]="form.clientTelephone" placeholder="+216 XX XXX XXX">
+            </div>
+          </div>
+        </ng-container>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label>Email</label>
+            <input type="email" [(ngModel)]="form.clientEmail" placeholder="email@exemple.tn">
           </div>
           <div class="form-group">
-            <label>Description</label>
-            <textarea [(ngModel)]="form.description" rows="3" placeholder="Contexte et détails..."></textarea>
+            <label>Adresse</label>
+            <input type="text" [(ngModel)]="form.clientAdresse" placeholder="Adresse complète">
           </div>
-          <div class="form-group">
-            <label>Notes internes</label>
-            <textarea [(ngModel)]="form.notes" rows="2" placeholder="Notes confidentielles..."></textarea>
-          </div>
-  
-          <div class="error-banner" *ngIf="erreurCreation">{{ erreurCreation }}</div>
         </div>
-  
-        <!-- ══ ÉTAPE 3 : RISQUES & GARANTIES ══ -->
-        <div class="form-section" *ngIf="step === 3">
-          <p class="step-title">ÉTAPE 3 / 4 — Risques & Garanties</p>
-  
-          <div class="risques-list" *ngIf="form.risques.length > 0">
-            <div class="risque-card" *ngFor="let r of form.risques; let i = index">
-              <div class="risque-header">
-                <strong>{{ r.type || 'Risque ' + (i+1) }}</strong>
-                <div class="risque-amounts">
-                  <span>Initial: <b>{{ r.montantInitial | number:'1.2-2' }} TND</b></span>
-                  <span>Impayé: <b>{{ r.montantImpaye | number:'1.2-2' }} TND</b></span>
-                </div>
-                <button class="btn-remove" (click)="supprimerRisque(i)">✕</button>
-              </div>
-              <div class="garanties-list" *ngIf="r.garanties && r.garanties.length > 0">
-                <div class="garantie-pill" *ngFor="let g of r.garanties; let j = index">
-                  <span>🔒 {{ g.typeGarantie }}</span>
-                  <span class="g-val">{{ g.valeurEstimee | number:'1.0-0' }} TND</span>
-                  <button (click)="supprimerGarantie(i, j)">✕</button>
-                </div>
-              </div>
-              <button class="btn-add-garantie" (click)="ouvrirAjoutGarantie(i)">+ Ajouter une garantie</button>
-            </div>
-          </div>
-  
-          <div class="add-risque-form">
-            <h4>+ Nouveau Risque</h4>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Type de risque *</label>
-                <select [(ngModel)]="newRisque.type">
-                  <option value="">-- Choisir --</option>
-                  <option value="CREDIT_IMMOBILIER">Crédit Immobilier</option>
-                  <option value="CREDIT_CONSOMMATION">Crédit Consommation</option>
-                  <option value="DECOUVERT">Découvert Bancaire</option>
-                  <option value="LEASING">Leasing</option>
-                </select>
-              </div>
-              <div class="form-group">
-                <label>Date échéance</label>
-                <input type="date" [(ngModel)]="newRisque.dateEcheance">
-              </div>
-            </div>
-            <div class="form-row">
-              <div class="form-group">
-                <label>Montant Initial *</label>
-                <input type="number" [(ngModel)]="newRisque.montantInitial" placeholder="0.000">
-              </div>
-              <div class="form-group">
-                <label>Montant Impayé *</label>
-                <input type="number" [(ngModel)]="newRisque.montantImpaye" placeholder="0.000">
-              </div>
-            </div>
-            <button class="btn-secondary" (click)="ajouterRisque()" [disabled]="!newRisque.type || !newRisque.montantInitial">
-              Ajouter ce risque
-            </button>
-          </div>
-  
-          <div class="error-banner" *ngIf="erreurCreation">{{ erreurCreation }}</div>
-        </div>
-  
-        <!-- ══ ÉTAPE 4 : CONFIRMATION ══ -->
-        <div class="form-section" *ngIf="step === 4">
-          <p class="step-title">ÉTAPE 4 / 4 — Récapitulatif & Confirmation</p>
-          
-          <div class="recap-grid">
-            <div class="recap-item">
-              <label>Client</label>
-              <p><strong>{{ form.typeClient === 'PARTICULIER' ? (form.clientNom + ' ' + form.clientPrenom) : form.clientRaisonSociale }}</strong></p>
-            </div>
-            <div class="recap-item">
-              <label>Libellé</label>
-              <p>{{ form.libelle }}</p>
-            </div>
-            <div class="recap-item">
-              <label>Nombre de risques</label>
-              <p>{{ form.risques.length }}</p>
-            </div>
-            <div class="recap-item">
-              <label>Total Impayé</label>
-              <p class="total-highlight">{{ getTotalImpaye() | number:'1.2-2' }} TND</p>
-            </div>
-          </div>
-  
-          <div class="confirmation-msg">
-            <p>En cliquant sur "Créer le dossier", le dossier sera enregistré et vous serez redirigé vers sa fiche détaillée.</p>
-          </div>
-  
-          <div class="error-banner" *ngIf="erreurCreation">{{ erreurCreation }}</div>
-        </div>
-  
+
+
       </div>
-  
-      <div class="modal-footer">
-        <button class="btn-text" (click)="step = step - 1" *ngIf="step > 1" [disabled]="submitting">Retour</button>
-        <div class="spacer"></div>
-        <button class="btn-primary" (click)="passerEtapeSuivante()" *ngIf="step < 4">Suivant</button>
-        <button class="btn-success" (click)="creerDossier()" *ngIf="step === 4" [disabled]="submitting">
-          {{ submitting ? 'Création...' : '🚀 Créer le dossier' }}
-        </button>
-      </div>
-  
-    </div>
-  </div>
-  
-  <!-- ══ MODAL AJOUT GARANTIE ══ -->
-  <div class="modal-overlay mini" *ngIf="showGarantieModal">
-    <div class="modal-card small">
-      <div class="modal-header">
-        <h4>🔒 Ajouter une Garantie</h4>
-        <button class="modal-close" (click)="showGarantieModal = false">✕</button>
-      </div>
-      <div class="modal-body">
+
+      <!-- ══ ÉTAPE 2 : DOSSIER ══ -->
+      <div class="form-section" *ngIf="step === 2">
+        <p class="step-title">ÉTAPE 2 / 4 — Informations du dossier</p>
+
         <div class="form-group">
-          <label>Type de garantie *</label>
-          <select [(ngModel)]="newGarantie.typeGarantie">
-            <option value="">-- Choisir --</option>
-            <option value="HYPOTHEQUE">Hypothèque</option>
-            <option value="CAUTION">Caution</option>
-            <option value="NANTISSEMENT">Nantissement</option>
-            <option value="GAGE">Gage</option>
-            <option value="AUTRE">Autre</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Valeur estimée (TND)</label>
-          <input type="number" [(ngModel)]="newGarantie.valeurEstimee" placeholder="0.000">
+          <label>Libellé du dossier *</label>
+          <input type="text" [(ngModel)]="form.libelle"
+                 placeholder="Ex: Impayé crédit immobilier - Ben Ali">
         </div>
         <div class="form-group">
           <label>Description</label>
-          <textarea [(ngModel)]="newGarantie.description" rows="2"></textarea>
+          <textarea [(ngModel)]="form.description" rows="3"
+                    placeholder="Contexte et détails..."></textarea>
         </div>
+        <div class="form-group">
+          <label>Notes internes</label>
+          <textarea [(ngModel)]="form.notes" rows="2"
+                    placeholder="Notes confidentielles..."></textarea>
+        </div>
+
+
       </div>
-      <div class="modal-footer">
-        <button class="btn-text" (click)="showGarantieModal = false">Annuler</button>
-        <button class="btn-primary" (click)="confirmerGarantie()" [disabled]="!newGarantie.typeGarantie">Confirmer</button>
+
+      <!-- ══ ÉTAPE 3 : RISQUES & GARANTIES ══ -->
+      <div class="form-section" *ngIf="step === 3">
+        <p class="step-title">ÉTAPE 3 / 4 — Risques &amp; Garanties</p>
+
+        <!-- Liste des risques ajoutés -->
+        <div class="risque-list" *ngIf="form.risques.length > 0">
+          <div class="risque-card"
+               *ngFor="let r of form.risques; let i = index"
+               [class.risque-incomplet]="risqueSansGarantie(r)">
+
+            <!-- En-tête du risque -->
+            <div class="risque-head">
+              <div class="risque-head-left">
+                <span class="risque-badge">{{ getRisqueLabel(r.type) }}</span>
+                <div class="risque-amounts">
+                  <span>Initial : <b>{{ r.montantInitial | number:'1.0-0' }} TND</b></span>
+                  <span>Impayé : <b>{{ r.montantImpaye | number:'1.0-0' }} TND</b></span>
+                </div>
+              </div>
+              <div class="risque-head-right">
+                <!-- Indicateur discret si pas de garantie -->
+                <span class="no-garantie-dot" *ngIf="risqueSansGarantie(r)"
+                      title="Garantie manquante">●</span>
+                <button class="btn-rm" (click)="supprimerRisque(i)" title="Supprimer">✕</button>
+              </div>
+            </div>
+
+            <!-- Zone garanties imbriquées -->
+            <div class="garanties-area">
+
+              <!-- Garanties existantes -->
+              <div class="garantie-list" *ngIf="r.garanties && r.garanties.length > 0">
+                <div class="garantie-row" *ngFor="let g of r.garanties; let j = index">
+                  <div class="g-icon">🔒</div>
+                  <span class="g-name">{{ getGarantieLabel(g.typeGarantie) }}</span>
+                  <span class="g-val">{{ g.valeurEstimee | number:'1.0-0' }} TND</span>
+                  <span class="g-desc" *ngIf="g.description">— {{ g.description }}</span>
+                  <button class="btn-rm" (click)="supprimerGarantie(i, j)" title="Supprimer">✕</button>
+                </div>
+              </div>
+
+              <!-- Hint inline discret si aucune garantie -->
+              <span class="garantie-hint" *ngIf="!r.garanties || r.garanties.length === 0">
+                Aucune garantie — obligatoire
+              </span>
+
+              <!-- Bouton ajouter garantie -->
+              <button class="btn-add-garantie" (click)="ouvrirAjoutGarantie(i)">
+                + Ajouter une garantie
+              </button>
+
+            </div>
+          </div>
+        </div>
+
+        <!-- État vide : aucun risque -->
+        <div class="empty-risque" *ngIf="form.risques.length === 0">
+          <p>Aucun risque — ajoutez-en un ci-dessous.</p>
+        </div>
+
+        <!-- Formulaire ajout nouveau risque -->
+        <div class="add-risque-box">
+          <h4>➕ Nouveau risque</h4>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Type de risque *</label>
+              <select [(ngModel)]="newRisque.type">
+                <option value="">-- Choisir --</option>
+                <option value="CREDIT_IMMOBILIER">Crédit Immobilier</option>
+                <option value="CREDIT_CONSOMMATION">Crédit Consommation</option>
+                <option value="DECOUVERT">Découvert Bancaire</option>
+                <option value="LEASING">Leasing</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Date échéance</label>
+              <input type="date" [(ngModel)]="newRisque.dateEcheance">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label>Montant Initial *</label>
+              <input type="number" [(ngModel)]="newRisque.montantInitial" placeholder="0.000">
+            </div>
+            <div class="form-group">
+              <label>Montant Impayé *</label>
+              <input type="number" [(ngModel)]="newRisque.montantImpaye" placeholder="0.000">
+            </div>
+          </div>
+          <div class="form-group">
+            <label>Description</label>
+            <input type="text" [(ngModel)]="newRisque.description" placeholder="Description du risque...">
+          </div>
+          <button class="btn-secondary"
+                  (click)="ajouterRisque()"
+                  [disabled]="!newRisque.type || !newRisque.montantInitial">
+            ➕ Ajouter ce risque
+          </button>
+        </div>
+
+
+      </div>
+
+      <!-- ══ ÉTAPE 4 : CONFIRMATION ══ -->
+      <div class="form-section" *ngIf="step === 4">
+        <p class="step-title">ÉTAPE 4 / 4 — Récapitulatif &amp; Confirmation</p>
+
+        <div class="recap-grid">
+          <div class="recap-item">
+            <label>Client</label>
+            <p>
+              <strong>
+                {{ form.typeClient === 'PARTICULIER'
+                    ? (form.clientNom + ' ' + form.clientPrenom)
+                    : form.clientRaisonSociale }}
+              </strong>
+            </p>
+          </div>
+          <div class="recap-item">
+            <label>Libellé</label>
+            <p>{{ form.libelle }}</p>
+          </div>
+          <div class="recap-item">
+            <label>Nombre de risques</label>
+            <p>{{ form.risques.length }}</p>
+          </div>
+          <div class="recap-item">
+            <label>Total Impayé</label>
+            <p class="total-highlight">{{ getTotalImpaye() | number:'1.2-2' }} TND</p>
+          </div>
+        </div>
+
+        <!-- Détail des risques avec leurs garanties -->
+        <div class="recap-risques-detail" *ngIf="form.risques.length > 0">
+          <p class="recap-sub-title">Détail des risques &amp; garanties</p>
+          <div class="recap-risque-item" *ngFor="let r of form.risques; let i = index">
+            <div class="recap-risque-head">
+              <span class="recap-risque-name">{{ getRisqueLabel(r.type) }}</span>
+              <span class="recap-risque-montant">Impayé : {{ r.montantImpaye | number:'1.2-2' }} TND</span>
+            </div>
+            <div class="recap-garanties-list" *ngIf="r.garanties && r.garanties.length > 0">
+              <span class="garantie-pill" *ngFor="let g of r.garanties">
+                🔒 {{ getGarantieLabel(g.typeGarantie) }}
+                <em>{{ g.valeurEstimee | number:'1.0-0' }} TND</em>
+              </span>
+            </div>
+            <span class="garantie-hint" *ngIf="!r.garanties || r.garanties.length === 0">
+              Aucune garantie
+            </span>
+          </div>
+        </div>
+
+        <div class="confirmation-msg">
+          <p>✅ En cliquant sur "Créer le dossier", le dossier sera enregistré et vous serez redirigé vers sa fiche détaillée.</p>
+        </div>
+
+
+      </div>
+
+    </div><!-- /modal-body -->
+
+    <div class="modal-footer">
+      <span class="footer-hint" *ngIf="erreurCreation">{{ erreurCreation }}</span>
+      <div class="spacer"></div>
+      <button class="btn-text" (click)="step = step - 1" *ngIf="step > 1"
+              [disabled]="submitting">Retour</button>
+      <button class="btn-primary" (click)="passerEtapeSuivante()" *ngIf="step < 4">
+        Suivant →
+      </button>
+      <button class="btn-success" (click)="creerDossier()" *ngIf="step === 4"
+              [disabled]="submitting">
+        {{ submitting ? 'Création...' : '🚀 Créer le dossier' }}
+      </button>
+    </div>
+
+  </div><!-- /modal-card -->
+</div><!-- /modal-overlay -->
+
+
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<!-- MODAL AJOUT GARANTIE                                                      -->
+<!-- ════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-overlay mini" *ngIf="showGarantieModal" (click)="showGarantieModal = false">
+  <div class="modal-card small" (click)="$event.stopPropagation()">
+
+    <div class="modal-header">
+      <h4>🔒 Ajouter une Garantie</h4>
+      <button class="modal-close" (click)="showGarantieModal = false">✕</button>
+    </div>
+
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Type de garantie *</label>
+        <select [(ngModel)]="newGarantie.typeGarantie">
+          <option value="">-- Choisir --</option>
+          <option value="HYPOTHEQUE">Hypothèque</option>
+          <option value="CAUTION">Caution</option>
+          <option value="NANTISSEMENT">Nantissement</option>
+          <option value="GAGE">Gage</option>
+          <option value="AUTRE">Autre</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Valeur estimée (TND)</label>
+        <input type="number" [(ngModel)]="newGarantie.valeurEstimee" placeholder="0.000">
+      </div>
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="newGarantie.description" rows="2"
+                  placeholder="Détails sur la garantie..."></textarea>
+      </div>
+      <div class="form-group">
+        <label>Référence document</label>
+        <input type="text" [(ngModel)]="newGarantie.documentRef"
+               placeholder="Ex: ACTE-2024-001">
       </div>
     </div>
+
+    <div class="modal-footer">
+      <button class="btn-text" (click)="showGarantieModal = false">Annuler</button>
+      <button class="btn-primary" (click)="confirmerGarantie()"
+              [disabled]="!newGarantie.typeGarantie">
+        Confirmer
+      </button>
+    </div>
+
   </div>
+</div>

@@ -3,6 +3,8 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AvocatService } from '../../../core/services/avocat.service';
+import { ActivatedRoute } from '@angular/router';
+import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-avocat-affaires-list',
@@ -33,13 +35,54 @@ export class AvocatAffairesListComponent implements OnInit {
 
   constructor(
     private avocatService: AvocatService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute,
+    private notifService: NotificationService
   ) {}
 
-  ngOnInit(): void {
-    this.chargerStats();
-    this.chargerAffaires();
+  _cibleDossierId: number | null = null;
+
+  private _surlignerAffaire(dossierId: number): void {
+    const affaire = this.affaires.find(
+      (a: any) => a.dossierId === dossierId
+    );
+    if (!affaire) {
+      // Attendre le chargement
+      setTimeout(() => this._surlignerAffaire(dossierId), 300);
+      return;
+    }
+    setTimeout(() => {
+      const el = document.getElementById('affaire-' + affaire.id);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('affaire-highlight');
+      setTimeout(() => el.classList.remove('affaire-highlight'), 4000);
+    }, 300);
   }
+ngOnInit(): void {
+  this.chargerStats();
+  this.chargerAffaires();
+
+  // Écouter queryParams (premier chargement depuis notification)
+  this.route.queryParams.subscribe(params => {
+    const id = params['dossierId'] ? Number(params['dossierId']) : null;
+    if (id) {
+      this._cibleDossierId = id;
+    }
+  });
+
+  // Écouter le service (même URL)
+  this.notifService.dossierCible$.subscribe(id => {
+    if (id !== null) {
+      this._cibleDossierId = null;
+      setTimeout(() => {
+        this._cibleDossierId = id;
+        this.notifService.signalerDossierCible(null);
+        this._surlignerAffaire(id);
+      }, 50);
+    }
+  });
+}
 
   // ── Chargement ───────────────────────────────────────────────────
 
@@ -65,7 +108,8 @@ export class AvocatAffairesListComponent implements OnInit {
           ...a,
           missionStatut: data.missionStatuts?.[a.id] ?? null,
           missionId:     data.missionIds?.[a.id]     ?? null,
-  
+          dossierId:      data.dossierIds?.[a.id]     ?? null, // ← AJOUTER
+
           // ✅ champs PV / Facture directs
           pvTexte:        a.pvTexte        ?? null,
           pvStatut:       a.pvStatut       ?? null,

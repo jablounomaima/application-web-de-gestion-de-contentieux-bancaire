@@ -2,84 +2,81 @@
   <div class="sidebar-header">
     <p class="role-badge">{{ getRoleDisplayName() }}</p>
     <p class="user-name-small">{{ username }}</p>
+
+    <!-- ✅ Cloche notifications dans le header sidebar -->
+ <!--  <app-notifications></app-notifications>-->
   </div>
 
   <!-- MENU AGENT BANCAIRE -->
   <div class="menu-section" *ngIf="hasRole('AGENT')">
     <p class="menu-label">ESPACE AGENT</p>
     <ul>
-      <li><a routerLink="/agent/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Tableau de Bord</a></li>
-      <li><a routerLink="/agent/liste" routerLinkActive="active-link"><i class="icon">📁</i> Tous les Dossiers</a></li>
-
       <li>
-        <a routerLink="/agent/dashboard" 
-           [queryParams]="{action: 'nouveau-dossier'}" 
+        <a routerLink="/agent/dashboard" routerLinkActive="active-link">
+          <i class="icon">📊</i> Tableau de Bord
+        </a>
+      </li>
+      <li>
+        <a routerLink="/agent/liste" routerLinkActive="active-link">
+          <i class="icon">📁</i> Tous les Dossiers
+        </a>
+      </li>
+      <li>
+        <a routerLink="/agent/dashboard"
+           [queryParams]="{action: 'nouveau-dossier'}"
            routerLinkActive="active-link">
           <i class="icon">➕</i> Nouveau Dossier
         </a>
       </li>
-
       <li>
         <a routerLink="/agent/prestataires/nouveau" routerLinkActive="active-link">
           <i class="icon">👤</i> Nouveau Prestataire
         </a>
       </li>
-
       <li>
-        <a routerLink="agent/prestataires/liste" routerLinkActive="active-link">
-          <i class="icon">📋</i> liste Prestataire
+        <a routerLink="/agent/prestataires/liste" routerLinkActive="active-link">
+          <i class="icon">📋</i> Liste Prestataires
         </a>
       </li>
-    
     </ul>
   </div>
 
   <!-- MENU PRESTATAIRE -->
-  <!-- MENU PRESTATAIRE générique -->
-<div class="menu-section" *ngIf="hasRole('PRESTATAIRE')">
-  <p class="menu-label">ESPACE PRESTATAIRE</p>
-  <ul>
-    <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
-    <li><a routerLink="/prestataire/missions" routerLinkActive="active-link"><i class="icon">⏳</i> Mes Missions</a></li>
-    <li><a routerLink="/prestataire/factures" routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
-  </ul>
-</div>
+  <div class="menu-section" *ngIf="hasRole('PRESTATAIRE')">
+    <p class="menu-label">ESPACE PRESTATAIRE</p>
+    <ul>
+      <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
+      <li><a routerLink="/prestataire/missions"  routerLinkActive="active-link"><i class="icon">⏳</i> Mes Missions</a></li>
+      <li><a routerLink="/prestataire/factures"  routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
+    </ul>
+  </div>
 
-<!-- MENU EXPERT -->
-<div class="menu-section" *ngIf="hasRole('EXPERT')">
-  <p class="menu-label">ESPACE EXPERT</p>
-  <ul>
-    <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
-    <li><a routerLink="/prestataire/missions" routerLinkActive="active-link"><i class="icon">🔍</i> Mes Missions</a></li>
-    <li><a routerLink="/prestataire/factures" routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
-  </ul>
-</div>
+  <!-- MENU EXPERT -->
+  <div class="menu-section" *ngIf="hasRole('EXPERT')">
+    <p class="menu-label">ESPACE EXPERT</p>
+    <ul>
+      <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
+      <li><a routerLink="/prestataire/missions"  routerLinkActive="active-link"><i class="icon">🔍</i> Mes Missions</a></li>
+      <li><a routerLink="/prestataire/factures"  routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
+    </ul>
+  </div>
 
-<!-- MENU HUISSIER -->
-<div class="menu-section" *ngIf="hasRole('HUISSIER')">
-  <p class="menu-label">ESPACE HUISSIER</p>
-  <ul>
-    <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
-    <li><a routerLink="/prestataire/missions" routerLinkActive="active-link"><i class="icon">📋</i> Mes Missions</a></li>
-    <li><a routerLink="/prestataire/factures" routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
-  </ul>
-</div>
+  <!-- MENU HUISSIER -->
+  <div class="menu-section" *ngIf="hasRole('HUISSIER')">
+    <p class="menu-label">ESPACE HUISSIER</p>
+    <ul>
+      <li><a routerLink="/prestataire/dashboard" routerLinkActive="active-link"><i class="icon">📊</i> Mon Dashboard</a></li>
+      <li><a routerLink="/prestataire/missions"  routerLinkActive="active-link"><i class="icon">📋</i> Mes Missions</a></li>
+      <li><a routerLink="/prestataire/factures"  routerLinkActive="active-link"><i class="icon">💳</i> Mes Factures</a></li>
+    </ul>
+  </div>
 
   <!-- MENU AVOCAT -->
   <div class="menu-section" *ngIf="hasRole('AVOCAT')">
     <p class="menu-label">ESPACE AVOCAT</p>
     <ul>
-      <li>
-        <a routerLink="/avocat/dashboard" routerLinkActive="active-link">
-          <i class="icon">⚖️</i> Dashboard
-        </a>
-      </li>
-      <li>
-        <a routerLink="/avocat/affaires" routerLinkActive="active-link">
-          <i class="icon">📋</i> Mes Affaires
-        </a>
-      </li>
-      
+      <li><a routerLink="/avocat/dashboard" routerLinkActive="active-link"><i class="icon">⚖️</i> Dashboard</a></li>
+      <li><a routerLink="/avocat/affaires"  routerLinkActive="active-link"><i class="icon">📋</i> Mes Affaires</a></li>
     </ul>
   </div>
 
@@ -88,8 +85,7 @@
     <p class="menu-label">VALIDATION JURIDIQUE</p>
     <ul>
       <li><a routerLink="/validateur/juridique/dashboard" routerLinkActive="active-link"><i class="icon">📋</i> Tableau de Bord</a></li>
-      <li><a routerLink="validateur/juridique/liste" routerLinkActive="active-link"><i class="icon">📋</i> liste de dossiers</a></li>
-
+      <li><a routerLink="/validateur/juridique/liste"     routerLinkActive="active-link"><i class="icon">📋</i> Liste Dossiers</a></li>
     </ul>
   </div>
 
@@ -98,9 +94,8 @@
     <p class="menu-label">VALIDATION FINANCIÈRE</p>
     <ul>
       <li><a routerLink="/validateur/financier/dashboard" routerLinkActive="active-link"><i class="icon">💰</i> Tableau de Bord</a></li>
-      <li><a routerLink="validateur/financier/liste" routerLinkActive="active-link"><i class="icon">📋</i> liste de dossiers</a></li>
-
-      <li><a routerLink="/validateur/financier/factures" routerLinkActive="active-link"><i class="icon">🧾</i> Factures en attente</a></li>
+      <li><a routerLink="/validateur/financier/liste"     routerLinkActive="active-link"><i class="icon">📋</i> Liste Dossiers</a></li>
+      <li><a routerLink="/validateur/financier/factures"  routerLinkActive="active-link"><i class="icon">🧾</i> Factures en attente</a></li>
     </ul>
   </div>
 
@@ -114,24 +109,27 @@
         </a>
       </li>
       <li>
-        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'agents'}" routerLinkActive="active-link">
+        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'agents'}"
+           routerLinkActive="active-link">
           <i class="icon">👥</i> Agents
         </a>
       </li>
       <li>
-        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'agences'}" routerLinkActive="active-link">
+        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'agences'}"
+           routerLinkActive="active-link">
           <i class="icon">🏢</i> Agences
         </a>
       </li>
       <li>
-        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'validateurs'}" routerLinkActive="active-link">
+        <a routerLink="/admin/dashboard" [queryParams]="{tab: 'validateurs'}"
+           routerLinkActive="active-link">
           <i class="icon">⚖️</i> Validateurs
         </a>
       </li>
     </ul>
   </div>
 
-  <!-- MENU PAR DÉFAUT (Fallback) -->
+  <!-- MENU PAR DÉFAUT -->
   <div class="menu-section" *ngIf="!isAnyRoleMatched()">
     <p class="menu-label">NAVIGATION</p>
     <ul>
@@ -141,4 +139,7 @@
       <small>Rôles détectés : {{ roles.join(', ') || 'aucun' }}</small>
     </div>
   </div>
+
+ 
+
 </nav>

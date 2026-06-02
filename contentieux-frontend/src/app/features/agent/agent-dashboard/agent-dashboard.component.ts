@@ -1,10 +1,9 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterModule, ActivatedRoute } from '@angular/router';
 import { DossierService } from '../../../core/services/dossier.service';
 import { AgentDossiersListeComponent } from '../agent-dossiers-liste/agent-dossiers-liste.component';
-import { ActivatedRoute} from '@angular/router';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
 
@@ -45,7 +44,7 @@ interface DossierForm {
 @Component({
   selector: 'app-agent-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule,AgentDossiersListeComponent],
+  imports: [CommonModule, FormsModule, RouterModule, AgentDossiersListeComponent],
   templateUrl: './agent-dashboard.component.html',
   styleUrls: ['./agent-dashboard.component.scss']
 })
@@ -56,25 +55,55 @@ export class AgentDashboardComponent implements OnInit {
 
   stats = { total: 0, enCours: 0, valides: 0, rejetes: 0, montantTotal: 0 };
 
-  showModal = false;
-  submitting = false;
+  showModal    = false;
+  submitting   = false;
   erreurCreation = '';
-  step = 1;
+  step         = 1;
 
-  showGarantieModal = false;
+  showGarantieModal  = false;
   risqueIndexEnCours = -1;
 
   form!: DossierForm;
   newRisque!: RisqueForm;
   newGarantie!: GarantieForm;
 
+  // Labels affichés dans la barre de progression
+  readonly stepsList = ['Client', 'Dossier', 'Risques', 'Confirmation'];
+
+  // ─── Dictionnaires de labels ──────────────────────────────────────────────
+
+  private readonly risqueLabels: Record<string, string> = {
+    CREDIT_IMMOBILIER:  'Crédit Immobilier',
+    CREDIT_CONSOMMATION: 'Crédit Consommation',
+    DECOUVERT:          'Découvert Bancaire',
+    LEASING:            'Leasing'
+  };
+
+  private readonly garantieLabels: Record<string, string> = {
+    HYPOTHEQUE:   'Hypothèque',
+    CAUTION:      'Caution',
+    NANTISSEMENT: 'Nantissement',
+    GAGE:         'Gage',
+    AUTRE:        'Autre'
+  };
+
+  private readonly garantieIcons: Record<string, string> = {
+    HYPOTHEQUE:   'ti-home',
+    CAUTION:      'ti-shield',
+    NANTISSEMENT: 'ti-certificate',
+    GAGE:         'ti-lock',
+    AUTRE:        'ti-file'
+  };
+
+  // ─── Constructeur ─────────────────────────────────────────────────────────
+
   constructor(
     private dossierService: DossierService,
     private route: ActivatedRoute,
-    private router: Router,
+    private router: Router
   ) {}
 
-  ngOnInit() {
+  ngOnInit(): void {
     this.form        = this.emptyForm();
     this.newRisque   = this.emptyRisque();
     this.newGarantie = this.emptyGarantie();
@@ -83,62 +112,59 @@ export class AgentDashboardComponent implements OnInit {
     this.route.queryParams.subscribe(params => {
       if (params['action'] === 'nouveau-dossier') {
         this.ouvrirNouveauDossier();
-        // Nettoyer l'URL après ouverture (optionnel mais propre)
-        this.router.navigate([], { 
-          queryParams: {}, 
-          replaceUrl: true 
-        });
+        this.router.navigate([], { queryParams: {}, replaceUrl: true });
       }
     });
   }
 
   // ─── Chargement ───────────────────────────────────────────────────────────
 
-  chargerDossiers() {
+  chargerDossiers(): void {
     this.loading = true;
     this.dossierService.getAllDossiers().subscribe({
       next: (data: any[]) => {
-        console.log('✅ Dossiers reçus →', data);
         this.dossiers = Array.isArray(data) ? data : [];
         this.calculerStats(this.dossiers);
         this.loading = false;
       },
-      error: (err) => {
-        console.error('❌ Erreur chargement dossiers →', err);
+      error: () => {
         this.dossiers = [];
-        this.loading = false;
+        this.loading  = false;
       }
     });
   }
-  calculerStats(dossiers: any[]) {
+
+  calculerStats(dossiers: any[]): void {
     this.stats.total   = dossiers.length;
     this.stats.enCours = dossiers.filter(d =>
       ['EN_COURS', 'EN_TRAITEMENT', 'OUVERT'].includes(d.statut)
     ).length;
-    this.stats.valides  = dossiers.filter(d => d.statut === 'VALIDE').length;
-    this.stats.rejetes  = dossiers.filter(d => d.statut === 'REJETE').length;
-    this.stats.montantTotal = dossiers.reduce(
+    this.stats.valides       = dossiers.filter(d => d.statut === 'VALIDE').length;
+    this.stats.rejetes       = dossiers.filter(d => d.statut === 'REJETE').length;
+    this.stats.montantTotal  = dossiers.reduce(
       (sum, d) => sum + (d.montantTotalEngagement || 0), 0
     );
   }
 
-  voirDetails(id: number) {
+  voirDetails(id: number): void {
     this.router.navigate(['/agent/dossier', id]);
   }
 
   // ─── Modal principal ──────────────────────────────────────────────────────
 
-  ouvrirNouveauDossier() {
-    this.step           = 1;
-    this.erreurCreation = '';
-    this.form           = this.emptyForm();
-    this.newRisque      = this.emptyRisque();
-    this.showModal      = true;
+  ouvrirNouveauDossier(): void {
+    this.step            = 1;
+    this.erreurCreation  = '';
+    this.form            = this.emptyForm();
+    this.newRisque       = this.emptyRisque();
+    this.newGarantie     = this.emptyGarantie();
+    this.showModal       = true;
   }
 
-  passerEtapeSuivante() {
+  passerEtapeSuivante(): void {
     this.erreurCreation = '';
 
+    // ── Validation étape 1 : Client ──
     if (this.step === 1) {
       if (this.form.typeClient === 'PARTICULIER') {
         if (!this.form.clientNom?.trim() || !this.form.clientPrenom?.trim()) {
@@ -157,6 +183,7 @@ export class AgentDashboardComponent implements OnInit {
       }
     }
 
+    // ── Validation étape 2 : Dossier ──
     if (this.step === 2) {
       if (!this.form.libelle?.trim()) {
         this.erreurCreation = 'Le libellé du dossier est obligatoire.';
@@ -164,77 +191,84 @@ export class AgentDashboardComponent implements OnInit {
       }
     }
 
+    // ── Validation étape 3 : Risques & Garanties ──
+    if (this.step === 3) {
+      if (this.form.risques.length === 0) {
+        this.erreurCreation = 'Veuillez ajouter au moins un risque.';
+        return;
+      }
+      if (this.aDesRisquesSansGarantie()) {
+        this.erreurCreation = '⚠️ Chaque risque doit avoir au moins une garantie.';
+        return;
+      }
+    }
+
     this.step++;
   }
 
-  creerDossier() {
+  creerDossier(): void {
     this.erreurCreation = '';
-    this.submitting = true;
-  
+    this.submitting     = true;
+
     const payload = {
-      typeClient: this.form.typeClient,
-  
-      clientNom: this.form.clientNom || null,
-      clientPrenom: this.form.clientPrenom || null,
-      clientCin: this.form.clientCin || null,
-      clientRne: this.form.clientRne || null,
-      clientEmail: this.form.clientEmail || null,
-      clientTelephone: this.form.clientTelephone || null,
-      clientAdresse: this.form.clientAdresse || null,
-      clientRaisonSociale: this.form.clientRaisonSociale || null,
-  
-      libelle: this.form.libelle,
-      description: this.form.description || null,
-      notes: this.form.notes || null,
-  
-      risques: (this.form.risques ?? []).map(r => ({
-        type: r.type,
+      typeClient:           this.form.typeClient,
+      clientNom:            this.form.clientNom            || null,
+      clientPrenom:         this.form.clientPrenom         || null,
+      clientCin:            this.form.clientCin            || null,
+      clientRne:            this.form.clientRne            || null,
+      clientEmail:          this.form.clientEmail          || null,
+      clientTelephone:      this.form.clientTelephone      || null,
+      clientAdresse:        this.form.clientAdresse        || null,
+      clientRaisonSociale:  this.form.clientRaisonSociale  || null,
+      libelle:              this.form.libelle,
+      description:          this.form.description          || null,
+      notes:                this.form.notes                || null,
+
+      risques: this.form.risques.map(r => ({
+        type:           r.type,
         montantInitial: r.montantInitial,
-        montantImpaye: r.montantImpaye,
-        dateEcheance: r.dateEcheance || null,
-        description: r.description || null,
-  
-        garanties: (r.garanties ?? []).map(g => ({
-          typeGarantie: g.typeGarantie,
-          description: g.description || null,
+        montantImpaye:  r.montantImpaye,
+        dateEcheance:   r.dateEcheance  || null,
+        description:    r.description   || null,
+
+        // ✅ Garanties imbriquées dans chaque risque
+        garanties: r.garanties.map(g => ({
+          typeGarantie:  g.typeGarantie,
+          description:   g.description  || null,
           valeurEstimee: g.valeurEstimee,
-          documentRef: g.documentRef || null
+          documentRef:   g.documentRef  || null
         }))
       }))
     };
-  
-    console.log('[creerDossier] payload →', payload);
-  
+
     this.dossierService.creerDossier(payload).subscribe({
       next: (res: any) => {
-        this.showModal = false;
+        this.showModal  = false;
         this.submitting = false;
         this.chargerDossiers();
-  
+
         const id = res?.dossierId ?? res?.id;
         if (id) this.router.navigate(['/agent/dossier', id]);
       },
       error: (err) => {
-        console.error(err);
-  
         this.erreurCreation =
           err.error?.message ||
-          err.error?.error ||
+          err.error?.error   ||
           'Erreur lors de la création du dossier.';
-  
         this.submitting = false;
       }
     });
   }
+
   // ─── Risques ──────────────────────────────────────────────────────────────
 
-  ajouterRisque() {
+  ajouterRisque(): void {
     if (!this.newRisque.type || !this.newRisque.montantInitial) return;
     this.form.risques.push({ ...this.newRisque, garanties: [] });
     this.newRisque = this.emptyRisque();
   }
 
-  supprimerRisque(index: number) {
+  supprimerRisque(index: number): void {
     this.form.risques.splice(index, 1);
   }
 
@@ -244,51 +278,66 @@ export class AgentDashboardComponent implements OnInit {
 
   // ─── Garanties ────────────────────────────────────────────────────────────
 
-  ouvrirAjoutGarantie(risqueIndex: number) {
+  ouvrirAjoutGarantie(risqueIndex: number): void {
     this.risqueIndexEnCours = risqueIndex;
     this.newGarantie        = this.emptyGarantie();
     this.showGarantieModal  = true;
   }
 
-  confirmerGarantie() {
+  confirmerGarantie(): void {
     if (!this.newGarantie.typeGarantie) return;
     this.form.risques[this.risqueIndexEnCours].garanties.push({ ...this.newGarantie });
     this.showGarantieModal = false;
     this.newGarantie       = this.emptyGarantie();
   }
 
-  supprimerGarantie(risqueIndex: number, garantieIndex: number) {
+  supprimerGarantie(risqueIndex: number, garantieIndex: number): void {
     this.form.risques[risqueIndex].garanties.splice(garantieIndex, 1);
   }
 
   // ─── Utilitaires affichage ────────────────────────────────────────────────
 
+  /** Vérifie si un risque n'a aucune garantie */
+  risqueSansGarantie(risque: RisqueForm): boolean {
+    return !risque.garanties || risque.garanties.length === 0;
+  }
+
+  /** Vérifie s'il existe au moins un risque sans garantie */
+  aDesRisquesSansGarantie(): boolean {
+    return this.form.risques.some(r => this.risqueSansGarantie(r));
+  }
+
+  getRisqueLabel(type: string): string {
+    return this.risqueLabels[type] || type;
+  }
+
+  getGarantieLabel(type: string): string {
+    return this.garantieLabels[type] || type;
+  }
+
+  getGarantieIcon(type: string): string {
+    return this.garantieIcons[type] || 'ti-lock';
+  }
+
   getClientName(dossier: any): string {
     const type = dossier.clientTypeClient || dossier.clientType || '';
-    
-    if (type === 'ENTREPRISE') {
-      return dossier.clientRaisonSociale || '—';
-    }
-    
-    const nom    = dossier.clientNom    || '';
-    const prenom = dossier.clientPrenom || '';
-    const full   = `${nom} ${prenom}`.trim();
+    if (type === 'ENTREPRISE') return dossier.clientRaisonSociale || '—';
+    const full = `${dossier.clientNom || ''} ${dossier.clientPrenom || ''}`.trim();
     return full || '—';
   }
-  
+
   getClientInitial(dossier: any): string {
     const name = this.getClientName(dossier);
     return name !== '—' ? name[0].toUpperCase() : '?';
   }
 
-
   getStatutClass(statut: string): string {
     const map: Record<string, string> = {
-      'EN_ATTENTE': 'statut-en-attente',
-      'EN_COURS':   'statut-en-cours',
-      'VALIDE':     'statut-valide',
-      'REJETE':     'statut-rejete',
-      'CLOS':       'statut-clos'
+      EN_ATTENTE: 'statut-en-attente',
+      EN_COURS:   'statut-en-cours',
+      VALIDE:     'statut-valide',
+      REJETE:     'statut-rejete',
+      CLOS:       'statut-clos'
     };
     return map[statut] || '';
   }

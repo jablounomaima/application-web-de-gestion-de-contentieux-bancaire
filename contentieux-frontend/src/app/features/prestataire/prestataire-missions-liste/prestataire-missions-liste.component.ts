@@ -1,8 +1,10 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { Subscription } from 'rxjs';
 import { PrestataireService } from '../../../core/services/prestataire.service';
+import { NotificationService, NotificationDTO } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-prestataire-missions-liste',
@@ -11,7 +13,7 @@ import { PrestataireService } from '../../../core/services/prestataire.service';
   templateUrl: './prestataire-missions-liste.component.html',
   styleUrls: ['./prestataire-missions-liste.component.scss']
 })
-export class PrestataireMissionsListeComponent implements OnInit {
+export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
 
   missions: any[] = [];
   missionsFiltrees: any[] = [];
@@ -59,13 +61,49 @@ export class PrestataireMissionsListeComponent implements OnInit {
   get casRejetFinancier(): boolean { return this.missionSelectionnee?.statut === 'FACTURE_REJETEE'; }
   get casNormal():         boolean { return ['ASSIGNEE', 'EN_COURS'].includes(this.missionSelectionnee?.statut); }
 
+  private notifSub: Subscription | null = null;
+  private _derniereNotifId: number | null = null;
+
   constructor(
     private prestataireService: PrestataireService,
-    private router: Router
+    private router:             Router,
+    private notifService:       NotificationService
   ) {}
 
   ngOnInit(): void {
     this.charger();
+    this._ecouterNotifications();
+    
+    setTimeout(() => {
+      console.log('📋 Structure mission[0]:', JSON.stringify(this.missions[0], null, 2));
+    }, 2000);
+  }
+
+  ngOnDestroy(): void {
+    this.notifSub?.unsubscribe();
+  }
+
+  // ── Écoute WebSocket — réagir aux rejets/validations en temps réel ──
+  private _ecouterNotifications(): void {
+    this.notifSub = this.notifService.notifications$.subscribe(
+      (notifs: NotificationDTO[]) => {
+        if (!notifs.length) return;
+        const derniere = notifs[0];
+        if (this._derniereNotifId === derniere.id) return;
+        this._derniereNotifId = derniere.id;
+
+        // Recharger si la notif concerne une mission (rejet, cloture, facture)
+        const typesConcernes = [
+          'MISSION_REJETEE', 'MISSION_CLOTUREE',
+          'REJET_FINANCIER', 'VALIDATION_FINANCIERE_OK',
+          'NOUVELLE_MISSION', 'MISSION_MODIFIEE'
+        ];
+        if (typesConcernes.includes(derniere.type)) {
+          // Recharger après un court délai pour laisser le backend persister
+          setTimeout(() => this.charger(), 800);
+        }
+      }
+    );
   }
 
   charger(): void {
@@ -74,6 +112,7 @@ export class PrestataireMissionsListeComponent implements OnInit {
     this.prestataireService.getMissions().subscribe({
       next: (res) => {
         this.missions = res.missions || [];
+        console.log('📋 Structure mission[0]:', JSON.stringify(this.missions[0], null, 2));
         this.calculerStats();
         this.appliquerFiltres();
         this.loading = false;

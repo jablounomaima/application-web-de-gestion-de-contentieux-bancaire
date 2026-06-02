@@ -74,24 +74,26 @@ export class AgentDossierDetailComponent implements OnInit {
   ) {}
 
   ngOnInit() {
-    const id = Number(this.route.snapshot.paramMap.get('id'));
-    if (id) this.chargerDossier(id);
-    
+    // ← Observable au lieu de snapshot
+    this.route.paramMap.subscribe(params => {
+      const id = Number(params.get('id'));
+      if (id) this.chargerDossier(id);
+    });
+  
     this.route.queryParams.subscribe(params => {
       if (params['refresh']) {
-        console.log('🔄 Refresh détecté avec timestamp:', params['refresh']);
         const currentId = Number(this.route.snapshot.paramMap.get('id'));
-        if (currentId) {
-          this.chargerDossier(currentId);
-        }
+        if (currentId) this.chargerDossier(currentId);
       }
     });
-    
+  
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
+        const urlSansParams = event.urlAfterRedirects.split('?')[0];
+        const estDetailExact = /^\/agent\/dossiers\/\d+$/.test(urlSansParams);
+        if (!estDetailExact) return;
         const currentId = Number(this.route.snapshot.paramMap.get('id'));
         if (currentId && currentId === this.dossier?.id) {
-          console.log('🔄 Retour de navigation, rechargement du dossier');
           this.chargerDossier(currentId);
         }
       }

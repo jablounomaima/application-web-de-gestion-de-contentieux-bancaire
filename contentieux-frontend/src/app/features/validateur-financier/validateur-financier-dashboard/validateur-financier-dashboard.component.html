@@ -1,79 +1,80 @@
 <div class="page-container">
 
-    <!-- ═══ HEADER ═══ -->
-    <div class="page-header">
+  <!-- ═══ HEADER ═══ -->
+  <div class="page-header">
+    <div>
+      <h1>💰 Validation Financière</h1>
+      <p class="subtitle">Examinez et validez la conformité financière des dossiers</p>
+    </div>
+  </div>
+
+  <!-- ═══ STATS ═══ -->
+  <div class="stats-row">
+    <div class="stat-card pending">
+      <div class="stat-icon">🕒</div>
       <div>
-        <h1>💰 Validation Financière</h1>
-        <p class="subtitle">Examinez et validez la conformité financière des dossiers</p>
+        <h4>En Attente</h4>
+        <span class="stat-value">{{ getNbEnAttente() }}</span>
       </div>
     </div>
-  
-    <!-- ═══ STATS ═══ -->
-    <div class="stats-row">
-      <div class="stat-card pending">
-        <div class="stat-icon">🕒</div>
-        <div>
-          <h4>En Attente</h4>
-          <span class="stat-value">{{ getNbEnAttente() }}</span>
-        </div>
-      </div>
-      <div class="stat-card success">
-        <div class="stat-icon">✅</div>
-        <div>
-          <h4>Validés</h4>
-          <span class="stat-value">{{ valides }}</span>
-        </div>
-      </div>
-      <div class="stat-card danger">
-        <div class="stat-icon">❌</div>
-        <div>
-          <h4>Rejetés</h4>
-          <span class="stat-value">{{ rejetes }}</span>
-        </div>
+    <div class="stat-card success">
+      <div class="stat-icon">✅</div>
+      <div>
+        <h4>Validés</h4>
+        <span class="stat-value">{{ valides }}</span>
       </div>
     </div>
-  
-    <!-- ═══ LISTE (composant dédié) ═══ -->
-    <app-validateur-financier-liste
+    <div class="stat-card danger">
+      <div class="stat-icon">❌</div>
+      <div>
+        <h4>Rejetés</h4>
+        <span class="stat-value">{{ rejetes }}</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ LISTE (composant dédié) ═══ -->
+  <app-validateur-financier-liste
     [recharger]="recharger"
+    [dossierId]="dossierId"
     (actionDemandee)="ouvrirAction($event)"
     (dossiersCharges)="mettreAJourStats($event)">
   </app-validateur-financier-liste>
-  
-  </div>
-  
-  <!-- ═══ MODAL ═══ -->
-  <div class="modal-overlay" *ngIf="dossierSelectionne" (click)="fermerModal()">
-    <div class="modal-card" (click)="$event.stopPropagation()">
-      <div class="modal-header"
-           [class.header-valider]="actionType === 'valider'"
-           [class.header-rejeter]="actionType === 'rejeter'">
-        <h2>{{ actionType === 'valider' ? '✅ Valider' : '❌ Rejeter' }} le Dossier</h2>
-        <button class="modal-close" (click)="fermerModal()">✕</button>
+
+</div>
+
+<!-- ═══ MODAL ═══ -->
+<div class="modal-overlay" *ngIf="dossierSelectionne" (click)="fermerModal()">
+  <div class="modal-card" (click)="$event.stopPropagation()">
+    <div class="modal-header"
+         [class.header-valider]="actionType === 'valider'"
+         [class.header-rejeter]="actionType === 'rejeter'">
+      <h2>{{ actionType === 'valider' ? '✅ Valider' : '❌ Rejeter' }} le Dossier</h2>
+      <button class="modal-close" (click)="fermerModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <p class="dossier-ref">
+        Dossier : <strong>{{ dossierSelectionne.numeroDossier }}</strong>
+      </p>
+      <div class="form-group">
+        <label>
+          {{ actionType === 'valider' ? 'Commentaire (optionnel)' : 'Motif de rejet *' }}
+        </label>
+        <textarea [(ngModel)]="commentaire" rows="4"
+                  [placeholder]="actionType === 'valider'
+                    ? 'Observations...'
+                    : 'Expliquez le motif du rejet...'">
+        </textarea>
       </div>
-      <div class="modal-body">
-        <p class="dossier-ref">
-          Dossier : <strong>{{ dossierSelectionne.numeroDossier }}</strong>
-        </p>
-        <div class="form-group">
-          <label>
-            {{ actionType === 'valider' ? 'Commentaire (optionnel)' : 'Motif de rejet *' }}
-          </label>
-          <textarea [(ngModel)]="commentaire" rows="4"
-                    [placeholder]="actionType === 'valider'
-                      ? 'Observations...'
-                      : 'Expliquez le motif du rejet...'">
-          </textarea>
-        </div>
-        <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
-        <div class="modal-footer">
-          <button class="btn-cancel" (click)="fermerModal()">Annuler</button>
-          <button [class]="actionType === 'valider' ? 'btn-confirm-valider' : 'btn-confirm-rejeter'"
-                  (click)="confirmerAction()"
-                  [disabled]="soumission">
-            {{ soumission ? '⏳…' : (actionType === 'valider' ? '✅ Confirmer validation' : '❌ Confirmer rejet') }}
-          </button>
-        </div>
+      <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
+      <div class="modal-footer">
+        <button class="btn-cancel" (click)="fermerModal()">Annuler</button>
+        <button [class]="actionType === 'valider' ? 'btn-confirm-valider' : 'btn-confirm-rejeter'"
+                (click)="confirmerAction()"
+                [disabled]="soumission">
+          {{ soumission ? '⏳…' : (actionType === 'valider' ? '✅ Confirmer validation' : '❌ Confirmer rejet') }}
+        </button>
       </div>
     </div>
   </div>
+</div>

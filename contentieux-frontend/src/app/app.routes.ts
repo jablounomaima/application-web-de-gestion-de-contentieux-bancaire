@@ -80,6 +80,16 @@ export const routes: Routes = [
     import('./features/agent/lancer-affaire/lancer-affaire.component')
       .then(m => m.LancerAffaireComponent),
 },
+
+// ✅ AJOUTER — route mission spécifique (AVANT la route liste)
+{
+  path: 'prestataire/missions/:id',
+  canActivate: [AuthGuard, PrestataireActifGuard],
+  data: { roles: ['ROLE_PRESTATAIRE', 'ROLE_EXPERT', 'ROLE_HUISSIER'] },
+  loadComponent: () =>
+    import('./features/agent/missions/mission-detail/mission-detail.component')
+      .then(m => m.MissionDetailComponent),
+},
 {
   path: 'agent/dossiers/:dossierId/affaire',
   loadComponent: () =>
@@ -136,6 +146,20 @@ export const routes: Routes = [
     loadComponent: () =>
       import('./features/agent/agent-dossier-modifier/agent-dossier-modifier.component')
         .then(m => m.AgentDossierModifierComponent)
+  },
+
+
+  {
+
+    path: 'agent/dossiers/:dossierId/resultats-prestataires',
+    canActivate: [AuthGuard],
+    data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
+    loadComponent: () =>
+       import('./features/agent/resultats-prestataires/resultats-prestataires.component')
+        .then(m => m.ResultatsPrestatairesComponent),
+  
+    
+  
   },
   {
     path: 'agent/dossiers/:id',             // ← Detail route (generic)
@@ -354,18 +378,7 @@ export const routes: Routes = [
 
 //afficher les resultats de mission dans agent bancaire
 
-{
 
-  path: 'agent/dossiers/:dossierId/resultats-prestataires',
-  canActivate: [AuthGuard],
-  data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
-  loadComponent: () =>
-     import('./features/agent/resultats-prestataires/resultats-prestataires.component')
-      .then(m => m.ResultatsPrestatairesComponent),
-
-  
-
-},
 
 
 

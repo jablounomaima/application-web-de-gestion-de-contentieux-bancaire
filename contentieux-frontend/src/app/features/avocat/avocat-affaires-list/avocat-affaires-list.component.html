@@ -121,8 +121,10 @@
     <!-- ══ Liste des affaires ════════════════════════════════════ -->
     <div *ngIf="!loading && filtrees.length > 0" class="al-list">
   
-      <div class="al-card" *ngFor="let aff of filtrees">
-  
+      <div class="al-card" 
+      *ngFor="let aff of filtrees"
+      [id]="'affaire-' + aff.id"
+      [class.affaire-highlight]="_cibleDossierId && aff.dossierId === _cibleDossierId">
         <!-- ── Header carte ──────────────────────────────────── -->
         <div class="al-card-head">
           <div class="al-card-head-left">

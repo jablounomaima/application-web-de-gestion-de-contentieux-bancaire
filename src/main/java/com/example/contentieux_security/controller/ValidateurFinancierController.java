@@ -3,6 +3,7 @@ package com.example.contentieux_security.controller;
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.TypeValidateur;
 import com.example.contentieux_security.repository.*;
+import com.example.contentieux_security.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,9 +23,10 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ValidateurFinancierController {
 
-    private final ValidateurRepository  validateurRepository;
-    private final MissionRepository     missionRepository;
-    private final DossierRepository     dossierRepository;
+    private final ValidateurRepository   validateurRepository;
+    private final MissionRepository      missionRepository;
+    private final DossierRepository      dossierRepository;
+    private final NotificationService    notificationService;
 
     // ═══════════════════════════════════════════════════════
     // TOUTES LES FACTURES DE L'AGENCE
@@ -33,23 +35,17 @@ public class ValidateurFinancierController {
     @Transactional(readOnly = true)
     public ResponseEntity<?> toutesLesFactures(Principal principal) {
         try {
-            // ✅ Utiliser Validateur directement
             Validateur validateur = validateurRepository
                     .findByUsername(principal.getName())
                     .orElseThrow(() -> new RuntimeException(
                             "Validateur introuvable : " + principal.getName()));
 
-            // ✅ Vérifier que c'est bien un validateur financier
-            if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER) {
-                return ResponseEntity.status(403)
-                        .body(Map.of("error", "Accès réservé au validateur financier"));
-            }
+            if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER)
+                return ResponseEntity.status(403).body(Map.of("error", "Accès réservé au validateur financier"));
 
             Long agenceId = validateur.getAgence().getId();
-
             List<Mission> missions = missionRepository.findFacturesParAgence(agenceId);
 
-            // ✅ Grouper par dossier
             Map<Long, Map<String, Object>> parDossier = new LinkedHashMap<>();
 
             for (Mission m : missions) {
@@ -64,50 +60,38 @@ public class ValidateurFinancierController {
                     d.put("dossierId",     dossier.getId());
                     d.put("numeroDossier", dossier.getNumeroDossier());
                     d.put("libelle",       dossier.getLibelle());
-                    d.put("statut",        dossier.getStatut() != null
-                                           ? dossier.getStatut().name() : null);
-
-                    // Client
+                    d.put("statut",        dossier.getStatut() != null ? dossier.getStatut().name() : null);
                     if (dossier.getClient() != null) {
                         Client c = dossier.getClient();
-                        boolean isEntreprise = c.getTypeClient() != null
-                                && c.getTypeClient().name().equals("ENTREPRISE");
-                        String nom = isEntreprise
-                                ? c.getRaisonSociale()
-                                : (c.getNom() + " " + c.getPrenom()).trim();
+                        boolean isEntreprise = c.getTypeClient() != null &&
+                                               c.getTypeClient().name().equals("ENTREPRISE");
+                        String nom = isEntreprise ? c.getRaisonSociale()
+                                                  : (c.getNom() + " " + c.getPrenom()).trim();
                         d.put("clientNom", nom);
                     }
-
                     d.put("factures",  new ArrayList<>());
                     d.put("totalHT",   0.0);
                     d.put("totalTTC",  0.0);
                     return d;
                 });
 
-                // ✅ Construire la facture
                 Map<String, Object> factureData = new LinkedHashMap<>();
                 factureData.put("missionId",     m.getId());
                 factureData.put("numeroMission", m.getNumeroMission());
                 factureData.put("factureRef",    m.getFactureRef());
                 factureData.put("montantHT",     m.getMontantFacture());
-                factureData.put("montantTTC",    m.getMontantFacture() != null
-                                                 ? m.getMontantFacture() * 1.19 : 0);
+                factureData.put("montantTTC",    m.getMontantFacture() != null ? m.getMontantFacture() * 1.19 : 0);
                 factureData.put("factureValide", m.getFactureValide());
                 factureData.put("dateFacture",   m.getDateValidationFacture());
                 factureData.put("commentaire",   m.getCommentaireAgent());
-                factureData.put("statutMission",  m.getStatut() != null
-                                  ? m.getStatut().name() : null);
-factureData.put("statutLibelle",  m.getStatut() != null
-                                  ? m.getStatut().getLibelle() : null);
+                factureData.put("statutMission", m.getStatut() != null ? m.getStatut().name() : null);
+                factureData.put("statutLibelle", m.getStatut() != null ? m.getStatut().getLibelle() : null);
 
-                // ✅ Prestataire
                 if (m.getPrestataire() != null) {
                     Prestataire p = m.getPrestataire();
                     factureData.put("prestataireId",    p.getId());
-                    factureData.put("prestataireNom",
-                        (p.getPrenom() + " " + p.getNom()).trim());
-                    factureData.put("prestataireType",
-                        p.getType() != null ? p.getType().name() : null);
+                    factureData.put("prestataireNom",   (p.getPrenom() + " " + p.getNom()).trim());
+                    factureData.put("prestataireType",  p.getType() != null ? p.getType().name() : null);
                     factureData.put("prestataireEmail", p.getEmail());
                 }
 
@@ -116,11 +100,9 @@ factureData.put("statutLibelle",  m.getStatut() != null
                     (List<Map<String, Object>>) parDossier.get(dossierId).get("factures");
                 factures.add(factureData);
 
-                double ht  = m.getMontantFacture() != null ? m.getMontantFacture() : 0.0;
-                parDossier.get(dossierId).merge("totalHT",  ht,
-                    (a, b) -> (double) a + (double) b);
-                parDossier.get(dossierId).merge("totalTTC", ht * 1.19,
-                    (a, b) -> (double) a + (double) b);
+                double ht = m.getMontantFacture() != null ? m.getMontantFacture() : 0.0;
+                parDossier.get(dossierId).merge("totalHT",  ht,  (a, b) -> (double) a + (double) b);
+                parDossier.get(dossierId).merge("totalTTC", ht * 1.19, (a, b) -> (double) a + (double) b);
             }
 
             return ResponseEntity.ok(Map.of(
@@ -131,8 +113,7 @@ factureData.put("statutLibelle",  m.getStatut() != null
 
         } catch (Exception e) {
             log.error("Erreur factures: {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 
@@ -141,51 +122,36 @@ factureData.put("statutLibelle",  m.getStatut() != null
     // ═══════════════════════════════════════════════════════
     @GetMapping("/dossiers/{dossierId}/factures")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> facturesParDossier(
-            @PathVariable Long dossierId,
-            Principal principal) {
+    public ResponseEntity<?> facturesParDossier(@PathVariable Long dossierId, Principal principal) {
         try {
-            // ✅ Vérifier validateur
-            Validateur validateur = validateurRepository
-                    .findByUsername(principal.getName())
+            Validateur validateur = validateurRepository.findByUsername(principal.getName())
                     .orElseThrow(() -> new RuntimeException("Validateur introuvable"));
+            if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER)
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
-            if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER) {
-                return ResponseEntity.status(403)
-                        .body(Map.of("error", "Accès refusé"));
-            }
-
-            List<Mission> missions = missionRepository
-                    .findFacturesParDossier(dossierId);
-
+            List<Mission> missions = missionRepository.findFacturesParDossier(dossierId);
             List<Map<String, Object>> factures = missions.stream().map(m -> {
                 Map<String, Object> f = new LinkedHashMap<>();
                 f.put("missionId",     m.getId());
                 f.put("numeroMission", m.getNumeroMission());
                 f.put("factureRef",    m.getFactureRef());
                 f.put("montantHT",     m.getMontantFacture());
-                f.put("montantTTC",    m.getMontantFacture() != null
-                                       ? m.getMontantFacture() * 1.19 : 0);
+                f.put("montantTTC",    m.getMontantFacture() != null ? m.getMontantFacture() * 1.19 : 0);
                 f.put("factureValide", m.getFactureValide());
                 f.put("dateFacture",   m.getDateValidationFacture());
                 f.put("commentaire",   m.getCommentaireAgent());
-
                 if (m.getPrestataire() != null) {
                     Prestataire p = m.getPrestataire();
                     f.put("prestataireId",    p.getId());
-                    f.put("prestataireNom",
-                        (p.getPrenom() + " " + p.getNom()).trim());
-                    f.put("prestataireType",
-                        p.getType() != null ? p.getType().name() : null);
+                    f.put("prestataireNom",   (p.getPrenom() + " " + p.getNom()).trim());
+                    f.put("prestataireType",  p.getType() != null ? p.getType().name() : null);
                     f.put("prestataireEmail", p.getEmail());
                 }
                 return f;
             }).collect(Collectors.toList());
 
             double totalHT = missions.stream()
-                    .mapToDouble(m -> m.getMontantFacture() != null
-                                     ? m.getMontantFacture() : 0)
-                    .sum();
+                    .mapToDouble(m -> m.getMontantFacture() != null ? m.getMontantFacture() : 0).sum();
 
             return ResponseEntity.ok(Map.of(
                 "dossierId",  dossierId,
@@ -197,13 +163,12 @@ factureData.put("statutLibelle",  m.getStatut() != null
 
         } catch (Exception e) {
             log.error("Erreur factures dossier {}: {}", dossierId, e.getMessage());
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 
     // ═══════════════════════════════════════════════════════
-    // VALIDER / REJETER UNE FACTURE
+    // ✅ VALIDER / REJETER UNE FACTURE — avec notifications complètes
     // ═══════════════════════════════════════════════════════
     @PostMapping("/missions/{missionId}/valider-facture")
     @Transactional
@@ -212,70 +177,114 @@ factureData.put("statutLibelle",  m.getStatut() != null
             @RequestBody Map<String, Object> body,
             Principal principal) {
         try {
-            log.info("=== DEBUT validerFacture missionId={} user={}",
-                    missionId, principal.getName());
-    
-            // ── Étape 1 : Trouver validateur ──
-            Validateur validateur = validateurRepository
-                    .findByUsername(principal.getName())
-                    .orElseThrow(() -> new RuntimeException(
-                            "Validateur introuvable : " + principal.getName()));
-            log.info("Étape 1 OK - validateur={} type={}",
-                    validateur.getId(), validateur.getTypeValidateur());
-    
-            // ── Étape 2 : Vérifier type ──
-            if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER) {
+            log.info("=== DEBUT validerFacture missionId={} user={}", missionId, principal.getName());
+
+            // ── Vérifier validateur ──
+            Validateur validateur = validateurRepository.findByUsername(principal.getName())
+                    .orElseThrow(() -> new RuntimeException("Validateur introuvable : " + principal.getName()));
+
+            if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER)
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
-            }
-            log.info("Étape 2 OK - type validateur financier confirmé");
-    
-            // ── Étape 3 : Trouver mission ──
+
+            // ── Trouver mission ──
             Mission mission = missionRepository.findById(missionId)
-                    .orElseThrow(() -> new RuntimeException(
-                            "Mission introuvable : " + missionId));
-            log.info("Étape 3 OK - mission={} statut={}",
-                    mission.getId(), mission.getStatut());
-    
-            // ── Étape 4 : Vérifier facture ──
-            if (mission.getFactureRef() == null) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Aucune facture soumise."));
-            }
-            log.info("Étape 4 OK - factureRef={}", mission.getFactureRef());
-    
-            // ── Étape 5 : Appliquer décision ──
-            boolean valide = Boolean.TRUE.equals(body.get("valide"));
-            String commentaire = body.get("commentaire") != null
-                                 ? body.get("commentaire").toString() : "";
-            log.info("Étape 5 - valide={} commentaire={}", valide, commentaire);
-    
+                    .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
+
+            if (mission.getFactureRef() == null)
+                return ResponseEntity.badRequest().body(Map.of("error", "Aucune facture soumise."));
+
+            // ── Décision ──
+            boolean valide     = Boolean.TRUE.equals(body.get("valide"));
+            String commentaire = body.get("commentaire") != null ? body.get("commentaire").toString() : "";
+
             mission.setFactureValide(valide);
             mission.setCommentaireAgent(commentaire.isBlank() ? null : commentaire);
             mission.setValideParAgent(principal.getName());
             mission.setDateValidationFacture(LocalDateTime.now());
-            mission.setStatut(valide
-                    ? StatutMission.FACTURE_VALIDEE
-                    : StatutMission.FACTURE_REJETEE);
-    
-            // ── Étape 6 : Sauvegarder ──
+            mission.setStatut(valide ? StatutMission.FACTURE_VALIDEE : StatutMission.FACTURE_REJETEE);
             missionRepository.save(mission);
-            log.info("Étape 6 OK - mission sauvegardée statut={}",
-                    mission.getStatut());
-    
+
+            log.info("Mission {} statut → {}", missionId, mission.getStatut());
+
+            // ── Récupérer infos pour notifications ──
+            DossierContentieux dossier    = mission.getPrestation() != null
+                                            ? mission.getPrestation().getDossier() : null;
+            String agentUsername          = dossier != null ? dossier.getCreePar() : null;
+            String prestataireUsername    = mission.getPrestataire() != null
+                                            ? mission.getPrestataire().getUsername() : null;
+            String nomPrestataire         = mission.getPrestataire() != null
+                ? (mission.getPrestataire().getPrenom() + " " + mission.getPrestataire().getNom()).trim()
+                : "Prestataire";
+
+            if (valide) {
+                // ✅ CAS 1 — VALIDATION ACCEPTÉE
+
+                // Notifier agent bancaire
+                if (agentUsername != null && dossier != null) {
+                    notificationService.notifier(agentUsername,
+                        "✅ Facture validée par le validateur financier",
+                        "La facture de la mission " + mission.getNumeroMission()
+                        + " (dossier " + dossier.getNumeroDossier() + ")"
+                        + " a été validée par le validateur financier."
+                        + " Vous pouvez maintenant clôturer la mission.",
+                        "VALIDATION_FINANCIERE_OK", dossier);
+                    log.info("✅ Agent {} notifié — facture validée", agentUsername);
+                }
+
+                // Notifier prestataire
+                if (prestataireUsername != null) {
+                    notificationService.notifierSansDossier(prestataireUsername,
+                        "✅ Votre facture a été validée",
+                        "Votre facture pour la mission " + mission.getNumeroMission()
+                        + " a été validée par le validateur financier."
+                        + " L'agent bancaire va maintenant clôturer la mission.",
+                        "VALIDATION_FINANCIERE_OK",
+                        "/prestataire/missions/" + missionId);
+                    log.info("✅ Prestataire {} notifié — facture validée", prestataireUsername);
+                }
+
+            } else {
+                // ✅ CAS 2 — VALIDATION REJETÉE
+
+                // Notifier agent bancaire
+                if (agentUsername != null && dossier != null) {
+                    notificationService.notifier(agentUsername,
+                        "❌ Facture rejetée par le validateur financier",
+                        "La facture de la mission " + mission.getNumeroMission()
+                        + " (dossier " + dossier.getNumeroDossier() + ")"
+                        + " a été rejetée."
+                        + (commentaire.isBlank() ? "" : " Motif : " + commentaire),
+                        "REJET_FINANCIER", dossier);
+                    log.info("✅ Agent {} notifié — facture rejetée", agentUsername);
+                }
+
+                // Notifier prestataire
+                if (prestataireUsername != null) {
+                    notificationService.notifierSansDossier(prestataireUsername,
+                        "❌ Votre facture a été rejetée",
+                        "Votre facture pour la mission " + mission.getNumeroMission()
+                        + " a été rejetée par le validateur financier."
+                        + (commentaire.isBlank() ? "" : " Motif : " + commentaire)
+                        + " Merci de corriger et resoumettre vos documents.",
+                        "REJET_FINANCIER",
+                        "/prestataire/missions/" + missionId);
+                    log.info("✅ Prestataire {} notifié — facture rejetée", prestataireUsername);
+                }
+            }
+
             return ResponseEntity.ok(Map.of(
                 "message",       valide ? "Facture validée." : "Facture rejetée.",
                 "missionId",     missionId,
                 "statut",        mission.getStatut().name(),
                 "factureValide", valide
             ));
-    
+
         } catch (Exception e) {
-            log.error("=== ERREUR validerFacture missionId={} : {}",
-                    missionId, e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", e.getMessage()));
+            log.error("=== ERREUR validerFacture missionId={} : {}", missionId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
+
     // ═══════════════════════════════════════════════════════
     // DASHBOARD RÉSUMÉ
     // ═══════════════════════════════════════════════════════
@@ -283,27 +292,18 @@ factureData.put("statutLibelle",  m.getStatut() != null
     @Transactional(readOnly = true)
     public ResponseEntity<?> dashboard(Principal principal) {
         try {
-            Validateur validateur = validateurRepository
-                    .findByUsername(principal.getName())
+            Validateur validateur = validateurRepository.findByUsername(principal.getName())
                     .orElseThrow(() -> new RuntimeException("Validateur introuvable"));
 
             Long agenceId = validateur.getAgence().getId();
             List<Mission> missions = missionRepository.findFacturesParAgence(agenceId);
 
-            long enAttente = missions.stream()
-                    .filter(m -> m.getFactureValide() == null)
-                    .count();
-            long validees = missions.stream()
-                    .filter(m -> Boolean.TRUE.equals(m.getFactureValide()))
-                    .count();
-            long rejetees = missions.stream()
-                    .filter(m -> Boolean.FALSE.equals(m.getFactureValide()))
-                    .count();
+            long enAttente = missions.stream().filter(m -> m.getFactureValide() == null).count();
+            long validees  = missions.stream().filter(m -> Boolean.TRUE.equals(m.getFactureValide())).count();
+            long rejetees  = missions.stream().filter(m -> Boolean.FALSE.equals(m.getFactureValide())).count();
             double totalHT = missions.stream()
                     .filter(m -> Boolean.TRUE.equals(m.getFactureValide()))
-                    .mapToDouble(m -> m.getMontantFacture() != null
-                                     ? m.getMontantFacture() : 0)
-                    .sum();
+                    .mapToDouble(m -> m.getMontantFacture() != null ? m.getMontantFacture() : 0).sum();
 
             return ResponseEntity.ok(Map.of(
                 "totalFactures", missions.size(),
@@ -315,14 +315,12 @@ factureData.put("statutLibelle",  m.getStatut() != null
                 "validateur",    Map.of(
                     "nom",    validateur.getNom(),
                     "prenom", validateur.getPrenom(),
-                    "agence", validateur.getAgence() != null
-                              ? validateur.getAgence().getNom() : ""
+                    "agence", validateur.getAgence() != null ? validateur.getAgence().getNom() : ""
                 )
             ));
 
         } catch (Exception e) {
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", e.getMessage()));
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
 }

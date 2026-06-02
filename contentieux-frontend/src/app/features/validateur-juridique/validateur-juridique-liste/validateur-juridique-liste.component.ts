@@ -12,6 +12,7 @@ import { ValidateurService } from '../../../core/services/validateur.service';
 })
 export class ValidateurJuridiqueListeComponent implements OnInit, OnChanges {
   @Input()  recharger      = false;
+  @Input()  dossierId:      number | null = null;
   @Output() dossiersCharges = new EventEmitter<any[]>();
   @Output() actionDemandee = new EventEmitter<{ dossier: any; type: 'valider' | 'rejeter' }>();
 
@@ -26,6 +27,25 @@ export class ValidateurJuridiqueListeComponent implements OnInit, OnChanges {
 
   ngOnInit(): void { this.charger(); }
 
+  ngOnChanges(changes: SimpleChanges): void {
+    if (changes['recharger'] && !changes['recharger'].firstChange) {
+      this.charger();
+    }
+    if (changes['dossierId'] && changes['dossierId'].currentValue) {
+      const targetId = Number(changes['dossierId'].currentValue);
+      const existe = this.dossiers.some(d => Number(d.id) === targetId);
+      if (existe) {
+        // Dossiers déjà chargés et dossier cible présent → ouvrir directement
+        setTimeout(() => this._ouvrirDossierCible(), 100);
+      } else {
+        // Dossier cible non trouvé localement (ex: nouvelle soumission reçue en temps réel)
+        // On recharge la liste depuis le serveur pour le récupérer
+        console.log('📌 [DEBUG] Dossier ID (juridique)', targetId, 'non trouvé en local. Rechargement...');
+        this.charger();
+      }
+    }
+  }
+
   charger(): void {
     this.loading = true;
     this.dossierDetails.clear();
@@ -34,8 +54,14 @@ export class ValidateurJuridiqueListeComponent implements OnInit, OnChanges {
     this.validateurService.getDossiersJuridique(this.recherche).subscribe({
       next: (data: any) => {
         this.dossiers = Array.isArray(data) ? data : (data?.dossiers ?? []);
-        this.dossiersCharges.emit(this.dossiers); // ← ajouter
+        this.dossiersCharges.emit(this.dossiers);
         this.loading  = false;
+
+        setTimeout(() => {
+          if (this.dossierId) {
+            this._ouvrirDossierCible();
+          }
+        }, 200);
       },
       error: (err: any) => {
         console.error('❌ erreur chargement liste juridique =', err);
@@ -43,10 +69,31 @@ export class ValidateurJuridiqueListeComponent implements OnInit, OnChanges {
       }
     });
   }
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes['recharger'] && !changes['recharger'].firstChange) {
-      this.charger();
+
+  private _ouvrirDossierCible(): void {
+    if (!this.dossierId) return;
+    const cible = this.dossiers.find(d => d.id === this.dossierId);
+    if (!cible) return;
+
+    this.dossierExpanded = cible.id;
+    if (!this.dossierDetails.has(cible.id)) {
+      this.loadingDetail.add(cible.id);
+      this.validateurService.getDossierDetailJuridique(cible.id).subscribe({
+        next: (detail: any) => {
+          this.dossierDetails.set(cible.id, detail);
+          this.loadingDetail.delete(cible.id);
+        },
+        error: () => this.loadingDetail.delete(cible.id)
+      });
     }
+
+    setTimeout(() => {
+      const el = document.getElementById('dossier-' + this.dossierId);
+      if (!el) return;
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('dossier-highlight');
+      setTimeout(() => el.classList.remove('dossier-highlight'), 4000);
+    }, 400);
   }
 
   toggleExpand(d: any): void {

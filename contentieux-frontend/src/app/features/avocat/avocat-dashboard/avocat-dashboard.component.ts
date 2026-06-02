@@ -3,6 +3,8 @@ import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { AvocatService } from '../../../core/services/avocat.service';
 import { Router } from '@angular/router';
+import { NotificationService } from '../../../core/services/notification.service';
+import { ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-avocat-dashboard',
@@ -332,18 +334,29 @@ export class AvocatDashboardComponent implements OnInit {
 
   constructor(
     private avocatService: AvocatService,
-    private router: Router
+    private router: Router,
+    private notifService: NotificationService,
+    private route: ActivatedRoute
   ) {}
 
   // ════════════════════════════════════════
   // Lifecycle
   // ════════════════════════════════════════
 
+  
   ngOnInit() {
     this.chargerStats();
     this.chargerAffaires();
+  
+    this.notifService.dossierCible$.subscribe(id => {
+      if (id !== null) {
+        // Ne pas reset ici — laisser avocat-affaires-list le faire
+        this.router.navigate(['/avocat/affaires'], {
+          queryParams: { dossierId: id }
+        });
+      }
+    });
   }
-
   // ════════════════════════════════════════
   // Chargement
   // ════════════════════════════════════════
@@ -359,10 +372,13 @@ export class AvocatDashboardComponent implements OnInit {
     this.loading = true;
     this.avocatService.getAffaires().subscribe({
       next: (data: any) => {
+        console.log('affaire exemple:', JSON.stringify(data.affaires?.[0]));
         this.affaires = (data.affaires || []).map((a: any) => ({
           ...a,
           missionStatut:  data.missionStatuts?.[a.id] ?? null,
           missionId:      data.missionIds?.[a.id]     ?? null,
+          dossierId:      data.dossierIds?.[a.id]     ?? null,  // ← AJOUTER
+
           pvTexte:        a.pvTexte        ?? null,
           pvStatut:       a.pvStatut       ?? null,
           pvFichiers:     a.pvFichiers     ?? [],

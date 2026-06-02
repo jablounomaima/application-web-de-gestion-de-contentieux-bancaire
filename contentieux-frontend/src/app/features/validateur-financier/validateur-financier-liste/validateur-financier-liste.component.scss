@@ -12,6 +12,15 @@
   &:focus { border-color: #1a237e; box-shadow: 0 0 0 3px rgba(26,35,126,.1); }
 }
 
+@keyframes highlight-pulse {
+  0%   { box-shadow: 0 0 0 4px #f59e0b66; border-color: #f59e0b; }
+  70%  { box-shadow: 0 0 0 2px #f59e0b33; border-color: #fbbf24; }
+  100% { box-shadow: none; border-color: transparent; }
+}
+
+.dossier-highlight {
+  animation: highlight-pulse 4s ease-out forwards;
+}
 .btn-refresh {
   padding: 10px 16px;
   background: #f5f5f5;

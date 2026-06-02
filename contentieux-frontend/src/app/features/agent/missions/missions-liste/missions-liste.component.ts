@@ -9,8 +9,8 @@ import { environment } from '../../../../../environments/environment';
   selector: 'app-mission-creer',
   standalone: true,
   imports: [CommonModule, FormsModule],
-  templateUrl: './mission-creer.component.html',
-  styleUrls: ['./mission-creer.component.scss']
+  templateUrl: './missions-liste.component.html',
+  styleUrls: ['./missions-liste.component.scss']
 })
 export class MissionCreerComponent implements OnInit {
 

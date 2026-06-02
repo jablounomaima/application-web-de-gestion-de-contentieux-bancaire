@@ -871,4 +871,7 @@ export class AgentDossierModifierComponent implements OnInit, OnDestroy {
       this.router.navigate(['/agent/dossiers', this.dossierId]);
     }
   }
+
+
+  
 }

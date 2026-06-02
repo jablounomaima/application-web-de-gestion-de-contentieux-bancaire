@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
 import { KeycloakService } from 'keycloak-angular';
-
+import { NavbarComponent } from '../../../layout/navbar/navbar.component';
 import {
   AdminService,
   Agent, Agence, Validateur, AgenceForm,
@@ -17,7 +17,7 @@ type ModalMode = 'create' | 'edit';
 @Component({
   selector: 'app-admin-dashboard',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule  ],
   templateUrl: './admin-dashboard.component.html',  // ← fichier externe
   styleUrls: ['./admin-dashboard.component.scss']
 })
