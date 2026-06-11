@@ -1,7 +1,9 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { ValidateurService } from '../../../core/services/validateur.service';
 import { ValidateurFinancierListeComponent } from '../validateur-financier-liste/validateur-financier-liste.component';
 import { NotificationService } from '../../../core/services/notification.service';
@@ -13,7 +15,7 @@ import { NotificationService } from '../../../core/services/notification.service
   templateUrl: './validateur-financier-dashboard.component.html',
   styleUrls: ['./validateur-financier-dashboard.component.scss']
 })
-export class ValidateurFinancierDashboardComponent implements OnInit {
+export class ValidateurFinancierDashboardComponent implements OnInit, OnDestroy {
 
   dossiers:           any[]                 = [];
   loading             = true;
@@ -27,33 +29,51 @@ export class ValidateurFinancierDashboardComponent implements OnInit {
   recharger           = false;
   dossierId:          number | null         = null;
 
+  private destroy$ = new Subject<void>();
+
   constructor(
     private validateurService: ValidateurService,
-    private route: ActivatedRoute,
-    private notifService: NotificationService
-
+    private route:             ActivatedRoute,
+    private notifService:      NotificationService
   ) {}
 
   ngOnInit(): void {
     this.loading = true;
-  
+
     // Premier chargement via queryParams
-    this.route.queryParams.subscribe(params => {
-      const id = params['dossierId'] ? Number(params['dossierId']) : null;
-      if (id) this.dossierId = id;
-    });
-  
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        const id = params['dossierId'] ? Number(params['dossierId']) : null;
+        if (id) this.dossierId = id;
+      });
+
     // Navigation depuis notification (même URL)
-    this.notifService.dossierCible$.subscribe(id => {
-      if (id !== null) {
-        // Reset pour forcer ngOnChanges même si même ID
-        this.dossierId = null;
-        setTimeout(() => {
-          this.dossierId = id;
-          this.notifService.signalerDossierCible(null);
-        }, 50);
-      }
-    });
+    this.notifService.dossierCible$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(id => {
+        if (id !== null) {
+          this.dossierId = null;
+          setTimeout(() => {
+            this.dossierId = id;
+            this.notifService.signalerDossierCible(null);
+          }, 50);
+        }
+      });
+
+    // Rechargement temps réel — nouveau dossier à valider
+    this.notifService.nouvelleNotif$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(notif => {
+        if (notif.type === 'VALIDATION_FINANCIERE') {
+          this.recharger = !this.recharger;
+        }
+      });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   mettreAJourStats(dossiers: any[]): void {

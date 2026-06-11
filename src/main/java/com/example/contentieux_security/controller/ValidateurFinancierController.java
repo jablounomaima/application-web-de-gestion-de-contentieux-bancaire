@@ -207,67 +207,80 @@ public class ValidateurFinancierController {
             log.info("Mission {} statut → {}", missionId, mission.getStatut());
 
             // ── Récupérer infos pour notifications ──
-            DossierContentieux dossier    = mission.getPrestation() != null
-                                            ? mission.getPrestation().getDossier() : null;
-            String agentUsername          = dossier != null ? dossier.getCreePar() : null;
-            String prestataireUsername    = mission.getPrestataire() != null
-                                            ? mission.getPrestataire().getUsername() : null;
-            String nomPrestataire         = mission.getPrestataire() != null
-                ? (mission.getPrestataire().getPrenom() + " " + mission.getPrestataire().getNom()).trim()
-                : "Prestataire";
+            DossierContentieux dossier = mission.getPrestation() != null
+                                         ? mission.getPrestation().getDossier() : null;
+            String agentUsername       = dossier != null ? dossier.getCreePar() : null;
+            String prestataireUsername = mission.getPrestataire() != null
+                                         ? mission.getPrestataire().getUsername() : null;
 
             if (valide) {
                 // ✅ CAS 1 — VALIDATION ACCEPTÉE
 
-                // Notifier agent bancaire
+                // Notifier agent bancaire — URL explicite vers resultats-prestataires + missionId
                 if (agentUsername != null && dossier != null) {
-                    notificationService.notifier(agentUsername,
+                    notificationService.notifier(
+                        agentUsername,
                         "✅ Facture validée par le validateur financier",
                         "La facture de la mission " + mission.getNumeroMission()
-                        + " (dossier " + dossier.getNumeroDossier() + ")"
-                        + " a été validée par le validateur financier."
-                        + " Vous pouvez maintenant clôturer la mission.",
-                        "VALIDATION_FINANCIERE_OK", dossier);
-                    log.info("✅ Agent {} notifié — facture validée", agentUsername);
+                            + " (dossier " + dossier.getNumeroDossier() + ")"
+                            + " a été validée par le validateur financier."
+                            + " Vous pouvez maintenant clôturer la mission.",
+                        "VALIDATION_FINANCIERE_OK",
+                        dossier,
+                        "/agent/dossiers/" + dossier.getId()
+                            + "/resultats-prestataires?missionId=" + missionId  // ← URL explicite
+                    );
+                    log.info("✅ Agent {} notifié — facture validée → /agent/dossiers/{}/resultats-prestataires?missionId={}",
+                        agentUsername, dossier.getId(), missionId);
                 }
 
                 // Notifier prestataire
                 if (prestataireUsername != null) {
-                    notificationService.notifierSansDossier(prestataireUsername,
+                    notificationService.notifierSansDossier(
+                        prestataireUsername,
                         "✅ Votre facture a été validée",
                         "Votre facture pour la mission " + mission.getNumeroMission()
-                        + " a été validée par le validateur financier."
-                        + " L'agent bancaire va maintenant clôturer la mission.",
+                            + " a été validée par le validateur financier."
+                            + " L'agent bancaire va maintenant clôturer la mission.",
                         "VALIDATION_FINANCIERE_OK",
-                        "/prestataire/missions/" + missionId);
+                        "/prestataire/missions/" + missionId
+                    );
                     log.info("✅ Prestataire {} notifié — facture validée", prestataireUsername);
                 }
 
             } else {
-                // ✅ CAS 2 — VALIDATION REJETÉE
+                // ❌ CAS 2 — VALIDATION REJETÉE
 
-                // Notifier agent bancaire
+                // Notifier agent bancaire — URL explicite vers resultats-prestataires + missionId
                 if (agentUsername != null && dossier != null) {
-                    notificationService.notifier(agentUsername,
+                    notificationService.notifier(
+                        agentUsername,
                         "❌ Facture rejetée par le validateur financier",
                         "La facture de la mission " + mission.getNumeroMission()
-                        + " (dossier " + dossier.getNumeroDossier() + ")"
-                        + " a été rejetée."
-                        + (commentaire.isBlank() ? "" : " Motif : " + commentaire),
-                        "REJET_FINANCIER", dossier);
-                    log.info("✅ Agent {} notifié — facture rejetée", agentUsername);
+                            + " (dossier " + dossier.getNumeroDossier() + ")"
+                            + " a été rejetée par le validateur financier."
+                            + (commentaire.isBlank() ? "" : " Motif : " + commentaire),
+                        "REJET_FINANCIER",
+                        dossier,
+                        "/agent/dossiers/" + dossier.getId()
+                            + "/resultats-prestataires?missionId=" + missionId  // ← URL explicite
+                    );
+                    log.info("✅ Agent {} notifié — facture rejetée → /agent/dossiers/{}/resultats-prestataires?missionId={}",
+                        agentUsername, dossier.getId(), missionId);
                 }
 
                 // Notifier prestataire
                 if (prestataireUsername != null) {
-                    notificationService.notifierSansDossier(prestataireUsername,
+                    notificationService.notifierSansDossier(
+                        prestataireUsername,
                         "❌ Votre facture a été rejetée",
                         "Votre facture pour la mission " + mission.getNumeroMission()
-                        + " a été rejetée par le validateur financier."
-                        + (commentaire.isBlank() ? "" : " Motif : " + commentaire)
-                        + " Merci de corriger et resoumettre vos documents.",
+                            + " a été rejetée par le validateur financier."
+                            + (commentaire.isBlank() ? "" : " Motif : " + commentaire)
+                            + " Merci de corriger et resoumettre vos documents.",
                         "REJET_FINANCIER",
-                        "/prestataire/missions/" + missionId);
+                        "/prestataire/missions/" + missionId
+                    );
                     log.info("✅ Prestataire {} notifié — facture rejetée", prestataireUsername);
                 }
             }

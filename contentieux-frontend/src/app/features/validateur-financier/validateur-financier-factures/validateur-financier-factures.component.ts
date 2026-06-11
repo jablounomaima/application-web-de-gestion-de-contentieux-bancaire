@@ -2,7 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
-import { Subscription } from 'rxjs';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
 import { NotificationService, NotificationDTO } from '../../../core/services/notification.service';
 
@@ -74,7 +75,9 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
       </div>
 
       <!-- ══ Liste dossiers ══ -->
-      <div *ngFor="let dossier of dossiersFiltres()" class="dossier-block">
+      <div *ngFor="let dossier of dossiersFiltres()"
+           class="dossier-block"
+           [id]="'dossier-' + dossier.dossierId">
 
         <!-- En-tête dossier -->
         <div class="dossier-header"
@@ -129,13 +132,14 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let f of dossier.factures"
-                  [ngClass]="{
-                    'row-valide':  isValidee(f),
-                    'row-rejete':  isRejete(f),
-                    'row-attente': peutEtreTraitee(f),
-                    'row-nouvelle': f._nouvelle
-                  }">
+            <tr *ngFor="let f of dossier.factures"
+    [id]="'facture-' + f.missionId"
+    [ngClass]="{
+      'row-valide':   isValidee(f),
+      'row-rejete':   isRejete(f),
+      'row-attente':  peutEtreTraitee(f),
+      'row-nouvelle': f._nouvelle
+    }">
 
                 <td>
                   <div class="prestataire-cell">
@@ -177,7 +181,7 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
                     </button>
                   </div>
                   <div *ngIf="isValidee(f)" class="traite-label valide-label">✅ Validée</div>
-                  <div *ngIf="isRejete(f)" class="traite-label rejete-label">❌ Rejetée</div>
+                  <div *ngIf="isRejete(f)"  class="traite-label rejete-label">❌ Rejetée</div>
                 </td>
               </tr>
             </tbody>
@@ -238,61 +242,45 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
 
     /* ── Bannière nouvelle facture ── */
     .nouvelle-facture-banner {
-      display: flex;
-      align-items: center;
-      gap: 10px;
+      display: flex; align-items: center; gap: 10px;
       background: linear-gradient(135deg, #fef3c7, #fde68a);
-      border: 1.5px solid #f59e0b;
-      border-radius: 12px;
-      padding: 14px 20px;
-      margin-bottom: 20px;
-      font-weight: 700;
-      color: #92400e;
-      cursor: pointer;
+      border: 1.5px solid #f59e0b; border-radius: 12px;
+      padding: 14px 20px; margin-bottom: 20px;
+      font-weight: 700; color: #92400e; cursor: pointer;
       transition: background 0.2s;
       box-shadow: 0 2px 8px rgba(245,158,11,0.2);
     }
     .nouvelle-facture-banner:hover { background: linear-gradient(135deg, #fde68a, #fbbf24); }
     .banner-close {
-      margin-left: auto;
-      background: none;
-      border: none;
-      font-size: 1rem;
-      cursor: pointer;
-      color: #92400e;
-      padding: 2px 6px;
-      border-radius: 4px;
+      margin-left: auto; background: none; border: none;
+      font-size: 1rem; cursor: pointer; color: #92400e;
+      padding: 2px 6px; border-radius: 4px;
     }
     .banner-close:hover { background: rgba(0,0,0,0.1); }
 
     /* ── Ligne nouvelle facture ── */
-    .row-nouvelle {
-      animation: highlight-new 2s ease-out forwards;
-    }
+    .row-nouvelle { animation: highlight-new 2s ease-out forwards; }
     @keyframes highlight-new {
       0%   { background: #fef9c3 !important; }
       100% { background: white; }
     }
 
+    /* ── Surlignage dossier depuis notification ── */
+    .dossier-highlight {
+      border: 2px solid #f59e0b !important;
+      box-shadow: 0 0 0 4px rgba(245,158,11,0.2) !important;
+      transition: all 0.3s ease;
+    }
+
     /* ── Header ── */
     .page-header {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 20px;
-      margin-bottom: 24px;
-      flex-wrap: wrap;
+      display: flex; align-items: flex-start; justify-content: space-between;
+      gap: 20px; margin-bottom: 24px; flex-wrap: wrap;
     }
     .role-badge {
-      background: #fef3c7;
-      color: #92400e;
-      padding: 4px 10px;
-      border-radius: 6px;
-      font-weight: 800;
-      font-size: 0.7rem;
-      letter-spacing: 1px;
-      display: inline-block;
-      margin-bottom: 6px;
+      background: #fef3c7; color: #92400e; padding: 4px 10px; border-radius: 6px;
+      font-weight: 800; font-size: 0.7rem; letter-spacing: 1px;
+      display: inline-block; margin-bottom: 6px;
     }
     h1 { margin: 0; font-size: 1.8rem; color: #1e293b; font-weight: 800; }
     .subtitle { color: #64748b; margin-top: 4px; font-size: 0.9rem; }
@@ -302,22 +290,14 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
       transform: translateY(-50%); font-size: 0.85rem; pointer-events: none;
     }
     .search-input {
-      padding: 10px 16px 10px 36px;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      outline: none;
-      width: 320px;
-      background: white;
-      font-family: inherit;
-      transition: all 0.2s;
+      padding: 10px 16px 10px 36px; border: 1.5px solid #e2e8f0;
+      border-radius: 10px; font-size: 0.9rem; outline: none;
+      width: 320px; background: white; font-family: inherit; transition: all 0.2s;
     }
     .search-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.1); }
 
     /* ── Stats bar ── */
-    .stats-bar {
-      display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap;
-    }
+    .stats-bar { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
     .stat-item {
       background: white; border-radius: 12px; padding: 14px 20px;
       display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -496,6 +476,8 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   loading       = true;
   recherche     = '';
 
+  private _missionId_cible: number | null = null;
+
   // Modal
   modalVisible      = false;
   factureEnCours:  any = null;
@@ -514,7 +496,9 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   nouvelleBanniereVisible = false;
   private banniereTimeout: any = null;
 
-  private notifSub: Subscription | null = null;
+  private _derniereNotifId: number | null = null;
+  private _dossierId_cible: number | null = null;
+  private destroy$ = new Subject<void>();
 
   private api = `${environment.apiUrl}/api/validateur/financier`;
 
@@ -524,12 +508,43 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   ) {}
 
   ngOnInit(): void {
+    this.notificationService.factureCible$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((id: number | null) => {
+        if (id !== null) {
+          this._dossierId_cible = id;
+          this.notificationService.signalerFactureCible(null);
+          if (!this.loading && this.dossiers.length > 0) {
+            setTimeout(() => this._surlignerFacture(id, this._missionId_cible), 100);
+          }
+        }
+      });
+  
+    // ✅ Écouter aussi missionId pour surligner la bonne ligne
+    this.notificationService.missionCible$
+    .pipe(takeUntil(this.destroy$))
+    .subscribe((missionIdOrNum: string | number | null) => {
+      if (missionIdOrNum === null) return;
+      
+      if (typeof missionIdOrNum === 'string') {
+        // Numéro textuel (ex: "MISS-2026-00036")
+        // Pour ce composant, on ignore le string car il gère les factures par ID
+        // Le fallback dans _surlignerFacture prendra la première facture en attente
+        this._missionId_cible = null;
+      } else {
+        // ID numérique direct
+        this._missionId_cible = missionIdOrNum;
+      }
+      this.notificationService.signalerMissionCible(null);
+    });
+  
     this.charger();
     this._ecouterNouvellesFactures();
   }
 
   ngOnDestroy(): void {
-    this.notifSub?.unsubscribe();
+    this.destroy$.next();
+    this.destroy$.complete();
     if (this.banniereTimeout) clearTimeout(this.banniereTimeout);
   }
 
@@ -538,37 +553,76 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   // ════════════════════════════════════════
 
   private _ecouterNouvellesFactures(): void {
-    this.notifSub = this.notificationService.notifications$.subscribe(
-      (notifs: NotificationDTO[]) => {
-        if (!notifs.length) return;
+    this.notificationService.nouvelleNotif$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe((notif: NotificationDTO) => {
+        const typesFacture = [
+          'FACTURE_SOUMISE', 'RESOUMISSION',
+          'RESULTAT_SOUMIS', 'RESULTAT_MODIFIE'
+        ];
+        if (!typesFacture.includes(notif.type)) return;
+        if (this._derniereNotifId === notif.id) return;
+        this._derniereNotifId = notif.id;
 
-        // La dernière notif reçue (en tête de liste après ajouterNotification)
-        const derniere = notifs[0];
+        // Recharger automatiquement et surligner le dossier
+        if (notif.dossierId) {
+          this._dossierId_cible = notif.dossierId;
+        }
+        this.charger();
 
-        // On réagit uniquement aux notifications de type facture soumise / resoumission
-        // ✅ CORRIGÉ : utiliser les types réellement émis par le backend
-        const typesFacture = ['FACTURE_SOUMISE', 'RESOUMISSION', 'RESULTAT_SOUMIS', 'RESULTAT_MODIFIE'];
-        if (!typesFacture.includes(derniere.type)) return;
-
-        // Éviter de réagir deux fois à la même notif
-        if (this._derniereNotifId === derniere.id) return;
-        this._derniereNotifId = derniere.id;
-
-        // Afficher la bannière + toast sans recharger automatiquement
-        this.nouvelleBanniereVisible = true;
-        this.showToast('💰 Nouvelle facture reçue — cliquez sur la bannière pour actualiser', 'info');
-
-        // Fermer la bannière automatiquement après 60s si non cliquée
-        if (this.banniereTimeout) clearTimeout(this.banniereTimeout);
-        this.banniereTimeout = setTimeout(() => {
-          this.nouvelleBanniereVisible = false;
-        }, 60000);
-      }
-    );
+        this.showToast('💰 Nouvelle facture reçue — liste mise à jour', 'info');
+      });
   }
 
-  private _derniereNotifId: number | null = null;
+  // ════════════════════════════════════════
+  // Surlignage dossier
+  // ════════════════════════════════════════
 
+  private _surlignerFacture(dossierId: number, missionId: number | null): void {
+    const dossier = this.dossiers.find(d => d.dossierId === dossierId);
+    if (!dossier) {
+      console.warn('Dossier cible introuvable :', dossierId);
+      return;
+    }
+  
+    // Ouvrir le dossier
+    this.dossiersOuverts.add(dossierId);
+  
+    setTimeout(() => {
+      // ── Surligner le bloc dossier ──
+      const elDossier = document.getElementById('dossier-' + dossierId);
+      if (elDossier) {
+        elDossier.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        elDossier.classList.add('dossier-highlight');
+        setTimeout(() => elDossier.classList.remove('dossier-highlight'), 4000);
+      }
+  
+      // ── Trouver la facture exacte ──
+      let factureCible: any = null;
+  
+      if (missionId) {
+        // Chercher par missionId (le plus précis)
+        factureCible = dossier.factures?.find((f: any) => f.missionId === missionId);
+      }
+  
+      if (!factureCible) {
+        // Fallback : première facture en attente
+        factureCible = dossier.factures?.find((f: any) => this.peutEtreTraitee(f));
+      }
+  
+      if (!factureCible) return;
+  
+      // ── Scroll + surlignage de la ligne facture ──
+      setTimeout(() => {
+        const elFacture = document.getElementById('facture-' + factureCible.missionId);
+        if (!elFacture) return;
+        elFacture.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        elFacture.classList.add('row-nouvelle');
+        setTimeout(() => elFacture.classList.remove('row-nouvelle'), 4000);
+      }, 300);
+  
+    }, 200);
+  }
   // ════════════════════════════════════════
   // Recharger depuis la bannière
   // ════════════════════════════════════════
@@ -597,6 +651,14 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
         this.totalFactures = res.totalFactures ?? 0;
         this.dossiers.forEach(d => this.dossiersOuverts.add(d.dossierId));
         this.loading = false;
+  
+        if (this._dossierId_cible) {
+          const dossierId  = this._dossierId_cible;
+          const missionId  = this._missionId_cible;
+          this._dossierId_cible = null;
+          this._missionId_cible = null;
+          setTimeout(() => this._surlignerFacture(dossierId, missionId), 400);
+        }
       },
       error: () => {
         this.showToast('Impossible de charger les factures.', 'error');
@@ -630,8 +692,8 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   countStatut(type: 'attente' | 'valide' | 'rejete'): number {
     return this.dossiers.reduce((total, d) => {
       return total + d.factures.filter((f: any) => {
-        if (type === 'valide')  return this.isValidee(f);
-        if (type === 'rejete')  return this.isRejete(f);
+        if (type === 'valide') return this.isValidee(f);
+        if (type === 'rejete') return this.isRejete(f);
         return this.peutEtreTraitee(f);
       }).length;
     }, 0);
@@ -639,8 +701,8 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
 
   countDossierStatut(dossier: any, type: 'attente' | 'valide' | 'rejete'): number {
     return dossier.factures.filter((f: any) => {
-      if (type === 'valide')  return this.isValidee(f);
-      if (type === 'rejete')  return this.isRejete(f);
+      if (type === 'valide') return this.isValidee(f);
+      if (type === 'rejete') return this.isRejete(f);
       return this.peutEtreTraitee(f);
     }).length;
   }

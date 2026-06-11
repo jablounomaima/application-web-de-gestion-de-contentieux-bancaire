@@ -1,10 +1,12 @@
 import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router } from '@angular/router';
 import { Subscription } from 'rxjs';
 import { PrestataireService } from '../../../core/services/prestataire.service';
 import { NotificationService, NotificationDTO } from '../../../core/services/notification.service';
+
+
+import { Router, ActivatedRoute } from '@angular/router';
 
 @Component({
   selector: 'app-prestataire-missions-liste',
@@ -19,7 +21,7 @@ export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
   missionsFiltrees: any[] = [];
   loading = true;
   errorMsg = '';
-
+  missionHighlightee: string | null = null;
   // Filtres
   filtreStatut    = 'TOUS';
   filtreRecherche = '';
@@ -67,22 +69,31 @@ export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
   constructor(
     private prestataireService: PrestataireService,
     private router:             Router,
+    private route:              ActivatedRoute,   // ← AJOUTER
+
     private notifService:       NotificationService
   ) {}
 
   ngOnInit(): void {
     this.charger();
     this._ecouterNotifications();
-    
-    setTimeout(() => {
-      console.log('📋 Structure mission[0]:', JSON.stringify(this.missions[0], null, 2));
-    }, 2000);
+  
+    this.route.queryParams.subscribe(params => {
+      if (params['highlight']) {
+        this.missionHighlightee = params['highlight'];
+        if (this.missions.length > 0) {
+          this._highlighterEtOuvrir(params['highlight'], params['action']);
+        }
+      }
+    });
   }
+
 
   ngOnDestroy(): void {
     this.notifSub?.unsubscribe();
   }
 
+  
   // ── Écoute WebSocket — réagir aux rejets/validations en temps réel ──
   private _ecouterNotifications(): void {
     this.notifSub = this.notifService.notifications$.subscribe(
@@ -106,6 +117,28 @@ export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
     );
   }
 
+  private _highlighterEtOuvrir(missionCode: string, action?: string): void {
+    // 1. Retirer le filtre statut pour être sûr que la mission est visible
+    this.filtreStatut    = 'TOUS';
+    this.filtreRecherche = '';
+    this.appliquerFiltres();
+  
+    // 2. Trouver la mission
+    const mission = this.missions.find(m => m.numeroMission === missionCode);
+    if (!mission) return;
+  
+    // 3. Scroller vers la carte
+    setTimeout(() => {
+      const el = document.getElementById(`mission-card-${mission.id}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  
+      // 4. Ouvrir le modal si demandé
+      if (action === 'resoumettre' && this.peutSoumettre(mission)) {
+        setTimeout(() => this.ouvrirModal(mission), 400);
+      }
+    }, 100);
+  }
+
   charger(): void {
     this.loading  = true;
     this.errorMsg = '';
@@ -116,6 +149,14 @@ export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
         this.calculerStats();
         this.appliquerFiltres();
         this.loading = false;
+  
+        // ← AJOUTER ICI
+        const params = this.route.snapshot.queryParams;
+        if (params['highlight']) {
+          setTimeout(() => {
+            this._highlighterEtOuvrir(params['highlight'], params['action']);
+          }, 150);
+        }
       },
       error: (err) => {
         this.errorMsg = err?.error?.error || 'Impossible de charger les missions.';
@@ -123,6 +164,8 @@ export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
       }
     });
   }
+
+ 
 
   calculerStats(): void {
     this.stats = {

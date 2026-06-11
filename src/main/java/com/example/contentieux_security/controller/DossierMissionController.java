@@ -242,8 +242,7 @@ public class DossierMissionController {
 
             mission = missionRepository.save(mission);
 
-            // ── 9. Notification prestataire ───────────────────────────
-            // Construire les infos client
+            // ── 9. Infos communes pour les notifications ───────────────
             String clientNom = "—";
             String email     = "—";
             String tel       = "—";
@@ -259,6 +258,10 @@ public class DossierMissionController {
                     ? dateFinPrevue.format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
                     : "Non définie";
 
+            String typePrestataireName = prestataire.getType() != null
+                    ? prestataire.getType().name() : "";
+
+            // ── 10. Notification → prestataire (existante) ────────────
             String messageNotif = String.format(
                     "MISSION : %s\n" +
                     "Dossier : %s\n" +
@@ -276,33 +279,55 @@ public class DossierMissionController {
                     echeance
             );
 
-            // ✅ URL selon le type de prestataire
-            // - Avocat      → liste des affaires judiciaires
-            // - Autres      → mission spécifique (expert, huissier…)
-            String typePrestataireName = prestataire.getType() != null
-                    ? prestataire.getType().name() : "";
-
-            String urlNotif = typePrestataireName.equals("AVOCAT")
+            String urlNotifPrestataire = typePrestataireName.equals("AVOCAT")
                     ? "/avocat/affaires"
                     : "/prestataire/missions/" + mission.getId();
 
-                    notificationService.notifier(
-                        prestataire.getUsername(),
-                        "📋 Nouvelle mission assignée — " + mission.getNumeroMission()
+            notificationService.notifier(
+                    prestataire.getUsername(),
+                    "📋 Nouvelle mission assignée — " + mission.getNumeroMission()
                             + " | Dossier " + dossier.getNumeroDossier(),
-                        messageNotif,
-                        "NOUVELLE_MISSION",
-                        dossier,        // ← passer le dossier pour avoir dossierId
-                        urlNotif        // ← garder l'urlAction existante
-                    );
+                    messageNotif,
+                    "NOUVELLE_MISSION",
+                    dossier,
+                    urlNotifPrestataire
+            );
 
             log.info("✅ Mission {} créée — prestataire={} type={} url={}",
                     mission.getNumeroMission(),
                     prestataire.getUsername(),
                     typePrestataireName,
-                    urlNotif);
+                    urlNotifPrestataire);
 
-            // ── 10. Réponse ───────────────────────────────────────────
+            // ── 11. Notification → avocat si le prestataire est un avocat ─
+            // ✅ C'est ce bloc qui manquait : sans lui, l'avocat ne reçoit
+            //    aucun signal WebSocket et son dashboard ne se met jamais
+            //    à jour automatiquement quand une affaire lui est assignée.
+            if (typePrestataireName.equals("AVOCAT")) {
+                notificationService.notifier(
+                        prestataire.getUsername(),          // ← l'avocat EST le prestataire
+                        "⚖️ Nouvelle affaire assignée — Dossier " + dossier.getNumeroDossier(),
+                        String.format(
+                            "Une nouvelle affaire judiciaire vous a été assignée.\n" +
+                            "Dossier  : %s\n" +
+                            "Client   : %s\n" +
+                            "Mission  : %s\n" +
+                            "Échéance : %s",
+                            dossier.getNumeroDossier(),
+                            clientNom,
+                            mission.getNumeroMission(),
+                            echeance
+                        ),
+                        "NOUVELLE_AFFAIRE",                 // ← type écouté par avocat-dashboard
+                        dossier,                            // ← dossierId inclus automatiquement
+                        "/avocat/affaires"
+                );
+
+                log.info("✅ Notification NOUVELLE_AFFAIRE envoyée à l'avocat {}",
+                        prestataire.getUsername());
+            }
+
+            // ── 12. Réponse ───────────────────────────────────────────
             return ResponseEntity.ok(Map.of(
                     "message", "Mission créée avec succès",
                     "mission", mission.getNumeroMission()

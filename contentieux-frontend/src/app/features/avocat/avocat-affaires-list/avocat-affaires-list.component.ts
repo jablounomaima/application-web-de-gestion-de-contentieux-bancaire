@@ -1,9 +1,11 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { AvocatService } from '../../../core/services/avocat.service';
 import { ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { NotificationService } from '../../../core/services/notification.service';
 
 @Component({
@@ -13,7 +15,7 @@ import { NotificationService } from '../../../core/services/notification.service
   templateUrl: './avocat-affaires-list.component.html',
   styleUrls: ['./avocat-affaires-list.component.scss']
 })
-export class AvocatAffairesListComponent implements OnInit {
+export class AvocatAffairesListComponent implements OnInit, OnDestroy {
 
   // ── Data ────────────────────────────────────────────────────────
   stats: any        = null;
@@ -25,13 +27,18 @@ export class AvocatAffairesListComponent implements OnInit {
 
   // ── Stats secondaires ────────────────────────────────────────────
   statuts = [
-    { key: '',                label: 'Toutes',          icon: '📁' },
-    { key: 'EN_COURS',        label: 'En cours',        icon: '⚖️' },
-    { key: 'JUGEMENT_RENDU',  label: 'Jugement rendu',  icon: '📜' },
-    { key: 'EXECUTION_FORCEE',label: 'Exécution forcée',icon: '⚡' },
-    { key: 'TRANSACTION',     label: 'Transaction',     icon: '🤝' },
-    { key: 'CLOSE',           label: 'Clôturée',        icon: '✅' }
+    { key: '',                 label: 'Toutes',           icon: '📁' },
+    { key: 'EN_COURS',         label: 'En cours',         icon: '⚖️' },
+    { key: 'JUGEMENT_RENDU',   label: 'Jugement rendu',   icon: '📜' },
+    { key: 'EXECUTION_FORCEE', label: 'Exécution forcée', icon: '⚡' },
+    { key: 'TRANSACTION',      label: 'Transaction',      icon: '🤝' },
+    { key: 'CLOSE',            label: 'Clôturée',         icon: '✅' }
   ];
+
+  // ── Gestion du cycle de vie ───────────────────────────────────────
+  private destroy$ = new Subject<void>();
+
+  _cibleDossierId: number | null = null;
 
   constructor(
     private avocatService: AvocatService,
@@ -40,14 +47,9 @@ export class AvocatAffairesListComponent implements OnInit {
     private notifService: NotificationService
   ) {}
 
-  _cibleDossierId: number | null = null;
-
   private _surlignerAffaire(dossierId: number): void {
-    const affaire = this.affaires.find(
-      (a: any) => a.dossierId === dossierId
-    );
+    const affaire = this.affaires.find((a: any) => a.dossierId === dossierId);
     if (!affaire) {
-      // Attendre le chargement
       setTimeout(() => this._surlignerAffaire(dossierId), 300);
       return;
     }
@@ -59,72 +61,131 @@ export class AvocatAffairesListComponent implements OnInit {
       setTimeout(() => el.classList.remove('affaire-highlight'), 4000);
     }, 300);
   }
-ngOnInit(): void {
-  this.chargerStats();
-  this.chargerAffaires();
 
-  // Écouter queryParams (premier chargement depuis notification)
-  this.route.queryParams.subscribe(params => {
-    const id = params['dossierId'] ? Number(params['dossierId']) : null;
-    if (id) {
-      this._cibleDossierId = id;
-    }
-  });
+  ngOnInit(): void {
+    this.chargerStats();
+    this.chargerAffaires();
+  
+    this.route.queryParams.subscribe(params => {
+      const id = params['dossierId'] ? Number(params['dossierId']) : null;
+      if (id) this._cibleDossierId = id;
+    });
+  
+    this.notifService.dossierCible$.subscribe(id => {
+      if (id !== null) {
+        this._cibleDossierId = null;
+        setTimeout(() => {
+          this._cibleDossierId = id;
+          this.notifService.signalerDossierCible(null);
+          this._surlignerAffaire(id);
+        }, 50);
+      }
+    });
+  
+    // ── Rechargement automatique via WebSocket ────────────────────
+    const typesAvocat = [
+      'NOUVELLE_AFFAIRE',
+      'NOUVELLE_MISSION',
+      'MISSION_MODIFIEE',
+      'MISSION_CLOTUREE',
+      'MISSION_REJETEE',
+      'VALIDATION_FINANCIERE_OK'
+    ];
+  
+    this.notifService.nouvelleNotif$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(notif => {
+      if (typesAvocat.includes(notif.type)) {
+        this.chargerAffairesAvecRetry();
+      }
+    });
+  }
 
-  // Écouter le service (même URL)
-  this.notifService.dossierCible$.subscribe(id => {
-    if (id !== null) {
-      this._cibleDossierId = null;
-      setTimeout(() => {
-        this._cibleDossierId = id;
-        this.notifService.signalerDossierCible(null);
-        this._surlignerAffaire(id);
-      }, 50);
-    }
-  });
-}
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
 
   // ── Chargement ───────────────────────────────────────────────────
 
   chargerStats(): void {
     this.avocatService.getDashboard().subscribe({
       next: (s) => this.stats = s,
-      error: () => this.stats = null  // fallback sur calcul local
+      error: () => this.stats = null
     });
   }
 
   chargerAffaires(): void {
     this.loading = true;
-  
-    // ✅ Appeler les deux endpoints en parallèle
+
     this.avocatService.getDashboard().subscribe({
       next: (s) => this.stats = s,
       error: () => this.stats = null
     });
-  
+
     this.avocatService.getAffaires().subscribe({
       next: (data: any) => {
         this.affaires = (data.affaires || []).map((a: any) => ({
           ...a,
-          missionStatut: data.missionStatuts?.[a.id] ?? null,
-          missionId:     data.missionIds?.[a.id]     ?? null,
-          dossierId:      data.dossierIds?.[a.id]     ?? null, // ← AJOUTER
-
-          // ✅ champs PV / Facture directs
-          pvTexte:        a.pvTexte        ?? null,
-          pvStatut:       a.pvStatut       ?? null,
-          pvFichiers:     a.pvFichiers     ?? [],
-          factureRef:     a.factureRef     ?? null,
-          montantFacture: a.montantFacture ?? null,
-          factureStatut:  a.factureStatut  ?? null,
-  
-          // ✅ nombre d'audiences depuis la liste
+          missionStatut:   data.missionStatuts?.[a.id] ?? null,
+          missionId:       data.missionIds?.[a.id]     ?? null,
+          dossierId:       data.dossierIds?.[a.id]     ?? null,
+          pvTexte:         a.pvTexte        ?? null,
+          pvStatut:        a.pvStatut       ?? null,
+          pvFichiers:      a.pvFichiers     ?? [],
+          factureRef:      a.factureRef     ?? null,
+          montantFacture:  a.montantFacture ?? null,
+          factureStatut:   a.factureStatut  ?? null,
           nombreAudiences: Array.isArray(a.audiences) ? a.audiences.length : 0,
         }));
         this.appliquerFiltres();
         this.loading = false;
       },
       error: () => this.loading = false
+    });
+  }
+
+  private chargerAffairesAvecRetry(tentative = 0): void {
+    const MAX = 5;
+    const DELAI_MS = [500, 1000, 2000, 3000, 5000];
+  
+    this.avocatService.getAffaires().subscribe({
+      next: (data: any) => {
+        const nouvelles = (data.affaires || []).map((a: any) => ({
+          ...a,
+          missionStatut:   data.missionStatuts?.[a.id] ?? null,
+          missionId:       data.missionIds?.[a.id]     ?? null,
+          dossierId:       data.dossierIds?.[a.id]      ?? null,
+          pvTexte:         a.pvTexte        ?? null,
+          pvStatut:        a.pvStatut       ?? null,
+          pvFichiers:      a.pvFichiers     ?? [],
+          factureRef:      a.factureRef     ?? null,
+          montantFacture:  a.montantFacture ?? null,
+          factureStatut:   a.factureStatut  ?? null,
+          nombreAudiences: Array.isArray(a.audiences) ? a.audiences.length : 0,
+        }));
+  
+        if (nouvelles.length <= this.affaires.length && tentative < MAX) {
+          console.log(`🔄 [AffairesList] Retry ${tentative + 1}/${MAX}`);
+          setTimeout(
+            () => this.chargerAffairesAvecRetry(tentative + 1),
+            DELAI_MS[tentative]
+          );
+          return;
+        }
+  
+        this.affaires = nouvelles;
+        this.appliquerFiltres();
+        console.log(`✅ [AffairesList] Affaires rechargées : ${this.affaires.length}`);
+      },
+      error: (e) => {
+        if (tentative < MAX) {
+          setTimeout(
+            () => this.chargerAffairesAvecRetry(tentative + 1),
+            DELAI_MS[tentative]
+          );
+        }
+      }
     });
   }
 
@@ -172,6 +233,10 @@ ngOnInit(): void {
     this.router.navigate(['/avocat/affaires', aff.id, 'honoraires']);
   }
 
+  voirDossier(aff: any): void {
+    this.router.navigate(['/avocat/affaires', aff.id, 'dossier']);
+  }
+
   // ── Helpers affichage ────────────────────────────────────────────
 
   statutLabel(s: string): string {
@@ -212,63 +277,48 @@ ngOnInit(): void {
     return this.affaires.filter(a => a.statut === key).length;
   }
 
-  voirDossier(aff: any): void {
-    this.router.navigate(['/avocat/affaires', aff.id, 'dossier']);
+  // ── Getters calculés ─────────────────────────────────────────────
+
+  get totalAffaires(): number {
+    return this.affaires.length;
   }
 
+  get affairesEnCours(): number {
+    return this.affaires.filter(a => a.statut === 'EN_COURS').length;
+  }
 
-  // ── Calculé depuis la liste locale (fallback si backend ne renvoie pas) ──
+  get jugementRendu(): number {
+    return this.affaires.filter(a => a.statut === 'JUGEMENT_RENDU').length;
+  }
 
-get totalHonorairesCalcule(): number {
-  return this.affaires
-    .filter(a => a.montantFacture)
-    .reduce((sum, a) => sum + (a.montantFacture || 0), 0);
-}
+  get totalAudiences(): number {
+    return this.affaires.reduce((sum, a) => {
+      const nb = a.nombreAudiences ?? a.audiences?.length ?? 0;
+      return sum + nb;
+    }, 0);
+  }
 
+  get totalHonoraires(): number {
+    return this.affaires
+      .filter(a => a.montantFacture && a.factureStatut !== 'REJETEE')
+      .reduce((sum, a) => sum + (Number(a.montantFacture) || 0), 0);
+  }
 
+  get totalHonorairesCalcule(): number {
+    return this.affaires
+      .filter(a => a.montantFacture)
+      .reduce((sum, a) => sum + (a.montantFacture || 0), 0);
+  }
 
-// ════════ Getters calculés depuis affaires[] ════════
+  get pvEnAttente(): number {
+    return this.affaires.filter(a => a.pvStatut === 'EN_ATTENTE').length;
+  }
 
-get totalAffaires(): number {
-  return this.affaires.length;
-}
+  get facturesEnAttente(): number {
+    return this.affaires.filter(a => a.factureStatut === 'EN_ATTENTE').length;
+  }
 
-get affairesEnCours(): number {
-  return this.affaires.filter(a => a.statut === 'EN_COURS').length;
-}
-
-get jugementRendu(): number {
-  return this.affaires.filter(a => a.statut === 'JUGEMENT_RENDU').length;
-}
-
-get totalAudiences(): number {
-  // Somme des audiences de toutes les affaires
-  return this.affaires.reduce((sum, a) => {
-    const nb = a.nombreAudiences ?? a.audiences?.length ?? 0;
-    return sum + nb;
-  }, 0);
-}
-
-
-
-get totalHonoraires(): number {
-  return this.affaires
-    .filter(a => a.montantFacture && a.factureStatut !== 'REJETEE')
-    .reduce((sum, a) => sum + (Number(a.montantFacture) || 0), 0);
-}
-
-get pvEnAttente(): number {
-  return this.affaires.filter(a => a.pvStatut === 'EN_ATTENTE').length;
-}
-
-get facturesEnAttente(): number {
-  return this.affaires.filter(a => a.factureStatut === 'EN_ATTENTE').length;
-}
-// ✅ Audiences à venir — vient du backend (getAudiencesAVenir)
-get audiencesAVenir(): number {
-  return this.stats?.audiencesAVenir ?? 0;
-}
-
-
-
+  get audiencesAVenir(): number {
+    return this.stats?.audiencesAVenir ?? 0;
+  }
 }

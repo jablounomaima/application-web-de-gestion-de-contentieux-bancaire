@@ -74,7 +74,6 @@ import { NotificationService, NotificationDTO } from '../../core/services/notifi
   styles: [`
     .notif-wrapper  { position: relative; display: inline-block; }
 
-    /* Overlay transparent qui couvre toute la page derrière le panneau */
     .notif-overlay {
       position: fixed;
       top: 0; left: 0;
@@ -131,7 +130,7 @@ import { NotificationService, NotificationDTO } from '../../core/services/notifi
       width: 340px; max-height: 440px; overflow-y: auto;
       background: #fff; border: 1px solid #e2e8f0;
       border-radius: 10px; box-shadow: 0 8px 24px rgba(0,0,0,.12);
-      z-index: 1000; /* au-dessus de l'overlay (999) */
+      z-index: 1000;
     }
 
     .notif-header {
@@ -241,23 +240,7 @@ export class NotificationsComponent implements OnInit, OnDestroy {
     }
 
     if (n.urlAction) {
-      const [path, queryString] = n.urlAction.split('?');
-      const queryParams: Record<string, string> = {};
-      if (queryString) {
-        queryString.split('&').forEach(pair => {
-          const [key, val] = pair.split('=');
-          if (key) queryParams[key] = val ?? '';
-        });
-      }
-
-      const dossierId = queryParams['dossierId'] ? Number(queryParams['dossierId']) : null;
-      if (dossierId) {
-        this.notifService.signalerDossierCible(dossierId);
-      }
-
-      this.router.navigate([path], {
-        queryParams: Object.keys(queryParams).length ? queryParams : undefined
-      });
+      this._naviguerVersUrl(n.urlAction);
     }
   }
 
@@ -286,24 +269,46 @@ export class NotificationsComponent implements OnInit, OnDestroy {
   naviguerVersToast(): void {
     this.fermerToast();
     if (this.toastUrlAction) {
-      const [path, queryString] = this.toastUrlAction.split('?');
-      const queryParams: Record<string, string> = {};
-      if (queryString) {
-        queryString.split('&').forEach(pair => {
-          const [key, val] = pair.split('=');
-          if (key) queryParams[key] = val ?? '';
-        });
-      }
+      this._naviguerVersUrl(this.toastUrlAction);
+    }
+  }
 
-      const dossierId = queryParams['dossierId'] ? Number(queryParams['dossierId']) : null;
-      if (dossierId) {
-        this.notifService.signalerDossierCible(dossierId);
-      }
-
-      this.router.navigate([path], {
-        queryParams: Object.keys(queryParams).length ? queryParams : undefined
+  /**
+   * Méthode centralisée de navigation depuis une urlAction.
+   * - Extrait dossierId depuis le PATH  (ex: /agent/dossiers/24/...)
+   * - Extrait missionId depuis les query params (ex: ?missionId=5)
+   * - Signale les deux au NotificationService AVANT la navigation
+   */
+  private _naviguerVersUrl(urlAction: string): void {
+    console.log('🔍 urlAction reçue:', urlAction);
+  
+    const [path, queryString] = urlAction.split('?');
+    console.log('🔍 path:', path);
+    console.log('🔍 queryString:', queryString);
+  
+    const queryParams: Record<string, string> = {};
+    if (queryString) {
+      queryString.split('&').forEach(pair => {
+        const [key, val] = pair.split('=');
+        if (key) queryParams[key] = val ?? '';
       });
     }
+    console.log('🔍 queryParams:', queryParams);
+  
+    const pathMatch = path.match(/\/dossiers\/(\d+)/);
+    const dossierId = pathMatch ? Number(pathMatch[1]) : null;
+    console.log('🔍 dossierId extrait:', dossierId);
+  
+    const missionId = queryParams['missionId'] ? Number(queryParams['missionId']) : null;
+    console.log('🔍 missionId extrait:', missionId);
+  
+    if (dossierId) this.notifService.signalerDossierCible(dossierId);
+    if (missionId) this.notifService.signalerMissionCible(missionId);
+  
+    console.log('🔍 navigate vers:', path, queryParams);
+    this.router.navigate([path], {
+      queryParams: Object.keys(queryParams).length ? queryParams : undefined
+    });
   }
 
   private _resolveToastType(type: string): string {

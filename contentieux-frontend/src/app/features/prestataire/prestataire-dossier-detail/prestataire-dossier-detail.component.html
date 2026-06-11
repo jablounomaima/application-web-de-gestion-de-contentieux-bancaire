@@ -122,6 +122,26 @@
                   <p class="dd-info-text">{{ mission.description }}</p>
                 </div>
               </div>
+          
+              <!-- Motif de rejet si applicable -->
+              <div class="dd-rejet-box"
+                   *ngIf="(mission.statut === 'REJETEE' || mission.statut === 'FACTURE_REJETEE') && mission.commentaireAgent">
+                <span class="dd-rejet-label">Motif de rejet :</span>
+                <span class="dd-rejet-text">{{ mission.commentaireAgent }}</span>
+              </div>
+          
+              <!-- Bouton action -->
+              <div class="dd-mission-actions">
+                <button class="dd-btn dd-btn--primary"
+                        *ngIf="peutSoumettre"
+                        (click)="ouvrirModal()">
+                  {{ (mission.statut === 'REJETEE' || mission.statut === 'FACTURE_REJETEE') ? '↩ Resoumettre' : '📤 Soumettre résultat' }}
+                </button>
+                <span class="dd-termine-badge"
+                      *ngIf="['TERMINEE','REALISEE','VALIDEE_AGENT'].includes(mission.statut)">
+                  ✅ Mission terminée
+                </span>
+              </div>
             </div>
           </div>
   
@@ -219,8 +239,113 @@
       </div>
   
       <div class="dd-footer">
-        <button class="dd-btn dd-btn--ghost" (click)="retour()">← Retour</button>
+        <button class="dd-btn dd-btn--ghost" (click)="retour()">← Retour aux missions</button>
       </div>
   
     </div>
   </div>
+
+
+  <!-- ══════════════════════════════════════════════════════════════ -->
+<!-- MODAL SOUMISSION RÉSULTAT                                      -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="pm-modal-overlay" *ngIf="modalOuverte" (click)="fermerModal()">
+  <div class="pm-modal" (click)="$event.stopPropagation()">
+
+    <div class="pm-modal-head">
+      <h2>{{ (mission?.statut === 'REJETEE' || mission?.statut === 'FACTURE_REJETEE') ? '↩ Resoumettre le résultat' : '📤 Soumettre le résultat' }}</h2>
+      <button class="pm-modal-close" (click)="fermerModal()">✕</button>
+    </div>
+
+    <div class="pm-modal-body">
+
+      <div class="pm-modal-info">
+        <div class="pm-modal-info-row">
+          <span>Mission</span>
+          <strong>{{ mission?.numeroMission }}</strong>
+        </div>
+        <div class="pm-modal-info-row" *ngIf="mission?.commentaireAgent">
+          <span>Motif de rejet</span>
+          <strong class="pm-rejet-text">{{ mission?.commentaireAgent }}</strong>
+        </div>
+      </div>
+
+      <div class="pm-alert pm-alert--success" *ngIf="successMsg">✅ {{ successMsg }}</div>
+      <div class="pm-alert pm-alert--error"   *ngIf="modalError">⚠️ {{ modalError }}</div>
+
+      <!-- CAS 1 : rejet agent → PV + facture -->
+      <ng-container *ngIf="casRejetAgent">
+        <div class="pm-field">
+          <label class="pm-label">Procès-verbal (PV) <span class="pm-required">*</span></label>
+          <textarea class="pm-textarea" [(ngModel)]="pvTexte" rows="4"
+            placeholder="Décrivez le travail réalisé, les observations…"></textarea>
+        </div>
+        <div class="pm-field">
+          <label class="pm-label">Référence facture <span class="pm-required">*</span></label>
+          <input class="pm-input" type="text" [(ngModel)]="factureRef"
+            placeholder="Ex: FACT-2024-0042" />
+        </div>
+        <div class="pm-field">
+          <label class="pm-label">Montant (TND) <span class="pm-required">*</span></label>
+          <input class="pm-input" type="number" [(ngModel)]="montant"
+            placeholder="Ex: 350.00" min="0" step="0.01" />
+        </div>
+      </ng-container>
+
+      <!-- CAS 2 : rejet financier → facture seule -->
+      <ng-container *ngIf="casRejetFinancier">
+        <div class="pm-alert pm-alert--info">
+          ℹ️ Votre PV a déjà été accepté. Corrigez uniquement votre facture.
+        </div>
+        <div class="pm-field">
+          <label class="pm-label">Nouvelle référence facture <span class="pm-required">*</span></label>
+          <input class="pm-input" type="text" [(ngModel)]="factureRef"
+            placeholder="Ex: FACT-2024-0043" />
+        </div>
+        <div class="pm-field">
+          <label class="pm-label">Montant corrigé (TND) <span class="pm-required">*</span></label>
+          <input class="pm-input" type="number" [(ngModel)]="montant"
+            placeholder="Ex: 320.00" min="0" step="0.01" />
+        </div>
+      </ng-container>
+
+      <!-- CAS NORMAL : première soumission -->
+      <ng-container *ngIf="casNormal">
+        <div class="pm-field">
+          <label class="pm-label">Commentaire</label>
+          <textarea class="pm-textarea" [(ngModel)]="commentaire" rows="4"
+            placeholder="Décrivez le travail réalisé…"></textarea>
+        </div>
+      </ng-container>
+
+      <!-- Fichiers joints (commun) -->
+      <div class="pm-field">
+        <label class="pm-label">Pièces jointes <span class="pm-opt">(max 20 Mo/fichier)</span></label>
+        <label class="pm-file-zone">
+          <input type="file" multiple (change)="onFichiersChange($event)" style="display:none" />
+          <span class="pm-file-icon">📎</span>
+          <span>Cliquez ou glissez vos fichiers ici</span>
+        </label>
+        <div class="pm-fichier-list" *ngIf="fichiers.length > 0">
+          <div class="pm-fichier-row" *ngFor="let f of fichiers; let i = index">
+            <span class="pm-fichier-nom">{{ f.name }}</span>
+            <span class="pm-fichier-taille">{{ formatTaille(f.size) }}</span>
+            <button class="pm-fichier-del" (click)="supprimerFichier(i)">✕</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="pm-modal-foot">
+      <button class="pm-btn pm-btn--ghost" (click)="fermerModal()" [disabled]="submitting">
+        Annuler
+      </button>
+      <button class="pm-btn pm-btn--primary" (click)="soumettrResultat()" [disabled]="submitting">
+        <span class="pm-spin" *ngIf="submitting"></span>
+        {{ submitting ? 'Envoi…' : '✅ Valider et envoyer' }}
+      </button>
+    </div>
+
+  </div>
+</div>

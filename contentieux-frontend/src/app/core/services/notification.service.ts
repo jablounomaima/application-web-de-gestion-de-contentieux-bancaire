@@ -1,9 +1,9 @@
 import { Injectable, OnDestroy } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, BehaviorSubject, interval, Subscription } from 'rxjs';
+import { Observable, BehaviorSubject, Subject, interval, Subscription } from 'rxjs';
+
 import { environment } from '../../../environments/environment';
 import { Client, IMessage } from '@stomp/stompjs';
-
 import { Router } from '@angular/router';
 import { inject } from '@angular/core';
 declare var SockJS: any;
@@ -41,9 +41,10 @@ export class NotificationService implements OnDestroy {
   private dossierCibleSubject = new BehaviorSubject<number | null>(null);
   dossierCible$ = this.dossierCibleSubject.asObservable();
 
+  // ← Signal de nouvelle notification temps réel
+  private nouvelleNotifSubject = new Subject<NotificationDTO>();
+  nouvelleNotif$ = this.nouvelleNotifSubject.asObservable();
 
-
-  
   private stompClient: Client | null = null;
   private pollingSubscription: Subscription | null = null;
 
@@ -215,6 +216,7 @@ export class NotificationService implements OnDestroy {
     const current = this.notificationsSubject.getValue();
     this.notificationsSubject.next([normalized, ...current]);
     this.countSubject.next(this.countSubject.getValue() + 1);
+    this.nouvelleNotifSubject.next(normalized); // ← émet le signal temps réel
   }
 
   marquerLueLocalement(id: number): void {
@@ -234,6 +236,14 @@ export class NotificationService implements OnDestroy {
     this.disconnectWebSocket();
   }
 
+
+  private missionCibleSubject = new BehaviorSubject<string | number | null>(null);
+  missionCible$ = this.missionCibleSubject.asObservable();
+  
+  signalerMissionCible(missionIdOrNum: string | number | null): void {
+    this.missionCibleSubject.next(missionIdOrNum);
+  }
+
   naviguerVersNotification(notification: any): void {
     this.marquerCommeLue(notification.id).subscribe();
     const url: string | null = notification.urlAction ?? notification.url ?? null;
@@ -249,9 +259,14 @@ export class NotificationService implements OnDestroy {
     this.router.navigate([path], {
       queryParams: Object.keys(queryParams).length ? queryParams : undefined
     });
-
-
-    
   }
-  
+
+
+  // ← Signal spécifique pour naviguer vers une facture (validateur financier)
+private factureCibleSubject = new BehaviorSubject<number | null>(null);
+factureCible$ = this.factureCibleSubject.asObservable();
+
+signalerFactureCible(id: number | null): void {
+  this.factureCibleSubject.next(id);
+}
 }

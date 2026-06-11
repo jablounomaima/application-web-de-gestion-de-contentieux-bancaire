@@ -410,8 +410,9 @@ export class ResultatsPrestatairesComponent implements OnInit, OnDestroy {
   loading       = true;
   erreur        = '';
 
-  // ── (1) Propriété missionCibleId ──
-  missionCibleId: number | null = null;
+  // ✅ CORRECTION : ajout missionCibleNum pour le numéro textuel (ex: "MISS-2026-00036")
+  missionCibleId:  number | null = null;   // ID numérique direct (priorité 1)
+  missionCibleNum: string | null = null;   // Numéro textuel (priorité 2)
 
   dlEnCours:     Record<number, boolean> = {};
   actionEnCours: Record<number, boolean> = {};
@@ -438,22 +439,45 @@ export class ResultatsPrestatairesComponent implements OnInit, OnDestroy {
     private notifService: NotificationService
   ) {}
 
-  // ── (2) ngOnInit : lire missionId depuis l'URL avant charger() ──
+  // ════════════════════════════════════════════════════════════
+  // ngOnInit — lecture des query params et chargement
+  // ════════════════════════════════════════════════════════════
   ngOnInit(): void {
     this.dossierId = Number(this.route.snapshot.paramMap.get('dossierId'));
-    const missionIdParam = this.route.snapshot.queryParamMap.get('missionId');
-    if (missionIdParam) {
-      this.missionCibleId = Number(missionIdParam);
-    }
+
+    // ✅ Priorité 1 : ID numérique direct (si backend corrigé un jour)
+    const missionIdParam  = this.route.snapshot.queryParamMap.get('missionId');
+    // ✅ Priorité 2 : numéro textuel "MISS-2026-00036" (solution actuelle)
+    const missionNumParam = this.route.snapshot.queryParamMap.get('missionNum');
+
+    if (missionIdParam)  this.missionCibleId  = Number(missionIdParam);
+    if (missionNumParam) this.missionCibleNum = missionNumParam;
+
     this.charger();
     this._ecouterNotifications();
+
+    // ✅ Écoute des signaux de navigation depuis les notifications
+    this.notifService.missionCible$.subscribe(missionIdOrNum => {
+      if (missionIdOrNum) {
+        if (typeof missionIdOrNum === 'string') {
+          // Numéro textuel → trouver l'ID réel
+          this._scrollVersNumeroMission(missionIdOrNum);
+        } else {
+          // ID numérique direct
+          this._scrollAvecRetry(missionIdOrNum);
+        }
+        this.notifService.signalerMissionCible(null);
+      }
+    });
   }
 
   ngOnDestroy(): void {
     this.notifSub?.unsubscribe();
   }
 
-  // ── Écoute WebSocket — mise à jour en temps réel après décision financière ──
+  // ════════════════════════════════════════════════════════════
+  // Écoute WebSocket — mise à jour en temps réel
+  // ════════════════════════════════════════════════════════════
   private _ecouterNotifications(): void {
     this.notifSub = this.notifService.notifications$.subscribe(
       (notifs: NotificationDTO[]) => {
@@ -474,23 +498,42 @@ export class ResultatsPrestatairesComponent implements OnInit, OnDestroy {
     );
   }
 
-  // ════════════════════════════════════════
-  // Chargement
-  // ════════════════════════════════════════
-
+  // ════════════════════════════════════════════════════════════
+  // Chargement des données
+  // ════════════════════════════════════════════════════════════
   charger(): void {
     this.loading = true;
     this.http.get<any>(
       `${this.api}/api/agent/dossiers/${this.dossierId}/resultats-prestataires`
     ).subscribe({
-      // ── (3) Scroll vers la mission ciblée après chargement ──
       next: (data) => {
         this.numeroDossier = data.numeroDossier;
         this.libelle       = data.libelle;
         this.resultats     = data.resultats;
         this.loading       = false;
+
+        // Log de debug
+        console.log('📋 missions chargées:', this.resultats.map(r => ({
+          missionId:     r.missionId,
+          numeroMission: r.numeroMission
+        })));
+
+        // ✅ Gestion du scroll après chargement
         if (this.missionCibleId) {
-          setTimeout(() => this._scrollVersMission(this.missionCibleId!), 400);
+          // Priorité 1 : ID numérique direct
+          console.log('🎯 Scroll par ID numérique:', this.missionCibleId);
+          this._scrollAvecRetry(this.missionCibleId);
+        } else if (this.missionCibleNum) {
+          // Priorité 2 : numéro textuel → résoudre l'ID réel
+          console.log('🎯 Scroll par numéro mission:', this.missionCibleNum);
+          const mission = this.resultats.find(
+            r => r.numeroMission === this.missionCibleNum
+          );
+          if (mission) {
+            this._scrollAvecRetry(mission.missionId);
+          } else {
+            console.warn('❌ Mission introuvable pour le numéro:', this.missionCibleNum);
+          }
         }
       },
       error: (err) => {
@@ -500,19 +543,47 @@ export class ResultatsPrestatairesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ── (4) Méthode privée de scroll + highlight ──
-  private _scrollVersMission(missionId: number): void {
+  // ════════════════════════════════════════════════════════════
+  // Scroll avec retry (DOM pas encore prêt)
+  // ════════════════════════════════════════════════════════════
+  private _scrollAvecRetry(missionId: number, tentative = 0): void {
     const el = document.getElementById('mission-' + missionId);
-    if (!el) return;
-    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-    el.classList.add('mission-highlight');
-    setTimeout(() => el.classList.remove('mission-highlight'), 4000);
+
+    if (el) {
+      console.log('✅ Element trouvé, scroll vers mission-' + missionId);
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.classList.add('mission-highlight');
+      setTimeout(() => el.classList.remove('mission-highlight'), 4000);
+      return;
+    }
+
+    if (tentative < 10) {
+      console.log(`⏳ Tentative ${tentative + 1} — mission-${missionId} pas encore dans le DOM`);
+      setTimeout(() => this._scrollAvecRetry(missionId, tentative + 1), 200);
+    } else {
+      console.warn('❌ mission-' + missionId + ' introuvable après 10 tentatives');
+    }
   }
 
-  // ════════════════════════════════════════
-  // Valider mission
-  // ════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════
+  // Scroll vers une mission par son numéro textuel
+  // ════════════════════════════════════════════════════════════
+  private _scrollVersNumeroMission(numeroMission: string): void {
+    const mission = this.resultats.find(
+      r => r.numeroMission === numeroMission
+    );
 
+    if (!mission) {
+      console.warn('Mission introuvable :', numeroMission);
+      return;
+    }
+
+    this._scrollAvecRetry(mission.missionId);
+  }
+
+  // ════════════════════════════════════════════════════════════
+  // Valider mission
+  // ════════════════════════════════════════════════════════════
   valider(missionId: number): void {
     this.actionEnCours[missionId] = true;
     this.http.post(
@@ -531,10 +602,9 @@ export class ResultatsPrestatairesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════
   // Rejeter mission
-  // ════════════════════════════════════════
-
+  // ════════════════════════════════════════════════════════════
   ouvrirRejet(mission: any): void {
     this.missionEnCours   = mission;
     this.motifRejet       = '';
@@ -568,10 +638,9 @@ export class ResultatsPrestatairesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════
   // Téléchargement
-  // ════════════════════════════════════════
-
+  // ════════════════════════════════════════════════════════════
   telecharger(fichierId: number, nomOriginal: string): void {
     this.dlEnCours[fichierId] = true;
     this.http.get(
@@ -594,10 +663,9 @@ export class ResultatsPrestatairesComponent implements OnInit, OnDestroy {
     });
   }
 
-  // ════════════════════════════════════════
+  // ════════════════════════════════════════════════════════════
   // Helpers
-  // ════════════════════════════════════════
-
+  // ════════════════════════════════════════════════════════════
   retour(): void {
     this.router.navigate(['/agent/dossiers', this.dossierId]);
   }

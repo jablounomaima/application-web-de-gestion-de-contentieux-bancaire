@@ -135,7 +135,12 @@ public AffaireJudiciaire creerAffaire(Long missionId, String username) { // Na77
     
         log.info("getAffairesParAvocat('{}') → viaMission={} viaAvocat={} viaDossier={}",
                 username, viaMission.size(), viaAvocat.size(), viaDossier.size());
-    
+     // ✅ AJOUTER CES LOGS
+     log.info("=== getAffairesParAvocat('{}') ===", username);
+     log.info("  viaMission  = {}", viaMission.stream().map(a -> a.getId()).toList());
+     log.info("  viaAvocat   = {}", viaAvocat.stream().map(a -> a.getId()).toList());
+     log.info("  viaDossier  = {}", viaDossier.stream().map(a -> a.getId()).toList());
+     // ✅ FIN LOGS
         List<AffaireJudiciaire> toutes = new java.util.ArrayList<>();
         toutes.addAll(viaMission);
         toutes.addAll(viaAvocat);

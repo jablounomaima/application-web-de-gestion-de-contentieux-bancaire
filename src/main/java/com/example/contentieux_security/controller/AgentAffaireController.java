@@ -6,11 +6,11 @@ import com.example.contentieux_security.enums.TypePrestation;
 import com.example.contentieux_security.service.AffaireJudiciaireService;
 import com.example.contentieux_security.service.DossierService;
 import com.example.contentieux_security.service.MissionService;
+import com.example.contentieux_security.service.NotificationService;
 import com.example.contentieux_security.service.PrestationService;
 import com.example.contentieux_security.repository.AgentBancaireRepository;
 import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.enums.TypePrestataire;
-// ✅ Ajouter cet import en haut du fichier
 import com.example.contentieux_security.enums.StatutMission;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,16 +39,10 @@ public class AgentAffaireController {
     private final PrestataireRepository    prestataireRepository;
     private final DossierService           dossierService;
     private final AgentBancaireRepository  agentBancaireRepository;
+    private final NotificationService      notificationService; // ✅ AJOUTÉ
 
     // ═══════════════════════════════════════════════════════════════
     // LANCER LA PROCÉDURE JUDICIAIRE
-    // POST /api/agent/dossiers/{dossierId}/prestations/lancer
-    //
-    // Délègue à prestationService.lancerPrestation() qui :
-    //   ✅ vérifie DossierStatus.VALIDE
-    //   ✅ crée la Prestation (statut EN_COURS, type PROCEDURE_JUDICIAIRE)
-    //   ✅ passe le dossier en DossierStatus.EN_PROCEDURE
-    //   ✅ enregistre l'historique via historiqueService
     // ═══════════════════════════════════════════════════════════════
 
     @PostMapping("/{dossierId}/prestations/lancer")
@@ -60,7 +54,6 @@ public class AgentAffaireController {
         try {
             log.info(">>> LANCER PROCÉDURE - dossierId={} agent={}", dossierId, principal.getName());
 
-            // ── Extraction des champs du formulaire Angular ────────
             String typeProcedure        = (String) body.get("typeProcedure");
             String tribunal             = (String) body.get("tribunal");
             String chambre              = (String) body.get("chambre");
@@ -69,43 +62,27 @@ public class AgentAffaireController {
             String motif                = (String) body.get("motif");
             String observations         = (String) body.get("observations");
 
-            // ── Validation des champs obligatoires ─────────────────
-            if (typeProcedure == null || typeProcedure.isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Le type de procédure est obligatoire."));
-            }
-            if (tribunal == null || tribunal.isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Le tribunal est obligatoire."));
-            }
-            if (datePremierAudienceS == null || datePremierAudienceS.isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "La date de première audience est obligatoire."));
-            }
-            if (motif == null || motif.isBlank()) {
-                return ResponseEntity.badRequest()
-                        .body(Map.of("error", "Le motif de la procédure est obligatoire."));
-            }
+            if (typeProcedure == null || typeProcedure.isBlank())
+                return ResponseEntity.badRequest().body(Map.of("error", "Le type de procédure est obligatoire."));
+            if (tribunal == null || tribunal.isBlank())
+                return ResponseEntity.badRequest().body(Map.of("error", "Le tribunal est obligatoire."));
+            if (datePremierAudienceS == null || datePremierAudienceS.isBlank())
+                return ResponseEntity.badRequest().body(Map.of("error", "La date de première audience est obligatoire."));
+            if (motif == null || motif.isBlank())
+                return ResponseEntity.badRequest().body(Map.of("error", "Le motif de la procédure est obligatoire."));
 
-            // ── Construction de la description ─────────────────────
-            // lancerPrestation() stocke tout dans le champ "description"
-            // de la Prestation. On y regroupe tous les détails du formulaire.
             StringBuilder description = new StringBuilder();
             description.append("Type procédure : ").append(typeProcedure);
             description.append(" | Tribunal : ").append(tribunal);
-            if (chambre != null && !chambre.isBlank()) {
+            if (chambre != null && !chambre.isBlank())
                 description.append(" | Chambre : ").append(chambre);
-            }
-            if (numeroRole != null && !numeroRole.isBlank()) {
+            if (numeroRole != null && !numeroRole.isBlank())
                 description.append(" | N° Rôle : ").append(numeroRole);
-            }
             description.append(" | 1ère audience : ").append(datePremierAudienceS);
             description.append(" | Motif : ").append(motif);
-            if (observations != null && !observations.isBlank()) {
+            if (observations != null && !observations.isBlank())
                 description.append(" | Observations : ").append(observations);
-            }
 
-            // ── Appel unique au service existant ───────────────────
             Prestation prestation = prestationService.lancerPrestation(
                     dossierId,
                     TypePrestation.PROCEDURE_JUDICIAIRE,
@@ -124,19 +101,14 @@ public class AgentAffaireController {
             ));
 
         } catch (IllegalStateException e) {
-            // Cas : dossier pas VALIDE, ou procédure déjà existante
             log.warn(">>> RÈGLE MÉTIER : {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-
         } catch (IllegalArgumentException e) {
-            // Cas : dossierId ou agentUsername introuvable
             log.warn(">>> ARGUMENT INVALIDE : {}", e.getMessage());
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
-
         } catch (Exception e) {
             log.error(">>> ERREUR inattendue : {}", e.getMessage(), e);
-            return ResponseEntity.internalServerError()
-                    .body(Map.of("error", "Erreur interne. Veuillez réessayer."));
+            return ResponseEntity.internalServerError().body(Map.of("error", "Erreur interne. Veuillez réessayer."));
         }
     }
 
@@ -206,8 +178,7 @@ public class AgentAffaireController {
                         "prestationId", prestation.getId()
                 ));
             }
-            return ResponseEntity.badRequest()
-                    .body(Map.of("error", "Aucune procédure judiciaire trouvée."));
+            return ResponseEntity.badRequest().body(Map.of("error", "Aucune procédure judiciaire trouvée."));
         }
 
         DossierDetailDTO dossier = dossierService.getDossierDetail(dossierId);
@@ -231,8 +202,54 @@ public class AgentAffaireController {
             log.info(">>> LANCER AFFAIRE - dossierId={} missionId={} agent={}",
                     dossierId, missionId, principal.getName());
 
+            // ── 1. Créer l'affaire ────────────────────────────────────
             AffaireJudiciaire affaire = affaireService.creerAffaire(missionId, principal.getName());
             log.info(">>> AFFAIRE CRÉÉE : id={} num={}", affaire.getId(), affaire.getNumeroAffaire());
+
+            // ── 2. Notification → avocat ──────────────────────────────
+            // ✅ C'est ici que la notification manquait.
+            // L'avocat reçoit maintenant un signal WebSocket immédiatement
+            // après la création de l'affaire, ce qui déclenche le rechargement
+            // automatique dans avocat-dashboard sans recharger la page.
+            try {
+                Prestataire avocat = affaire.getAvocat();
+                DossierContentieux dossier = affaire.getDossier();
+
+                if (avocat != null && dossier != null) {
+                    String clientNom = "—";
+                    if (dossier.getClient() != null) {
+                        clientNom = dossier.getClient().getNom()
+                                + (dossier.getClient().getPrenom() != null
+                                   ? " " + dossier.getClient().getPrenom() : "");
+                    }
+
+                    notificationService.notifier(
+                            avocat.getUsername(),
+                            "⚖️ Nouvelle affaire judiciaire — " + affaire.getNumeroAffaire(),
+                            String.format(
+                                "Une nouvelle affaire judiciaire vous a été assignée.\n" +
+                                "Affaire  : %s\n" +
+                                "Dossier  : %s\n" +
+                                "Client   : %s\n" +
+                                "Date     : %s",
+                                affaire.getNumeroAffaire(),
+                                dossier.getNumeroDossier(),
+                                clientNom,
+                                affaire.getDateLancement()
+                            ),
+                            "NOUVELLE_AFFAIRE",   // ← type écouté par avocat-dashboard
+                            dossier,              // ← dossierId inclus automatiquement
+                            "/avocat/affaires"
+                    );
+
+                    log.info("✅ Notification NOUVELLE_AFFAIRE envoyée à l'avocat {}",
+                            avocat.getUsername());
+                }
+            } catch (Exception notifEx) {
+                // La notification échoue silencieusement — l'affaire est déjà créée
+                log.warn("⚠️ Notification avocat échouée (affaire créée quand même) : {}",
+                        notifEx.getMessage());
+            }
 
             return ResponseEntity.ok(Map.of(
                     "message", "Affaire lancée avec succès",
@@ -246,19 +263,18 @@ public class AgentAffaireController {
     }
 
     @GetMapping("/{dossierId}/affaire")
-    @Transactional(readOnly = true)  // ✅ AJOUTÉ
-
+    @Transactional(readOnly = true)
     public ResponseEntity<?> voirAffaire(@PathVariable Long dossierId) {
         AffaireJudiciaire affaire = affaireService.getAffaireParDossier(dossierId);
-    
+
         Map<String, Object> response = new HashMap<>();
         response.put("dossierId", dossierId);
-    
+
         if (affaire == null) {
             response.put("pasDAffaire", true);
         } else {
             affaire = affaireService.getAffaireById(affaire.getId());
-    
+
             Map<String, Object> affaireData = new HashMap<>();
             affaireData.put("id",                  affaire.getId());
             affaireData.put("numeroAffaire",        affaire.getNumeroAffaire());
@@ -274,35 +290,29 @@ public class AgentAffaireController {
             affaireData.put("delaiPaiementJuge",    affaire.getDelaiPaiementJuge());
             affaireData.put("descriptionJugement",  affaire.getDescriptionJugement());
             affaireData.put("dateLimiteAppel",      affaire.getDateLimiteAppel());
-            // Dans la section affaireData de voirAffaire()
 
-// ✅ PV
-affaireData.put("pvTexte",  affaire.getPvTexte());
-affaireData.put("pvStatut", affaire.getPvStatut() != null
-                            ? affaire.getPvStatut().name() : null);
+            // PV
+            affaireData.put("pvTexte",  affaire.getPvTexte());
+            affaireData.put("pvStatut", affaire.getPvStatut() != null
+                                        ? affaire.getPvStatut().name() : null);
 
-// ✅ Fichiers PV — l'agent peut les télécharger
-List<Map<String, Object>> fichiers = new ArrayList<>();
-if (affaire.getPvFichiers() != null) {
-    for (String data : affaire.getPvFichiers()) {
-        String[] parts = data.split("\\|", 3);
-        if (parts.length == 3) {
-            fichiers.add(Map.of(
-                "nom",      parts[0],
-                "typeMime", parts[1],
-                "base64",   parts[2]
-            ));
-        }
-    }
-}
-affaireData.put("pvFichiers", fichiers);
+            List<Map<String, Object>> fichiers = new ArrayList<>();
+            if (affaire.getPvFichiers() != null) {
+                for (String data : affaire.getPvFichiers()) {
+                    String[] parts = data.split("\\|", 3);
+                    if (parts.length == 3) {
+                        fichiers.add(Map.of("nom", parts[0], "typeMime", parts[1], "base64", parts[2]));
+                    }
+                }
+            }
+            affaireData.put("pvFichiers", fichiers);
 
-// ✅ Facture
-affaireData.put("factureRef",     affaire.getFactureRef());
-affaireData.put("montantFacture", affaire.getMontantFacture());
-affaireData.put("factureStatut",  affaire.getFactureStatut() != null
-                                  ? affaire.getFactureStatut().name() : null);
-    
+            // Facture
+            affaireData.put("factureRef",     affaire.getFactureRef());
+            affaireData.put("montantFacture", affaire.getMontantFacture());
+            affaireData.put("factureStatut",  affaire.getFactureStatut() != null
+                                              ? affaire.getFactureStatut().name() : null);
+
             // Avocat
             if (affaire.getAvocat() != null) {
                 try {
@@ -318,7 +328,7 @@ affaireData.put("factureStatut",  affaire.getFactureStatut() != null
                     log.warn("Avocat lazy : {}", e.getMessage());
                 }
             }
-    
+
             // Audiences
             List<Map<String, Object>> audiences = new ArrayList<>();
             if (affaire.getAudiences() != null) {
@@ -336,42 +346,35 @@ affaireData.put("factureStatut",  affaire.getFactureStatut() != null
                 }
             }
             affaireData.put("audiences", audiences);
-    
-            // ✅ Mission — PV + Facture visibles par l'agent
+
+            // Mission
             if (affaire.getMission() != null) {
                 try {
                     Mission m = affaire.getMission();
                     Map<String, Object> mission = new HashMap<>();
-                    mission.put("id",             m.getId());
-                    mission.put("statut",         m.getStatut() != null ? m.getStatut().name() : null);
-    
-                    // ✅ PV
+                    mission.put("id",     m.getId());
+                    mission.put("statut", m.getStatut() != null ? m.getStatut().name() : null);
                     mission.put("pvTexte",        m.getPvMission());
                     mission.put("pvStatut",       m.getStatut() == StatutMission.PV_SOUMIS
                                                   || m.getStatut() == StatutMission.FACTURE_SOUMISE
                                                   || m.getStatut() == StatutMission.TERMINEE
                                                   ? "EN_ATTENTE" : null);
-                    mission.put("dateValidationPv", m.getDateValidationPv());
-    
-                    // ✅ Facture
-                    mission.put("factureRef",       m.getFactureRef());
-                    mission.put("montantFacture",   m.getMontantFacture());
-                    mission.put("factureStatut",    m.getStatut() == StatutMission.FACTURE_SOUMISE
-                                                    || m.getStatut() == StatutMission.TERMINEE
-                                                    ? "EN_ATTENTE" : null);
-                    mission.put("dateValidationFacture", m.getDateValidationFacture());
-    
+                    mission.put("dateValidationPv",      m.getDateValidationPv());
+                    mission.put("factureRef",             m.getFactureRef());
+                    mission.put("montantFacture",         m.getMontantFacture());
+                    mission.put("factureStatut",          m.getStatut() == StatutMission.FACTURE_SOUMISE
+                                                          || m.getStatut() == StatutMission.TERMINEE
+                                                          ? "EN_ATTENTE" : null);
+                    mission.put("dateValidationFacture",  m.getDateValidationFacture());
                     affaireData.put("mission", mission);
                 } catch (Exception e) {
                     log.warn("Mission lazy : {}", e.getMessage());
                 }
             }
-    
+
             response.put("affaire", affaireData);
         }
-    
+
         return ResponseEntity.ok(response);
     }
-
-  
 }

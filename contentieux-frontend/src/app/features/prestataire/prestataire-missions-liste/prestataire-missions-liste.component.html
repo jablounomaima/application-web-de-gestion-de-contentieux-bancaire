@@ -1,255 +1,314 @@
-<div class="pm-page">
+<div class="pl-shell">
 
-    <!-- ── Loading ──────────────────────────────────────────────── -->
-    <div class="pm-loading" *ngIf="loading">
-      <div class="pm-spinner"></div>
-      <p>Chargement de vos missions…</p>
+  <!-- ══ LOADING ══════════════════════════════════════════════════ -->
+  <div class="pl-loading" *ngIf="loading">
+    <div class="pl-loading-track">
+      <div class="pl-loading-bar"></div>
     </div>
-  
-    <div *ngIf="!loading">
-  
-      <!-- ── Header ───────────────────────────────────────────────── -->
-      <div class="pm-header">
-        <div>
-          <h1 class="pm-title">Mes Missions</h1>
-          <p class="pm-subtitle">Suivez et gérez les missions qui vous sont assignées</p>
-        </div>
-        <button class="pm-refresh-btn" (click)="charger()">↻ Actualiser</button>
+    <p class="pl-loading-label">Chargement des missions…</p>
+  </div>
+
+  <ng-container *ngIf="!loading">
+
+    <!-- ══ TOPBAR ═════════════════════════════════════════════════ -->
+    <div class="pl-topbar">
+      <div class="pl-topbar-left">
+        <div class="pl-topbar-eyebrow">Espace prestataire</div>
+        <h1 class="pl-topbar-title">Mes Missions</h1>
       </div>
-  
-      <!-- ── Alerte erreur ─────────────────────────────────────────── -->
-      <div class="pm-alert pm-alert--error" *ngIf="errorMsg">
-        ⚠️ {{ errorMsg }}
+      <div class="pl-topbar-right">
+        <button class="pl-refresh" (click)="charger()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="23 4 23 10 17 10"></polyline>
+            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+          </svg>
+          Actualiser
+        </button>
       </div>
-  
-      <!-- ── Stats ────────────────────────────────────────────────── -->
-      <div class="pm-stats">
-        <div class="pm-stat-card">
-          <span class="pm-stat-num">{{ stats.total }}</span>
-          <span class="pm-stat-label">Total</span>
-        </div>
-        <div class="pm-stat-card pm-stat-card--amber">
-          <span class="pm-stat-num">{{ stats.assignee }}</span>
-          <span class="pm-stat-label">Assignées</span>
-        </div>
-        <div class="pm-stat-card pm-stat-card--blue">
-          <span class="pm-stat-num">{{ stats.enCours }}</span>
-          <span class="pm-stat-label">En cours</span>
-        </div>
-        <div class="pm-stat-card pm-stat-card--green">
-          <span class="pm-stat-num">{{ stats.terminee }}</span>
-          <span class="pm-stat-label">Terminées</span>
-        </div>
-        <div class="pm-stat-card pm-stat-card--red">
-          <span class="pm-stat-num">{{ stats.rejetee }}</span>
-          <span class="pm-stat-label">Rejetées</span>
-        </div>
+    </div>
+
+    <!-- ══ ERREUR ═════════════════════════════════════════════════ -->
+    <div class="pl-error" *ngIf="errorMsg">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+      </svg>
+      {{ errorMsg }}
+    </div>
+
+    <!-- ══ KPI STRIP ══════════════════════════════════════════════ -->
+    <div class="pl-kpi-strip">
+      <div class="pl-kpi" [class.pl-kpi--active]="filtreStatut === 'TOUS'" (click)="filtreStatut='TOUS'; appliquerFiltres()">
+        <span class="pl-kpi-val">{{ stats.total }}</span>
+        <span class="pl-kpi-lbl">Total</span>
       </div>
-  
-      <!-- ── Filtres ───────────────────────────────────────────────── -->
-      <div class="pm-filtres">
-        <div class="pm-search-wrap">
-          <span class="pm-search-icon">🔍</span>
-          <input class="pm-search"
-                 type="text"
-                 placeholder="Rechercher par numéro, dossier, client…"
-                 [(ngModel)]="filtreRecherche"
-                 (ngModelChange)="appliquerFiltres()" />
+      <div class="pl-kpi-sep"></div>
+      <div class="pl-kpi pl-kpi--amber" [class.pl-kpi--active]="filtreStatut === 'ASSIGNEE'" (click)="filtreStatut='ASSIGNEE'; appliquerFiltres()">
+        <span class="pl-kpi-val">{{ stats.assignee }}</span>
+        <span class="pl-kpi-lbl">Assignées</span>
+      </div>
+      <div class="pl-kpi-sep"></div>
+      <div class="pl-kpi pl-kpi--blue" [class.pl-kpi--active]="filtreStatut === 'EN_COURS'" (click)="filtreStatut='EN_COURS'; appliquerFiltres()">
+        <span class="pl-kpi-val">{{ stats.enCours }}</span>
+        <span class="pl-kpi-lbl">En cours</span>
+      </div>
+      <div class="pl-kpi-sep"></div>
+      <div class="pl-kpi pl-kpi--green" [class.pl-kpi--active]="filtreStatut === 'TERMINEE'" (click)="filtreStatut='TERMINEE'; appliquerFiltres()">
+        <span class="pl-kpi-val">{{ stats.terminee }}</span>
+        <span class="pl-kpi-lbl">Terminées</span>
+      </div>
+      <div class="pl-kpi-sep"></div>
+      <div class="pl-kpi pl-kpi--red" [class.pl-kpi--active]="filtreStatut === 'REJETEE'" (click)="filtreStatut='REJETEE'; appliquerFiltres()">
+        <span class="pl-kpi-val">{{ stats.rejetee }}</span>
+        <span class="pl-kpi-lbl">Rejetées</span>
+      </div>
+    </div>
+
+    <!-- ══ BARRE FILTRES ══════════════════════════════════════════ -->
+    <div class="pl-toolbar">
+      <div class="pl-search-wrap">
+        <svg class="pl-search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input class="pl-search"
+               type="text"
+               placeholder="Numéro, dossier, client…"
+               [(ngModel)]="filtreRecherche"
+               (ngModelChange)="appliquerFiltres()" />
+      </div>
+      <div class="pl-tabs">
+        <button class="pl-tab"
+                *ngFor="let s of STATUTS"
+                [class.pl-tab--on]="filtreStatut === s.value"
+                (click)="filtreStatut = s.value; appliquerFiltres()">
+          {{ s.label }}
+        </button>
+      </div>
+    </div>
+
+    <!-- ══ LISTE VIDE ═════════════════════════════════════════════ -->
+    <div class="pl-empty" *ngIf="missionsFiltrees.length === 0">
+      <div class="pl-empty-icon">
+        <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#c8c8c8" stroke-width="1.2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+          <line x1="16" y1="13" x2="8" y2="13"/>
+          <line x1="16" y1="17" x2="8" y2="17"/>
+        </svg>
+      </div>
+      <p class="pl-empty-msg">Aucune mission{{ filtreStatut !== 'TOUS' ? ' avec ce statut' : '' }}</p>
+      <button class="pl-empty-reset" (click)="filtreStatut='TOUS'; filtreRecherche=''; appliquerFiltres()">
+        Réinitialiser les filtres
+      </button>
+    </div>
+
+    <!-- ══ GRILLE MISSIONS ════════════════════════════════════════ -->
+    <div class="pl-grid" *ngIf="missionsFiltrees.length > 0">
+      <div class="pl-card"
+           *ngFor="let m of missionsFiltrees"
+           [id]="'mission-card-' + m.id"
+           [class.pl-card--retard]="isEnRetard(m)"
+           [class.pl-card--rejetee]="m.statut === 'REJETEE'"
+           [class.pl-card--highlight]="missionHighlightee === m.numeroMission">
+
+        <!-- Barre de statut (accent latéral) -->
+        <div class="pl-card-accent" [style.background]="getStatutConfig(m.statut).bg"></div>
+
+        <!-- Head -->
+        <div class="pl-card-head">
+          <div class="pl-card-head-left">
+            <span class="pl-mission-code">{{ m.numeroMission }}</span>
+            <span class="pl-retard-pill" *ngIf="isEnRetard(m)">En retard</span>
+          </div>
+          <span class="pl-statut-pill"
+                [style.background]="getStatutConfig(m.statut).bg"
+                [style.color]="getStatutConfig(m.statut).color">
+            {{ getStatutConfig(m.statut).label }}
+          </span>
         </div>
-        <div class="pm-statut-tabs">
-          <button class="pm-tab"
-                  *ngFor="let s of STATUTS"
-                  [class.active]="filtreStatut === s.value"
-                  (click)="filtreStatut = s.value; appliquerFiltres()">
-            {{ s.label }}
+
+        <!-- Body -->
+        <div class="pl-card-body">
+          <div class="pl-meta-row">
+            <div class="pl-meta-cell">
+              <span class="pl-meta-key">Dossier</span>
+              <span class="pl-meta-val">{{ m.prestation?.dossier?.numeroDossier || '—' }}</span>
+            </div>
+            <div class="pl-meta-cell">
+              <span class="pl-meta-key">Client</span>
+              <span class="pl-meta-val">
+                {{ m.prestation?.dossier?.client?.nom || '—' }}
+                {{ m.prestation?.dossier?.client?.prenom || '' }}
+              </span>
+            </div>
+            <div class="pl-meta-cell">
+              <span class="pl-meta-key">Prestation</span>
+              <span class="pl-meta-val">{{ getTypeLabel(m.prestation?.type) }}</span>
+            </div>
+            <div class="pl-meta-cell">
+              <span class="pl-meta-key">Assignée le</span>
+              <span class="pl-meta-val">{{ formatDate(m.dateAssignation) }}</span>
+            </div>
+            <div class="pl-meta-cell" *ngIf="m.dateFinPrevue">
+              <span class="pl-meta-key">Échéance</span>
+              <span class="pl-meta-val" [class.pl-val--alert]="isEnRetard(m)">
+                {{ formatDate(m.dateFinPrevue) }}
+              </span>
+            </div>
+          </div>
+
+          <p class="pl-description" *ngIf="m.description">{{ m.description }}</p>
+
+          <!-- Motif rejet agent -->
+          <div class="pl-rejet-strip" *ngIf="m.statut === 'REJETEE' && m.commentaireAgent">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+            </svg>
+            <span>{{ m.commentaireAgent }}</span>
+          </div>
+        </div>
+
+        <!-- Footer actions -->
+        <div class="pl-card-foot">
+          <button class="pl-btn pl-btn--outline" (click)="voirDetail(m.id)">
+            Voir le détail
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+            </svg>
           </button>
-        </div>
-      </div>
-  
-      <!-- ── Liste vide ────────────────────────────────────────────── -->
-      <div class="pm-empty" *ngIf="missionsFiltrees.length === 0">
-        <div class="pm-empty-icon">📭</div>
-        <p>Aucune mission {{ filtreStatut !== 'TOUS' ? 'avec ce statut' : '' }}</p>
-        <button class="pm-btn pm-btn--ghost" (click)="filtreStatut = 'TOUS'; filtreRecherche = ''; appliquerFiltres()">
-          Réinitialiser les filtres
-        </button>
-      </div>
-  
-      <!-- ── Cartes missions ───────────────────────────────────────── -->
-      <div class="pm-list" *ngIf="missionsFiltrees.length > 0">
-        <div class="pm-card"
-             *ngFor="let m of missionsFiltrees"
-             [class.pm-card--retard]="isEnRetard(m)"
-             [class.pm-card--rejetee]="m.statut === 'REJETEE'">
-  
-          <!-- En-tête carte -->
-          <div class="pm-card-head">
-            <div class="pm-card-head-left">
-              <span class="pm-mission-num">{{ m.numeroMission }}</span>
-              <span class="pm-retard-badge" *ngIf="isEnRetard(m)">⚠️ En retard</span>
-            </div>
-            <span class="pm-statut-badge"
-                  [style.background]="getStatutConfig(m.statut).bg"
-                  [style.color]="getStatutConfig(m.statut).color">
-              {{ getStatutConfig(m.statut).label }}
-            </span>
-          </div>
-  
-          <!-- Corps carte -->
-          <div class="pm-card-body">
-            <div class="pm-info-grid">
-              <div class="pm-info-item">
-                <span class="pm-info-label">Dossier</span>
-                <span class="pm-info-val">{{ m.prestation?.dossier?.numeroDossier || '—' }}</span>
-              </div>
-              <div class="pm-info-item">
-                <span class="pm-info-label">Client</span>
-                <span class="pm-info-val">
-                  {{ m.prestation?.dossier?.client?.nom || '—' }}
-                  {{ m.prestation?.dossier?.client?.prenom || '' }}
-                </span>
-              </div>
-              <div class="pm-info-item">
-                <span class="pm-info-label">Type prestation</span>
-                <span class="pm-info-val">{{ getTypeLabel(m.prestation?.type) }}</span>
-              </div>
-              <div class="pm-info-item">
-                <span class="pm-info-label">Assignée le</span>
-                <span class="pm-info-val">{{ formatDate(m.dateAssignation) }}</span>
-              </div>
-              <div class="pm-info-item" *ngIf="m.dateFinPrevue">
-                <span class="pm-info-label">Échéance</span>
-                <span class="pm-info-val" [class.pm-retard-text]="isEnRetard(m)">
-                  {{ formatDate(m.dateFinPrevue) }}
-                </span>
-              </div>
-            </div>
-  
-            <!-- Description -->
-            <p class="pm-description" *ngIf="m.description">{{ m.description }}</p>
-  
-            <!-- Commentaire agent si rejetée -->
-            <div class="pm-rejet-box" *ngIf="m.statut === 'REJETEE' && m.commentaireAgent">
-              <span class="pm-rejet-label">Motif de rejet :</span>
-              <span class="pm-rejet-text">{{ m.commentaireAgent }}</span>
-            </div>
-          </div>
-  
-          <!-- Actions carte -->
-       <!-- Actions carte -->
-<div class="pm-card-actions">
-  <button class="pm-btn pm-btn--ghost" (click)="voirDetail(m.id)">
-    Voir le détail →
-  </button>
-  <button class="pm-btn pm-btn--primary"
-          *ngIf="peutSoumettre(m)"
-          (click)="ouvrirModal(m)">
-    {{ m.statut === 'REJETEE' || m.statut === 'FACTURE_REJETEE' ? '↩ Resoumettre' : '📤 Soumettre résultat' }}
-  </button>
-  <span class="pm-termine-badge"
-        *ngIf="['TERMINEE','REALISEE','VALIDEE_AGENT'].includes(m.statut)">
-    ✅ Mission terminée
-  </span>
-</div>
-  
-        </div>
-      </div>
-    </div>
-  
-  </div>
-  
-  <!-- ══════════════════════════════════════════════════════════════ -->
-  <!-- MODAL SOUMISSION RÉSULTAT                                      -->
-  <!-- ══════════════════════════════════════════════════════════════ -->
-  <div class="pm-modal-overlay" *ngIf="modalOuverte" (click)="fermerModal()">
-    <div class="pm-modal" (click)="$event.stopPropagation()">
-  
-      <div class="pm-modal-head">
-        <h2>{{ missionSelectionnee?.statut === 'REJETEE' ? '↩ Resoumettre le résultat' : '📤 Soumettre le résultat' }}</h2>
-        <button class="pm-modal-close" (click)="fermerModal()">✕</button>
-      </div>
-  
-      <div class="pm-modal-body">
 
-        <!-- Infos mission -->
-        <div class="pm-modal-info">
-          <div class="pm-modal-info-row">
-            <span>Mission</span>
-            <strong>{{ missionSelectionnee?.numeroMission }}</strong>
-          </div>
-          <div class="pm-modal-info-row" *ngIf="missionSelectionnee?.commentaireAgent">
-            <span>Motif de rejet</span>
-            <strong class="pm-rejet-text">{{ missionSelectionnee?.commentaireAgent }}</strong>
-          </div>
+          <button class="pl-btn pl-btn--primary"
+                  *ngIf="peutSoumettre(m)"
+                  (click)="ouvrirModal(m)">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+            {{ m.statut === 'REJETEE' || m.statut === 'FACTURE_REJETEE' ? 'Resoumettre' : 'Soumettre' }}
+          </button>
+
+          <span class="pl-done-badge"
+                *ngIf="['TERMINEE','REALISEE','VALIDEE_AGENT'].includes(m.statut)">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Terminée
+          </span>
         </div>
-      
-        <div class="pm-alert pm-alert--success" *ngIf="successMsg">✅ {{ successMsg }}</div>
-        <div class="pm-alert pm-alert--error"   *ngIf="modalError">⚠️ {{ modalError }}</div>
-      
-        <!-- CAS 1 : rejet agent → PV + facture -->
-        <ng-container *ngIf="casRejetAgent">
-          <div class="pm-field">
-            <label class="pm-label">Procès-verbal (PV) <span class="pm-required">*</span></label>
-            <textarea class="pm-textarea" [(ngModel)]="pvTexte" rows="4"
-              placeholder="Décrivez le travail réalisé, les observations…"></textarea>
-          </div>
-          <div class="pm-field">
-            <label class="pm-label">Référence facture <span class="pm-required">*</span></label>
-            <input class="pm-input" type="text" [(ngModel)]="factureRef"
-              placeholder="Ex: FACT-2024-0042" />
-          </div>
-          <div class="pm-field">
-            <label class="pm-label">Montant (TND) <span class="pm-required">*</span></label>
-            <input class="pm-input" type="number" [(ngModel)]="montant"
-              placeholder="Ex: 350.00" min="0" step="0.01" />
-          </div>
-        </ng-container>
-      
-        <!-- CAS 2 : rejet financier → facture seule -->
-        <ng-container *ngIf="casRejetFinancier">
-          <div class="pm-alert pm-alert--info">
-            ℹ️ Votre PV a déjà été accepté. Corrigez uniquement votre facture.
-          </div>
-          <div class="pm-field">
-            <label class="pm-label">Nouvelle référence facture <span class="pm-required">*</span></label>
-            <input class="pm-input" type="text" [(ngModel)]="factureRef"
-              placeholder="Ex: FACT-2024-0043" />
-          </div>
-          <div class="pm-field">
-            <label class="pm-label">Montant corrigé (TND) <span class="pm-required">*</span></label>
-            <input class="pm-input" type="number" [(ngModel)]="montant"
-              placeholder="Ex: 320.00" min="0" step="0.01" />
-          </div>
-        </ng-container>
-      
-        <!-- Fichiers joints (commun aux deux cas) -->
-        <div class="pm-field">
-          <label class="pm-label">Pièces jointes <span class="pm-opt">(max 20 Mo/fichier)</span></label>
-          <label class="pm-file-zone">
-            <input type="file" multiple (change)="onFichiersChange($event)" style="display:none" />
-            <span class="pm-file-icon">📎</span>
-            <span>Cliquez ou glissez vos fichiers ici</span>
-          </label>
-          <div class="pm-fichier-list" *ngIf="fichiers.length > 0">
-            <div class="pm-fichier-row" *ngFor="let f of fichiers; let i = index">
-              <span class="pm-fichier-nom">{{ f.name }}</span>
-              <span class="pm-fichier-taille">{{ formatTaille(f.size) }}</span>
-              <button class="pm-fichier-del" (click)="supprimerFichier(i)">✕</button>
-            </div>
-          </div>
-        </div>
-      
+
       </div>
-  
-      <div class="pm-modal-foot">
-        <button class="pm-btn pm-btn--ghost" (click)="fermerModal()" [disabled]="submitting">
-          Annuler
-        </button>
-        <button class="pm-btn pm-btn--primary" (click)="soumettrResultat()" [disabled]="submitting">
-          <span class="pm-spin" *ngIf="submitting"></span>
-          {{ submitting ? 'Envoi…' : '✅ Valider et envoyer' }}
-        </button>
-      </div>
-  
     </div>
+
+  </ng-container>
+
+</div>
+
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- MODAL SOUMISSION                                               -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="pl-modal-veil" *ngIf="modalOuverte" (click)="fermerModal()">
+  <div class="pl-modal" (click)="$event.stopPropagation()">
+
+    <div class="pl-modal-head">
+      <div class="pl-modal-head-left">
+        <div class="pl-modal-eyebrow">Mission {{ missionSelectionnee?.numeroMission }}</div>
+        <h2 class="pl-modal-title">
+          {{ missionSelectionnee?.statut === 'REJETEE' ? 'Resoumettre le résultat' : missionSelectionnee?.statut === 'FACTURE_REJETEE' ? 'Corriger la facture' : 'Soumettre le résultat' }}
+        </h2>
+      </div>
+      <button class="pl-modal-x" (click)="fermerModal()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="pl-modal-body">
+
+      <!-- Motif rejet si présent -->
+      <div class="pl-modal-rejet" *ngIf="missionSelectionnee?.commentaireAgent">
+        <div class="pl-modal-rejet-label">Motif du rejet</div>
+        <div class="pl-modal-rejet-text">{{ missionSelectionnee?.commentaireAgent }}</div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="pl-feedback pl-feedback--ok"  *ngIf="successMsg">✓ {{ successMsg }}</div>
+      <div class="pl-feedback pl-feedback--err" *ngIf="modalError">⚠ {{ modalError }}</div>
+
+      <!-- CAS 1 : rejet agent → PV + facture -->
+      <ng-container *ngIf="casRejetAgent">
+        <div class="pl-field">
+          <label class="pl-label">Procès-verbal <span class="pl-req">*</span></label>
+          <textarea class="pl-textarea" [(ngModel)]="pvTexte" rows="4"
+            placeholder="Décrivez le travail réalisé et vos observations…"></textarea>
+        </div>
+        <div class="pl-field-row">
+          <div class="pl-field">
+            <label class="pl-label">Référence facture <span class="pl-req">*</span></label>
+            <input class="pl-input" type="text" [(ngModel)]="factureRef" placeholder="FACT-2024-0042" />
+          </div>
+          <div class="pl-field">
+            <label class="pl-label">Montant HT (TND) <span class="pl-req">*</span></label>
+            <input class="pl-input" type="number" [(ngModel)]="montant" placeholder="350.00" min="0" step="0.01" />
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- CAS 2 : rejet financier → facture seule -->
+      <ng-container *ngIf="casRejetFinancier">
+        <div class="pl-info-banner">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/>
+          </svg>
+          Votre PV a été accepté. Corrigez uniquement la facture.
+        </div>
+        <div class="pl-field-row">
+          <div class="pl-field">
+            <label class="pl-label">Nouvelle référence <span class="pl-req">*</span></label>
+            <input class="pl-input" type="text" [(ngModel)]="factureRef" placeholder="FACT-2024-0043" />
+          </div>
+          <div class="pl-field">
+            <label class="pl-label">Montant corrigé (TND) <span class="pl-req">*</span></label>
+            <input class="pl-input" type="number" [(ngModel)]="montant" placeholder="320.00" min="0" step="0.01" />
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Fichiers -->
+      <div class="pl-field">
+        <label class="pl-label">
+          Pièces jointes
+          <span class="pl-label-hint">max 20 Mo / fichier</span>
+        </label>
+        <label class="pl-drop-zone">
+          <input type="file" multiple (change)="onFichiersChange($event)" style="display:none" />
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5">
+            <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+          </svg>
+          <span>Glissez ou cliquez pour joindre des fichiers</span>
+        </label>
+        <div class="pl-file-list" *ngIf="fichiers.length > 0">
+          <div class="pl-file-row" *ngFor="let f of fichiers; let i = index">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+            </svg>
+            <span class="pl-file-name">{{ f.name }}</span>
+            <span class="pl-file-size">{{ formatTaille(f.size) }}</span>
+            <button class="pl-file-del" (click)="supprimerFichier(i)">✕</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="pl-modal-foot">
+      <button class="pl-btn pl-btn--outline" (click)="fermerModal()" [disabled]="submitting">
+        Annuler
+      </button>
+      <button class="pl-btn pl-btn--primary" (click)="soumettrResultat()" [disabled]="submitting">
+        <span class="pl-spin" *ngIf="submitting"></span>
+        {{ submitting ? 'Envoi en cours…' : 'Confirmer l\'envoi' }}
+      </button>
+    </div>
+
   </div>
+</div>

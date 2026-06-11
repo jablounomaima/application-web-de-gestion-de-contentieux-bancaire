@@ -1,10 +1,13 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { ValidateurService } from '../../../core/services/validateur.service';
 import { ValidateurJuridiqueListeComponent } from '../validateur-juridique-liste/validateur-juridique-liste.component';
 import { NotificationService } from '../../../core/services/notification.service';
+
 @Component({
   selector: 'app-validateur-juridique-dashboard',
   standalone: true,
@@ -12,7 +15,7 @@ import { NotificationService } from '../../../core/services/notification.service
   templateUrl: './validateur-juridique-dashboard.component.html',
   styleUrls: ['./validateur-juridique-dashboard.component.scss']
 })
-export class ValidateurJuridiqueDashboardComponent implements OnInit {
+export class ValidateurJuridiqueDashboardComponent implements OnInit, OnDestroy {
 
   dossiers:           any[]                 = [];
   dossierDetails:     Map<number, any>      = new Map();
@@ -32,21 +35,23 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit {
   // ── Signal de rechargement pour la liste enfant ───────────────
   recharger = false;
 
+  // ── Gestion du cycle de vie ───────────────────────────────────
+  private destroy$ = new Subject<void>();
+
   constructor(
     private validateurService: ValidateurService,
     private route: ActivatedRoute,
     private notifService: NotificationService
-
   ) {}
 
   ngOnInit(): void {
     this.loading = true;
-  
+
     this.route.queryParams.subscribe(params => {
       const id = params['dossierId'] ? Number(params['dossierId']) : null;
       if (id) this.dossierId = id;
     });
-  
+
     // Écouter les navigations depuis notifications (même URL)
     this.notifService.dossierCible$.subscribe(id => {
       if (id !== null) {
@@ -57,6 +62,20 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit {
         }, 50);
       }
     });
+
+    // ── Rechargement automatique via WebSocket ────────────────
+    this.notifService.nouvelleNotif$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(notif => {
+      if (notif.type === 'VALIDATION_JURIDIQUE') {
+        this.recharger = !this.recharger;
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -142,9 +161,6 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit {
         this.soumission         = false;
         this.dossierSelectionne = null;
         this.dossierExpanded    = null;
-        // Déclenche le rechargement du composant liste
-        // qui réémettra les nouvelles données via (dossiersCharges)
-        // et mettra à jour les stats automatiquement
         this.recharger = !this.recharger;
       },
       error: (err: any) => {

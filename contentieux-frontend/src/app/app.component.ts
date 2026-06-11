@@ -192,6 +192,9 @@ export class AppComponent implements OnInit, OnDestroy {
   toastUrlAction: string | undefined;
   private toastTimer: any;
 
+  // ── Anti double-navigation ───────────────────────────────────
+  private navigationEnCours = false;
+
   private sub!: Subscription;
   private prevCount = 0;
 
@@ -228,26 +231,22 @@ export class AppComponent implements OnInit, OnDestroy {
         this.username = tokenParsed?.preferred_username || 'Utilisateur';
       }
 
-      // Abonnement au flux réactif — détecte aussi les nouvelles notifs pour le toast
       this.sub = this.notificationService.notifications$.subscribe(
         (list: NotificationDTO[]) => {
           this.nonLues = list.filter(n => !n.lue).length;
 
-          // Afficher toast si une nouvelle notification non lue arrive
           if (list.length > 0 && list.length > this.prevCount) {
             const derniere = list[0];
             if (!derniere.lue) {
               this._afficherToast(derniere);
             }
           }
-          this.prevCount    = list.length;
+          this.prevCount     = list.length;
           this.notifications = list;
         }
       );
 
-      // ✅ WebSocket init uniquement ici (AppComponent = propriétaire unique)
       await this._connecterWebSocket();
-
       this.notificationService.chargerNotifications();
 
     } catch (err) {
@@ -263,7 +262,7 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════════════════════════
-  // WebSocket — init avec token frais + callback refresh
+  // WebSocket
   // ════════════════════════════════════════════════════════════
   private async _connecterWebSocket(): Promise<void> {
     try {
@@ -300,7 +299,8 @@ export class AppComponent implements OnInit, OnDestroy {
     clearTimeout(this.toastTimer);
     this.toastTitre     = n.titre;
     this.toastMessage   = n.message;
-    this.toastUrlAction = n.urlAction ?? this.resolveUrl(n) ?? undefined;
+    // ✅ resolveUrl() en priorité — inclut les query params action=edit-facture
+    this.toastUrlAction = this.resolveUrl(n) ?? n.urlAction ?? undefined;
     this.toastType      = this._resolveToastType(n.type);
     this.toastIcon      = this.typeIcone(n.type);
     this.toastVisible   = true;
@@ -314,8 +314,19 @@ export class AppComponent implements OnInit, OnDestroy {
 
   naviguerVersToast(): void {
     this.fermerToast();
-    if (this.toastUrlAction) {
-      this.router.navigateByUrl(this.toastUrlAction);
+    if (!this.toastUrlAction) return;
+
+    // ✅ toastUrlAction est déjà résolu par resolveUrl() dans _afficherToast
+    const resolvedUrl    = this.toastUrlAction;
+    const urlSansParams  = resolvedUrl.split('?')[0];
+    const currentUrlBase = this.router.url.split('?')[0];
+
+    if (currentUrlBase === urlSansParams) {
+      this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+        this.router.navigateByUrl(resolvedUrl);
+      });
+    } else {
+      this.router.navigateByUrl(resolvedUrl);
     }
   }
 
@@ -345,42 +356,72 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   clicNotification(notif: NotificationDTO): void {
+    // ✅ Guard anti double-navigation
+    if (this.navigationEnCours) return;
+    this.navigationEnCours = true;
+    setTimeout(() => this.navigationEnCours = false, 1000);
 
-    console.log('notif complète:', JSON.stringify(notif)); // ← ajoutez ici
+    console.log('=== CLIC NOTIF ===');
+    console.log('type:', notif.type);
+    console.log('dossierId:', notif.dossierId);
+    console.log('urlAction:', notif.urlAction);
+    console.log('roles:', this.roles);
+    console.log('url résolue:', this.resolveUrl(notif) ?? notif.urlAction);
+    console.log('currentUrl:', this.router.url);
+    console.log('==================');
 
     if (!notif.lue) {
       this.notificationService.marquerCommeLue(notif.id).subscribe();
       this.notificationService.marquerLueLocalement(notif.id);
     }
-  
-    const url = this.resolveUrl(notif);
-    if (!url) return;
-  
+
     this.showNotifications = false;
-  
-    // Signaler le dossierId pour validateur financier/juridique
-    const dossierId = notif.dossierId ?? (notif as any).dossier?.id;
-    if (dossierId) {
+
+    const url = this.resolveUrl(notif) ?? notif.urlAction;
+    if (!url) return;
+
+    const dossierId = notif.dossierId ?? (notif as any).dossier?.id ?? null;
+    const qMatch    = notif.urlAction?.match(/[?&]missionId=(\d+)/);
+    const missionId = qMatch ? Number(qMatch[1]) : null;
+
+    // Extraire missionId depuis l'URL résolue si absent dans la notif
+    const resolvedMissionMatch = url.match(/\/missions\/(\d+)/);
+    const resolvedMissionId = resolvedMissionMatch ? Number(resolvedMissionMatch[1]) : null;
+
+    const effectiveMissionId = missionId ?? resolvedMissionId;
+
+    // Signaler AVANT la navigation (pour les cas dossier/facture)
+    if (url === '/validateur/financier/factures' && dossierId) {
+      this.notificationService.signalerFactureCible(dossierId);
+      if (effectiveMissionId) this.notificationService.signalerMissionCible(effectiveMissionId);
+    } else if (dossierId) {
       this.notificationService.signalerDossierCible(dossierId);
+      if (effectiveMissionId) this.notificationService.signalerMissionCible(effectiveMissionId);
+    } else if (effectiveMissionId) {
+      // dossierId absent mais missionId extrait de l'URL → signaler quand même la mission
+      this.notificationService.signalerMissionCible(effectiveMissionId);
     }
-  
-    // Logique originale qui marchait pour l'agent
-    const currentUrl = this.router.url;
-    if (currentUrl === url) return;
-  
-    const sameBase =
-      currentUrl.split('/').slice(0, 3).join('/') ===
-      url.split('/').slice(0, 3).join('/');
-  
-    if (sameBase) {
-      this.router.navigateByUrl('/', { skipLocationChange: true })
-        .then(() => this.router.navigateByUrl(url));
-    } else {
-      this.router.navigateByUrl(url);
+
+    const urlSansParams  = url.split('?')[0];
+    const currentUrlBase = this.router.url.split('?')[0];
+
+    if (currentUrlBase === urlSansParams) {
+      // ✅ Même page — forcer rechargement uniquement si les query params diffèrent
+      // On évite le passage par '/' qui peut déclencher des guards non désirés
+      const currentFull = this.router.url;
+      if (currentFull === url) {
+        // URL strictement identique — forcer quand même le rechargement
+        this.router.navigateByUrl(url, { onSameUrlNavigation: 'reload' } as any);
+      } else {
+        // Même base mais params différents — rechargement propre via replaceUrl
+        this.router.navigateByUrl(url, { replaceUrl: true });
+      }
+      return;
     }
+
+    this.router.navigateByUrl(url);
   }
 
-  
   toutMarquerLu(): void {
     this.notificationService.marquerToutesLues().subscribe();
     this.notificationService.marquerToutesLuesLocalement();
@@ -393,56 +434,130 @@ export class AppComponent implements OnInit, OnDestroy {
     const roles   = this.roles.map(r => r.replace(/^ROLE_/, '').toUpperCase());
     const hasRole = (r: string) => roles.includes(r);
     const dossierId = notif.dossierId ?? (notif as any).dossier?.id;
-  
+
+    // ✅ CORRECTION : safeUrl filtre maintenant dans les deux sens :
+    //    - URLs /agent/       bloquées pour les non-agents
+    //    - URLs /prestataire/ bloquées pour les non-prestataires (AGENT, AVOCAT, etc.)
+    const safeUrl = (url: string | undefined | null, fallback: string): string => {
+      if (!url) return fallback;
+      if (url.includes('/agent/') && !hasRole('AGENT')) return fallback;
+      if (
+        url.includes('/prestataire/') &&
+        !hasRole('PRESTATAIRE') &&
+        !hasRole('EXPERT') &&
+        !hasRole('HUISSIER')
+      ) return fallback;
+      return url;
+    };
+
+    // ✅ Helper : extraire le motif depuis le message de la notification
+    const extractMotif = (): string => {
+      const m = notif.message?.match(/Motif\s*:\s*(.+?)(?:\s*Merci|$)/s);
+      return m ? encodeURIComponent(m[1].trim()) : '';
+    };
+
+    // ✅ Helper : détecter si l'urlAction pointe vers une mission (rejet facture prestataire)
+    const isRejectionVersM = (): string | null => {
+      const m = notif.urlAction?.match(/\/missions\/(\d+)/);
+      return m ? m[1] : null;
+    };
+
     switch (notif.type) {
-  
+
       // ── Validation dossier ──────────────────────────────────
       case 'VALIDATION_FINANCIERE':
         return dossierId ? `/validateur/financier/dashboard?dossierId=${dossierId}` : null;
+
       case 'VALIDATION_JURIDIQUE':
         return dossierId ? `/validateur/juridique/dashboard?dossierId=${dossierId}` : null;
 
+      // ── Rejet financier ─────────────────────────────────────
+      // ✅ REJET_FINANCIER peut être un rejet de facture prestataire
+      //    (urlAction = /prestataire/missions/36) OU un rejet de dossier agent.
+      //    On le détecte via le pattern de l'urlAction.
       case 'REJET_FINANCIER':
+        if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER')) {
+          const mId = isRejectionVersM();
+          if (mId) {
+            // ✅ C'est un rejet de facture → ouvrir le mode correction
+            const motif = extractMotif();
+            return `/prestataire/missions/${mId}?action=edit-facture&motif=${motif}`;
+          }
+          return safeUrl(notif.urlAction, `/prestataire/missions`);
+        }
+        if (hasRole('AVOCAT')) return `/avocat/affaires`;
+        if (notif.urlAction?.includes('/resultats-prestataires')) return notif.urlAction;
+        return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
+
       case 'VALIDATION_JURIDIQUE_OK':
       case 'REJET_JURIDIQUE':
+        if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER'))
+          return safeUrl(notif.urlAction, `/prestataire/missions`);
+        if (hasRole('AVOCAT')) return `/avocat/affaires`;
+        if (notif.urlAction?.includes('/resultats-prestataires')) return notif.urlAction;
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
-  
+
       // ── Décision financière OK → selon rôle ─────────────────
       case 'VALIDATION_FINANCIERE_OK':
-        if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER') || hasRole('AVOCAT'))
-          return notif.urlAction ?? `/prestataire/missions`;
+        if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER'))
+          return safeUrl(notif.urlAction, `/prestataire/missions`);
+        if (hasRole('AVOCAT'))
+          return safeUrl(notif.urlAction, `/avocat/affaires`);
+        if (notif.urlAction?.includes('/resultats-prestataires')) return notif.urlAction;
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
-  
+
       // ── Mission prestataire ─────────────────────────────────
-     // ── Mission prestataire ─────────────────────────────────
-     case 'NOUVELLE_MISSION':
+      case 'NOUVELLE_MISSION':
       case 'MISSION_MODIFIEE':
-        if (hasRole('AVOCAT')) {
-          return `/avocat/dashboard`;
-        }
-        return notif.urlAction ?? `/prestataire/missions`; // ── Soumissions facture / PV ────────────────────────────
+        if (hasRole('AVOCAT')) return `/avocat/dashboard`;
+        return safeUrl(notif.urlAction, `/prestataire/missions`);
+
+      // ── Soumissions facture / PV ────────────────────────────
       case 'PV_SOUMIS':
       case 'FACTURE_SOUMISE':
       case 'RESULTAT_SOUMIS':
       case 'RESULTAT_MODIFIE':
         if (hasRole('VALIDATEUR_FINANCIER')) return `/validateur/financier/factures`;
+        if (hasRole('AGENT'))
+          return notif.urlAction
+            ?? (dossierId ? `/agent/dossiers/${dossierId}/resultats-prestataires` : `/agent/liste`);
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
-  
-      // ── Mission clôturée / rejetée → prestataire ────────────
+
+      // ── Mission clôturée / rejetée / resoumission ───────────
       case 'MISSION_CLOTUREE':
       case 'MISSION_REJETEE':
+        return safeUrl(notif.urlAction, `/prestataire/missions`);
+
+      // ✅ CORRECTION : RESOUMISSION redirige l'AGENT vers sa vue dossier,
+      //    pas vers /prestataire/missions qui déclencherait un guard 403.
       case 'RESOUMISSION':
-        return notif.urlAction ?? `/prestataire/missions`;
-  
+        if (hasRole('AGENT')) {
+          return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
+        }
+        return safeUrl(notif.urlAction, `/prestataire/missions`);
+
       // ── Audience / Jugement ─────────────────────────────────
       case 'NOUVELLE_AUDIENCE':
       case 'JUGEMENT_RENDU':
+        if (hasRole('AVOCAT')) return dossierId ? `/avocat/affaires/${dossierId}` : `/avocat/affaires`;
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
-  
+
+      // ── Rejet facture explicite (si le backend envoie ce type un jour) ──
+      case 'FACTURE_REJETEE':
+        if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER')) {
+          const mId = isRejectionVersM();
+          if (mId) {
+            const motif = extractMotif();
+            return `/prestataire/missions/${mId}?action=edit-facture&motif=${motif}`;
+          }
+          return `/prestataire/missions`;
+        }
+        return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
+
       default:
         if (notif.urlAction) {
           if (!hasRole('AGENT') && notif.urlAction.includes('/agent/')) {
-            if (hasRole('AVOCAT'))   return `/avocat/affaires`;
+            if (hasRole('AVOCAT'))               return `/avocat/affaires`;
             if (hasRole('VALIDATEUR_FINANCIER')) return `/validateur/financier/factures`;
             if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER'))
               return `/prestataire/missions`;
@@ -479,6 +594,7 @@ export class AppComponent implements OnInit, OnDestroy {
       'RESULTAT_MODIFIE':         '📝',
       'NOUVELLE_AUDIENCE':        '🗓️',
       'JUGEMENT_RENDU':           '🏛️',
+      'FACTURE_REJETEE':          '❌',
     };
     return map[type] ?? '🔔';
   }

@@ -163,10 +163,17 @@ export class NavbarComponent implements OnInit, OnDestroy {
       this.notificationService.marquerCommeLue(n.id).subscribe();
       this.notificationService.marquerLueLocalement(n.id);
     }
+  
+    this.panelOuvert = false;
+  
+    // ✅ Signaler le dossierId AVANT la navigation
+    if (n.dossierId) {
+      this.notificationService.signalerDossierCible(n.dossierId);
+    }
+  
     if (n.urlAction) {
       this.router.navigateByUrl(n.urlAction);
     }
-    this.panelOuvert = false;
   }
 
   toutMarquerLu(): void {

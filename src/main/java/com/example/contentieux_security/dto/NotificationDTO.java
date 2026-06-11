@@ -16,6 +16,7 @@ public class NotificationDTO {
     private String  type;
     private String  dateCreation;   // formatée ISO-8601 côté frontend
     private boolean lue;
+    private Integer missionId;  // ← ajouter si absent
     private String  urlAction;
     private Long    dossierId;
 }

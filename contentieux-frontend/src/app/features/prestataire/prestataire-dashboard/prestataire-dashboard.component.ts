@@ -1,275 +1,798 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { PrestataireService } from '../../../core/services/prestataire.service';
 import { Router } from '@angular/router';
 import { ActivatedRoute } from '@angular/router';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
+import { NotificationService, NotificationDTO } from '../../../core/services/notification.service';
 
 @Component({
   selector: 'app-prestataire-dashboard',
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
- <div class="page-container">
-      <div class="page-header">
-        <div>
-          <h1>Mon Espace Prestataire</h1>
-          <p class="subtitle">Gérez vos missions et soumettez vos rapports</p>
-        </div>
-      </div>
+<div class="pd-shell">
 
-      <!-- Stats -->
-      <div class="stats-row" *ngIf="stats">
-        <div class="stat-card blue">
-          <div class="stat-icon">📋</div>
-          <div><h4>Total</h4><span>{{ stats.totalMissions }}</span></div>
-        </div>
-        <div class="stat-card orange">
-          <div class="stat-icon">⚡</div>
-          <div><h4>En Cours</h4><span>{{ stats.missionsEnCours }}</span></div>
-        </div>
-        <div class="stat-card purple">
-          <div class="stat-icon">📄</div>
-          <div><h4>PV Soumis</h4><span>{{ stats.pvSoumis }}</span></div>
-        </div>
-        <div class="stat-card green">
-          <div class="stat-icon">✅</div>
-          <div><h4>Terminées</h4><span>{{ stats.missionsTerminees }}</span></div>
-        </div>
-      </div>
-
-      <!-- Tabs -->
-      <div class="tabs">
-        <button [class.active]="activeTab === 'enCours'" (click)="activeTab = 'enCours'">⚡ Missions en Cours</button>
-        <button [class.active]="activeTab === 'toutes'" (click)="activeTab = 'toutes'">📋 Toutes les Missions</button>
-      </div>
-
-      <!-- Loading -->
-      <div class="loading-skeleton" *ngIf="loading">
-        <div class="skeleton-row" *ngFor="let i of [1,2,3]"></div>
-      </div>
-
-      <!-- Liste des missions -->
-      <div class="table-card" *ngIf="!loading">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Mission</th>
-              <th>Dossier</th>
-              <th>Type</th>
-              <th>Date assignation</th>
-              <th>Statut</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr *ngIf="missionsFiltrees.length === 0">
-              <td colspan="6" class="empty-state">
-                Aucune mission {{ activeTab === 'enCours' ? 'en cours' : '' }}
-              </td>
-            </tr>
-            <tr *ngFor="let m of missionsFiltrees" class="table-row">
-              <td>
-                <strong>{{ m.numeroMission }}</strong><br>
-                <small style="color:#888">#{{ m.id }}</small>
-              </td>
-              <td>
-                <div *ngIf="m.prestation?.dossier as d; else noDossier">
-                  <strong>{{ d.numeroDossier }}</strong><br>
-                  <small>👤 {{ d.client?.nom }} {{ d.client?.prenom }}</small><br>
-                  <small>📄 {{ d.libelle || '—' }}</small><br>
-                  <small>💰 {{ d.montant | number:'1.0-0' }} TND</small><br>
-                  <small>📅 {{ d.dateCreation | date:'dd/MM/yyyy' }}</small>
-                </div>
-                <ng-template #noDossier><span>N/A</span></ng-template>
-              </td>
-              <td>
-                <span class="type-badge">{{ m.prestation?.type || 'N/A' }}</span>
-              </td>
-              <td>{{ m.dateAssignation | date:'dd/MM/yyyy' }}</td>
-              <td>
-                <span class="statut-badge" [ngClass]="getStatutClass(m.statut)">
-                  {{ m.statut }}
-                </span>
-              </td>
-              <td class="actions">
-                <!-- ✅ Voir dossier -->
-                <button class="btn-action info" (click)="voirDossier(m)">
-                  👁️ Voir dossier
-                </button>
-
-                <!-- ✅ Bouton unique vers détail mission (soumettre résultat, PV, facture) -->
-                <button class="btn-action detail" (click)="voirMission(m)">
-                  📋 Voir mission
-                </button>
-
-                <!-- ✅ Documents -->
-                <button class="btn-action doc" (click)="ouvrirModalDocuments(m)">
-                  📎 Documents
-                </button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+  <!-- ══ TOPBAR ═══════════════════════════════════════════════════ -->
+  <div class="pd-topbar">
+    <div>
+      <div class="pd-eyebrow">Espace prestataire</div>
+      <h1 class="pd-title">Mon tableau de bord</h1>
     </div>
+    <button class="pd-refresh" (click)="chargerDashboard()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+        <polyline points="23 4 23 10 17 10"/>
+        <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+      </svg>
+      Actualiser
+    </button>
+  </div>
 
-    <!-- ✅ MODAL DOCUMENTS -->
-    <div class="modal-overlay"
-         *ngIf="missionSelectionnee && modalType === 'documents'"
-         (click)="fermerModal()">
-      <div class="modal-card modal-card--wide" (click)="$event.stopPropagation()">
-        <div class="modal-header teal">
-          <h2>📎 Documents de la mission</h2>
-          <button class="modal-close" (click)="fermerModal()">✕</button>
-        </div>
-        <div class="modal-body">
-          <div class="mission-info-box">
-            <p><strong>Mission :</strong> {{ missionSelectionnee.numeroMission }}</p>
-            <p><strong>Statut :</strong> {{ missionSelectionnee.statut }}</p>
-          </div>
-          <!-- Upload -->
-          <div class="upload-zone">
-            <label class="upload-label">
-              <input type="file"
-                     multiple
-                     (change)="onFichiersSelectionnes($event)"
-                     style="display:none">
-              <div class="upload-btn">
-                📂 Choisir des fichiers
-              </div>
-            </label>
-            <!-- Fichiers sélectionnés -->
-            <div class="fichiers-choisis" *ngIf="fichierSelectionnes.length > 0">
-              <div class="fichier-choisi" *ngFor="let f of fichierSelectionnes">
-                <span>{{ iconeType(f.type) }} {{ f.name }}</span>
-                <span class="taille">{{ formatTaille(f.size) }}</span>
-              </div>
-            </div>
-            <button class="btn-upload"
-                    (click)="uploaderDocuments()"
-                    [disabled]="uploadEnCours || fichierSelectionnes.length === 0">
-              {{ uploadEnCours ? '⏳ Upload en cours...' : '⬆️ Envoyer' }}
-            </button>
-          </div>
-          <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
-          <div class="success-banner" *ngIf="succes">{{ succes }}</div>
-          <!-- Documents existants -->
-          <div class="docs-existants">
-            <h3>Documents envoyés ({{ documentsExistants.length }})</h3>
-            <div *ngIf="documentsExistants.length === 0" class="empty-docs">
-              Aucun document envoyé pour cette mission.
-            </div>
-            <div class="doc-item" *ngFor="let d of documentsExistants">
-              <div class="doc-left">
-                <span class="doc-icone">{{ iconeType(d.typeMime) }}</span>
-                <div class="doc-info">
-                  <span class="doc-nom">{{ d.nomFichierOriginal }}</span>
-                  <span class="doc-meta">
-                    {{ formatTaille(d.tailleFichier) }} ·
-                    {{ d.dateUpload | date:'dd/MM/yyyy HH:mm' }}
-                  </span>
-                </div>
-              </div>
-              <button class="btn-dl"
-                      (click)="telechargerDocument(d.nomFichierServeur, d.nomFichierOriginal)">
-                ⬇️ Télécharger
+  <!-- ══ KPI STRIP ═════════════════════════════════════════════════ -->
+  <div class="pd-kpi-strip" *ngIf="stats">
+    <div class="pd-kpi pd-kpi--blue" [class.pd-kpi--active]="activeTab === 'toutes'" (click)="activeTab = 'toutes'">
+      <span class="pd-kpi-val">{{ stats.totalMissions }}</span>
+      <span class="pd-kpi-lbl">Total</span>
+    </div>
+    <div class="pd-kpi-sep"></div>
+    <div class="pd-kpi pd-kpi--amber" [class.pd-kpi--active]="activeTab === 'enCours'" (click)="activeTab = 'enCours'">
+      <span class="pd-kpi-val">{{ stats.missionsEnCours }}</span>
+      <span class="pd-kpi-lbl">En cours</span>
+    </div>
+    <div class="pd-kpi-sep"></div>
+    <div class="pd-kpi pd-kpi--purple">
+      <span class="pd-kpi-val">{{ stats.pvSoumis }}</span>
+      <span class="pd-kpi-lbl">PV soumis</span>
+    </div>
+    <div class="pd-kpi-sep"></div>
+    <div class="pd-kpi pd-kpi--green">
+      <span class="pd-kpi-val">{{ stats.missionsTerminees }}</span>
+      <span class="pd-kpi-lbl">Terminées</span>
+    </div>
+  </div>
+
+  <!-- ══ TABS ══════════════════════════════════════════════════════ -->
+  <div class="pd-tabs">
+    <button class="pd-tab" [class.pd-tab--on]="activeTab === 'enCours'" (click)="activeTab = 'enCours'">
+      Missions en cours
+    </button>
+    <button class="pd-tab" [class.pd-tab--on]="activeTab === 'toutes'" (click)="activeTab = 'toutes'">
+      Toutes les missions
+    </button>
+  </div>
+
+  <!-- ══ LOADING ════════════════════════════════════════════════════ -->
+  <div class="pd-loading" *ngIf="loading">
+    <div class="pd-loading-track"><div class="pd-loading-bar"></div></div>
+    <p class="pd-loading-label">Chargement…</p>
+  </div>
+
+  <!-- ══ TABLE ═════════════════════════════════════════════════════ -->
+  <div class="pd-table-wrap" *ngIf="!loading">
+    <table class="pd-table">
+      <thead>
+        <tr>
+          <th>Mission</th>
+          <th>Dossier / Client</th>
+          <th>Type</th>
+          <th>Assignée le</th>
+          <th>Statut</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngIf="missionsFiltrees.length === 0">
+          <td colspan="6" class="pd-empty-cell">
+            Aucune mission{{ activeTab === 'enCours' ? ' en cours' : '' }}
+          </td>
+        </tr>
+        <tr *ngFor="let m of missionsFiltrees" class="pd-row">
+
+          <!-- Mission -->
+          <td>
+            <span class="pd-mission-code">{{ m.numeroMission }}</span>
+            <span class="pd-mission-id">#{{ m.id }}</span>
+          </td>
+
+          <!-- Dossier -->
+          <td>
+            <ng-container *ngIf="m.prestation?.dossier as d">
+              <span class="pd-dossier-num">{{ d.numeroDossier }}</span>
+              <span class="pd-dossier-meta">{{ d.client?.nom }} {{ d.client?.prenom }}</span>
+              <span class="pd-dossier-meta">{{ d.libelle || '—' }}</span>
+              <span class="pd-dossier-montant">{{ d.montant | number:'1.0-0' }} TND</span>
+            </ng-container>
+            <span class="pd-dash" *ngIf="!m.prestation?.dossier">—</span>
+          </td>
+
+          <!-- Type -->
+          <td>
+            <span class="pd-type-pill">{{ m.prestation?.type || '—' }}</span>
+          </td>
+
+          <!-- Date -->
+          <td>
+            <span class="pd-date">{{ m.dateAssignation | date:'dd/MM/yyyy' }}</span>
+          </td>
+
+          <!-- Statut -->
+          <td>
+            <span class="pd-statut" [ngClass]="getStatutClass(m.statut)">
+              <span class="pd-statut-dot"></span>
+              {{ getStatutLabel(m.statut) }}
+            </span>
+          </td>
+
+          <!-- Actions -->
+          <td>
+            <div class="pd-actions">
+              <button class="pd-btn-act pd-btn-act--ghost" (click)="voirDossier(m)" title="Voir le dossier">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                Dossier
+              </button>
+              <button class="pd-btn-act pd-btn-act--primary" (click)="voirMission(m)" title="Voir la mission">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                  <polyline points="14 2 14 8 20 8"/>
+                </svg>
+                Mission
+              </button>
+              <button class="pd-btn-act pd-btn-act--teal" (click)="ouvrirModalDocuments(m)" title="Documents">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+                </svg>
+                Docs
               </button>
             </div>
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button class="btn-cancel" (click)="fermerModal()">Fermer</button>
+          </td>
+
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════ -->
+<!-- MODAL DOCUMENTS                                                 -->
+<!-- ══════════════════════════════════════════════════════════════ -->
+<div class="pd-modal-veil"
+     *ngIf="missionSelectionnee && modalType === 'documents'"
+     (click)="fermerModal()">
+  <div class="pd-modal" (click)="$event.stopPropagation()">
+
+    <div class="pd-modal-head">
+      <div>
+        <div class="pd-modal-eyebrow">Mission {{ missionSelectionnee.numeroMission }}</div>
+        <h2 class="pd-modal-title">Documents joints</h2>
+      </div>
+      <button class="pd-modal-x" (click)="fermerModal()">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <div class="pd-modal-body">
+
+      <!-- Feedback -->
+      <div class="pd-feedback pd-feedback--ok"  *ngIf="succes">✓ {{ succes }}</div>
+      <div class="pd-feedback pd-feedback--err" *ngIf="erreur">⚠ {{ erreur }}</div>
+
+      <!-- Upload -->
+      <label class="pd-drop-zone">
+        <input type="file" multiple (change)="onFichiersSelectionnes($event)" style="display:none">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#aaa" stroke-width="1.5">
+          <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66L9.41 17.41a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+        </svg>
+        <span>Glissez ou cliquez pour ajouter des fichiers</span>
+      </label>
+
+      <!-- Fichiers sélectionnés -->
+      <div class="pd-file-list" *ngIf="fichierSelectionnes.length > 0">
+        <div class="pd-file-row" *ngFor="let f of fichierSelectionnes">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#888" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>
+          </svg>
+          <span class="pd-file-name">{{ f.name }}</span>
+          <span class="pd-file-size">{{ formatTaille(f.size) }}</span>
         </div>
       </div>
+
+      <button class="pd-upload-btn"
+              (click)="uploaderDocuments()"
+              [disabled]="uploadEnCours || fichierSelectionnes.length === 0">
+        <span class="pd-spin" *ngIf="uploadEnCours"></span>
+        {{ uploadEnCours ? 'Envoi en cours…' : 'Envoyer les fichiers' }}
+      </button>
+
+      <!-- Séparateur -->
+      <div class="pd-sep">
+        <span>Documents existants ({{ documentsExistants.length }})</span>
+      </div>
+
+      <!-- Docs existants -->
+      <div class="pd-empty-docs" *ngIf="documentsExistants.length === 0">
+        Aucun document envoyé pour cette mission.
+      </div>
+      <div class="pd-doc-item" *ngFor="let d of documentsExistants">
+        <div class="pd-doc-left">
+          <span class="pd-doc-icon">{{ iconeType(d.typeMime) }}</span>
+          <div>
+            <div class="pd-doc-name">{{ d.nomFichierOriginal }}</div>
+            <div class="pd-doc-meta">
+              {{ formatTaille(d.tailleFichier) }} · {{ d.dateUpload | date:'dd/MM/yyyy HH:mm' }}
+            </div>
+          </div>
+        </div>
+        <button class="pd-dl-btn" (click)="telechargerDocument(d.nomFichierServeur, d.nomFichierOriginal)">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" y1="15" x2="12" y2="3"/>
+          </svg>
+          Télécharger
+        </button>
+      </div>
+
     </div>
+
+    <div class="pd-modal-foot">
+      <button class="pd-btn-outline" (click)="fermerModal()">Fermer</button>
+    </div>
+
+  </div>
+</div>
   `,
   styles: [`
-    .page-container { font-family: 'Inter', sans-serif; }
-    .page-header { margin-bottom: 25px; }
-    h1 { margin: 0; font-size: 1.8rem; color: #1a237e; }
-    .subtitle { margin: 5px 0 0; color: #777; }
+    /* ── Tokens ─────────────────────────────────────────────────── */
+    :host {
+      --navy:     #0d1b3e;
+      --navy-mid: #1a2f5a;
+      --ink:      #1c2333;
+      --steel:    #4b5878;
+      --mist:     #8b96ae;
+      --border:   #e4e8f0;
+      --surface:  #f7f8fc;
+      --white:    #ffffff;
+      --amber:    #f59e0b;
+      --blue:     #2563eb;
+      --green:    #16a34a;
+      --purple:   #7c3aed;
+      --teal:     #0d9488;
+      --red:      #dc2626;
+      --font:     'Inter', -apple-system, sans-serif;
+    }
 
-    .stats-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 20px; margin-bottom: 25px; }
-    .stat-card { background: white; border-radius: 12px; padding: 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); border-left: 5px solid; transition: transform .2s; }
-    .stat-card:hover { transform: translateY(-4px); }
-    .stat-card.blue { border-color: #1976d2; } .stat-card.orange { border-color: #f57c00; }
-    .stat-card.purple { border-color: #7b1fa2; } .stat-card.green { border-color: #388e3c; }
-    .stat-icon { font-size: 2.2rem; }
-    .stat-card h4 { margin: 0 0 4px; color: #757575; font-size: 0.85rem; text-transform: uppercase; }
-    .stat-card span { font-size: 1.8rem; font-weight: bold; color: #212121; }
+    /* ── Shell ───────────────────────────────────────────────────── */
+    .pd-shell {
+      font-family: var(--font);
+      padding: 0 0 4rem;
+      max-width: 1200px;
+      margin: 0 auto;
+      color: var(--ink);
+    }
 
-    .tabs { display: flex; gap: 10px; margin-bottom: 20px; }
-    .tabs button { padding: 10px 22px; border: 2px solid #ddd; border-radius: 8px; cursor: pointer; background: white; color: #555; font-weight: 600; transition: all .2s; }
-    .tabs button.active { border-color: #1a237e; background: #1a237e; color: white; }
+    /* ── Topbar ──────────────────────────────────────────────────── */
+    .pd-topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      padding: 2rem 0 1.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1.75rem;
+    }
+    .pd-eyebrow {
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--mist);
+      margin-bottom: 4px;
+    }
+    .pd-title {
+      margin: 0;
+      font-size: 1.65rem;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -.025em;
+    }
+    .pd-refresh {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 14px;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .8rem;
+      font-weight: 500;
+      color: var(--steel);
+      cursor: pointer;
+      font-family: var(--font);
+      transition: border-color .15s, color .15s;
+      &:hover { border-color: var(--navy-mid); color: var(--navy); }
+    }
 
-    .loading-skeleton { display: flex; flex-direction: column; gap: 12px; }
-    .skeleton-row { height: 55px; border-radius: 8px; background: linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%); background-size: 200% 100%; animation: shimmer 1.5s infinite; }
-    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    /* ── KPI Strip ───────────────────────────────────────────────── */
+    .pd-kpi-strip {
+      display: flex;
+      align-items: center;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 1.5rem;
+    }
+    .pd-kpi {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 18px 12px;
+      cursor: pointer;
+      transition: background .15s;
+      &:hover { background: var(--surface); }
+      &--active {
+        background: var(--navy) !important;
+        .pd-kpi-val, .pd-kpi-lbl { color: var(--white) !important; }
+        .pd-kpi-lbl { opacity: .7; }
+      }
+      &--blue.pd-kpi--active   { background: var(--blue) !important; }
+      &--amber.pd-kpi--active  { background: var(--amber) !important; }
+      &--purple.pd-kpi--active { background: var(--purple) !important; }
+      &--green.pd-kpi--active  { background: var(--green) !important; }
+    }
+    .pd-kpi-val {
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -.03em;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .pd-kpi-lbl {
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--mist);
+      font-weight: 500;
+    }
+    .pd-kpi-sep {
+      width: 1px;
+      height: 40px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
 
-    .table-card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: hidden; }
-    .data-table { width: 100%; border-collapse: collapse; }
-    .data-table thead { background: #1a237e; }
-    .data-table th { padding: 15px; text-align: left; color: white; font-weight: 600; font-size: .9rem; }
-    .data-table td { padding: 14px 15px; border-bottom: 1px solid #f0f0f0; font-size: .9rem; vertical-align: top; }
-    .table-row:hover { background: #f8f9ff; }
-    .empty-state { text-align: center; padding: 40px !important; color: #aaa; font-style: italic; }
-    .type-badge { background: #e8eaf6; color: #3949ab; padding: 4px 10px; border-radius: 12px; font-size: .8rem; font-weight: 600; }
-    .statut-badge { padding: 5px 12px; border-radius: 15px; font-size: .8rem; font-weight: bold; }
-    .s-assignee { background: #fff3cd; color: #856404; }
-    .s-en-cours { background: #cce5ff; color: #004085; }
-    .s-pv-soumis { background: #d1ecf1; color: #0c5460; }
-    .s-facture { background: #d4edda; color: #155724; }
-    .s-terminee { background: #e2e3e5; color: #383d41; }
-    .actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-    .btn-action { padding: 7px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: .85rem; font-weight: 600; transition: all .2s; }
-    .btn-action.info   { background: #e3f2fd; color: #0d47a1; }
-    .btn-action.info:hover { background: #bbdefb; }
-    .btn-action.detail { background: #f3e5f5; color: #6a1b9a; }
-    .btn-action.detail:hover { background: #e1bee7; }
-    .btn-action.doc    { background: #e0f2f1; color: #00695c; }
-    .btn-action.doc:hover { background: #b2dfdb; }
+    /* ── Tabs ────────────────────────────────────────────────────── */
+    .pd-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 1.5rem;
+    }
+    .pd-tab {
+      padding: 8px 18px;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      background: var(--white);
+      font-size: .82rem;
+      font-weight: 500;
+      color: var(--steel);
+      cursor: pointer;
+      font-family: var(--font);
+      transition: all .15s;
+      &:hover:not(.pd-tab--on) { border-color: var(--navy-mid); color: var(--navy); }
+      &--on { background: var(--navy); border-color: var(--navy); color: var(--white); font-weight: 600; }
+    }
 
-    /* ── Modal ── */
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 1000; display: flex; align-items: center; justify-content: center; }
-    .modal-card { background: white; border-radius: 16px; width: 560px; max-width: 95vw; box-shadow: 0 25px 50px rgba(0,0,0,0.25); animation: slideUp .3s ease; }
-    .modal-card--wide { width: 680px; }
-    @keyframes slideUp { from{opacity:0;transform:translateY(30px)} to{opacity:1;transform:translateY(0)} }
-    .modal-header { padding: 22px 28px; display: flex; justify-content: space-between; align-items: center; border-radius: 16px 16px 0 0; }
-    .modal-header.teal { background: #00695c; }
-    .modal-header h2 { margin: 0; color: white; font-size: 1.2rem; }
-    .modal-close { background: rgba(255,255,255,.2); border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 1rem; }
-    .modal-body { padding: 28px; }
-    .mission-info-box { background: #f8f9fa; border-radius: 8px; padding: 14px; margin-bottom: 20px; border-left: 4px solid #00695c; }
-    .mission-info-box p { margin: 4px 0; font-size: .9rem; }
-    .error-banner { background: #fdecea; color: #c62828; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #c62828; font-size: .9rem; }
-    .success-banner { background: #e8f5e9; color: #2e7d32; padding: 12px 16px; border-radius: 8px; margin-bottom: 15px; border-left: 4px solid #2e7d32; font-size: .9rem; }
-    .modal-footer { display: flex; justify-content: flex-end; gap: 12px; padding: 16px 28px; border-top: 1px solid #f0f0f0; }
-    .btn-cancel { background: #f5f5f5; color: #555; border: none; padding: 11px 22px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+    /* ── Loading ─────────────────────────────────────────────────── */
+    .pd-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 5rem;
+      gap: 1.25rem;
+    }
+    .pd-loading-track {
+      width: 220px; height: 3px;
+      background: var(--border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .pd-loading-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--navy-mid), var(--blue));
+      border-radius: 99px;
+      animation: pd-slide 1.4s ease-in-out infinite;
+    }
+    @keyframes pd-slide {
+      0%   { width: 0; margin-left: 0; }
+      50%  { width: 60%; margin-left: 20%; }
+      100% { width: 0; margin-left: 100%; }
+    }
+    .pd-loading-label { font-size: .85rem; color: var(--mist); margin: 0; }
 
-    /* ── Upload zone ── */
-    .upload-zone { border: 2px dashed #b2dfdb; border-radius: 10px; padding: 20px; margin-bottom: 20px; text-align: center; }
-    .upload-btn { display: inline-block; background: #e0f2f1; color: #00695c; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-bottom: 12px; }
-    .fichiers-choisis { margin: 10px 0; text-align: left; }
-    .fichier-choisi { display: flex; justify-content: space-between; padding: 6px 10px; background: #f5f5f5; border-radius: 6px; margin-bottom: 4px; font-size: .85rem; }
-    .taille { color: #888; }
-    .btn-upload { background: #00695c; color: white; border: none; padding: 10px 22px; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 8px; }
-    .btn-upload:disabled { opacity: .5; cursor: not-allowed; }
+    /* ── Table ───────────────────────────────────────────────────── */
+    .pd-table-wrap {
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .pd-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+    .pd-table thead { background: var(--navy); }
+    .pd-table th {
+      padding: 13px 16px;
+      text-align: left;
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: rgba(255,255,255,.7);
+      white-space: nowrap;
+    }
+    .pd-row {
+      border-bottom: 1px solid var(--border);
+      transition: background .12s;
+      &:last-child { border-bottom: none; }
+      &:hover { background: var(--surface); }
+    }
+    .pd-table td {
+      padding: 13px 16px;
+      vertical-align: middle;
+      font-size: .87rem;
+    }
+    .pd-empty-cell {
+      text-align: center;
+      padding: 3rem !important;
+      color: var(--mist);
+      font-style: italic;
+    }
 
-    /* ── Docs existants ── */
-    .docs-existants h3 { font-size: 1rem; color: #333; margin-bottom: 12px; }
-    .empty-docs { color: #aaa; font-style: italic; font-size: .9rem; }
-    .doc-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 14px; border: 1px solid #e0e0e0; border-radius: 8px; margin-bottom: 8px; }
-    .doc-left { display: flex; align-items: center; gap: 10px; }
-    .doc-icone { font-size: 1.4rem; }
-    .doc-info { display: flex; flex-direction: column; }
-    .doc-nom { font-size: .9rem; font-weight: 600; color: #333; }
-    .doc-meta { font-size: .75rem; color: #888; }
-    .btn-dl { background: #e3f2fd; color: #0d47a1; border: none; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: .82rem; font-weight: 600; }
-    .btn-dl:hover { background: #bbdefb; }
+    /* ── Cellules ────────────────────────────────────────────────── */
+    .pd-mission-code {
+      display: block;
+      font-weight: 700;
+      color: var(--navy);
+      font-size: .9rem;
+    }
+    .pd-mission-id {
+      display: block;
+      font-size: .72rem;
+      color: var(--mist);
+      margin-top: 2px;
+    }
+    .pd-dossier-num {
+      display: block;
+      font-weight: 600;
+      color: var(--ink);
+      font-size: .88rem;
+    }
+    .pd-dossier-meta {
+      display: block;
+      font-size: .75rem;
+      color: var(--mist);
+      margin-top: 1px;
+    }
+    .pd-dossier-montant {
+      display: block;
+      font-size: .75rem;
+      font-weight: 600;
+      color: var(--green);
+      margin-top: 3px;
+    }
+    .pd-dash { color: var(--mist); }
+    .pd-type-pill {
+      background: #eef2ff;
+      color: #3730a3;
+      padding: 3px 10px;
+      border-radius: 99px;
+      font-size: .75rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .pd-date { font-size: .84rem; color: var(--steel); }
+
+    /* ── Statut ──────────────────────────────────────────────────── */
+    .pd-statut {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 10px;
+      border-radius: 99px;
+      font-size: .72rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      white-space: nowrap;
+    }
+    .pd-statut-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: currentColor;
+      flex-shrink: 0;
+    }
+    .pd-s-assignee       { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+    .pd-s-en-cours       { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+    .pd-s-pv-soumis      { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
+    .pd-s-facture        { background: #f0fdf4; color: #14532d; border: 1px solid #bbf7d0; }
+    .pd-s-facture-rej    { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+    .pd-s-terminee       { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+    .pd-s-rejetee        { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+
+    /* ── Boutons actions ─────────────────────────────────────────── */
+    .pd-actions {
+      display: flex;
+      gap: 6px;
+      flex-wrap: nowrap;
+    }
+    .pd-btn-act {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 11px;
+      border-radius: 6px;
+      border: none;
+      font-size: .76rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      white-space: nowrap;
+      transition: all .15s;
+
+      &--ghost {
+        background: var(--surface);
+        color: var(--steel);
+        border: 1px solid var(--border);
+        &:hover { background: var(--border); }
+      }
+      &--primary {
+        background: var(--navy);
+        color: var(--white);
+        &:hover { background: var(--navy-mid); }
+      }
+      &--teal {
+        background: #ccfbf1;
+        color: #115e59;
+        &:hover { background: #99f6e4; }
+      }
+    }
+
+    /* ══ MODAL ══════════════════════════════════════════════════════ */
+    .pd-modal-veil {
+      position: fixed;
+      inset: 0;
+      background: rgba(13,27,62,.45);
+      backdrop-filter: blur(2px);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    .pd-modal {
+      background: var(--white);
+      border-radius: 14px;
+      width: 620px;
+      max-width: 100%;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 24px 60px rgba(13,27,62,.22);
+      animation: pd-modal-in .2s ease;
+    }
+    @keyframes pd-modal-in {
+      from { opacity: 0; transform: translateY(14px) scale(.98); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .pd-modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      padding: 22px 24px 18px;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      flex-shrink: 0;
+      border-radius: 14px 14px 0 0;
+    }
+    .pd-modal-eyebrow {
+      font-size: .7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--mist);
+      margin-bottom: 3px;
+    }
+    .pd-modal-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--navy);
+      letter-spacing: -.015em;
+    }
+    .pd-modal-x {
+      background: var(--border);
+      border: none;
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--steel);
+      transition: background .15s;
+      &:hover { background: #d1d5db; }
+    }
+    .pd-modal-body {
+      padding: 22px 24px;
+      flex: 1;
+      overflow-y: auto;
+    }
+    .pd-modal-foot {
+      display: flex;
+      justify-content: flex-end;
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 0 0 14px 14px;
+      flex-shrink: 0;
+    }
+    .pd-btn-outline {
+      padding: 9px 18px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--white);
+      color: var(--steel);
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      &:hover { background: var(--surface); }
+    }
+
+    /* ── Feedback ────────────────────────────────────────────────── */
+    .pd-feedback {
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: .85rem;
+      font-weight: 500;
+      margin-bottom: 16px;
+      &--ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+      &--err { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
+    }
+
+    /* ── Drop zone ───────────────────────────────────────────────── */
+    .pd-drop-zone {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      padding: 26px;
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      cursor: pointer;
+      text-align: center;
+      font-size: .83rem;
+      color: var(--mist);
+      background: var(--surface);
+      margin-bottom: 12px;
+      transition: border-color .15s, color .15s, background .15s;
+      &:hover { border-color: var(--navy-mid); color: var(--navy); background: var(--white); }
+    }
+    .pd-file-list { margin-bottom: 12px; display: flex; flex-direction: column; gap: 5px; }
+    .pd-file-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 12px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      font-size: .8rem;
+    }
+    .pd-file-name { flex: 1; color: var(--ink); font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .pd-file-size { color: var(--mist); font-size: .74rem; }
+
+    .pd-upload-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 9px 18px;
+      background: var(--navy);
+      color: var(--white);
+      border: none;
+      border-radius: 6px;
+      font-size: .85rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      margin-bottom: 20px;
+      transition: background .15s;
+      &:hover:not(:disabled) { background: var(--navy-mid); }
+      &:disabled { opacity: .5; cursor: not-allowed; }
+    }
+    .pd-spin {
+      width: 13px; height: 13px;
+      border: 2px solid rgba(255,255,255,.3);
+      border-top-color: var(--white);
+      border-radius: 50%;
+      animation: pd-spin .65s linear infinite;
+      display: inline-block;
+    }
+    @keyframes pd-spin { to { transform: rotate(360deg); } }
+
+    /* ── Séparateur ──────────────────────────────────────────────── */
+    .pd-sep {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .07em;
+      color: var(--mist);
+      &::before, &::after {
+        content: '';
+        flex: 1;
+        height: 1px;
+        background: var(--border);
+      }
+    }
+
+    /* ── Docs existants ──────────────────────────────────────────── */
+    .pd-empty-docs { color: var(--mist); font-size: .85rem; font-style: italic; padding: 12px 0; }
+    .pd-doc-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      &:last-child { margin-bottom: 0; }
+    }
+    .pd-doc-left { display: flex; align-items: center; gap: 10px; }
+    .pd-doc-icon { font-size: 1.3rem; }
+    .pd-doc-name { font-size: .88rem; font-weight: 600; color: var(--ink); }
+    .pd-doc-meta { font-size: .74rem; color: var(--mist); margin-top: 2px; }
+    .pd-dl-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 12px;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border: none;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font);
+      transition: background .15s;
+      &:hover { background: #dbeafe; }
+    }
+
+    /* ── Responsive ──────────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .pd-table th:nth-child(2),
+      .pd-table td:nth-child(2) { display: none; }
+      .pd-kpi-sep { display: none; }
+      .pd-kpi { flex: 1 1 40%; }
+      .pd-topbar { flex-direction: column; gap: 12px; align-items: flex-start; }
+    }
   `]
 })
-export class PrestataireDashboardComponent implements OnInit {
+export class PrestataireDashboardComponent implements OnInit, OnDestroy {
 
   stats: any = null;
   missions: any[] = [];
@@ -284,14 +807,37 @@ export class PrestataireDashboardComponent implements OnInit {
   fichierSelectionnes: File[] = [];
   uploadEnCours = false;
   documentsExistants: any[] = [];
+  private destroy$ = new Subject<void>();
 
   constructor(
     private prestataireService: PrestataireService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private notifService: NotificationService
   ) {}
 
   ngOnInit() {
+    this.chargerDashboard();
+
+    this.notifService.nouvelleNotif$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe((notif: NotificationDTO) => {
+      const types = [
+        'NOUVELLE_MISSION', 'MISSION_MODIFIEE', 'MISSION_CLOTUREE',
+        'MISSION_REJETEE', 'VALIDATION_FINANCIERE_OK'
+      ];
+      if (types.includes(notif.type)) {
+        this.chargerDashboardAvecRetry();
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
+  }
+
+  chargerDashboard(): void {
     this.loading = true;
     this.prestataireService.getDashboard().subscribe({
       next: (data) => {
@@ -300,6 +846,29 @@ export class PrestataireDashboardComponent implements OnInit {
         this.loading  = false;
       },
       error: () => { this.loading = false; }
+    });
+  }
+
+  private chargerDashboardAvecRetry(tentative = 0): void {
+    const MAX      = 5;
+    const DELAI_MS = [500, 1000, 2000, 3000, 5000];
+
+    this.prestataireService.getDashboard().subscribe({
+      next: (data) => {
+        const nouvelles = data.dernieresMissions || [];
+        if (nouvelles.length <= this.missions.length && tentative < MAX) {
+          setTimeout(() => this.chargerDashboardAvecRetry(tentative + 1), DELAI_MS[tentative]);
+          return;
+        }
+        this.stats    = data;
+        this.missions = nouvelles;
+        this.loading  = false;
+      },
+      error: () => {
+        if (tentative < MAX) {
+          setTimeout(() => this.chargerDashboardAvecRetry(tentative + 1), DELAI_MS[tentative]);
+        }
+      }
     });
   }
 
@@ -314,23 +883,32 @@ export class PrestataireDashboardComponent implements OnInit {
 
   getStatutClass(statut: string): string {
     const map: Record<string, string> = {
-      ASSIGNEE:        's-assignee',
-      EN_COURS:        's-en-cours',
-      PV_SOUMIS:       's-pv-soumis',
-      FACTURE_SOUMISE: 's-facture',
-      TERMINEE:        's-terminee'
+      ASSIGNEE:        'pd-s-assignee',
+      EN_COURS:        'pd-s-en-cours',
+      PV_SOUMIS:       'pd-s-pv-soumis',
+      FACTURE_SOUMISE: 'pd-s-facture',
+      FACTURE_REJETEE: 'pd-s-facture-rej',
+      TERMINEE:        'pd-s-terminee',
+      REJETEE:         'pd-s-rejetee',
     };
     return map[statut] || '';
   }
 
-  // ✅ Navigation vers détail mission (soumettre résultat depuis là)
-  voirMission(m: any) {
-    this.router.navigate(['/prestataire/missions', m.id]);
+  getStatutLabel(statut: string): string {
+    const map: Record<string, string> = {
+      ASSIGNEE:        'Assignée',
+      EN_COURS:        'En cours',
+      PV_SOUMIS:       'PV soumis',
+      FACTURE_SOUMISE: 'Facture soumise',
+      FACTURE_REJETEE: 'Facture rejetée',
+      TERMINEE:        'Terminée',
+      REJETEE:         'Rejetée',
+    };
+    return map[statut] || statut;
   }
 
-  voirDossier(m: any) {
-    this.router.navigate(['/prestataire/mission', m.id, 'dossier']);
-  }
+  voirMission(m: any) { this.router.navigate(['/prestataire/missions', m.id]); }
+  voirDossier(m: any) { this.router.navigate(['/prestataire/mission', m.id, 'dossier']); }
 
   fermerModal() {
     this.missionSelectionnee = null;
@@ -341,7 +919,6 @@ export class PrestataireDashboardComponent implements OnInit {
     this.documentsExistants = [];
   }
 
-  // ── Documents ─────────────────────────────────────────────
   ouvrirModalDocuments(mission: any) {
     this.missionSelectionnee = mission;
     this.modalType = 'documents';
@@ -358,16 +935,11 @@ export class PrestataireDashboardComponent implements OnInit {
 
   onFichiersSelectionnes(event: Event) {
     const input = event.target as HTMLInputElement;
-    if (input.files) {
-      this.fichierSelectionnes = Array.from(input.files);
-    }
+    if (input.files) this.fichierSelectionnes = Array.from(input.files);
   }
 
   uploaderDocuments() {
-    if (this.fichierSelectionnes.length === 0) {
-      this.erreur = 'Sélectionnez au moins un fichier.';
-      return;
-    }
+    if (this.fichierSelectionnes.length === 0) { this.erreur = 'Sélectionnez au moins un fichier.'; return; }
     this.erreur = '';
     this.succes = '';
     this.uploadEnCours = true;
@@ -375,12 +947,9 @@ export class PrestataireDashboardComponent implements OnInit {
     const formData = new FormData();
     this.fichierSelectionnes.forEach(f => formData.append('fichiers', f, f.name));
 
-    this.prestataireService.uploaderDocuments(
-      this.missionSelectionnee.id,
-      formData
-    ).subscribe({
+    this.prestataireService.uploaderDocuments(this.missionSelectionnee.id, formData).subscribe({
       next: (res: any) => {
-        this.succes = `✅ ${res.fichiers?.length ?? this.fichierSelectionnes.length} document(s) ajouté(s) avec succès !`;
+        this.succes = `${res.fichiers?.length ?? this.fichierSelectionnes.length} document(s) ajouté(s) avec succès.`;
         this.uploadEnCours = false;
         this.fichierSelectionnes = [];
         this.prestataireService.getDocuments(this.missionSelectionnee.id).subscribe({
@@ -389,7 +958,7 @@ export class PrestataireDashboardComponent implements OnInit {
         });
       },
       error: (err: any) => {
-        this.erreur = err?.error?.message || err?.error?.error || 'Erreur lors de l\'upload.';
+        this.erreur = err?.error?.message || err?.error?.error || "Erreur lors de l'upload.";
         this.uploadEnCours = false;
       }
     });
@@ -417,9 +986,7 @@ export class PrestataireDashboardComponent implements OnInit {
       next: (blob) => {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = url;
-        a.download = nomOriginal;
-        a.click();
+        a.href = url; a.download = nomOriginal; a.click();
         URL.revokeObjectURL(url);
       }
     });

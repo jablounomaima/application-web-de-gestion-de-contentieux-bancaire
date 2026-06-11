@@ -1,11 +1,14 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, RouterModule, Router, NavigationEnd } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { DossierService } from '../../../core/services/dossier.service';
-
-import { ActionValidationComponent } from '../action-validation/action-validation.component'; // ✅ AJOUTER
+import { NotificationService } from '../../../core/services/notification.service';
+import { ActionValidationComponent } from '../action-validation/action-validation.component';
 import { LancerAffaireComponent } from '../lancer-affaire/lancer-affaire.component';
+
 @Component({
   selector: 'app-agent-dossier-detail',
   standalone: true,
@@ -13,7 +16,7 @@ import { LancerAffaireComponent } from '../lancer-affaire/lancer-affaire.compone
   templateUrl: './agent-dossier-detail.component.html',
   styleUrls: ['./agent-dossier-detail.component.scss']
 })
-export class AgentDossierDetailComponent implements OnInit {
+export class AgentDossierDetailComponent implements OnInit, OnDestroy {
 
   dossier: any = null;
   historique: any[] = [];
@@ -38,8 +41,9 @@ export class AgentDossierDetailComponent implements OnInit {
   erreurRisque = '';
   erreurModifier = '';
   erreurSupprimer = '';
-  success = ''; // ✅ AJOUTER
-  error   = ''; // ✅ AJOUTER
+  success = '';
+  error   = '';
+
   // ── Flags ─────────────────────────────────────────────────────────
   saving = false;
   suppressing = false;
@@ -55,38 +59,40 @@ export class AgentDossierDetailComponent implements OnInit {
     description: ''
   };
 
-  // Types de crédits disponibles
   risqueTypes = [
-    { value: 'CREDIT_IMMOBILIER', label: '🏠 Crédit Immobilier' },
-    { value: 'CREDIT_CONSOMMATION', label: '🛍️ Crédit Consommation' },
-    { value: 'CREDIT_AUTO', label: '🚗 Crédit Auto' },
+    { value: 'CREDIT_IMMOBILIER',    label: '🏠 Crédit Immobilier' },
+    { value: 'CREDIT_CONSOMMATION',  label: '🛍️ Crédit Consommation' },
+    { value: 'CREDIT_AUTO',          label: '🚗 Crédit Auto' },
     { value: 'CREDIT_PROFESSIONNEL', label: '💼 Crédit Professionnel' },
-    { value: 'LEASING', label: '📋 Leasing' },
-    { value: 'DECOUVERT', label: '🏦 Découvert Bancaire' }
+    { value: 'LEASING',              label: '📋 Leasing' },
+    { value: 'DECOUVERT',            label: '🏦 Découvert Bancaire' }
   ];
 
   formModifier = { libelle: '', description: '', notes: '' };
 
+  // ── Gestion du cycle de vie ───────────────────────────────────────
+  private destroy$ = new Subject<void>();
+
   constructor(
     private route: ActivatedRoute,
     private router: Router,
-    private dossierService: DossierService
+    private dossierService: DossierService,
+    private notifService: NotificationService
   ) {}
 
   ngOnInit() {
-    // ← Observable au lieu de snapshot
     this.route.paramMap.subscribe(params => {
       const id = Number(params.get('id'));
       if (id) this.chargerDossier(id);
     });
-  
+
     this.route.queryParams.subscribe(params => {
       if (params['refresh']) {
         const currentId = Number(this.route.snapshot.paramMap.get('id'));
         if (currentId) this.chargerDossier(currentId);
       }
     });
-  
+
     this.router.events.subscribe(event => {
       if (event instanceof NavigationEnd) {
         const urlSansParams = event.urlAfterRedirects.split('?')[0];
@@ -98,18 +104,40 @@ export class AgentDossierDetailComponent implements OnInit {
         }
       }
     });
+
+    // ── Rechargement automatique via WebSocket ────────────────────
+    const typesAgent = [
+      'VALIDATION_FINANCIERE_OK', 'REJET_FINANCIER',
+      'VALIDATION_JURIDIQUE_OK',  'REJET_JURIDIQUE',
+      'NOUVELLE_AUDIENCE',        'JUGEMENT_RENDU',
+      'PV_SOUMIS',                'FACTURE_SOUMISE'
+    ];
+
+    this.notifService.nouvelleNotif$.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(notif => {
+      if (typesAgent.includes(notif.type)) {
+        const currentId = Number(this.route.snapshot.paramMap.get('id'));
+        if (currentId) this.chargerDossier(currentId);
+      }
+    });
+  }
+
+  ngOnDestroy(): void {
+    this.destroy$.next();
+    this.destroy$.complete();
   }
 
   chargerDossier(id: number) {
     this.loading = true;
     console.log('📥 Chargement du dossier ID:', id);
-    
+
     this.dossierService.getDossierDetails(id).subscribe({
       next: (data: any) => {
         console.log('📦 Données reçues:', data);
-        
+
         let d = data.dossier || data;
-        
+
         console.log('🔍 Structure du dossier reçu:', {
           id: d.id,
           numeroDossier: d.numeroDossier,
@@ -117,13 +145,12 @@ export class AgentDossierDetailComponent implements OnInit {
           clientType: d.clientType,
           clientNom: d.clientNom
         });
-        
-        // Gestion des risques
+
         if (!d.risques) {
           console.warn('⚠️ Aucun risque trouvé, initialisation d\'un tableau vide');
           d.risques = [];
         }
-        
+
         if (d.risques && Array.isArray(d.risques)) {
           d.risques = d.risques.map((risque: any) => ({
             ...risque,
@@ -131,44 +158,42 @@ export class AgentDossierDetailComponent implements OnInit {
           }));
           console.log('✅ Risques après traitement:', d.risques.length);
         }
-        
-        // Gestion du client
+
         d.client = {
-          typeClient: d.clientType || d.clientTypeClient || 'PARTICULIER',
-          nom: d.clientNom || d.client?.nom || null,
-          prenom: d.clientPrenom || d.client?.prenom || null,
-          cin: d.clientCin || d.client?.cin || null,
-          email: d.clientEmail || d.client?.email || null,
-          telephone: d.clientTelephone || d.client?.telephone || null,
-          adresse: d.clientAdresse || d.client?.adresse || null,
+          typeClient:    d.clientType          || d.clientTypeClient  || 'PARTICULIER',
+          nom:           d.clientNom           || d.client?.nom       || null,
+          prenom:        d.clientPrenom        || d.client?.prenom    || null,
+          cin:           d.clientCin           || d.client?.cin       || null,
+          email:         d.clientEmail         || d.client?.email     || null,
+          telephone:     d.clientTelephone     || d.client?.telephone || null,
+          adresse:       d.clientAdresse       || d.client?.adresse   || null,
           raisonSociale: d.clientRaisonSociale || d.client?.raisonSociale || null,
-          rne: d.clientRne || d.client?.rne || null,
+          rne:           d.clientRne           || d.client?.rne       || null,
         };
-        
-        // Gestion de l'agence
+
         d.agence = {
-          nom: d.agenceNom || d.agence?.nom || null,
+          nom:   d.agenceNom   || d.agence?.nom   || null,
           ville: d.agenceVille || d.agence?.ville || null,
         };
-        
-        this.dossier = d;
-        this.historique = data.historique || [];
-        this.validateurs_financiers = data.validateurs_financiers || [];
-        this.validateurs_juridiques = data.validateurs_juridiques || [];
-        this.missionAvocat = data.missionAvocat || null;
-        this.affaireExiste = data.affaireExiste ?? false;
-        this.prestationJudiciaire = data.prestationJudiciaire || null;
-        
+
+        this.dossier                 = d;
+        this.historique              = data.historique              || [];
+        this.validateurs_financiers  = data.validateurs_financiers  || [];
+        this.validateurs_juridiques  = data.validateurs_juridiques  || [];
+        this.missionAvocat           = data.missionAvocat           || null;
+        this.affaireExiste           = data.affaireExiste           ?? false;
+        this.prestationJudiciaire    = data.prestationJudiciaire    || null;
+
         if (d.validateurFinancierChoisi) {
           this.formValidateurs.validateurFinancier = d.validateurFinancierChoisi;
         }
         if (d.validateurJuridiqueChoisi) {
           this.formValidateurs.validateurJuridique = d.validateurJuridiqueChoisi;
         }
-        
+
         console.log('✅ Dossier chargé - Nombre de risques:', this.dossier?.risques?.length || 0);
         console.log('✅ Total impayé:', this.getMontantTotal());
-        
+
         this.loading = false;
       },
       error: (err: any) => {
@@ -179,7 +204,7 @@ export class AgentDossierDetailComponent implements OnInit {
   }
 
   // ==================== CRÉDITS (RISQUES) ====================
-  
+
   openAddRisqueModal() {
     this.formRisque = {
       type: 'CREDIT_IMMOBILIER',
@@ -190,27 +215,26 @@ export class AgentDossierDetailComponent implements OnInit {
     };
     this.showModalRisque = true;
   }
-  
+
   ajouterRisque() {
     this.erreurRisque = '';
     if (!this.formRisque.montantInitial || this.formRisque.montantInitial <= 0) {
       this.erreurRisque = 'Le montant initial est obligatoire';
       return;
     }
-    
     if (this.formRisque.montantImpaye < 0) {
       this.erreurRisque = 'Le montant impayé ne peut pas être négatif';
       return;
     }
-    
+
     const riskData = {
-      type: this.formRisque.type,
+      type:           this.formRisque.type,
       montantInitial: this.formRisque.montantInitial,
-      montantImpaye: this.formRisque.montantImpaye,
-      dateEcheance: this.formRisque.dateEcheance || null,
-      description: this.formRisque.description || null
+      montantImpaye:  this.formRisque.montantImpaye,
+      dateEcheance:   this.formRisque.dateEcheance || null,
+      description:    this.formRisque.description  || null
     };
-    
+
     this.dossierService.ajouterRisque(this.dossier.id, riskData).subscribe({
       next: () => {
         this.showModalRisque = false;
@@ -221,15 +245,11 @@ export class AgentDossierDetailComponent implements OnInit {
       }
     });
   }
-  
+
   modifierRisque(risque: any) {
     const newMontantImpaye = prompt('Nouveau montant impayé:', risque.montantImpaye);
     if (newMontantImpaye && !isNaN(Number(newMontantImpaye))) {
-      const updatedRisque = {
-        ...risque,
-        montantImpaye: Number(newMontantImpaye)
-      };
-      
+      const updatedRisque = { ...risque, montantImpaye: Number(newMontantImpaye) };
       this.dossierService.modifierRisque(this.dossier.id, risque.id, updatedRisque).subscribe({
         next: () => {
           this.chargerDossier(this.dossier.id);
@@ -239,7 +259,7 @@ export class AgentDossierDetailComponent implements OnInit {
       });
     }
   }
-  
+
   supprimerRisque(risqueId: number) {
     if (confirm('Supprimer ce crédit ? Toutes les garanties associées seront également supprimées.')) {
       this.dossierService.supprimerRisque(this.dossier.id, risqueId).subscribe({
@@ -251,7 +271,7 @@ export class AgentDossierDetailComponent implements OnInit {
       });
     }
   }
-  
+
   toggleRisque(risque: any) {
     this.dossierService.selectionnerRisque(this.dossier.id, risque.id, !risque.selectionne).subscribe({
       next: () => this.chargerDossier(this.dossier.id),
@@ -270,34 +290,34 @@ export class AgentDossierDetailComponent implements OnInit {
 
   getStatutClass(statut: string): string {
     const map: Record<string, string> = {
-      'OUVERT': 'statut-ouvert',
+      'OUVERT':        'statut-ouvert',
       'EN_TRAITEMENT': 'statut-en-traitement',
-      'VALIDE': 'statut-valide',
-      'REJETE': 'statut-rejete',
-      'CLOS': 'statut-clos'
+      'VALIDE':        'statut-valide',
+      'REJETE':        'statut-rejete',
+      'CLOS':          'statut-clos'
     };
     return map[statut] || '';
   }
 
   formatStatut(statut: string): string {
     const map: Record<string, string> = {
-      'OUVERT': 'Ouvert',
+      'OUVERT':        'Ouvert',
       'EN_TRAITEMENT': 'En traitement',
-      'VALIDE': 'Validé',
-      'REJETE': 'Rejeté',
-      'CLOS': 'Clos'
+      'VALIDE':        'Validé',
+      'REJETE':        'Rejeté',
+      'CLOS':          'Clos'
     };
     return map[statut] || statut;
   }
 
   formatRisqueType(type: string): string {
     const map: Record<string, string> = {
-      'CREDIT_IMMOBILIER': 'Crédit Immobilier',
-      'CREDIT_CONSOMMATION': 'Crédit Consommation',
-      'CREDIT_AUTO': 'Crédit Auto',
+      'CREDIT_IMMOBILIER':    'Crédit Immobilier',
+      'CREDIT_CONSOMMATION':  'Crédit Consommation',
+      'CREDIT_AUTO':          'Crédit Auto',
       'CREDIT_PROFESSIONNEL': 'Crédit Professionnel',
-      'LEASING': 'Leasing',
-      'DECOUVERT': 'Découvert Bancaire',
+      'LEASING':              'Leasing',
+      'DECOUVERT':            'Découvert Bancaire',
     };
     return map[type] || type;
   }
@@ -308,13 +328,13 @@ export class AgentDossierDetailComponent implements OnInit {
   }
 
   getValidIcon(val: boolean | null): string {
-    if (val === true) return 'ok';
+    if (val === true)  return 'ok';
     if (val === false) return 'ko';
     return 'pending';
   }
 
   getValidEmoji(val: boolean | null): string {
-    if (val === true) return '✅';
+    if (val === true)  return '✅';
     if (val === false) return '❌';
     return '⏳';
   }
@@ -334,11 +354,11 @@ export class AgentDossierDetailComponent implements OnInit {
       this.router.navigate(['/agent/dossiers', this.dossier.id, 'modifier']);
     }
   }
-  
+
   fermerModalModifier() {
     this.showModalModifier = false;
-    this.erreurModifier = '';
-    this.saving = false;
+    this.erreurModifier    = '';
+    this.saving            = false;
   }
 
   enregistrerModification() {
@@ -362,24 +382,24 @@ export class AgentDossierDetailComponent implements OnInit {
   }
 
   supprimerDossier() {
-    this.erreurSupprimer = '';
+    this.erreurSupprimer  = '';
     this.showModalSupprimer = true;
   }
 
   fermerModalSupprimer() {
     this.showModalSupprimer = false;
-    this.erreurSupprimer = '';
-    this.suppressing = false;
+    this.erreurSupprimer    = '';
+    this.suppressing        = false;
   }
 
   confirmerSuppression() {
     this.erreurSupprimer = '';
-    this.suppressing = true;
+    this.suppressing     = true;
     this.dossierService.supprimerDossier(this.dossier.id).subscribe({
-      next: () => this.router.navigate(['/agent/dossiers']),
+      next:  () => this.router.navigate(['/agent/dossiers']),
       error: (err: any) => {
         this.erreurSupprimer = err.error?.error || 'Erreur lors de la suppression.';
-        this.suppressing = false;
+        this.suppressing     = false;
       }
     });
   }
@@ -417,7 +437,7 @@ export class AgentDossierDetailComponent implements OnInit {
   supprimerGarantie(garantieId: number) {
     if (!confirm('Supprimer cette garantie ?')) return;
     this.dossierService.supprimerGarantie(garantieId).subscribe({
-      next: () => this.chargerDossier(this.dossier.id),
+      next:  () => this.chargerDossier(this.dossier.id),
       error: (err: any) => alert(err.error?.error || 'Erreur suppression garantie')
     });
   }
@@ -426,8 +446,8 @@ export class AgentDossierDetailComponent implements OnInit {
     this.dossierService.telechargerPdf(this.dossier.id).subscribe({
       next: (blob: Blob) => {
         const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
+        const a   = document.createElement('a');
+        a.href     = url;
         a.download = `dossier-${this.dossier.numeroDossier}.pdf`;
         a.click();
         URL.revokeObjectURL(url);
@@ -440,10 +460,9 @@ export class AgentDossierDetailComponent implements OnInit {
     this.router.navigate(['/agent/dossiers', this.dossier.id, 'missions']);
   }
 
-// agent-dossier-detail.component.ts
-lancerProcedure() {
-  this.router.navigate(['/agent/dossiers', this.dossier.id, 'prestations', 'lancer']);
-}
+  lancerProcedure() {
+    this.router.navigate(['/agent/dossiers', this.dossier.id, 'prestations', 'lancer']);
+  }
 
   designerAvocat() {
     this.router.navigate([
@@ -456,14 +475,14 @@ lancerProcedure() {
   lancerAffaire(): void {
     this.router.navigate(['/agent/dossiers', this.dossier.id, 'affaire', 'lancer']);
   }
+
   voirAffaire() {
     this.router.navigate(['/agent/dossiers', this.dossier.id, 'affaire']);
   }
-   
 
   ressoumettreDossier() {
     this.dossierService.soumettreAValidation(this.dossier.id).subscribe({
-      next: () => this.chargerDossier(this.dossier.id),
+      next:  () => this.chargerDossier(this.dossier.id),
       error: (err: any) => alert(err.error?.error || 'Erreur ressoumission')
     });
   }
@@ -477,9 +496,7 @@ lancerProcedure() {
 
   refreshRisques(): void {
     if (!this.dossier?.id) return;
-    
     console.log('🔄 Rechargement forcé des risques pour le dossier:', this.dossier.id);
-    
     this.dossierService.getDossierDetails(this.dossier.id).subscribe({
       next: (data: any) => {
         const loadedDossier = data.dossier || data;
@@ -501,18 +518,14 @@ lancerProcedure() {
   forceRefreshAfterModification() {
     console.log('🔄 Force refresh after modification');
     const currentId = this.dossier?.id;
-    if (currentId) {
-      this.chargerDossier(currentId);
-    }
+    if (currentId) this.chargerDossier(currentId);
   }
 
   creerMission(): void {
     this.router.navigate(['/agent/dossiers', this.dossier?.id, 'missions', 'creer']);
-
   }
 
-  // Dans le composant détail dossier
-voirResultats() {
-  this.router.navigate(['/agent/dossiers', this.dossier?.id, 'resultats-prestataires']);
-}
+  voirResultats() {
+    this.router.navigate(['/agent/dossiers', this.dossier?.id, 'resultats-prestataires']);
+  }
 }

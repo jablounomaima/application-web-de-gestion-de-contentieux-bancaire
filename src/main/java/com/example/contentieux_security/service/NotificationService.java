@@ -200,12 +200,17 @@ public void notifierNouvelleMission(String prestataireUsername,
                                                DossierContentieux dossier) {
         if (valide) {
             if (agentUsername != null && dossier != null) {
-                notifier(agentUsername,
-                    "✅ Facture validée — mission " + numeroMission,
-                    "La facture de la mission " + numeroMission
-                    + " a été validée par le validateur financier."
-                    + " Vous pouvez maintenant clôturer la mission.",
-                    "VALIDATION_FINANCIERE_OK", dossier);
+            // APRÈS — URL explicite avec missionId
+notifier(agentUsername,
+    "✅ Facture validée par le validateur financier",
+    "La facture de la mission " + numeroMission + " (dossier "
+    + dossier.getNumeroDossier() + ") a été validée par le validateur financier."
+    + " Vous pouvez maintenant clôturer la mission.",
+    "VALIDATION_FINANCIERE_OK",
+    dossier,
+    "/agent/dossiers/" + dossier.getId()
+        + "/resultats-prestataires?missionId=" + missionId
+);
             }
             if (prestataireUsername != null) {
                 notifierSansDossier(prestataireUsername,

@@ -40,7 +40,7 @@ import java.util.Optional;
 public class MissionService {
 
     private final MissionRepository missionRepository;
-
+    private final NotificationService notificationService;
     // ══════════════════════════════════════════════════════════════
     //  LECTURE / RECHERCHE
     //  Méthodes en lecture seule — pas de modification en base
@@ -253,26 +253,58 @@ public class MissionService {
                                             String validateurUsername) {
         Mission mission = missionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-
+    
         if (mission.getStatut() != StatutMission.FACTURE_SOUMISE) {
             throw new RuntimeException(
                 "Aucune facture à valider. Statut actuel : " + mission.getStatut());
         }
-
+    
         mission.setFactureValide(true);
         mission.setStatut(StatutMission.FACTURE_VALIDEE);
         mission.setDateValidationFacture(LocalDateTime.now());
-        mission.setValideParAgent(validateurUsername); // nom du validateur financier
-
+        mission.setValideParAgent(validateurUsername);
+    
         if (commentaire != null && !commentaire.isBlank()) {
             mission.setCommentaireAgent(commentaire);
         }
-
+    
+        missionRepository.save(mission);
+    
+        // ✅ Notification agent avec URL explicite → resultats-prestataires + missionId
+        try {
+            String agentUsername    = mission.getDossier().getCreePar(); // ou getAgentUsername()
+            String prestataireUsername = mission.getPrestataire().getUsername();
+            String numeroMission    = mission.getNumeroMission();
+            Long   dossierId        = mission.getDossier().getId();
+    
+            notificationService.notifier(
+                agentUsername,
+                "✅ Facture validée par le validateur financier",
+                "La facture de la mission " + numeroMission
+                    + " (dossier " + mission.getDossier().getNumeroDossier()
+                    + ") a été validée par le validateur financier."
+                    + " Vous pouvez maintenant clôturer la mission.",
+                "VALIDATION_FINANCIERE_OK",
+                mission.getDossier(),
+                "/agent/dossiers/" + dossierId + "/resultats-prestataires?missionId=" + id
+            );
+    
+            notificationService.notifierSansDossier(
+                prestataireUsername,
+                "✅ Votre facture a été validée",
+                "Votre facture pour la mission " + numeroMission
+                    + " a été validée par le validateur financier.",
+                "VALIDATION_FINANCIERE_OK",
+                "/prestataire/missions/" + id
+            );
+        } catch (Exception ex) {
+            log.warn("Notification validation facture non envoyée — mission={} : {}",
+                    id, ex.getMessage());
+        }
+    
         log.info("Facture mission {} validée par le financier {}",
                  mission.getNumeroMission(), validateurUsername);
-        missionRepository.save(mission);
     }
-
     /**
      * Le validateur financier REJETTE la facture du prestataire.
      * Le statut passe à FACTURE_REJETEE.
@@ -284,23 +316,57 @@ public class MissionService {
                                             String validateurUsername) {
         Mission mission = missionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Mission introuvable"));
-
+    
         if (mission.getStatut() != StatutMission.FACTURE_SOUMISE) {
             throw new RuntimeException(
                 "Aucune facture à rejeter. Statut actuel : " + mission.getStatut());
         }
-
+    
         mission.setFactureValide(false);
         mission.setStatut(StatutMission.FACTURE_REJETEE);
         mission.setDateValidationFacture(LocalDateTime.now());
         mission.setValideParAgent(validateurUsername);
         mission.setCommentaireAgent(commentaire);
-
+    
+        missionRepository.save(mission);
+    
+        // ❌ Notification agent + prestataire
+        try {
+            String agentUsername       = mission.getDossier().getCreePar();
+            String prestataireUsername = mission.getPrestataire().getUsername();
+            String numeroMission       = mission.getNumeroMission();
+            Long   dossierId           = mission.getDossier().getId();
+    
+            notificationService.notifier(
+                agentUsername,
+                "❌ Facture rejetée — mission " + numeroMission,
+                "La facture de la mission " + numeroMission
+                    + " (dossier " + mission.getDossier().getNumeroDossier()
+                    + ") a été rejetée par le validateur financier."
+                    + (commentaire != null && !commentaire.isBlank() ? " Motif : " + commentaire : ""),
+                "REJET_FINANCIER",
+                mission.getDossier(),
+                "/agent/dossiers/" + dossierId + "/resultats-prestataires?missionId=" + id
+            );
+    
+            notificationService.notifierSansDossier(
+                prestataireUsername,
+                "❌ Votre facture a été rejetée",
+                "Votre facture pour la mission " + numeroMission
+                    + " a été rejetée."
+                    + (commentaire != null && !commentaire.isBlank() ? " Motif : " + commentaire : "")
+                    + " Merci de corriger et resoumettre.",
+                "REJET_FINANCIER",
+                "/prestataire/missions/" + id
+            );
+        } catch (Exception ex) {
+            log.warn("Notification rejet facture non envoyée — mission={} : {}",
+                    id, ex.getMessage());
+        }
+    
         log.info("Facture mission {} rejetée par le financier {}",
                  mission.getNumeroMission(), validateurUsername);
-        missionRepository.save(mission);
     }
-
     // ══════════════════════════════════════════════════════════════
     //  ÉTAPE 4 — AGENT BANCAIRE : VALIDER OU REJETER LA MISSION
     //  L'agent intervient UNIQUEMENT après validation du financier
