@@ -39,6 +39,12 @@ interface DossierForm {
   risques: RisqueForm[];
 }
 
+interface ChartBar {
+  label: string;
+  value: number;
+  percent: number;
+}
+
 // ─── Composant ────────────────────────────────────────────────────────────────
 
 @Component({
@@ -55,6 +61,53 @@ export class AgentDashboardComponent implements OnInit {
 
   stats = { total: 0, enCours: 0, valides: 0, rejetes: 0, montantTotal: 0 };
 
+  // ─── Données pour le panneau de graphiques ────────────────────────────────
+
+  chartBars: ChartBar[] = [];
+
+  agentsActifs = 0;
+  agentsTotal  = 0;
+  activeAgentRatio = 0;
+
+  readonly ringRadius = 54;
+  readonly ringCircumference = 2 * Math.PI * this.ringRadius;
+  ringOffset = this.ringCircumference;
+
+  // ─── Diagramme en anneau (donut) de répartition des dossiers ──────────────
+
+  getStatPercent(value: number): number {
+    return this.stats.total > 0 ? Math.round((value / this.stats.total) * 100) : 0;
+  }
+
+  get donutGradient(): string {
+    const enCours = this.getStatPercent(this.stats.enCours);
+    const valides = this.getStatPercent(this.stats.valides);
+    const rejetes = this.getStatPercent(this.stats.rejetes);
+    const autres  = Math.max(0, 100 - enCours - valides - rejetes);
+
+    const segments = [
+      { percent: enCours, color: '#eab308' },
+      { percent: valides, color: '#22c55e' },
+      { percent: rejetes, color: '#ef4444' },
+      { percent: autres,  color: '#e2e8f0' }
+    ];
+
+    let cumulative = 0;
+    const parts: string[] = [];
+
+    segments.forEach(seg => {
+      if (seg.percent <= 0) return;
+      const start = cumulative;
+      const end   = cumulative + seg.percent;
+      parts.push(`${seg.color} ${start}% ${end}%`);
+      cumulative = end;
+    });
+
+    return parts.length > 0
+      ? `conic-gradient(${parts.join(', ')})`
+      : '#e2e8f0';
+  }
+
   showModal    = false;
   submitting   = false;
   erreurCreation = '';
@@ -66,6 +119,24 @@ export class AgentDashboardComponent implements OnInit {
   form!: DossierForm;
   newRisque!: RisqueForm;
   newGarantie!: GarantieForm;
+
+  risqueTypes = [
+    { value: 'CREDIT_IMMOBILIER',    label: '🏠 Crédit Immobilier' },
+    { value: 'CREDIT_CONSOMMATION',  label: '🛍️ Crédit Consommation' },
+    { value: 'CREDIT_AUTO',          label: '🚗 Crédit Auto' },
+    { value: 'CREDIT_PROFESSIONNEL', label: '💼 Crédit Professionnel' },
+    { value: 'LEASING',              label: '📋 Leasing' },
+    { value: 'DECOUVERT',            label: '🏦 Découvert Bancaire' }
+  ];
+  
+  garantieTypes = [
+    { value: 'BIENS_IMMOBILIERS',   label: '🏢 Biens Immobiliers' },
+    { value: 'VEHICULES',           label: '🚗 Véhicules' },
+    { value: 'EQUIPEMENTS',         label: '🖥️ Équipements' },
+    { value: 'CAUTION_PERSONNELLE', label: '👤 Caution Personnelle' },
+    { value: 'GARANTIE_BANCAIRE',   label: '🏛️ Garantie Bancaire' },
+    { value: 'AUTRE',               label: '📝 Autre' }
+  ];
 
   // Labels affichés dans la barre de progression
   readonly stepsList = ['Client', 'Dossier', 'Risques', 'Confirmation'];
@@ -125,6 +196,7 @@ export class AgentDashboardComponent implements OnInit {
       next: (data: any[]) => {
         this.dossiers = Array.isArray(data) ? data : [];
         this.calculerStats(this.dossiers);
+        this.calculerCharts(this.dossiers);
         this.loading = false;
       },
       error: () => {
@@ -144,6 +216,56 @@ export class AgentDashboardComponent implements OnInit {
     this.stats.montantTotal  = dossiers.reduce(
       (sum, d) => sum + (d.montantTotalEngagement || 0), 0
     );
+  }
+
+  // ─── Graphiques (répartition des entités + activité des agents) ───────────
+
+  calculerCharts(dossiers: any[]): void {
+    // Répartition des entités : Particuliers vs Entreprises
+    const particuliers = dossiers.filter(d =>
+      (d.clientTypeClient || d.clientType) === 'PARTICULIER'
+    ).length;
+    const entreprises = dossiers.filter(d =>
+      (d.clientTypeClient || d.clientType) === 'ENTREPRISE'
+    ).length;
+
+    const maxValue = Math.max(particuliers, entreprises, 1);
+
+    this.chartBars = [
+      {
+        label: 'Particuliers',
+        value: particuliers,
+        percent: Math.round((particuliers / maxValue) * 100)
+      },
+      {
+        label: 'Entreprises',
+        value: entreprises,
+        percent: Math.round((entreprises / maxValue) * 100)
+      }
+    ];
+
+    // Activité des agents : agents distincts ayant au moins un dossier "en cours"
+    const agentsSet = new Set(
+      dossiers
+        .map(d => d.agentNom || d.agentResponsable || d.agentId)
+        .filter(Boolean)
+    );
+    const agentsActifsSet = new Set(
+      dossiers
+        .filter(d => ['EN_COURS', 'EN_TRAITEMENT', 'OUVERT'].includes(d.statut))
+        .map(d => d.agentNom || d.agentResponsable || d.agentId)
+        .filter(Boolean)
+    );
+
+    this.agentsTotal  = agentsSet.size;
+    this.agentsActifs = agentsActifsSet.size;
+
+    this.activeAgentRatio = this.agentsTotal > 0
+      ? Math.round((this.agentsActifs / this.agentsTotal) * 100)
+      : 0;
+
+    this.ringOffset =
+      this.ringCircumference - (this.activeAgentRatio / 100) * this.ringCircumference;
   }
 
   voirDetails(id: number): void {

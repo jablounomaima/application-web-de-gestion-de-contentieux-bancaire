@@ -19,7 +19,8 @@ export class ValidateurFinancierListeComponent implements OnInit, OnChanges {
   @Input()  dossierId:      number | null = null;
   @Output() actionDemandee  = new EventEmitter<{ dossier: any; type: 'valider' | 'rejeter' }>();
   @Output() dossiersCharges = new EventEmitter<any[]>();
-
+// ✅ Ajouter dans les composants liste
+@Input() highlightedDossierId: number | null = null;
   dossiers:        any[]            = [];
   dossierDetails:  Map<number, any> = new Map();
   loadingDetail:   Set<number>      = new Set();

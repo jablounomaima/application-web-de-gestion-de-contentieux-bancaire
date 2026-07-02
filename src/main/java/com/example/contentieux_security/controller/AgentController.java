@@ -289,16 +289,11 @@ public class AgentController {
     }
 
     @PostMapping("/dossiers/{id}/ressoumettre")
-    @Transactional
-    public ResponseEntity<?> ressoumettreDossier(@PathVariable Long id) {
+    
+    public ResponseEntity<?> ressoumettreDossier(@PathVariable Long id, Principal principal) {
         try {
-            DossierContentieux d = dossierRepository.findByIdWithDetails(id)
-                    .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
-            if (Boolean.FALSE.equals(d.getValidationFinanciere())) d.setValidationFinanciere(null);
-            if (Boolean.FALSE.equals(d.getValidationJuridique()))  d.setValidationJuridique(null);
-            d.setStatut(DossierStatus.EN_TRAITEMENT);
-            dossierRepository.save(d);
-            return ResponseEntity.ok(Map.of("message", "Dossier ressoumis au validateur concerné ✅"));
+            dossierService.ressoumettre(id, principal.getName());
+            return ResponseEntity.ok(Map.of("message", "Dossier ressoumis aux validateurs ✅"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

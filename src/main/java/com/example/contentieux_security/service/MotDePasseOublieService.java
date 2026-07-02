@@ -19,57 +19,82 @@ public class MotDePasseOublieService {
     private final PrestataireRepository     prestataireRepository;
     private final KeycloakUserService       keycloakUserService;
     private final EmailService              emailService;
+    private final NotificationService       notificationService;
 
-    // Email de l'admin — injecté depuis application.properties
     @Value("${app.admin.email:admin@banque.tn}")
     private String adminEmail;
 
-    /**
-     * Traite la demande de mot de passe oublié.
-     * 1. Cherche l'utilisateur par email dans toutes les tables
-     * 2. Envoie une notification à l'admin
-     * 3. Envoie un accusé de réception à l'utilisateur
-     */
-   /**
- * Accepte email OU username.
- */
-public void traiterDemande(String emailOuUsername) {
+    @Value("${app.admin.username:admin1}")
+    private String adminUsername;
 
-    String username;
-    String email;
+    // ══════════════════════════════════════════════════════════════
+    // Traiter demande mot de passe oublié
+    // Accepte email OU username
+    // ══════════════════════════════════════════════════════════════
+    public void traiterDemande(String emailOuUsername) {
 
-    // ─── Détecter si c'est un email ou un username ───────────────
-    if (emailOuUsername.contains("@")) {
-        // C'est un email → chercher le username
-        username = trouverUsernameParEmail(emailOuUsername);
-        email    = emailOuUsername;
-    } else {
-        // C'est un username → chercher l'email
-        email    = trouverEmailParUsername(emailOuUsername);
-        username = emailOuUsername;
+        System.out.println("🔍 traiterDemande appelé: [" + emailOuUsername + "]");
+
+        String username;
+        String email;
+
+        // ─── Détecter si c'est un email ou un username ───────────
+        if (emailOuUsername.contains("@")) {
+            username = trouverUsernameParEmail(emailOuUsername);
+            email    = emailOuUsername;
+        } else {
+            email    = trouverEmailParUsername(emailOuUsername);
+            username = emailOuUsername;
+        }
+
+        if (username == null || email == null) {
+            System.out.println("⚠️ Demande mdp oublié — inconnu: " + emailOuUsername);
+            return;
+        }
+
+        System.out.println("✅ Utilisateur trouvé — username: " + username + " | email: " + email);
+
+        // ─── Email à l'admin ─────────────────────────────────────
+        try {
+            emailService.envoyerNotificationAdminMdpOublie(adminEmail, username, email);
+            System.out.println("✅ Email admin envoyé pour: " + username);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur email admin: " + e.getMessage());
+        }
+
+        // ─── Notification WebSocket à l'admin ────────────────────
+        try {
+            // ✅ Détecter le type d'utilisateur → bon onglet
+            String tab = "agents";  // défaut
+            if (validateurRepository.findByUsername(username).isPresent()) {
+                tab = "validateurs";
+            }
+            notificationService.notifierSansDossier(
+                adminUsername,
+                "🔐 Demande réinitialisation mot de passe",
+                "L'utilisateur " + username + " (" + email
+                + ") a oublié son mot de passe.",
+                "MOT_DE_PASSE_OUBLIE",
+                "/admin/dashboard?tab=" + tab + "&username=" + username
+            );
+            System.out.println("✅ Notification WS admin envoyée pour: " + username);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur notification WS: " + e.getMessage());
+        }
+
+        // ─── Accusé de réception à l'utilisateur ─────────────────
+        try {
+            emailService.envoyerAccuseReceptionMdpOublie(email, username);
+            System.out.println("✅ Demande mdp oublié traitée pour: " + username);
+        } catch (Exception e) {
+            System.err.println("❌ Erreur accusé réception pour " + username + ": " + e.getMessage());
+            throw new RuntimeException("Échec envoi email à l'utilisateur: " + e.getMessage(), e);
+        }
     }
 
-    if (username == null || email == null) {
-        // ✅ Ne pas révéler que l'utilisateur n'existe pas
-        System.out.println("⚠️ Demande mdp oublié — inconnu: " + emailOuUsername);
-        return;
-    }
-
-    // Notifier l'admin
-    emailService.envoyerNotificationAdminMdpOublie(adminEmail, username, email);
-
-    // Accusé de réception à l'utilisateur
-    emailService.envoyerAccuseReceptionMdpOublie(email, username);
-
-    System.out.println("✅ Demande mdp oublié traitée pour: " + username);
-}
-    /**
-     * Réinitialise le mot de passe d'un utilisateur.
-     * Appelé par l'admin depuis son dashboard.
-     * 1. Génère un nouveau mot de passe temporaire
-     * 2. Met à jour dans Keycloak
-     * 3. Envoie le nouveau mot de passe par email
-     */
+    // ══════════════════════════════════════════════════════════════
+    // Réinitialiser mot de passe — appelé par l'admin
+    // ══════════════════════════════════════════════════════════════
     public void reinitialiserMotDePasse(String username) {
 
         // 1. Vérifier que l'utilisateur existe dans Keycloak
@@ -95,18 +120,17 @@ public void traiterDemande(String emailOuUsername) {
         System.out.println("✅ Mot de passe réinitialisé pour: " + username);
     }
 
-    // ── Helpers privés ────────────────────────────────────────────
+    // ══════════════════════════════════════════════════════════════
+    // Helpers privés
+    // ══════════════════════════════════════════════════════════════
 
     private String trouverUsernameParEmail(String email) {
-        // Chercher dans agents
         return agentRepository.findByEmail(email)
             .map(a -> a.getUsername())
             .orElseGet(() ->
-                // Chercher dans validateurs
                 validateurRepository.findByEmail(email)
                     .map(v -> v.getUsername())
                     .orElseGet(() ->
-                        // Chercher dans prestataires
                         prestataireRepository.findByEmail(email)
                             .map(p -> p.getUsername())
                             .orElse(null)

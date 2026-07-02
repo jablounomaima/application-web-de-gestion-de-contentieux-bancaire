@@ -1,234 +1,247 @@
 <div class="liste-container">
 
-    <!-- ═══ FILTRES ═══ -->
-    <div class="filters-bar">
-      <input type="text"
-             [(ngModel)]="recherche"
-             (ngModelChange)="charger()"
-             placeholder="🔍 Rechercher par N° dossier ou client..."
-             class="search-input">
-      <button class="btn-refresh" (click)="charger()" title="Rafraîchir">
-        🔄
-      </button>
-    </div>
-  
-    <!-- ═══ LOADING ═══ -->
-    <div class="loading-state" *ngIf="loading">
-      <div class="spinner"></div>
-      <p>Chargement des dossiers…</p>
-    </div>
-  
-    <!-- ═══ VIDE ═══ -->
-    <div class="empty-card" *ngIf="!loading && dossiers.length === 0">
-      <div class="empty-icon">📂</div>
-      <p>Aucun dossier trouvé.</p>
-    </div>
-  
-    <!-- ═══ LISTE ═══ -->
-    <div class="dossiers-list" *ngIf="!loading && dossiers.length > 0">
-      <div class="dossier-card"
-           *ngFor="let d of dossiers"
-           [id]="'dossier-' + d.id"
-           [class.expanded]="dossierExpanded === d.id"
-           [class.dossier-valide]="isValide(d)"
-           [class.dossier-rejete]="isRejete(d)">
-  
-        <!-- EN-TÊTE CLIQUABLE -->
-        <div class="dossier-card-header" (click)="toggleExpand(d)">
-          <div class="dossier-left">
-            <span class="num-tag">{{ d.numeroDossier }}</span>
-            <div class="dossier-info">
-              <span class="dossier-libelle">{{ d.libelle || 'Sans titre' }}</span>
-              <span class="dossier-client">👤 {{ getClientName(d) }}</span>
-            </div>
-          </div>
-          <div class="dossier-right">
-            <span class="statut-badge badge-valide"  *ngIf="isValide(d)">✅ Validé</span>
-            <span class="statut-badge badge-rejete"  *ngIf="isRejete(d)">❌ Rejeté</span>
-            <span class="statut-badge badge-attente" *ngIf="isEnAttente(d)">🕒 En attente</span>
-            <span class="montant-badge">{{ getMontantTotal(d) | number:'1.0-0' }} TND</span>
-            <span class="date-label">{{ d.dateCreation | date:'dd/MM/yyyy' }}</span>
-            <span class="expand-icon">{{ dossierExpanded === d.id ? '▲' : '▼' }}</span>
+  <!-- ═══ FILTRES ═══ -->
+  <div class="filters-bar">
+    <input type="text"
+           [(ngModel)]="recherche"
+           (ngModelChange)="charger()"
+           placeholder="🔍 Rechercher par N° dossier ou client..."
+           class="search-input">
+    <button class="btn-refresh" (click)="charger()" title="Rafraîchir">
+      🔄
+    </button>
+  </div>
+
+  <!-- ═══ LOADING ═══ -->
+  <div class="loading-state" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Chargement des dossiers…</p>
+  </div>
+
+  <!-- ═══ VIDE ═══ -->
+  <div class="empty-card" *ngIf="!loading && dossiers.length === 0">
+    <div class="empty-icon">📂</div>
+    <p>Aucun dossier trouvé.</p>
+  </div>
+
+  <!-- ═══ LISTE ═══ -->
+  <div class="dossiers-list" *ngIf="!loading && dossiers.length > 0">
+    <div class="dossier-card"
+         *ngFor="let d of dossiers"
+         [id]="'dossier-' + d.id"
+         [class.expanded]="dossierExpanded === d.id"
+         [class.dossier-valide]="isValide(d)"
+         [class.dossier-rejete]="isRejete(d)"
+         [class.highlighted]="d.id === highlightedDossierId">
+
+      <!-- EN-TÊTE CLIQUABLE -->
+      <div class="dossier-card-header" (click)="toggleExpand(d)">
+        <div class="dossier-left">
+          <span class="num-tag">{{ d.numeroDossier }}</span>
+          <div class="dossier-info">
+            <span class="dossier-libelle">{{ d.libelle || 'Sans titre' }}</span>
+            <span class="dossier-client">👤 {{ getClientName(d) }}</span>
           </div>
         </div>
-  
-        <!-- ═══ DÉTAIL EXPANSIBLE ═══ -->
-        <div class="dossier-detail" *ngIf="dossierExpanded === d.id">
-  
-          <!-- Spinner détail -->
-          <div class="loading-state" *ngIf="isLoadingDetail(d)">
-            <div class="spinner"></div>
-            <p>Chargement du détail…</p>
+        <div class="dossier-right">
+          <span class="statut-badge badge-valide"  *ngIf="isValide(d)">✅ Validé</span>
+          <span class="statut-badge badge-rejete"  *ngIf="isRejete(d)">❌ Rejeté</span>
+          <span class="statut-badge badge-attente" *ngIf="isEnAttente(d)">🕒 En attente</span>
+          <span class="montant-badge">{{ getMontantTotal(d) | number:'1.0-0' }} TND</span>
+          <span class="date-label">{{ d.dateCreation | date:'dd/MM/yyyy' }}</span>
+          <span class="expand-icon">{{ dossierExpanded === d.id ? '▲' : '▼' }}</span>
+        </div>
+      </div>
+
+      <!-- ═══ DÉTAIL EXPANSIBLE ═══ -->
+      <div class="dossier-detail" *ngIf="dossierExpanded === d.id">
+
+        <!-- Spinner détail -->
+        <div class="loading-state" *ngIf="isLoadingDetail(d)">
+          <div class="spinner"></div>
+          <p>Chargement du détail…</p>
+        </div>
+
+        <ng-container *ngIf="!isLoadingDetail(d)">
+
+          <!-- ✅ Bannière — dossier assigné via notification -->
+          <div class="notif-banner" *ngIf="d.id === highlightedDossierId">
+            🔔 Ce dossier vous a été assigné pour validation juridique.
           </div>
-  
-          <ng-container *ngIf="!isLoadingDetail(d)">
-  
-            <!-- Bandeau si déjà traité -->
-            <div class="readonly-banner" *ngIf="isValide(d) || isRejete(d)">
-              <span *ngIf="isValide(d)">✅ Ce dossier a été validé.</span>
-              <span *ngIf="isRejete(d)">❌ Ce dossier a été rejeté.</span>
-              <span *ngIf="getDetail(d).commentaireJuridique">
-                &nbsp;— Commentaire : <em>{{ getDetail(d).commentaireJuridique }}</em>
-              </span>
-            </div>
-  
-            <!-- Grille infos -->
-            <div class="detail-grid">
-  
-              <!-- Infos générales -->
-              <div class="detail-section">
-                <h3 class="section-title">📋 Informations générales</h3>
-                <div class="info-row">
-                  <span class="info-lbl">Référence</span>
-                  <span class="info-val mono">{{ getDetail(d).numeroDossier }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-lbl">Libellé</span>
-                  <span class="info-val">{{ getDetail(d).libelle || '—' }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-lbl">Agence</span>
-                  <span class="info-val">
-                    {{ getDetail(d).agence?.nom || getDetail(d).agenceNom || '—' }}
-                  </span>
-                </div>
-                <div class="info-row">
-                  <span class="info-lbl">Créé par</span>
-                  <span class="info-val">{{ getDetail(d).creePar || '—' }}</span>
-                </div>
-                <div class="info-row">
-                  <span class="info-lbl">Date création</span>
-                  <span class="info-val">
-                    {{ getDetail(d).dateCreation | date:'dd/MM/yyyy HH:mm' }}
-                  </span>
-                </div>
-                <div class="info-row" *ngIf="getDetail(d).description">
-                  <span class="info-lbl">Description</span>
-                  <span class="info-val">{{ getDetail(d).description }}</span>
-                </div>
-                <div class="info-row" *ngIf="getDetail(d).notes">
-                  <span class="info-lbl">Notes</span>
-                  <span class="info-val">{{ getDetail(d).notes }}</span>
-                </div>
+
+          <!-- Bandeau si déjà traité -->
+          <div class="readonly-banner" *ngIf="isValide(d) || isRejete(d)">
+            <span *ngIf="isValide(d)">✅ Ce dossier a été validé.</span>
+            <span *ngIf="isRejete(d)">❌ Ce dossier a été rejeté.</span>
+            <span *ngIf="getDetail(d).commentaireJuridique">
+              &nbsp;— Commentaire : <em>{{ getDetail(d).commentaireJuridique }}</em>
+            </span>
+          </div>
+
+          <!-- Grille infos -->
+          <div class="detail-grid">
+
+            <!-- Infos générales -->
+            <div class="detail-section">
+              <h3 class="section-title">📋 Informations générales</h3>
+              <div class="info-row">
+                <span class="info-lbl">Référence</span>
+                <span class="info-val mono">{{ getDetail(d).numeroDossier }}</span>
               </div>
-  
-              <!-- Infos client -->
-              <div class="detail-section">
-                <h3 class="section-title">👤 Informations Client</h3>
-                <div class="info-row">
-                  <span class="info-lbl">Type</span>
-                  <span class="info-val">{{ getDetail(d).client?.typeClient || '—' }}</span>
-                </div>
-  
-                <ng-container *ngIf="getDetail(d).client?.typeClient === 'PARTICULIER'">
-                  <div class="info-row">
-                    <span class="info-lbl">Nom complet</span>
-                    <span class="info-val">
-                      {{ getDetail(d).client?.nom || '—' }}
-                      {{ getDetail(d).client?.prenom || '' }}
-                    </span>
-                  </div>
-                  <div class="info-row" *ngIf="getDetail(d).client?.cin">
-                    <span class="info-lbl">CIN</span>
-                    <span class="info-val mono">{{ getDetail(d).client.cin }}</span>
-                  </div>
-                </ng-container>
-  
-                <ng-container *ngIf="getDetail(d).client?.typeClient === 'ENTREPRISE'">
-                  <div class="info-row">
-                    <span class="info-lbl">Raison sociale</span>
-                    <span class="info-val">{{ getDetail(d).client?.raisonSociale || '—' }}</span>
-                  </div>
-                  <div class="info-row" *ngIf="getDetail(d).client?.rne">
-                    <span class="info-lbl">RNE</span>
-                    <span class="info-val mono">{{ getDetail(d).client.rne }}</span>
-                  </div>
-                </ng-container>
-  
-                <div class="info-row" *ngIf="getDetail(d).client?.email">
-                  <span class="info-lbl">Email</span>
-                  <span class="info-val">{{ getDetail(d).client.email }}</span>
-                </div>
-                <div class="info-row" *ngIf="getDetail(d).client?.telephone">
-                  <span class="info-lbl">Téléphone</span>
-                  <span class="info-val mono">{{ getDetail(d).client.telephone }}</span>
-                </div>
-                <div class="info-row" *ngIf="getDetail(d).client?.adresse">
-                  <span class="info-lbl">Adresse</span>
-                  <span class="info-val">{{ getDetail(d).client.adresse }}</span>
-                </div>
+              <div class="info-row">
+                <span class="info-lbl">Libellé</span>
+                <span class="info-val">{{ getDetail(d).libelle || '—' }}</span>
               </div>
-            </div>
-  
-            <!-- Crédits & Risques -->
-            <div class="detail-section full-width" *ngIf="getDetail(d).risques?.length">
-              <h3 class="section-title">
-                💳 Crédits &amp; Risques
-                <span class="total-badge">
-                  Total impayé : {{ getMontantTotal(d) | number:'1.0-0' }} TND
+              <div class="info-row">
+                <span class="info-lbl">Agence</span>
+                <span class="info-val">
+                  {{ getDetail(d).agence?.nom || getDetail(d).agenceNom || '—' }}
                 </span>
-              </h3>
-              <div class="risque-item"
-                   *ngFor="let r of getDetail(d).risques"
-                   [class.selectionne]="r.selectionne">
-                <div class="risque-header">
-                  <span class="risque-type">{{ formatType(r.type) }}</span>
-                  <span class="risque-sel" *ngIf="r.selectionne">★ Sélectionné</span>
-                  <span class="risque-montant">
-                    {{ r.montantImpaye | number:'1.0-0' }} TND impayé
-                  </span>
-                </div>
-                <div class="risque-body">
-                  <div class="info-row">
-                    <span class="info-lbl">Montant initial</span>
-                    <span class="info-val">{{ r.montantInitial | number:'1.0-0' }} TND</span>
-                  </div>
-                  <div class="info-row">
-                    <span class="info-lbl">Montant impayé</span>
-                    <span class="info-val danger-text">
-                      {{ r.montantImpaye | number:'1.0-0' }} TND
-                    </span>
-                  </div>
-                  <div class="info-row" *ngIf="r.dateEcheance">
-                    <span class="info-lbl">Échéance</span>
-                    <span class="info-val">{{ r.dateEcheance | date:'dd/MM/yyyy' }}</span>
-                  </div>
-                  <div class="info-row" *ngIf="r.description">
-                    <span class="info-lbl">Description</span>
-                    <span class="info-val">{{ r.description }}</span>
-                  </div>
-                </div>
-                <div class="garanties-wrap" *ngIf="r.garanties?.length">
-                  <span class="garanties-title">🔒 Garanties ({{ r.garanties.length }})</span>
-                  <div class="garantie-chip" *ngFor="let g of r.garanties">
-                    <span class="g-type">{{ g.typeGarantie }}</span>
-                    <span class="g-val">{{ g.valeurEstimee | number:'1.0-0' }} TND</span>
-                    <span class="g-desc" *ngIf="g.description">— {{ g.description }}</span>
-                  </div>
-                </div>
-                <div class="no-garantie" *ngIf="!r.garanties?.length">
-                  Aucune garantie associée
-                </div>
+              </div>
+              <div class="info-row">
+                <span class="info-lbl">Créé par</span>
+                <span class="info-val">{{ getDetail(d).creePar || '—' }}</span>
+              </div>
+              <div class="info-row">
+                <span class="info-lbl">Date création</span>
+                <span class="info-val">
+                  {{ getDetail(d).dateCreation | date:'dd/MM/yyyy HH:mm' }}
+                </span>
+              </div>
+              <div class="info-row" *ngIf="getDetail(d).description">
+                <span class="info-lbl">Description</span>
+                <span class="info-val">{{ getDetail(d).description }}</span>
+              </div>
+              <div class="info-row" *ngIf="getDetail(d).notes">
+                <span class="info-lbl">Notes</span>
+                <span class="info-val">{{ getDetail(d).notes }}</span>
               </div>
             </div>
-  
-            <div class="detail-section full-width" *ngIf="!getDetail(d).risques?.length">
-              <p class="no-data">Aucun crédit enregistré pour ce dossier.</p>
+
+            <!-- Infos client -->
+            <div class="detail-section">
+              <h3 class="section-title">👤 Informations Client</h3>
+              <div class="info-row">
+                <span class="info-lbl">Type</span>
+                <span class="info-val">{{ getDetail(d).client?.typeClient || '—' }}</span>
+              </div>
+
+              <ng-container *ngIf="getDetail(d).client?.typeClient === 'PARTICULIER'">
+                <div class="info-row">
+                  <span class="info-lbl">Nom complet</span>
+                  <span class="info-val">
+                    {{ getDetail(d).client?.nom || '—' }}
+                    {{ getDetail(d).client?.prenom || '' }}
+                  </span>
+                </div>
+                <div class="info-row" *ngIf="getDetail(d).client?.cin">
+                  <span class="info-lbl">CIN</span>
+                  <span class="info-val mono">{{ getDetail(d).client.cin }}</span>
+                </div>
+              </ng-container>
+
+              <ng-container *ngIf="getDetail(d).client?.typeClient === 'ENTREPRISE'">
+                <div class="info-row">
+                  <span class="info-lbl">Raison sociale</span>
+                  <span class="info-val">
+                    {{ getDetail(d).client?.raisonSociale || '—' }}
+                  </span>
+                </div>
+                <div class="info-row" *ngIf="getDetail(d).client?.rne">
+                  <span class="info-lbl">RNE</span>
+                  <span class="info-val mono">{{ getDetail(d).client.rne }}</span>
+                </div>
+              </ng-container>
+
+              <div class="info-row" *ngIf="getDetail(d).client?.email">
+                <span class="info-lbl">Email</span>
+                <span class="info-val">{{ getDetail(d).client.email }}</span>
+              </div>
+              <div class="info-row" *ngIf="getDetail(d).client?.telephone">
+                <span class="info-lbl">Téléphone</span>
+                <span class="info-val mono">{{ getDetail(d).client.telephone }}</span>
+              </div>
+              <div class="info-row" *ngIf="getDetail(d).client?.adresse">
+                <span class="info-lbl">Adresse</span>
+                <span class="info-val">{{ getDetail(d).client.adresse }}</span>
+              </div>
             </div>
-  
-            <!-- Boutons action uniquement si en attente -->
-            <div class="detail-actions" *ngIf="isEnAttente(d)">
-              <button class="btn-valider" (click)="demanderAction(d, 'valider')">
-                ✅ Valider ce dossier
-              </button>
-              <button class="btn-rejeter" (click)="demanderAction(d, 'rejeter')">
-                ❌ Rejeter ce dossier
-              </button>
+          </div>
+
+          <!-- Crédits & Risques -->
+          <div class="detail-section full-width" *ngIf="getDetail(d).risques?.length">
+            <h3 class="section-title">
+              💳 Crédits &amp; Risques
+              <span class="total-badge">
+                Total impayé : {{ getMontantTotal(d) | number:'1.0-0' }} TND
+              </span>
+            </h3>
+            <div class="risque-item"
+                 *ngFor="let r of getDetail(d).risques"
+                 [class.selectionne]="r.selectionne">
+              <div class="risque-header">
+                <span class="risque-type">{{ formatType(r.type) }}</span>
+                <span class="risque-sel" *ngIf="r.selectionne">★ Sélectionné</span>
+                <span class="risque-montant">
+                  {{ r.montantImpaye | number:'1.0-0' }} TND impayé
+                </span>
+              </div>
+              <div class="risque-body">
+                <div class="info-row">
+                  <span class="info-lbl">Montant initial</span>
+                  <span class="info-val">{{ r.montantInitial | number:'1.0-0' }} TND</span>
+                </div>
+                <div class="info-row">
+                  <span class="info-lbl">Montant impayé</span>
+                  <span class="info-val danger-text">
+                    {{ r.montantImpaye | number:'1.0-0' }} TND
+                  </span>
+                </div>
+                <div class="info-row" *ngIf="r.dateEcheance">
+                  <span class="info-lbl">Échéance</span>
+                  <span class="info-val">{{ r.dateEcheance | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="info-row" *ngIf="r.description">
+                  <span class="info-lbl">Description</span>
+                  <span class="info-val">{{ r.description }}</span>
+                </div>
+              </div>
+              <div class="garanties-wrap" *ngIf="r.garanties?.length">
+                <span class="garanties-title">
+                  🔒 Garanties ({{ r.garanties.length }})
+                </span>
+                <div class="garantie-chip" *ngFor="let g of r.garanties">
+                  <span class="g-type">{{ g.typeGarantie }}</span>
+                  <span class="g-val">{{ g.valeurEstimee | number:'1.0-0' }} TND</span>
+                  <span class="g-desc" *ngIf="g.description">— {{ g.description }}</span>
+                </div>
+              </div>
+              <div class="no-garantie" *ngIf="!r.garanties?.length">
+                Aucune garantie associée
+              </div>
             </div>
-  
-          </ng-container>
-        </div><!-- /dossier-detail -->
-      </div><!-- /dossier-card -->
-    </div><!-- /dossiers-list -->
-  
-  </div>
+          </div>
+
+          <div class="detail-section full-width" *ngIf="!getDetail(d).risques?.length">
+            <p class="no-data">Aucun crédit enregistré pour ce dossier.</p>
+          </div>
+
+          <!-- ✅ Boutons action — uniquement si en attente -->
+          <div class="detail-actions" *ngIf="isEnAttente(d)">
+            <button class="btn-valider"
+                    (click)="demanderAction(d, 'valider')"
+                    [class.btn-highlight]="d.id === highlightedDossierId">
+              ✅ Valider ce dossier
+            </button>
+            <button class="btn-rejeter"
+                    (click)="demanderAction(d, 'rejeter')">
+              ❌ Rejeter ce dossier
+            </button>
+          </div>
+
+        </ng-container>
+      </div><!-- /dossier-detail -->
+    </div><!-- /dossier-card -->
+  </div><!-- /dossiers-list -->
+
+</div>

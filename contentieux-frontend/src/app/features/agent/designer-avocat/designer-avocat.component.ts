@@ -9,6 +9,7 @@ interface Prestataire {
   id: number;
   nom: string;
   prenom?: string;
+  username?: string;   // ✅ AJOUTÉ
   email?: string;
   telephone?: string;
   specialite?: string;
@@ -75,7 +76,12 @@ export class DesignerAvocatComponent implements OnInit {
   }
 
   soumettre(): void {
-    if (!this.formulaireValide()) return;
+   if (!this.formulaireValide()) return;
+
+  const confirmation = confirm(
+    `Confirmez-vous la désignation de ${this.nomComplet(this.avocatSelectionne!)} pour cette mission ?`
+  );
+  if (!confirmation) return;
 
     this.envoi = true;
     this.erreur = null;
@@ -107,9 +113,10 @@ export class DesignerAvocatComponent implements OnInit {
     this.router.navigate(['/agent/dossiers', this.dossierId]);
   }
 
-  nomComplet(avocat: Prestataire): string {
-    return [avocat.prenom, avocat.nom].filter(Boolean).join(' ') || `Avocat #${avocat.id}`;
-  }
+nomComplet(avocat: Prestataire): string {
+  const nomPrenom = [avocat.prenom, avocat.nom].filter(Boolean).join(' ') || `Avocat #${avocat.id}`;
+  return avocat.username ? `${nomPrenom} (@${avocat.username})` : nomPrenom;
+}
 
   initiales(avocat: Prestataire): string {
     const parts = [avocat.prenom, avocat.nom].filter(Boolean);

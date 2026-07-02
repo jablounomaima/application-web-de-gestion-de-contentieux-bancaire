@@ -16,9 +16,12 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
   template: `
     <ng-container *ngIf="isLoggedIn; else publicLayout">
       <header class="app-header">
-        <div class="logo">
-          <span class="logo-icon">🏦</span>
-          <span>Contentieux Bancaire</span>
+        <div class="brand">
+          <div class="brand-mark">CB</div>
+          <div>
+            <div class="brand-title">Contentieux Bancaire</div>
+            <div class="brand-subtitle">Plateforme de gestion intelligente</div>
+          </div>
         </div>
         <div class="user-actions">
 
@@ -81,7 +84,10 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
           <!-- ══ PROFIL ══ -->
           <div class="user-profile">
             <div class="avatar">{{ username.charAt(0).toUpperCase() }}</div>
-            <span class="username">{{ username }}</span>
+            <div class="profile-meta">
+              <div class="username">{{ username }}</div>
+              <div class="role-chip">Compte sécurisé</div>
+            </div>
           </div>
 
           <button class="logout-btn" (click)="logout()">
@@ -105,54 +111,218 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
     </ng-template>
   `,
   styles: [`
-    /* ── Header ── */
-    .app-header { background-color:#001f3f; color:white; padding:12px 30px; display:flex; justify-content:space-between; align-items:center; font-family:'Inter',sans-serif; box-shadow:0 4px 6px rgba(0,0,0,0.1); position:relative; z-index:15; }
-    .logo { display:flex; align-items:center; gap:10px; font-size:1.4rem; font-weight:700; }
-    .user-actions { display:flex; align-items:center; gap:25px; position:relative; }
-    .user-profile { display:flex; align-items:center; gap:10px; }
-    .avatar { width:35px; height:35px; background:linear-gradient(135deg,#007bff,#001f3f); border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:bold; font-size:1.1rem; }
-    .username { font-weight:500; font-size:0.95rem; }
-    .logout-btn { background-color:rgba(255,255,255,0.1); border:1px solid rgba(255,255,255,0.2); color:white; padding:8px 16px; border-radius:6px; cursor:pointer; transition:all 0.2s; font-weight:500; display:flex; align-items:center; gap:5px; }
-    .logout-btn:hover { background-color:white; color:#001f3f; }
+    /* ── HEADER ── */
+    .app-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 28px;
+background: linear-gradient(135deg, #071a2f 0%, #0b2b4a 55%, #1d4ed8 100%);
+      color: white;
+      box-shadow: 0 12px 36px rgba(7, 26, 47, 0.18);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.16);
+    }
 
-    /* ── Cloche ── */
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .brand-mark {
+      width: 46px;
+      height: 46px;
+      border-radius: 14px;
+      display: grid;
+      place-items: center;
+      font-weight: 800;
+      color: white;
+      background: linear-gradient(135deg, #60a5fa, #2563eb);
+      box-shadow: 0 10px 24px rgba(37, 99, 235, 0.28);
+    }
+
+    .brand-title {
+      font-size: 1rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+    }
+
+    .brand-subtitle {
+      font-size: 0.78rem;
+      color: rgba(255,255,255,0.76);
+      margin-top: 2px;
+    }
+
+    .user-actions {
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      position: relative;
+    }
+
+    .user-profile {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.16);
+    }
+
+    .avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 1rem;
+      background: linear-gradient(135deg, #ffffff 0%, #60a5fa 100%);
+      color: #0b2b4a;
+    }
+
+    .profile-meta {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .username {
+      font-weight: 700;
+      font-size: 0.95rem;
+      line-height: 1.1;
+    }
+
+    .role-chip {
+      font-size: 0.72rem;
+      color: rgba(255,255,255,0.76);
+    }
+
+    .logout-btn {
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.16);
+      color: white;
+      padding: 9px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-weight: 600;
+    }
+
+    .logout-btn:hover {
+      background: white;
+      color: #0b2b4a;
+      transform: translateY(-1px);
+    }
+
+    /* ── NOTIFICATIONS ── */
     .notif-wrapper { position:relative; display:inline-block; cursor:pointer; }
-    .bell-btn { background:none; border:none; font-size:1.4rem; cursor:pointer; position:relative; padding:6px; border-radius:8px; color:white; transition:background .2s; }
-    .bell-btn:hover { background:rgba(255,255,255,0.1); }
+    .bell-btn { background:none; border:none; font-size:1.35rem; cursor:pointer; position:relative; padding:6px; border-radius:10px; color:white; transition:background .2s; }
+    .bell-btn:hover { background:rgba(255,255,255,0.14); }
     .bell-btn.has-notifs { animation:ring 2s ease-in-out; }
     @keyframes ring { 0%,100%{transform:rotate(0);} 10%,30%,50%{transform:rotate(-15deg);} 20%,40%{transform:rotate(15deg);} }
-    .badge { position:absolute; top:0; right:0; background:#ff4757; color:white; font-size:0.62rem; padding:2px 5px; border-radius:10px; font-weight:bold; border:2px solid #001f3f; min-width:18px; text-align:center; }
+    .badge { position:absolute; top:0; right:0; background:#ff4757; color:white; font-size:0.62rem; padding:2px 5px; border-radius:999px; font-weight:bold; border:2px solid #071a2f; min-width:18px; text-align:center; }
 
-    /* ── Dropdown ── */
-    .notif-dropdown { position:absolute; top:calc(100% + 10px); right:-20px; background:white; color:#333; width:380px; border-radius:12px; box-shadow:0 12px 40px rgba(0,0,0,0.2); border:1px solid #eee; z-index:1000; overflow:hidden; animation:slideDown .2s ease; }
+    /* ── DROPDOWN NOTIFICATIONS - Style sidebar ── */
+    .notif-dropdown {
+      position:absolute;
+      top:calc(100% + 10px);
+      right:-20px;
+      background:white;
+      color:#333;
+      width:380px;
+      max-width:90vw;
+      border-radius:16px;
+      box-shadow:0 16px 50px rgba(7,26,47,0.25);
+      border:1px solid rgba(255,255,255,0.14);
+      z-index:1000;
+      overflow:hidden;
+      animation:slideDown .2s ease;
+    }
     @keyframes slideDown { from{opacity:0;transform:translateY(-8px);} to{opacity:1;transform:translateY(0);} }
-    .notif-header { display:flex; justify-content:space-between; align-items:center; padding:14px 18px; background:#f8f9fa; border-bottom:1px solid #eee; font-size:0.9rem; font-weight:600; color:#001f3f; }
-    .count-badge { background:#ff4757; color:white; padding:2px 8px; border-radius:10px; font-size:0.75rem; margin-left:8px; }
-    .btn-tout-lire { background:none; border:none; color:#007bff; font-size:0.78rem; cursor:pointer; font-weight:600; padding:4px 8px; border-radius:6px; }
-    .btn-tout-lire:hover { background:#e3f2fd; }
-    .no-notif { padding:30px; text-align:center; color:#aaa; font-style:italic; font-size:0.9rem; }
+
+    .notif-header {
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:14px 18px;
+background:linear-gradient(135deg, #071a2f 0%, #0b2b4a 55%, #1d4ed8 100%);
+      border-bottom:1px solid rgba(255,255,255,0.14);
+      font-size:0.9rem;
+      font-weight:600;
+      color:white;
+    }
+    .notif-header .count-badge {
+      background:#ff4757;
+      color:white;
+      padding:2px 8px;
+      border-radius:999px;
+      font-size:0.75rem;
+      margin-left:8px;
+    }
+    .btn-tout-lire {
+      background:rgba(255,255,255,0.14);
+      border:1px solid rgba(255,255,255,0.16);
+      color:white;
+      font-size:0.78rem;
+      cursor:pointer;
+      font-weight:600;
+      padding:4px 12px;
+      border-radius:8px;
+      transition:all .2s;
+    }
+    .btn-tout-lire:hover {
+      background:rgba(255,255,255,0.25);
+      transform:translateY(-1px);
+    }
+
+    .no-notif { padding:30px; text-align:center; color:#94a3b8; font-style:italic; font-size:0.9rem; }
     .notif-dropdown ul { list-style:none; margin:0; padding:0; max-height:400px; overflow-y:auto; }
     .notif-dropdown li { border-bottom:1px solid #f5f5f5; cursor:pointer; transition:background .15s; }
-    .notif-dropdown li:hover { background:#f8f9fa; }
-    .notif-dropdown li.unread { background:#f0f7ff; border-left:4px solid #007bff; }
-    .notif-row { display:flex; align-items:flex-start; gap:12px; padding:14px 16px; }
+    .notif-dropdown li:hover { background:#f8fafc; }
+    .notif-dropdown li.unread {
+      background:linear-gradient(135deg, #eff6ff, #dbeafe);
+      border-left:4px solid #2563eb;
+    }
+    .notif-row {
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      padding:14px 16px;
+    }
     .notif-icone { font-size:1.3rem; flex-shrink:0; margin-top:2px; }
     .notif-body { flex:1; min-width:0; }
-    .notif-body strong { display:block; font-size:0.87rem; color:#001f3f; margin-bottom:4px; }
-    .notif-body p { margin:0 0 4px; font-size:0.8rem; color:#555; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
-    .notif-body small { font-size:0.73rem; color:#999; }
-    .dot { width:8px; height:8px; background:#007bff; border-radius:50%; flex-shrink:0; margin-top:6px; }
+    .notif-body strong { display:block; font-size:0.87rem; color:#0f172a; margin-bottom:4px; }
+    .notif-body p { margin:0 0 4px; font-size:0.8rem; color:#475569; line-height:1.4; white-space:pre-wrap; word-break:break-word; }
+    .notif-body small { font-size:0.73rem; color:#94a3b8; }
+    .dot { width:8px; height:8px; background:#2563eb; border-radius:50%; flex-shrink:0; margin-top:6px; }
 
-    /* ── Toast temps réel ── */
-    .toast-container { position:fixed; top:72px; right:20px; z-index:9999; pointer-events:none; }
+    /* ── TOAST - Style sidebar ── */
+    .toast-container {
+      position:fixed;
+      top:78px;
+      right:20px;
+      z-index:9999;
+      pointer-events:none;
+    }
     .notif-toast {
       pointer-events:all;
-      background:white; border-radius:10px;
-      box-shadow:0 8px 28px rgba(0,0,0,0.15);
+      background:white;
+      border-radius:14px;
+      box-shadow:0 12px 32px rgba(7,26,47,0.2);
       border-left:4px solid #2563eb;
-      display:flex; align-items:flex-start; gap:12px;
-      padding:14px 14px; width:360px; max-width:90vw;
-      cursor:pointer; animation:toastIn .3s ease;
+      display:flex;
+      align-items:flex-start;
+      gap:12px;
+      padding:14px 16px;
+      width:360px;
+      max-width:90vw;
+      cursor:pointer;
+      animation:toastIn .3s ease;
       transition:opacity .3s, transform .3s;
     }
     .notif-toast--success { border-left-color:#059669; }
@@ -164,13 +334,48 @@ import { SidebarComponent } from './features/sidebar/sidebar.component';
     .toast-body { flex:1; overflow:hidden; }
     .toast-title { font-weight:700; font-size:13px; color:#0f172a; margin-bottom:3px; }
     .toast-msg { font-size:12px; color:#475569; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .toast-close { background:none; border:none; cursor:pointer; color:#94a3b8; font-size:20px; padding:0; line-height:1; flex-shrink:0; align-self:flex-start; }
+    .toast-close {
+      background:none;
+      border:none;
+      cursor:pointer;
+      color:#94a3b8;
+      font-size:20px;
+      padding:0;
+      line-height:1;
+      flex-shrink:0;
+      align-self:flex-start;
+      transition:color .2s;
+    }
     .toast-close:hover { color:#475569; }
 
-    /* ── Layout ── */
-    .app-layout { display:flex; min-height:calc(100vh - 65px); font-family:'Inter',sans-serif; }
-    .app-main { flex:1; padding:30px; background-color:#f4f7f6; overflow-y:auto; height:calc(100vh - 65px); box-sizing:border-box; }
+    /* ── LAYOUT ── */
+    .app-layout {
+      display:flex;
+      min-height:calc(100vh - 74px);
+      font-family:'Inter',sans-serif;
+    }
+    .app-main {
+      flex:1;
+      padding:30px;
+      background:linear-gradient(135deg, #f8fbff 0%, #eef4ff 100%);
+      overflow-y:auto;
+      height:calc(100vh - 74px);
+      box-sizing:border-box;
+    }
     .public-main { min-height:100vh; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      .app-header { padding:12px 16px; flex-wrap:wrap; gap:8px; }
+      .brand-title { font-size:0.85rem; }
+      .brand-subtitle { display:none; }
+      .user-profile .profile-meta { display:none; }
+      .logout-btn span { display:none; }
+      .logout-btn { padding:8px 12px; font-size:1.1rem; }
+      .logout-btn::before { content:'🚪'; }
+      .notif-dropdown { right:-10px; width:calc(100vw - 30px); }
+      .app-main { padding:16px; }
+    }
   `]
 })
 export class AppComponent implements OnInit, OnDestroy {
@@ -299,7 +504,6 @@ export class AppComponent implements OnInit, OnDestroy {
     clearTimeout(this.toastTimer);
     this.toastTitre     = n.titre;
     this.toastMessage   = n.message;
-    // ✅ resolveUrl() en priorité — inclut les query params action=edit-facture
     this.toastUrlAction = this.resolveUrl(n) ?? n.urlAction ?? undefined;
     this.toastType      = this._resolveToastType(n.type);
     this.toastIcon      = this.typeIcone(n.type);
@@ -316,7 +520,6 @@ export class AppComponent implements OnInit, OnDestroy {
     this.fermerToast();
     if (!this.toastUrlAction) return;
 
-    // ✅ toastUrlAction est déjà résolu par resolveUrl() dans _afficherToast
     const resolvedUrl    = this.toastUrlAction;
     const urlSansParams  = resolvedUrl.split('?')[0];
     const currentUrlBase = this.router.url.split('?')[0];
@@ -356,7 +559,6 @@ export class AppComponent implements OnInit, OnDestroy {
   }
 
   clicNotification(notif: NotificationDTO): void {
-    // ✅ Guard anti double-navigation
     if (this.navigationEnCours) return;
     this.navigationEnCours = true;
     setTimeout(() => this.navigationEnCours = false, 1000);
@@ -384,13 +586,11 @@ export class AppComponent implements OnInit, OnDestroy {
     const qMatch    = notif.urlAction?.match(/[?&]missionId=(\d+)/);
     const missionId = qMatch ? Number(qMatch[1]) : null;
 
-    // Extraire missionId depuis l'URL résolue si absent dans la notif
     const resolvedMissionMatch = url.match(/\/missions\/(\d+)/);
     const resolvedMissionId = resolvedMissionMatch ? Number(resolvedMissionMatch[1]) : null;
 
     const effectiveMissionId = missionId ?? resolvedMissionId;
 
-    // Signaler AVANT la navigation (pour les cas dossier/facture)
     if (url === '/validateur/financier/factures' && dossierId) {
       this.notificationService.signalerFactureCible(dossierId);
       if (effectiveMissionId) this.notificationService.signalerMissionCible(effectiveMissionId);
@@ -398,7 +598,6 @@ export class AppComponent implements OnInit, OnDestroy {
       this.notificationService.signalerDossierCible(dossierId);
       if (effectiveMissionId) this.notificationService.signalerMissionCible(effectiveMissionId);
     } else if (effectiveMissionId) {
-      // dossierId absent mais missionId extrait de l'URL → signaler quand même la mission
       this.notificationService.signalerMissionCible(effectiveMissionId);
     }
 
@@ -406,14 +605,10 @@ export class AppComponent implements OnInit, OnDestroy {
     const currentUrlBase = this.router.url.split('?')[0];
 
     if (currentUrlBase === urlSansParams) {
-      // ✅ Même page — forcer rechargement uniquement si les query params diffèrent
-      // On évite le passage par '/' qui peut déclencher des guards non désirés
       const currentFull = this.router.url;
       if (currentFull === url) {
-        // URL strictement identique — forcer quand même le rechargement
         this.router.navigateByUrl(url, { onSameUrlNavigation: 'reload' } as any);
       } else {
-        // Même base mais params différents — rechargement propre via replaceUrl
         this.router.navigateByUrl(url, { replaceUrl: true });
       }
       return;
@@ -435,9 +630,6 @@ export class AppComponent implements OnInit, OnDestroy {
     const hasRole = (r: string) => roles.includes(r);
     const dossierId = notif.dossierId ?? (notif as any).dossier?.id;
 
-    // ✅ CORRECTION : safeUrl filtre maintenant dans les deux sens :
-    //    - URLs /agent/       bloquées pour les non-agents
-    //    - URLs /prestataire/ bloquées pour les non-prestataires (AGENT, AVOCAT, etc.)
     const safeUrl = (url: string | undefined | null, fallback: string): string => {
       if (!url) return fallback;
       if (url.includes('/agent/') && !hasRole('AGENT')) return fallback;
@@ -450,13 +642,11 @@ export class AppComponent implements OnInit, OnDestroy {
       return url;
     };
 
-    // ✅ Helper : extraire le motif depuis le message de la notification
     const extractMotif = (): string => {
       const m = notif.message?.match(/Motif\s*:\s*(.+?)(?:\s*Merci|$)/s);
       return m ? encodeURIComponent(m[1].trim()) : '';
     };
 
-    // ✅ Helper : détecter si l'urlAction pointe vers une mission (rejet facture prestataire)
     const isRejectionVersM = (): string | null => {
       const m = notif.urlAction?.match(/\/missions\/(\d+)/);
       return m ? m[1] : null;
@@ -472,14 +662,10 @@ export class AppComponent implements OnInit, OnDestroy {
         return dossierId ? `/validateur/juridique/dashboard?dossierId=${dossierId}` : null;
 
       // ── Rejet financier ─────────────────────────────────────
-      // ✅ REJET_FINANCIER peut être un rejet de facture prestataire
-      //    (urlAction = /prestataire/missions/36) OU un rejet de dossier agent.
-      //    On le détecte via le pattern de l'urlAction.
       case 'REJET_FINANCIER':
         if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER')) {
           const mId = isRejectionVersM();
           if (mId) {
-            // ✅ C'est un rejet de facture → ouvrir le mode correction
             const motif = extractMotif();
             return `/prestataire/missions/${mId}?action=edit-facture&motif=${motif}`;
           }
@@ -523,13 +709,12 @@ export class AppComponent implements OnInit, OnDestroy {
             ?? (dossierId ? `/agent/dossiers/${dossierId}/resultats-prestataires` : `/agent/liste`);
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
 
-      // ── Mission clôturée / rejetée / resoumission ───────────
+      // ── Mission clôturée / rejetée ───────────────────────────
       case 'MISSION_CLOTUREE':
       case 'MISSION_REJETEE':
         return safeUrl(notif.urlAction, `/prestataire/missions`);
 
-      // ✅ CORRECTION : RESOUMISSION redirige l'AGENT vers sa vue dossier,
-      //    pas vers /prestataire/missions qui déclencherait un guard 403.
+      // ── Resoumission ────────────────────────────────────────
       case 'RESOUMISSION':
         if (hasRole('AGENT')) {
           return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
@@ -542,7 +727,7 @@ export class AppComponent implements OnInit, OnDestroy {
         if (hasRole('AVOCAT')) return dossierId ? `/avocat/affaires/${dossierId}` : `/avocat/affaires`;
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
 
-      // ── Rejet facture explicite (si le backend envoie ce type un jour) ──
+      // ── Rejet facture ───────────────────────────────────────
       case 'FACTURE_REJETEE':
         if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER')) {
           const mId = isRejectionVersM();
@@ -553,6 +738,10 @@ export class AppComponent implements OnInit, OnDestroy {
           return `/prestataire/missions`;
         }
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
+
+      // ✅ AJOUT : Mot de passe oublié → admin dashboard avec tab et username
+      case 'MOT_DE_PASSE_OUBLIE':
+        return notif.urlAction ?? '/admin/dashboard';
 
       default:
         if (notif.urlAction) {
@@ -595,6 +784,7 @@ export class AppComponent implements OnInit, OnDestroy {
       'NOUVELLE_AUDIENCE':        '🗓️',
       'JUGEMENT_RENDU':           '🏛️',
       'FACTURE_REJETEE':          '❌',
+      'MOT_DE_PASSE_OUBLIE':      '🔑',
     };
     return map[type] ?? '🔔';
   }

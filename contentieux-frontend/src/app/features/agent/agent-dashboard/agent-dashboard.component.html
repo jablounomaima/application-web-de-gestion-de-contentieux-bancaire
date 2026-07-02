@@ -2,72 +2,156 @@
 <!-- PAGE PRINCIPALE                                                          -->
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 
-<div class="page-header">
-  <div class="page-header-left">
-    <h1>🏦 Tableau de Bord</h1>
-    <p class="page-subtitle">Gestion des dossiers contentieux</p>
-  </div>
-  <button class="btn-nouveau" (click)="ouvrirNouveauDossier()">
-    ➕ Nouveau Dossier
-  </button>
+<div class="agent-dashboard">
+  <section class="page-header">
+    <div class="page-header-left">
+      <span class="page-badge">Contentieux bancaire</span>
+      <h1>🏦 Tableau de Bord</h1>
+      <p class="page-subtitle">Suivez vos dossiers, leurs statuts et leur valeur d’un seul regard.</p>
+    </div>
+    <button class="btn-nouveau" (click)="ouvrirNouveauDossier()">➕ Nouveau Dossier</button>
+  </section>
+
+  <section class="hero-panel">
+    <div class="hero-copy">
+      <p class="hero-kicker">Vue d’ensemble</p>
+      <h2>Suivi intelligent de votre portefeuille contentieux</h2>
+      <p>Consultez rapidement l’état des dossiers, les validations et les montants engagés.</p>
+    </div>
+    <div class="hero-chip">
+      <span class="hero-chip-label">Dossiers actifs</span>
+      <strong>{{ stats.total }}</strong>
+    </div>
+  </section>
+
+  <section class="stats-diagram">
+    <div class="diagram-card">
+      <div class="diagram-header">
+        <div class="diagram-title-group">
+          <span class="diagram-icon">📊</span>
+          <div>
+            <h3>Répartition des dossiers</h3>
+            <span class="diagram-subtitle">{{ stats.total }} dossiers au total</span>
+          </div>
+        </div>
+        <div class="diagram-amount">
+          <span class="diagram-amount-label">Montant total engagé</span>
+          <strong>{{ stats.montantTotal | number:'1.0-0' }}<small> TND</small></strong>
+        </div>
+      </div>
+
+      <div class="diagram-body">
+        <div class="donut" [style.background]="donutGradient">
+          <div class="donut-center">
+            <strong>{{ stats.total }}</strong>
+            <span>Dossiers</span>
+          </div>
+        </div>
+
+        <ul class="diagram-legend">
+          <li class="legend-item en-cours">
+            <div class="legend-top">
+              <span class="legend-dot"></span>
+              <span class="legend-label">En cours</span>
+              <span class="legend-percent">{{ getStatPercent(stats.enCours) }}%</span>
+            </div>
+            <div class="legend-bar">
+              <div class="legend-bar-fill" [style.width.%]="getStatPercent(stats.enCours)"></div>
+            </div>
+            <span class="legend-value">{{ stats.enCours }} dossier(s)</span>
+          </li>
+          <li class="legend-item valides">
+            <div class="legend-top">
+              <span class="legend-dot"></span>
+              <span class="legend-label">Validés</span>
+              <span class="legend-percent">{{ getStatPercent(stats.valides) }}%</span>
+            </div>
+            <div class="legend-bar">
+              <div class="legend-bar-fill" [style.width.%]="getStatPercent(stats.valides)"></div>
+            </div>
+            <span class="legend-value">{{ stats.valides }} dossier(s)</span>
+          </li>
+          <li class="legend-item rejetes">
+            <div class="legend-top">
+              <span class="legend-dot"></span>
+              <span class="legend-label">Rejetés</span>
+              <span class="legend-percent">{{ getStatPercent(stats.rejetes) }}%</span>
+            </div>
+            <div class="legend-bar">
+              <div class="legend-bar-fill" [style.width.%]="getStatPercent(stats.rejetes)"></div>
+            </div>
+            <span class="legend-value">{{ stats.rejetes }} dossier(s)</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="charts-panel">
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>Répartition des entités</h3>
+        <span>Vue synthétique</span>
+      </div>
+      <div class="bars">
+        <div class="bar-item" *ngFor="let bar of chartBars">
+          <div class="bar-track">
+            <div class="bar-fill" [style.height.%]="bar.percent"></div>
+          </div>
+          <div class="bar-meta">
+            <strong>{{ bar.value }}</strong>
+            <span>{{ bar.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>Activité des agents</h3>
+        <span>Actifs / total</span>
+      </div>
+      <div class="ring-card">
+        <svg class="ring" viewBox="0 0 140 140">
+          <circle cx="70" cy="70" r="54" class="ring-bg"></circle>
+          <circle cx="70" cy="70" r="54" class="ring-progress"
+                  [style.strokeDasharray]="ringCircumference"
+                  [style.strokeDashoffset]="ringOffset"></circle>
+        </svg>
+        <div class="ring-center">
+          <strong>{{ activeAgentRatio }}%</strong>
+          <span>{{ agentsActifs }} actifs</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="content-panel">
+    <div class="content-panel-header">
+      <div>
+        <h3>Liste des dossiers</h3>
+        <p>Vue détaillée de l’activité et des statuts.</p>
+      </div>
+      <button class="btn-secondary" (click)="ouvrirNouveauDossier()">Créer un dossier</button>
+    </div>
+
+    <div class="loading-state" *ngIf="loading">
+      <div class="spinner"></div>
+      <p>Chargement des dossiers...</p>
+    </div>
+
+    <div class="empty-state" *ngIf="!loading && dossiers.length === 0">
+      <div class="empty-icon">📂</div>
+      <h3>Aucun dossier pour le moment</h3>
+      <p>Commencez par créer votre premier dossier contentieux.</p>
+      <button class="btn-nouveau" (click)="ouvrirNouveauDossier()">➕ Créer un dossier</button>
+    </div>
+
+    <div class="list-shell" *ngIf="!loading && dossiers.length > 0">
+      <app-agent-dossiers-liste></app-agent-dossiers-liste>
+    </div>
+  </section>
 </div>
-
-<!-- ── Cartes statistiques ── -->
-<div class="stats-grid">
-  <div class="stat-card total">
-    <div class="stat-icon">📁</div>
-    <div class="stat-info">
-      <span class="stat-value">{{ stats.total }}</span>
-      <span class="stat-label">Total dossiers</span>
-    </div>
-  </div>
-  <div class="stat-card en-cours">
-    <div class="stat-icon">⏳</div>
-    <div class="stat-info">
-      <span class="stat-value">{{ stats.enCours }}</span>
-      <span class="stat-label">En cours</span>
-    </div>
-  </div>
-  <div class="stat-card valides">
-    <div class="stat-icon">✅</div>
-    <div class="stat-info">
-      <span class="stat-value">{{ stats.valides }}</span>
-      <span class="stat-label">Validés</span>
-    </div>
-  </div>
-  <div class="stat-card rejetes">
-    <div class="stat-icon">❌</div>
-    <div class="stat-info">
-      <span class="stat-value">{{ stats.rejetes }}</span>
-      <span class="stat-label">Rejetés</span>
-    </div>
-  </div>
-  <div class="stat-card montant">
-    <div class="stat-icon">💰</div>
-    <div class="stat-info">
-      <span class="stat-value">{{ stats.montantTotal | number:'1.0-0' }}</span>
-      <span class="stat-label">Montant total (TND)</span>
-    </div>
-  </div>
-</div>
-
-<!-- ── Chargement ── -->
-<div class="loading-state" *ngIf="loading">
-  <div class="spinner"></div>
-  <p>Chargement des dossiers...</p>
-</div>
-
-<!-- ── État vide ── -->
-<div class="empty-state" *ngIf="!loading && dossiers.length === 0">
-  <div class="empty-icon">📂</div>
-  <h3>Aucun dossier pour le moment</h3>
-  <p>Commencez par créer votre premier dossier contentieux.</p>
-  <button class="btn-nouveau" (click)="ouvrirNouveauDossier()">➕ Créer un dossier</button>
-</div>
-
-<!-- ── Liste complète des dossiers ── -->
-<app-agent-dossiers-liste></app-agent-dossiers-liste>
-
 
 <!-- ════════════════════════════════════════════════════════════════════════ -->
 <!-- MODAL NOUVEAU DOSSIER - 4 étapes                                         -->
@@ -265,10 +349,7 @@
               <label>Type de risque *</label>
               <select [(ngModel)]="newRisque.type">
                 <option value="">-- Choisir --</option>
-                <option value="CREDIT_IMMOBILIER">Crédit Immobilier</option>
-                <option value="CREDIT_CONSOMMATION">Crédit Consommation</option>
-                <option value="DECOUVERT">Découvert Bancaire</option>
-                <option value="LEASING">Leasing</option>
+                <option *ngFor="let t of risqueTypes" [value]="t.value">{{ t.label }}</option>
               </select>
             </div>
             <div class="form-group">
@@ -392,11 +473,7 @@
         <label>Type de garantie *</label>
         <select [(ngModel)]="newGarantie.typeGarantie">
           <option value="">-- Choisir --</option>
-          <option value="HYPOTHEQUE">Hypothèque</option>
-          <option value="CAUTION">Caution</option>
-          <option value="NANTISSEMENT">Nantissement</option>
-          <option value="GAGE">Gage</option>
-          <option value="AUTRE">Autre</option>
+          <option *ngFor="let t of garantieTypes" [value]="t.value">{{ t.label }}</option>
         </select>
       </div>
       <div class="form-group">
@@ -408,11 +485,7 @@
         <textarea [(ngModel)]="newGarantie.description" rows="2"
                   placeholder="Détails sur la garantie..."></textarea>
       </div>
-      <div class="form-group">
-        <label>Référence document</label>
-        <input type="text" [(ngModel)]="newGarantie.documentRef"
-               placeholder="Ex: ACTE-2024-001">
-      </div>
+      
     </div>
 
     <div class="modal-footer">

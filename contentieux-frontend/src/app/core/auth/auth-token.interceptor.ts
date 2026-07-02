@@ -9,6 +9,9 @@ export const authTokenInterceptor: HttpInterceptorFn = (req, next) => {
   // ✅ Ne pas intercepter les assets
   if (req.url.startsWith('/assets')) return next(req);
 
+   // ✅ Ne pas intercepter les routes publiques — pas de token requis
+   if (req.url.includes('/api/public')) return next(req);  // ← AJOUTER
+
   const keycloak = inject(KeycloakService);
 
   return from(

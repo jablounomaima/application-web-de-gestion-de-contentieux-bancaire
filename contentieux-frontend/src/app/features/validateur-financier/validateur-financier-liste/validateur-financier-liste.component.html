@@ -29,7 +29,8 @@
          [id]="'dossier-' + d.id"
          [class.expanded]="dossierExpanded === d.id"
          [class.dossier-valide]="isValide(d)"
-         [class.dossier-rejete]="isRejete(d)">
+         [class.dossier-rejete]="isRejete(d)"
+         [class.highlighted]="d.id === highlightedDossierId">
 
       <!-- EN-TÊTE -->
       <div class="dossier-card-header" (click)="toggleExpand(d)">
@@ -59,6 +60,11 @@
         </div>
 
         <ng-container *ngIf="!isLoadingDetail(d)">
+
+          <!-- ✅ Bannière — dossier assigné via notification -->
+          <div class="notif-banner" *ngIf="d.id === highlightedDossierId">
+            🔔 Ce dossier vous a été assigné pour validation financière.
+          </div>
 
           <div class="readonly-banner" *ngIf="isValide(d) || isRejete(d)">
             <span *ngIf="isValide(d)">✅ Ce dossier a été validé financièrement.</span>
@@ -127,7 +133,9 @@
               <ng-container *ngIf="getDetail(d).client?.typeClient === 'ENTREPRISE'">
                 <div class="info-row">
                   <span class="info-lbl">Raison sociale</span>
-                  <span class="info-val">{{ getDetail(d).client?.raisonSociale || '—' }}</span>
+                  <span class="info-val">
+                    {{ getDetail(d).client?.raisonSociale || '—' }}
+                  </span>
                 </div>
                 <div class="info-row" *ngIf="getDetail(d).client?.rne">
                   <span class="info-lbl">RNE</span>
@@ -187,7 +195,9 @@
                 </div>
               </div>
               <div class="garanties-wrap" *ngIf="r.garanties?.length">
-                <span class="garanties-title">🔒 Garanties ({{ r.garanties.length }})</span>
+                <span class="garanties-title">
+                  🔒 Garanties ({{ r.garanties.length }})
+                </span>
                 <div class="garantie-chip" *ngFor="let g of r.garanties">
                   <span class="g-type">{{ g.typeGarantie }}</span>
                   <span class="g-val">{{ g.valeurEstimee | number:'1.0-0' }} TND</span>
@@ -204,18 +214,22 @@
             <p class="no-data">Aucun crédit enregistré pour ce dossier.</p>
           </div>
 
+          <!-- ✅ Boutons action — uniquement si en attente -->
           <div class="detail-actions" *ngIf="isEnAttente(d)">
-            <button class="btn-valider" (click)="demanderAction(d, 'valider')">
+            <button class="btn-valider"
+                    (click)="demanderAction(d, 'valider')"
+                    [class.btn-highlight]="d.id === highlightedDossierId">
               ✅ Valider ce dossier
             </button>
-            <button class="btn-rejeter" (click)="demanderAction(d, 'rejeter')">
+            <button class="btn-rejeter"
+                    (click)="demanderAction(d, 'rejeter')">
               ❌ Rejeter ce dossier
             </button>
           </div>
 
         </ng-container>
-      </div>
-    </div>
-  </div>
+      </div><!-- /dossier-detail -->
+    </div><!-- /dossier-card -->
+  </div><!-- /dossiers-list -->
 
 </div>

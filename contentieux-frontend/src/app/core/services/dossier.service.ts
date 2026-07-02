@@ -94,8 +94,8 @@ export class DossierService {
 
 
 //------------------------------------------------
-ressoumettreDossier(id: number): Observable<any> {
-  return this.http.post(`${this.apiUrl}/${id}/ressoumettre`, {});
+ressoumettreDossier(dossierId: number, payload: any = {}): Observable<any> {
+  return this.http.post(`${this.apiUrl}/${dossierId}/ressoumettre`, payload);
 }
 
 
@@ -113,6 +113,8 @@ ressoumettreDossier(id: number): Observable<any> {
 lancerProcedureJudiciaire(dossierId: number, payload: any): Observable<any> {
   return this.http.post(`${this.apiUrl}/${dossierId}/prestations`, payload);
 }
-
+ressoumettre(dossierId: number): Observable<any> {
+  return this.http.post(`/api/agent/dossiers/${dossierId}/ressoumettre`, {});
+}
 
 }

@@ -41,25 +41,26 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
         <button class="banner-close" (click)="$event.stopPropagation(); fermerBanniere()">✕</button>
       </div>
 
-      <!-- ══ Stats ══ -->
-      <div class="stats-bar" *ngIf="!loading && dossiers.length > 0">
-        <div class="stat-item">
-          <span class="stat-val">{{ totalFactures }}</span>
-          <span class="stat-lab">Total factures</span>
+      <!-- ══ Diagrammes statiques ══ -->
+      <section class="charts-panel" *ngIf="!loading && dossiers.length > 0">
+        <div class="chart-card chart-card-full">
+          <div class="chart-header">
+            <h3>Répartition des factures</h3>
+            <span>Vue synthétique</span>
+          </div>
+          <div class="bars">
+            <div class="bar-item" *ngFor="let bar of chartBars">
+              <div class="bar-track">
+                <div class="bar-fill" [style.height.%]="bar.percent" [style.background]="bar.color"></div>
+              </div>
+              <div class="bar-meta">
+                <strong>{{ bar.value }}</strong>
+                <span>{{ bar.label }}</span>
+              </div>
+            </div>
+          </div>
         </div>
-        <div class="stat-item stat-attente">
-          <span class="stat-val">{{ countStatut('attente') }}</span>
-          <span class="stat-lab">En attente</span>
-        </div>
-        <div class="stat-item stat-valide">
-          <span class="stat-val">{{ countStatut('valide') }}</span>
-          <span class="stat-lab">Validées</span>
-        </div>
-        <div class="stat-item stat-rejete">
-          <span class="stat-val">{{ countStatut('rejete') }}</span>
-          <span class="stat-lab">Rejetées</span>
-        </div>
-      </div>
+      </section>
 
       <!-- ══ Loader ══ -->
       <div class="loader-state" *ngIf="loading">
@@ -296,18 +297,22 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
     }
     .search-input:focus { border-color: #f59e0b; box-shadow: 0 0 0 3px rgba(245,158,11,0.1); }
 
-    /* ── Stats bar ── */
-    .stats-bar { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
-    .stat-item {
-      background: white; border-radius: 12px; padding: 14px 20px;
-      display: flex; flex-direction: column; align-items: center; gap: 4px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04); border: 1px solid #e2e8f0; min-width: 110px;
-    }
-    .stat-val { font-size: 1.6rem; font-weight: 800; color: #1e293b; }
-    .stat-lab { font-size: 0.72rem; font-weight: 700; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; }
-    .stat-attente .stat-val { color: #a16207; }
-    .stat-valide  .stat-val { color: #15803d; }
-    .stat-rejete  .stat-val { color: #dc2626; }
+    /* ── Charts ── */
+    .charts-panel { display: grid; grid-template-columns: 1fr; gap: 16px; margin-bottom: 24px; }
+    .chart-card { background: white; border-radius: 16px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    .chart-card-full { padding: 24px 32px; }
+    .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+    .chart-header h3 { margin: 0; font-size: 1rem; color: #1e293b; font-weight: 700; }
+    .chart-header span { font-size: 0.75rem; color: #94a3b8; }
+
+    .chart-card-full .bars { max-width: 480px; margin: 0 auto; }
+    .bars { display: flex; align-items: flex-end; justify-content: center; gap: 36px; height: 150px; }
+    .bar-item { flex: 1; max-width: 90px; display: flex; flex-direction: column; align-items: center; height: 100%; }
+    .bar-track { flex: 1; width: 36px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: flex-end; overflow: hidden; }
+    .bar-fill { width: 100%; border-radius: 8px 8px 0 0; min-height: 4px; }
+    .bar-meta { margin-top: 8px; display: flex; flex-direction: column; align-items: center; }
+    .bar-meta strong { font-size: 0.9rem; color: #1e293b; font-weight: 800; }
+    .bar-meta span { font-size: 0.68rem; color: #94a3b8; text-align: center; }
 
     /* ── Loader / Empty ── */
     .loader-state { display: flex; flex-direction: column; align-items: center; padding: 80px 0; color: #94a3b8; }
@@ -519,13 +524,13 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
           }
         }
       });
-  
+
     // ✅ Écouter aussi missionId pour surligner la bonne ligne
     this.notificationService.missionCible$
     .pipe(takeUntil(this.destroy$))
     .subscribe((missionIdOrNum: string | number | null) => {
       if (missionIdOrNum === null) return;
-      
+
       if (typeof missionIdOrNum === 'string') {
         // Numéro textuel (ex: "MISS-2026-00036")
         // Pour ce composant, on ignore le string car il gère les factures par ID
@@ -537,7 +542,7 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
       }
       this.notificationService.signalerMissionCible(null);
     });
-  
+
     this.charger();
     this._ecouterNouvellesFactures();
   }
@@ -570,6 +575,13 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
         }
         this.charger();
 
+        // ✅ Afficher la bannière + auto-masquage après 8s
+        this.nouvelleBanniereVisible = true;
+        if (this.banniereTimeout) clearTimeout(this.banniereTimeout);
+        this.banniereTimeout = setTimeout(() => {
+          this.nouvelleBanniereVisible = false;
+        }, 8000);
+
         this.showToast('💰 Nouvelle facture reçue — liste mise à jour', 'info');
       });
   }
@@ -584,10 +596,10 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
       console.warn('Dossier cible introuvable :', dossierId);
       return;
     }
-  
+
     // Ouvrir le dossier
     this.dossiersOuverts.add(dossierId);
-  
+
     setTimeout(() => {
       // ── Surligner le bloc dossier ──
       const elDossier = document.getElementById('dossier-' + dossierId);
@@ -596,22 +608,22 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
         elDossier.classList.add('dossier-highlight');
         setTimeout(() => elDossier.classList.remove('dossier-highlight'), 4000);
       }
-  
+
       // ── Trouver la facture exacte ──
       let factureCible: any = null;
-  
+
       if (missionId) {
         // Chercher par missionId (le plus précis)
         factureCible = dossier.factures?.find((f: any) => f.missionId === missionId);
       }
-  
+
       if (!factureCible) {
         // Fallback : première facture en attente
         factureCible = dossier.factures?.find((f: any) => this.peutEtreTraitee(f));
       }
-  
+
       if (!factureCible) return;
-  
+
       // ── Scroll + surlignage de la ligne facture ──
       setTimeout(() => {
         const elFacture = document.getElementById('facture-' + factureCible.missionId);
@@ -620,7 +632,7 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
         elFacture.classList.add('row-nouvelle');
         setTimeout(() => elFacture.classList.remove('row-nouvelle'), 4000);
       }, 300);
-  
+
     }, 200);
   }
   // ════════════════════════════════════════
@@ -651,7 +663,7 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
         this.totalFactures = res.totalFactures ?? 0;
         this.dossiers.forEach(d => this.dossiersOuverts.add(d.dossierId));
         this.loading = false;
-  
+
         if (this._dossierId_cible) {
           const dossierId  = this._dossierId_cible;
           const missionId  = this._missionId_cible;
@@ -705,6 +717,30 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
       if (type === 'rejete') return this.isRejete(f);
       return this.peutEtreTraitee(f);
     }).length;
+  }
+
+  // ════════════════════════════════════════
+  // Diagrammes statiques
+  // ════════════════════════════════════════
+
+  /**
+   * Répartition des factures : Total, En attente, Validées, Rejetées.
+   * Hauteurs calculées par rapport au MAX (pas au total), car "Total"
+   * n'est pas la somme des 3 autres catégories du point de vue visuel
+   * (il englobe déjà les 3 sous-statuts).
+   */
+  get chartBars(): { key: string; label: string; color: string; value: number; percent: number }[] {
+    const items = [
+      { key: 'total',   label: 'Total factures', color: '#d97706', value: this.totalFactures },
+      { key: 'attente', label: 'En attente',      color: '#a16207', value: this.countStatut('attente') },
+      { key: 'valide',  label: 'Validées',        color: '#15803d', value: this.countStatut('valide') },
+      { key: 'rejete',  label: 'Rejetées',        color: '#dc2626', value: this.countStatut('rejete') },
+    ];
+    const max = Math.max(...items.map(i => i.value), 1);
+    return items.map(i => ({
+      ...i,
+      percent: Math.round((i.value / max) * 100)
+    }));
   }
 
   // ════════════════════════════════════════

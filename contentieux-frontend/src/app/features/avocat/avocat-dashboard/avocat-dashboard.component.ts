@@ -22,49 +22,47 @@ import { ActivatedRoute } from '@angular/router';
     </div>
   </div>
 
-  <div class="stats-row">
-    <div class="stat-card">
-      <div class="stat-icon blue-icon">📁</div>
-      <div class="stat-info"><span class="stat-value">{{ totalAffaires }}</span><h4>Total affaires</h4></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon indigo-icon">⚖️</div>
-      <div class="stat-info"><span class="stat-value">{{ affairesEnCours }}</span><h4>En cours</h4></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon amber-icon">🗓️</div>
-      <div class="stat-info"><span class="stat-value">{{ audiencesAVenir }}</span><h4>Audiences à venir</h4></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon green-icon">💰</div>
-      <div class="stat-info">
-        <span class="stat-value">{{ totalHonoraires | number:'1.3-3' }} <small>TND</small></span>
-        <h4>Total Honoraires HT</h4>
+
+
+  <!-- ═══ DIAGRAMMES STATIQUES ═══ -->
+  <section class="charts-panel" *ngIf="!loading">
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>Répartition des dossiers</h3>
+        <span>Vue synthétique</span>
+      </div>
+      <div class="bars">
+        <div class="bar-item" *ngFor="let bar of chartBars">
+          <div class="bar-track">
+            <div class="bar-fill" [style.height.%]="bar.percent" [style.background]="bar.color"></div>
+          </div>
+          <div class="bar-meta">
+            <strong>{{ bar.value }}</strong>
+            <span>{{ bar.label }}</span>
+          </div>
+        </div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon teal-icon">🧾</div>
-      <div class="stat-info">
-        <span class="stat-value">
-          {{ nombreFactures }}
-          <small *ngIf="facturesPayees > 0" class="payees-hint">dont {{ facturesPayees }} payée(s)</small>
-        </span>
-        <h4>Factures soumises</h4>
+
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>Taux de validation des PV</h3>
+        <span>Validés / soumis</span>
+      </div>
+      <div class="ring-card">
+        <svg class="ring" viewBox="0 0 140 140" width="110" height="110">
+          <circle cx="70" cy="70" r="54" class="ring-bg"></circle>
+          <circle cx="70" cy="70" r="54" class="ring-progress"
+                  [style.strokeDasharray]="ringCircumference"
+                  [style.strokeDashoffset]="ringOffset"></circle>
+        </svg>
+        <div class="ring-center">
+          <strong>{{ tauxValidation }}%</strong>
+          <span>{{ valides }} validé(s)</span>
+        </div>
       </div>
     </div>
-    <div class="stat-card">
-      <div class="stat-icon purple-icon">📜</div>
-      <div class="stat-info"><span class="stat-value">{{ jugementRendu }}</span><h4>Jugements rendus</h4></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon orange-icon">📋</div>
-      <div class="stat-info"><span class="stat-value">{{ pvEnAttente }}</span><h4>PV en attente</h4></div>
-    </div>
-    <div class="stat-card">
-      <div class="stat-icon rose-icon">🧾</div>
-      <div class="stat-info"><span class="stat-value">{{ facturesEnAttente }}</span><h4>Factures en attente</h4></div>
-    </div>
-  </div>
+  </section>
 
   <div class="loader-state" *ngIf="loading">
     <span class="spin">⚖️</span>
@@ -164,6 +162,31 @@ import { ActivatedRoute } from '@angular/router';
     .loader-state { text-align: center; padding: 60px; color: #94a3b8; }
     .spin { font-size: 2.5rem; display: block; animation: spin 1s linear infinite; margin-bottom: 12px; }
     @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+
+    /* ═══ Charts ═══ */
+    .charts-panel { display: grid; grid-template-columns: 1.4fr 1fr; gap: 16px; margin-bottom: 28px; }
+    @media (max-width: 900px) { .charts-panel { grid-template-columns: 1fr; } }
+    .chart-card { background: white; border-radius: 16px; padding: 22px; border: 1px solid #e2e8f0; box-shadow: 0 2px 10px rgba(0,0,0,0.04); }
+    .chart-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+    .chart-header h3 { margin: 0; font-size: 1rem; color: #1e293b; font-weight: 700; }
+    .chart-header span { font-size: 0.75rem; color: #94a3b8; }
+
+    .bars { display: flex; align-items: flex-end; gap: 10px; height: 140px; }
+    .bar-item { flex: 1; display: flex; flex-direction: column; align-items: center; height: 100%; }
+    .bar-track { flex: 1; width: 22px; background: #f1f5f9; border-radius: 8px; display: flex; align-items: flex-end; overflow: hidden; }
+    .bar-fill { width: 100%; border-radius: 8px 8px 0 0; min-height: 4px; }
+    .bar-meta { margin-top: 8px; display: flex; flex-direction: column; align-items: center; }
+    .bar-meta strong { font-size: 0.8rem; color: #1e293b; font-weight: 800; }
+    .bar-meta span { font-size: 0.6rem; color: #94a3b8; text-align: center; line-height: 1.2; }
+
+    .ring-card { display: flex; align-items: center; justify-content: center; height: 140px; position: relative; }
+    .ring { transform: rotate(-90deg); }
+    .ring-bg { fill: none; stroke: #f1f5f9; stroke-width: 12; }
+    .ring-progress { fill: none; stroke: #4338ca; stroke-width: 12; stroke-linecap: round; }
+    .ring-center { position: absolute; display: flex; flex-direction: column; align-items: center; }
+    .ring-center strong { font-size: 1.3rem; color: #1e293b; font-weight: 800; }
+    .ring-center span { font-size: 0.7rem; color: #94a3b8; }
+
     .content-card { background: white; border-radius: 20px; box-shadow: 0 4px 20px rgba(0,0,0,0.05); border: 1px solid #e2e8f0; overflow: hidden; }
     .card-header { padding: 22px 28px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; }
     .card-header h2 { margin: 0; font-size: 1.2rem; color: #1e293b; font-weight: 700; display: flex; align-items: center; gap: 10px; }
@@ -210,6 +233,7 @@ export class AvocatDashboardComponent implements OnInit, OnDestroy {
   loading           = true;
   search            = '';
 
+  private readonly ringRadius = 54;
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -373,6 +397,56 @@ export class AvocatDashboardComponent implements OnInit, OnDestroy {
   get facturesEnAttente(): number { return this.affaires.filter(a => a.factureStatut === 'EN_ATTENTE').length; }
   get nombreFactures(): number { return this.stats?.nombreFactures ?? this.affaires.filter(a => a.factureRef).length; }
   get facturesPayees(): number { return this.stats?.facturesPayees ?? this.affaires.filter(a => a.factureStatut === 'PAYEE').length; }
+
+  // ═══ Données pour les diagrammes statiques ═══
+
+  /**
+   * Répartition basée sur les mêmes métriques que les stat-card du haut.
+   * Le Total Honoraires (montant en TND) est exclu : ce n'est pas un
+   * effectif comptable, il ne peut pas être comparé sur la même échelle.
+   * Les hauteurs sont calculées par rapport au MAX (pas au total), car
+   * ces valeurs ne sont pas mutuellement exclusives (ex : totalAffaires
+   * inclut déjà affairesEnCours).
+   */
+  get chartBars(): { key: string; label: string; color: string; value: number; percent: number }[] {
+    const items = [
+      { key: 'totalAffaires',     label: 'Total affaires',       color: '#2563eb', value: this.totalAffaires },
+      { key: 'affairesEnCours',   label: 'En cours',             color: '#4338ca', value: this.affairesEnCours },
+      { key: 'audiencesAVenir',   label: 'Audiences à venir',    color: '#d97706', value: this.audiencesAVenir },
+      { key: 'nombreFactures',    label: 'Factures soumises',    color: '#0d9488', value: this.nombreFactures },
+      { key: 'jugementRendu',     label: 'Jugements rendus',     color: '#7e22ce', value: this.jugementRendu },
+      { key: 'pvEnAttente',       label: 'PV en attente',        color: '#ea580c', value: this.pvEnAttente },
+      { key: 'facturesEnAttente', label: 'Factures en attente',  color: '#e11d48', value: this.facturesEnAttente },
+    ];
+    const max = Math.max(...items.map(i => i.value), 1);
+    return items.map(i => ({
+      ...i,
+      percent: Math.round((i.value / max) * 100)
+    }));
+  }
+
+  get valides(): number {
+    return this.affaires.filter(a => a.pvStatut === 'VALIDE').length;
+  }
+
+  get totalPvSoumis(): number {
+    return this.affaires.filter(a => a.pvTexte).length;
+  }
+
+  /** Taux de validation des PV = validés / soumis (0 si aucun PV soumis) */
+  get tauxValidation(): number {
+    return this.totalPvSoumis > 0
+      ? Math.round((this.valides / this.totalPvSoumis) * 100)
+      : 0;
+  }
+
+  get ringCircumference(): number {
+    return 2 * Math.PI * this.ringRadius;
+  }
+
+  get ringOffset(): number {
+    return this.ringCircumference - (this.tauxValidation / 100) * this.ringCircumference;
+  }
 
   filtrer() {
     const q = this.search.toLowerCase().trim();

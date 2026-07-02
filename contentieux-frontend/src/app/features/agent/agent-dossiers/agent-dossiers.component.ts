@@ -73,6 +73,27 @@ export class AgentDossiersComponent implements OnInit {
   newRisque!: RisqueForm;
   newGarantie!: GarantieForm;
 
+
+  // Ajouter ces deux arrays dans la classe, après les déclarations de formulaires
+
+risqueTypes = [
+  { value: 'CREDIT_IMMOBILIER',    label: '🏠 Crédit Immobilier' },
+  { value: 'CREDIT_CONSOMMATION',  label: '🛍️ Crédit Consommation' },
+  { value: 'CREDIT_AUTO',          label: '🚗 Crédit Auto' },
+  { value: 'CREDIT_PROFESSIONNEL', label: '💼 Crédit Professionnel' },
+  { value: 'LEASING',              label: '📋 Leasing' },
+  { value: 'DECOUVERT',            label: '🏦 Découvert Bancaire' }
+];
+
+garantieTypes = [
+  { value: 'BIENS_IMMOBILIERS',   label: '🏢 Biens Immobiliers' },
+  { value: 'VEHICULES',           label: '🚗 Véhicules' },
+  { value: 'EQUIPEMENTS',         label: '🖥️ Équipements' },
+  { value: 'CAUTION_PERSONNELLE', label: '👤 Caution Personnelle' },
+  { value: 'GARANTIE_BANCAIRE',   label: '🏛️ Garantie Bancaire' },
+  { value: 'AUTRE',               label: '📝 Autre' }
+];
+
   constructor(
     private dossierService: DossierService,
     private router: Router

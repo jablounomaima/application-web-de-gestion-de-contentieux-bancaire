@@ -162,11 +162,7 @@
                 <label>Type de risque *</label>
                 <select [(ngModel)]="newRisque.type">
                   <option value="">-- Choisir --</option>
-                  <option value="CREDIT_IMMOBILIER">Crédit Immobilier</option>
-                  <option value="CREDIT_CONSOMMATION">Crédit Consommation</option>
-                  <option value="CREDIT_PROFESSIONNEL">Crédit Professionnel</option>
-                  <option value="LEASING">Leasing</option>
-                  <option value="AUTRE">Autre</option>
+                  <option *ngFor="let t of risqueTypes" [value]="t.value">{{ t.label }}</option>
                 </select>
               </div>
               <div class="form-group">
@@ -269,12 +265,7 @@
           <label>Type de garantie *</label>
           <select [(ngModel)]="newGarantie.typeGarantie">
             <option value="">-- Choisir --</option>
-            <option value="VEHICULE">Véhicule</option>
-            <option value="IMMOBILIER">Immobilier</option>
-            <option value="HYPOTHEQUE">Hypothèque</option>
-            <option value="NANTISSEMENT">Nantissement</option>
-            <option value="CAUTION">Caution personnelle</option>
-            <option value="AUTRE">Autre</option>
+            <option *ngFor="let t of garantieTypes" [value]="t.value">{{ t.label }}</option>
           </select>
         </div>
         <div class="form-group">

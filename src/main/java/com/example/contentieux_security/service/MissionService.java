@@ -270,22 +270,21 @@ public class MissionService {
     
         missionRepository.save(mission);
     
-        // ✅ Notification agent avec URL explicite → resultats-prestataires + missionId
         try {
-            String agentUsername    = mission.getDossier().getCreePar(); // ou getAgentUsername()
+            String agentUsername       = mission.getPrestation().getDossier().getCreePar();
             String prestataireUsername = mission.getPrestataire().getUsername();
-            String numeroMission    = mission.getNumeroMission();
-            Long   dossierId        = mission.getDossier().getId();
+            String numeroMission       = mission.getNumeroMission();
+            Long   dossierId           = mission.getPrestation().getDossier().getId();
     
             notificationService.notifier(
                 agentUsername,
                 "✅ Facture validée par le validateur financier",
                 "La facture de la mission " + numeroMission
-                    + " (dossier " + mission.getDossier().getNumeroDossier()
+                    + " (dossier " + mission.getPrestation().getDossier().getNumeroDossier()
                     + ") a été validée par le validateur financier."
                     + " Vous pouvez maintenant clôturer la mission.",
                 "VALIDATION_FINANCIERE_OK",
-                mission.getDossier(),
+                mission.getPrestation().getDossier(),
                 "/agent/dossiers/" + dossierId + "/resultats-prestataires?missionId=" + id
             );
     
@@ -330,22 +329,21 @@ public class MissionService {
     
         missionRepository.save(mission);
     
-        // ❌ Notification agent + prestataire
         try {
-            String agentUsername       = mission.getDossier().getCreePar();
+            String agentUsername       = mission.getPrestation().getDossier().getCreePar();
             String prestataireUsername = mission.getPrestataire().getUsername();
             String numeroMission       = mission.getNumeroMission();
-            Long   dossierId           = mission.getDossier().getId();
+            Long   dossierId           = mission.getPrestation().getDossier().getId();
     
             notificationService.notifier(
                 agentUsername,
                 "❌ Facture rejetée — mission " + numeroMission,
                 "La facture de la mission " + numeroMission
-                    + " (dossier " + mission.getDossier().getNumeroDossier()
+                    + " (dossier " + mission.getPrestation().getDossier().getNumeroDossier()
                     + ") a été rejetée par le validateur financier."
                     + (commentaire != null && !commentaire.isBlank() ? " Motif : " + commentaire : ""),
                 "REJET_FINANCIER",
-                mission.getDossier(),
+                mission.getPrestation().getDossier(),
                 "/agent/dossiers/" + dossierId + "/resultats-prestataires?missionId=" + id
             );
     
@@ -367,6 +365,7 @@ public class MissionService {
         log.info("Facture mission {} rejetée par le financier {}",
                  mission.getNumeroMission(), validateurUsername);
     }
+   
     // ══════════════════════════════════════════════════════════════
     //  ÉTAPE 4 — AGENT BANCAIRE : VALIDER OU REJETER LA MISSION
     //  L'agent intervient UNIQUEMENT après validation du financier

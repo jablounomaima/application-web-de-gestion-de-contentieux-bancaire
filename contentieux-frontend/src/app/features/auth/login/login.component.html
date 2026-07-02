@@ -1,50 +1,62 @@
-<!-- Lien mot de passe oublié -->
+<!-- ✅ Bouton connexion -->
+<button class="login-btn" (click)="login()" *ngIf="!mdpOublieMode">
+  <span>🔐</span> Se connecter
+</button>
+
+<!-- ✅ Lien mot de passe oublié — UNE SEULE FOIS -->
 <div class="mdp-oublie-link" *ngIf="!mdpOublieMode">
-    <a href="#" (click)="$event.preventDefault(); ouvrirMdpOublie()">
-      Mot de passe oublié ?
-    </a>
-  </div>
-  
-  <!-- Formulaire mot de passe oublié -->
-  <div class="mdp-oublie-form" *ngIf="mdpOublieMode">
-  
-    <h4>🔐 Mot de passe oublié</h4>
-  
-    <ng-container *ngIf="!mdpOublieMsg">
-      <p class="mdp-oublie-desc">
-        Saisissez votre email ou nom d'utilisateur. Un administrateur sera
-        notifié et vous enverra un nouveau mot de passe.
-      </p>
-  
-      <!-- ✅ type="text" pour accepter email OU username -->
-      <input type="text"
-             [(ngModel)]="emailOublie"
-             placeholder="Email ou nom d'utilisateur"
-             class="mdp-oublie-input" />
-  
-      <p class="mdp-erreur" *ngIf="mdpOublieErreur">
-        ⚠️ {{ mdpOublieErreur }}
-      </p>
-  
-      <div class="mdp-oublie-actions">
-        <button class="btn-annuler"
-                (click)="fermerMdpOublie()"
-                [disabled]="envoi">
-          Annuler
-        </button>
-        <button class="btn-envoyer"
-                (click)="envoyerDemandeMdpOublie()"
-                [disabled]="envoi || !emailOublie.trim()">
-          {{ envoi ? 'Envoi...' : 'Envoyer la demande' }}
-        </button>
-      </div>
-    </ng-container>
-  
-    <div class="mdp-confirmation" *ngIf="mdpOublieMsg">
-      <p>✅ {{ mdpOublieMsg }}</p>
-      <button class="btn-retour" (click)="fermerMdpOublie()">
-        Retour à la connexion
+  <a href="#" (click)="$event.preventDefault(); ouvrirMdpOublie()">
+    Mot de passe oublié ?
+  </a>
+</div>
+
+<!-- ✅ Lien Assistant IA -->
+<div class="ai-link" *ngIf="!mdpOublieMode">
+  <a href="http://localhost:5001" target="_blank" rel="noopener">
+    🤖 Assistant IA Contentieux
+  </a>
+</div>
+
+<!-- ✅ Formulaire mdp oublié -->
+<div class="mdp-oublie-form" *ngIf="mdpOublieMode">
+
+  <h4>🔐 Mot de passe oublié</h4>
+
+  <ng-container *ngIf="!mdpOublieMsg">
+    <p class="mdp-oublie-desc">
+      Saisissez votre email ou nom d'utilisateur. Un administrateur sera
+      notifié et vous enverra un nouveau mot de passe.
+    </p>
+
+    <input type="text"
+           [(ngModel)]="emailOublie"
+           placeholder="Email ou nom d'utilisateur"
+           class="mdp-oublie-input" />
+
+    <p class="mdp-erreur" *ngIf="mdpOublieErreur">
+      ⚠️ {{ mdpOublieErreur }}
+    </p>
+
+    <div class="mdp-oublie-actions">
+      <button class="btn-annuler"
+              (click)="fermerMdpOublie()"
+              [disabled]="envoi">
+        Annuler
+      </button>
+      <button class="btn-envoyer"
+              (click)="envoyerDemandeMdpOublie()"
+              [disabled]="envoi || !emailOublie.trim()">
+        {{ envoi ? 'Envoi...' : 'Envoyer la demande' }}
       </button>
     </div>
-  
+  </ng-container>
+
+  <!-- ✅ Confirmation après envoi -->
+  <div class="mdp-confirmation" *ngIf="mdpOublieMsg">
+    <p>✅ {{ mdpOublieMsg }}</p>
+    <button class="btn-retour" (click)="fermerMdpOublie()">
+      Retour à la connexion
+    </button>
   </div>
+
+</div>

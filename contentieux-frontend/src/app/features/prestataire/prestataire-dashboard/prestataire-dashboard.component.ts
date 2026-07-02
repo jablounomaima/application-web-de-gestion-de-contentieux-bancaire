@@ -30,28 +30,45 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
     </button>
   </div>
 
-  <!-- ══ KPI STRIP ═════════════════════════════════════════════════ -->
-  <div class="pd-kpi-strip" *ngIf="stats">
-    <div class="pd-kpi pd-kpi--blue" [class.pd-kpi--active]="activeTab === 'toutes'" (click)="activeTab = 'toutes'">
-      <span class="pd-kpi-val">{{ stats.totalMissions }}</span>
-      <span class="pd-kpi-lbl">Total</span>
+  <!-- ══ STATS DIAGRAM ═══════════════════════════════════════════════ -->
+  <section class="pd-stats-panel" *ngIf="!loading">
+  <div class="pd-chart-card">
+    <div class="pd-chart-header">
+      <h3>Répartition des missions</h3>
+      <span>Vue synthétique</span>
     </div>
-    <div class="pd-kpi-sep"></div>
-    <div class="pd-kpi pd-kpi--amber" [class.pd-kpi--active]="activeTab === 'enCours'" (click)="activeTab = 'enCours'">
-      <span class="pd-kpi-val">{{ stats.missionsEnCours }}</span>
-      <span class="pd-kpi-lbl">En cours</span>
-    </div>
-    <div class="pd-kpi-sep"></div>
-    <div class="pd-kpi pd-kpi--purple">
-      <span class="pd-kpi-val">{{ stats.pvSoumis }}</span>
-      <span class="pd-kpi-lbl">PV soumis</span>
-    </div>
-    <div class="pd-kpi-sep"></div>
-    <div class="pd-kpi pd-kpi--green">
-      <span class="pd-kpi-val">{{ stats.missionsTerminees }}</span>
-      <span class="pd-kpi-lbl">Terminées</span>
+    <div class="pd-bars">
+      <div class="pd-bar-item" *ngFor="let bar of chartBarsStatut">
+        <div class="pd-bar-track">
+          <div class="pd-bar-fill" [style.height.%]="bar.percent" [style.background]="bar.color"></div>
+        </div>
+        <div class="pd-bar-meta">
+          <strong>{{ bar.value }}</strong>
+          <span>{{ bar.label }}</span>
+        </div>
+      </div>
     </div>
   </div>
+
+  <div class="pd-chart-card">
+    <div class="pd-chart-header">
+      <h3>Taux de validation des PV</h3>
+      <span>Validés / soumis</span>
+    </div>
+    <div class="pd-ring-card">
+      <svg class="pd-ring" viewBox="0 0 140 140" width="110" height="110">
+        <circle cx="70" cy="70" r="54" class="pd-ring-bg"></circle>
+        <circle cx="70" cy="70" r="54" class="pd-ring-progress"
+                [style.strokeDasharray]="ringCircumference"
+                [style.strokeDashoffset]="ringOffsetValidation"></circle>
+      </svg>
+      <div class="pd-ring-center">
+        <strong>{{ tauxValidation }}%</strong>
+        <span>{{ stats.missionsTerminees }} validé(s)</span>
+      </div>
+    </div>
+  </div>
+</section>
 
   <!-- ══ TABS ══════════════════════════════════════════════════════ -->
   <div class="pd-tabs">
@@ -319,55 +336,156 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
       &:hover { border-color: var(--navy-mid); color: var(--navy); }
     }
 
-    /* ── KPI Strip ───────────────────────────────────────────────── */
-    .pd-kpi-strip {
-      display: flex;
-      align-items: center;
+    /* ── Stats diagram ───────────────────────────────────────────── */
+    .pd-stats-diagram {
+      margin-bottom: 1.75rem;
+    }
+    .pd-diagram-card {
       background: var(--white);
       border: 1px solid var(--border);
-      border-radius: 10px;
-      overflow: hidden;
-      margin-bottom: 1.5rem;
+      border-radius: 12px;
+      padding: 22px 24px;
     }
-    .pd-kpi {
-      flex: 1;
+    .pd-diagram-header {
       display: flex;
-      flex-direction: column;
+      justify-content: space-between;
       align-items: center;
-      padding: 18px 12px;
-      cursor: pointer;
-      transition: background .15s;
-      &:hover { background: var(--surface); }
-      &--active {
-        background: var(--navy) !important;
-        .pd-kpi-val, .pd-kpi-lbl { color: var(--white) !important; }
-        .pd-kpi-lbl { opacity: .7; }
-      }
-      &--blue.pd-kpi--active   { background: var(--blue) !important; }
-      &--amber.pd-kpi--active  { background: var(--amber) !important; }
-      &--purple.pd-kpi--active { background: var(--purple) !important; }
-      &--green.pd-kpi--active  { background: var(--green) !important; }
+      margin-bottom: 18px;
     }
-    .pd-kpi-val {
-      font-size: 1.8rem;
+    .pd-diagram-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .pd-diagram-icon {
+      font-size: 1.4rem;
+      width: 42px; height: 42px;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+    .pd-diagram-title-group h3 {
+      margin: 0;
+      font-size: 1.02rem;
       font-weight: 700;
       color: var(--navy);
-      letter-spacing: -.03em;
-      line-height: 1;
-      margin-bottom: 4px;
+      letter-spacing: -.01em;
     }
-    .pd-kpi-lbl {
-      font-size: .7rem;
-      text-transform: uppercase;
-      letter-spacing: .06em;
+    .pd-diagram-subtitle {
+      font-size: .78rem;
       color: var(--mist);
       font-weight: 500;
     }
-    .pd-kpi-sep {
-      width: 1px;
-      height: 40px;
-      background: var(--border);
+
+    .pd-diagram-body {
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    /* Donut */
+    .pd-donut {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
       flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .pd-donut::before {
+      content: '';
+      position: absolute;
+      width: 88px;
+      height: 88px;
+      background: var(--white);
+      border-radius: 50%;
+    }
+    .pd-donut-center {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .pd-donut-center strong {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--navy);
+      line-height: 1;
+    }
+    .pd-donut-center span {
+      font-size: .68rem;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--mist);
+      margin-top: 3px;
+    }
+
+    /* Legend */
+    .pd-diagram-legend {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      flex: 1;
+      min-width: 220px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .pd-legend-item {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .pd-legend-top {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pd-legend-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .pd-legend--amber  .pd-legend-dot { background: var(--amber); }
+    .pd-legend--purple .pd-legend-dot { background: var(--purple); }
+    .pd-legend--green  .pd-legend-dot { background: var(--green); }
+    .pd-legend--mist   .pd-legend-dot { background: var(--mist); }
+    .pd-legend-label {
+      font-size: .83rem;
+      font-weight: 600;
+      color: var(--ink);
+      flex: 1;
+    }
+    .pd-legend-percent {
+      font-size: .78rem;
+      font-weight: 700;
+      color: var(--steel);
+    }
+    .pd-legend-bar {
+      width: 100%;
+      height: 5px;
+      background: var(--surface);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .pd-legend-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      transition: width .3s ease;
+    }
+    .pd-legend--amber  .pd-legend-bar-fill { background: var(--amber); }
+    .pd-legend--purple .pd-legend-bar-fill { background: var(--purple); }
+    .pd-legend--green  .pd-legend-bar-fill { background: var(--green); }
+    .pd-legend--mist   .pd-legend-bar-fill { background: var(--mist); }
+    .pd-legend-value {
+      font-size: .72rem;
+      color: var(--mist);
     }
 
     /* ── Tabs ────────────────────────────────────────────────────── */
@@ -387,9 +505,9 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
       cursor: pointer;
       font-family: var(--font);
       transition: all .15s;
-      &:hover:not(.pd-tab--on) { border-color: var(--navy-mid); color: var(--navy); }
-      &--on { background: var(--navy); border-color: var(--navy); color: var(--white); font-weight: 600; }
     }
+    .pd-tab:hover:not(.pd-tab--on) { border-color: var(--navy-mid); color: var(--navy); }
+    .pd-tab--on { background: var(--navy); border-color: var(--navy); color: var(--white); font-weight: 600; }
 
     /* ── Loading ─────────────────────────────────────────────────── */
     .pd-loading {
@@ -548,24 +666,23 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
       font-family: var(--font);
       white-space: nowrap;
       transition: all .15s;
-
-      &--ghost {
-        background: var(--surface);
-        color: var(--steel);
-        border: 1px solid var(--border);
-        &:hover { background: var(--border); }
-      }
-      &--primary {
-        background: var(--navy);
-        color: var(--white);
-        &:hover { background: var(--navy-mid); }
-      }
-      &--teal {
-        background: #ccfbf1;
-        color: #115e59;
-        &:hover { background: #99f6e4; }
-      }
     }
+    .pd-btn-act--ghost {
+      background: var(--surface);
+      color: var(--steel);
+      border: 1px solid var(--border);
+    }
+    .pd-btn-act--ghost:hover { background: var(--border); }
+    .pd-btn-act--primary {
+      background: var(--navy);
+      color: var(--white);
+    }
+    .pd-btn-act--primary:hover { background: var(--navy-mid); }
+    .pd-btn-act--teal {
+      background: #ccfbf1;
+      color: #115e59;
+    }
+    .pd-btn-act--teal:hover { background: #99f6e4; }
 
     /* ══ MODAL ══════════════════════════════════════════════════════ */
     .pd-modal-veil {
@@ -666,9 +783,9 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
       font-size: .85rem;
       font-weight: 500;
       margin-bottom: 16px;
-      &--ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
-      &--err { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
     }
+    .pd-feedback--ok  { background: #f0fdf4; color: #15803d; border: 1px solid #bbf7d0; }
+    .pd-feedback--err { background: #fef2f2; color: var(--red); border: 1px solid #fecaca; }
 
     /* ── Drop zone ───────────────────────────────────────────────── */
     .pd-drop-zone {
@@ -786,10 +903,127 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
     @media (max-width: 768px) {
       .pd-table th:nth-child(2),
       .pd-table td:nth-child(2) { display: none; }
-      .pd-kpi-sep { display: none; }
-      .pd-kpi { flex: 1 1 40%; }
+      .pd-diagram-body { flex-direction: column; align-items: flex-start; }
+      .pd-diagram-legend { min-width: 100%; }
       .pd-topbar { flex-direction: column; gap: 12px; align-items: flex-start; }
     }
+
+    /* ── Stats panel (barres + anneau) ──────────────────────────────── */
+.pd-stats-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 1.75rem;
+}
+.pd-chart-card {
+  background: var(--white);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 20px 22px;
+}
+.pd-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 18px;
+}
+.pd-chart-header h3 {
+  margin: 0;
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.pd-chart-header span {
+  font-size: .74rem;
+  color: var(--mist);
+}
+
+/* Barres */
+.pd-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 20px;
+  height: 130px;
+}
+.pd-bar-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  height: 100%;
+  justify-content: flex-end;
+}
+.pd-bar-track {
+  width: 28px;
+  height: 90px;
+  background: var(--surface);
+  border-radius: 6px;
+  display: flex;
+  align-items: flex-end;
+  overflow: hidden;
+}
+.pd-bar-fill {
+  width: 100%;
+  border-radius: 6px 6px 0 0;
+  transition: height .3s ease;
+}
+.pd-bar-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+.pd-bar-meta strong {
+  font-size: .95rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.pd-bar-meta span {
+  font-size: .7rem;
+  color: var(--mist);
+  text-align: center;
+}
+
+/* Anneau */
+.pd-ring-card {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  height: 130px;
+}
+.pd-ring {
+  transform: rotate(-90deg);
+}
+.pd-ring-bg {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 10;
+}
+.pd-ring-progress {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset .4s ease;
+}
+.pd-ring-center {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pd-ring-center strong {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--navy);
+}
+.pd-ring-center span {
+  font-size: .7rem;
+  color: var(--mist);
+  margin-top: 2px;
+}
   `]
 })
 export class PrestataireDashboardComponent implements OnInit, OnDestroy {
@@ -841,6 +1075,7 @@ export class PrestataireDashboardComponent implements OnInit, OnDestroy {
     this.loading = true;
     this.prestataireService.getDashboard().subscribe({
       next: (data) => {
+        console.log('Dashboard data:', data); // ← vérifier les noms exacts des champs
         this.stats    = data;
         this.missions = data.dernieresMissions || [];
         this.loading  = false;
@@ -879,6 +1114,47 @@ export class PrestataireDashboardComponent implements OnInit, OnDestroy {
       );
     }
     return this.missions;
+  }
+
+  /** Missions ne rentrant pas dans en cours / PV soumis / terminées (assignée, facture soumise/rejetée, rejetée…) */
+  get autresMissions(): number {
+    if (!this.stats) return 0;
+    const total = this.stats.totalMissions || 0;
+    const compte = (this.stats.missionsEnCours || 0)
+      + (this.stats.pvSoumis || 0)
+      + (this.stats.missionsTerminees || 0);
+    return Math.max(total - compte, 0);
+  }
+
+  /** Pourcentage d'une valeur par rapport au total de missions */
+  getStatPercent(valeur: number): number {
+    if (!this.stats || !this.stats.totalMissions) return 0;
+    return Math.round(((valeur || 0) / this.stats.totalMissions) * 100);
+  }
+
+  /** Gradient conique pour le donut, basé sur les 4 segments */
+  get donutGradient(): string {
+    if (!this.stats || !this.stats.totalMissions) {
+      return `conic-gradient(var(--border) 0deg 360deg)`;
+    }
+    const total = this.stats.totalMissions;
+    const segments = [
+      { valeur: this.stats.missionsEnCours || 0,   couleur: 'var(--amber)'  },
+      { valeur: this.stats.pvSoumis || 0,          couleur: 'var(--purple)' },
+      { valeur: this.stats.missionsTerminees || 0, couleur: 'var(--green)'  },
+      { valeur: this.autresMissions,               couleur: 'var(--border)' },
+    ];
+
+    let curseur = 0;
+    const stops: string[] = [];
+    segments.forEach(seg => {
+      const deg = (seg.valeur / total) * 360;
+      if (deg > 0) {
+        stops.push(`${seg.couleur} ${curseur}deg ${curseur + deg}deg`);
+        curseur += deg;
+      }
+    });
+    return stops.length ? `conic-gradient(${stops.join(', ')})` : `conic-gradient(var(--border) 0deg 360deg)`;
   }
 
   getStatutClass(statut: string): string {
@@ -990,5 +1266,37 @@ export class PrestataireDashboardComponent implements OnInit, OnDestroy {
         URL.revokeObjectURL(url);
       }
     });
+  }
+
+
+
+  /** Barres : répartition des missions par statut (remplace le donut) */
+  get chartBarsStatut(): { label: string; value: number; percent: number; color: string }[] {
+    if (!this.stats || !this.stats.totalMissions) return [];
+
+    const data = [
+      { label: 'En cours',  value: this.stats.missionsEnCours || 0,   color: 'var(--amber)'  },
+      { label: 'PV soumis', value: this.stats.pvSoumis || 0,          color: 'var(--purple)' },
+      { label: 'Terminées', value: this.stats.missionsTerminees || 0, color: 'var(--green)'  },
+      { label: 'Autres',    value: this.autresMissions,               color: 'var(--mist)'   },
+    ];
+
+    const max = Math.max(...data.map(d => d.value), 1);
+
+    return data.map(d => ({ ...d, percent: Math.round((d.value / max) * 100) }));
+  }
+/** Circonférence du cercle SVG (rayon = 54) */
+readonly ringCircumference = 2 * Math.PI * 54; // ≈ 339.29
+  /** Anneau : taux de validation des PV (missions terminées / PV soumis au total) */
+  get tauxValidation(): number {
+    if (!this.stats) return 0;
+    const soumisTotal = (this.stats.pvSoumis || 0) + (this.stats.missionsTerminees || 0);
+    if (!soumisTotal) return 0;
+    return Math.round(((this.stats.missionsTerminees || 0) / soumisTotal) * 100);
+  }
+
+  get ringOffsetValidation(): number {
+    const progress = this.tauxValidation / 100;
+    return this.ringCircumference * (1 - progress);
   }
 }

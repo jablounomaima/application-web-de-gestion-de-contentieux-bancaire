@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, ActivatedRoute } from '@angular/router';
 import { KeycloakService } from 'keycloak-angular';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { environment } from '../../../../environments/environment';
 
 @Component({
@@ -14,22 +14,29 @@ import { environment } from '../../../../environments/environment';
     <div class="login-container">
       <div class="login-card">
         <div class="login-logo">
-          <span class="logo-icon">🏦</span>
+          <div class="login-badge">Sécurisé • Moderne</div>
+          <div class="logo-mark">CB</div>
           <h1>Contentieux Bancaire</h1>
           <p>Plateforme de gestion des dossiers contentieux</p>
         </div>
 
-        <!-- ── Bouton connexion — masqué si formulaire mdp oublié ouvert ── -->
+        <!-- ── Bouton connexion ── -->
         <button class="login-btn" (click)="login()" *ngIf="!mdpOublieMode">
           <span>🔐</span>
-          Se connecter 
+          Se connecter
         </button>
 
         <!-- ── Lien mot de passe oublié ── -->
         <div class="mdp-oublie-link" *ngIf="!mdpOublieMode">
-          <a href="#"
-             (click)="$event.preventDefault(); ouvrirMdpOublie()">
+          <a href="#" (click)="$event.preventDefault(); ouvrirMdpOublie()">
             Mot de passe oublié ?
+          </a>
+        </div>
+
+        <!-- ── Lien Assistant IA ── -->
+        <div class="ai-link" *ngIf="!mdpOublieMode">
+          <a href="http://localhost:5001" target="_blank" rel="noopener">
+            🤖 Assistant IA Contentieux
           </a>
         </div>
 
@@ -38,20 +45,18 @@ import { environment } from '../../../../environments/environment';
 
           <h4>🔐 Mot de passe oublié</h4>
 
-          <!-- Formulaire de saisie -->
           <ng-container *ngIf="!mdpOublieMsg">
             <p class="mdp-oublie-desc">
               Saisissez votre email ou nom d'utilisateur. Un administrateur sera
               notifié et vous enverra un nouveau mot de passe.
             </p>
 
-            <!-- ✅ type="text" — accepte email OU username -->
             <input type="text"
                    [(ngModel)]="emailOublie"
                    placeholder="Email ou nom d'utilisateur"
-                   class="mdp-oublie-input" />
+                   class="mdp-oublie-input"
+                   (keyup.enter)="envoyerDemandeMdpOublie()" />
 
-            <!-- Message d'erreur -->
             <p class="mdp-erreur" *ngIf="mdpOublieErreur">
               ⚠️ {{ mdpOublieErreur }}
             </p>
@@ -70,7 +75,6 @@ import { environment } from '../../../../environments/environment';
             </div>
           </ng-container>
 
-          <!-- Message de confirmation -->
           <div class="mdp-confirmation" *ngIf="mdpOublieMsg">
             <p>✅ {{ mdpOublieMsg }}</p>
             <button class="btn-retour" (click)="fermerMdpOublie()">
@@ -83,37 +87,86 @@ import { environment } from '../../../../environments/environment';
     </div>
   `,
   styles: [`
+    .ai-link {
+      margin-top: 16px;
+      text-align: center;
+    }
+    .ai-link a {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 18px;
+      font-size: 12px;
+      font-weight: 500;
+      color: #1d4ed8;
+      border: 1px solid #bfdbfe;
+      border-radius: 999px;
+      text-decoration: none;
+      background: #eff6ff;
+      transition: all .2s;
+    }
+    .ai-link a:hover {
+      background: #dbeafe;
+      border-color: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(37,99,235,.15);
+    }
     .login-container {
       min-height: 100vh;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: linear-gradient(135deg, #001f3f 0%, #003d7a 100%);
+      padding: 24px;
+      background: radial-gradient(circle at top left, #dbeafe 0%, #eff6ff 35%, #f8fbff 100%);
     }
     .login-card {
-      background: white;
-      border-radius: 16px;
-      padding: 50px 40px;
+      background: rgba(255,255,255,0.95);
+      backdrop-filter: blur(18px);
+      border-radius: 24px;
+      padding: 48px 40px;
       text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      box-shadow: 0 24px 80px rgba(15, 23, 42, 0.16);
       width: 100%;
-      max-width: 420px;
+      max-width: 430px;
+      border: 1px solid rgba(148,163,184,0.2);
     }
-    .login-logo { margin-bottom: 35px; }
-    .logo-icon { font-size: 3rem; display: block; margin-bottom: 15px; }
-    h1 { color: #001f3f; font-size: 1.6rem; font-weight: 700; margin: 0 0 10px 0; }
-    p { color: #666; font-size: 0.9rem; margin: 0; }
-
-    /* ── Bouton connexion ── */
+    .login-logo { margin-bottom: 28px; }
+    .login-badge {
+      display: inline-flex;
+      padding: 6px 12px;
+      border-radius: 999px;
+      background: #eff6ff;
+      color: #2563eb;
+      font-size: 0.74rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+    .logo-mark {
+      width: 56px;
+      height: 56px;
+      border-radius: 16px;
+      margin: 0 auto 14px;
+      display: grid;
+      place-items: center;
+      background: linear-gradient(135deg, #1d4ed8, #60a5fa);
+      color: white;
+      font-weight: 800;
+      font-size: 1.1rem;
+      box-shadow: 0 14px 24px rgba(37,99,235,.24);
+    }
+    h1 { color: #0f172a; font-size: 1.55rem; font-weight: 800; margin: 0 0 10px 0; }
+    p { color: #64748b; font-size: 0.95rem; margin: 0; }
     .login-btn {
       width: 100%;
       padding: 14px 20px;
-      background: linear-gradient(135deg, #001f3f, #007bff);
+      background: linear-gradient(135deg, #0f172a, #2563eb);
       color: white;
       border: none;
-      border-radius: 10px;
+      border-radius: 999px;
       font-size: 1rem;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -123,10 +176,8 @@ import { environment } from '../../../../environments/environment';
     }
     .login-btn:hover {
       transform: translateY(-2px);
-      box-shadow: 0 8px 20px rgba(0,123,255,0.4);
+      box-shadow: 0 10px 24px rgba(37,99,235,0.25);
     }
-
-    /* ── Lien mot de passe oublié ── */
     .mdp-oublie-link {
       margin-top: 14px;
       text-align: center;
@@ -138,8 +189,6 @@ import { environment } from '../../../../environments/environment';
       cursor: pointer;
     }
     .mdp-oublie-link a:hover { text-decoration: underline; }
-
-    /* ── Formulaire mot de passe oublié ── */
     .mdp-oublie-form {
       margin-top: 16px;
       padding: 20px;
@@ -202,8 +251,6 @@ import { environment } from '../../../../environments/environment';
     }
     .btn-envoyer:hover:not(:disabled) { background: #283593; }
     .btn-envoyer:disabled { opacity: 0.6; cursor: not-allowed; }
-
-    /* ── Confirmation ── */
     .mdp-confirmation {
       text-align: center;
       padding: 12px;
@@ -226,7 +273,6 @@ import { environment } from '../../../../environments/environment';
 })
 export class LoginComponent implements OnInit {
 
-  // ── Mot de passe oublié ───────────────────────────────────────
   mdpOublieMode   = false;
   emailOublie     = '';
   mdpOublieMsg    = '';
@@ -237,21 +283,26 @@ export class LoginComponent implements OnInit {
     private keycloak: KeycloakService,
     private router:   Router,
     private http:     HttpClient,
-    private route:    ActivatedRoute,  // ✅ injecté
+    private route:    ActivatedRoute,
   ) {}
 
   async ngOnInit() {
-    this.route.queryParams.subscribe(params => {
-      if (params['mdpOublie'] === 'true') {
-        this.mdpOublieMode = true;
-      }
+    // ── Lire les query params EN PREMIER ────────────────────────
+    const params = await new Promise<any>(resolve => {
+      this.route.queryParams.subscribe(p => resolve(p));
     });
   
+    // ✅ Si mode mdp oublié → NE PAS vérifier Keycloak du tout
+    if (params['mdpOublie'] === 'true') {
+      this.mdpOublieMode = true;
+      return;  // ← STOP — pas de redirection Keycloak
+    }
+  
+    // ── Sinon → comportement normal Keycloak ────────────────────
     try {
       const isLoggedIn = await this.keycloak.isLoggedIn();
       if (!isLoggedIn) return;
   
-      // ✅ Vérifier que l'instance existe avant d'y accéder
       const keycloakInstance = this.keycloak.getKeycloakInstance();
       if (!keycloakInstance) {
         this.redirectByRole();
@@ -274,7 +325,6 @@ export class LoginComponent implements OnInit {
   
     } catch (err) {
       console.warn('Erreur ngOnInit login:', err);
-      // Ne pas bloquer — laisser l'utilisateur cliquer sur Se connecter
     }
   }
 
@@ -283,8 +333,6 @@ export class LoginComponent implements OnInit {
       redirectUri: window.location.origin + '/login'
     });
   }
-
-  // ── Mot de passe oublié ───────────────────────────────────────
 
   ouvrirMdpOublie(): void {
     this.mdpOublieMode   = true;
@@ -298,11 +346,14 @@ export class LoginComponent implements OnInit {
     this.emailOublie     = '';
     this.mdpOublieMsg    = '';
     this.mdpOublieErreur = '';
-    // ✅ Nettoyer le paramètre URL
     this.router.navigate(['/login'], { replaceUrl: true });
   }
 
   envoyerDemandeMdpOublie(): void {
+    console.log('🔥 envoyerDemandeMdpOublie appelé');
+    console.log('📧 emailOublie:', this.emailOublie);
+    console.log('🌐 apiUrl:', environment.apiUrl);
+
     this.mdpOublieErreur = '';
 
     if (!this.emailOublie.trim()) {
@@ -310,27 +361,29 @@ export class LoginComponent implements OnInit {
       return;
     }
 
-    // ✅ Pas de validation regex — on accepte email OU username
-
     this.envoi = true;
+
+    // ✅ Header JSON explicite pour éviter text/plain
+    const headers = new HttpHeaders({ 'Content-Type': 'application/json' });
 
     this.http.post<any>(
       `${environment.apiUrl}/api/public/mot-de-passe-oublie`,
-      { email: this.emailOublie.trim() }
+      { email: this.emailOublie.trim() },
+      { headers }
     ).subscribe({
       next: (res) => {
+        console.log('✅ Réponse reçue:', res);
         this.mdpOublieMsg = res.message;
         this.envoi        = false;
         this.emailOublie  = '';
       },
-      error: () => {
+      error: (err) => {
+        console.error('❌ Erreur HTTP:', err);
         this.mdpOublieMsg = "Si cet identifiant existe, un administrateur a été notifié.";
         this.envoi        = false;
       }
     });
   }
-
-  // ── Redirection par rôle ──────────────────────────────────────
 
   private redirectByRole() {
     const roles = this.keycloak.getUserRoles();

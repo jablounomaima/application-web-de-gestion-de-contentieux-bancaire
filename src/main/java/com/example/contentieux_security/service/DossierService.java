@@ -291,15 +291,15 @@ public void validerFinancier(Long dossierId, String username,
     if (!username.equals(dossier.getValidateurFinancierChoisi()))
         throw new RuntimeException("Vous n'êtes pas le validateur assigné");
 
-    if (dossier.getStatut() != DossierStatus.EN_TRAITEMENT)
-        throw new RuntimeException("Ce dossier n'est pas en attente de validation");
-
+    if (dossier.getStatut() != DossierStatus.EN_TRAITEMENT
+    && dossier.getStatut() != DossierStatus.EN_CORRECTION)
+throw new RuntimeException("Ce dossier n'est pas en attente de validation");
     dossier.setValidationFinanciere(accepte);
     dossier.setCommentaireFinancier(commentaire);
     dossier.setValidateurFinancierUsername(username);
 
     if (!accepte) {
-        dossier.setStatut(DossierStatus.REJETE);
+        dossier.setStatut(DossierStatus.EN_CORRECTION);
     } else if (Boolean.TRUE.equals(dossier.getValidationJuridique())) {
         dossier.setStatut(DossierStatus.VALIDE);
     }
@@ -350,15 +350,15 @@ public void validerJuridique(Long dossierId, String username,
     if (!username.equals(dossier.getValidateurJuridiqueChoisi()))
         throw new RuntimeException("Vous n'êtes pas le validateur juridique assigné");
 
-    if (dossier.getStatut() != DossierStatus.EN_TRAITEMENT)
-        throw new RuntimeException("Ce dossier n'est pas en attente de validation");
-
+    if (dossier.getStatut() != DossierStatus.EN_TRAITEMENT
+    && dossier.getStatut() != DossierStatus.EN_CORRECTION)
+throw new RuntimeException("Ce dossier n'est pas en attente de validation");
     dossier.setValidationJuridique(accepte);
     dossier.setCommentaireJuridique(commentaire);
     dossier.setValidateurJuridiqueUsername(username);
 
     if (!accepte) {
-        dossier.setStatut(DossierStatus.REJETE);
+        dossier.setStatut(DossierStatus.EN_CORRECTION);
     } else if (Boolean.TRUE.equals(dossier.getValidationFinanciere())) {
         dossier.setStatut(DossierStatus.VALIDE);
     }
@@ -532,16 +532,18 @@ public void validerJuridique(Long dossierId, String username,
         DossierContentieux dossier = getDossierByIdAndAgent(id, agentUsername);
 
         if (dossier.getStatut() != DossierStatus.OUVERT
-                && dossier.getStatut() != DossierStatus.REJETE)
-            throw new RuntimeException(
-                "Ce dossier ne peut plus être modifié (statut : "
-                    + dossier.getStatut() + ")");
+        && dossier.getStatut() != DossierStatus.EN_CORRECTION
+        && dossier.getStatut() != DossierStatus.REJETE)
+    throw new RuntimeException(
+        "Ce dossier ne peut plus être modifié (statut : "
+            + dossier.getStatut() + ")");
 
         if (request.getLibelle()     != null) dossier.setLibelle(request.getLibelle());
         if (request.getDescription() != null) dossier.setDescription(request.getDescription());
         if (request.getNotes()       != null) dossier.setNotes(request.getNotes());
 
-        if (dossier.getStatut() == DossierStatus.REJETE) {
+        if (dossier.getStatut() == DossierStatus.EN_CORRECTION
+        || dossier.getStatut() == DossierStatus.REJETE){
             dossier.setStatut(DossierStatus.OUVERT);
             if (Boolean.FALSE.equals(dossier.getValidationFinanciere())) {
                 dossier.setValidationFinanciere(null);
@@ -586,6 +588,7 @@ public void validerJuridique(Long dossierId, String username,
         DossierContentieux dossier = getDossierByIdAndAgent(dossierId, username);
 
         if (dossier.getStatut() != DossierStatus.OUVERT
+        && dossier.getStatut() != DossierStatus.EN_CORRECTION
                 && dossier.getStatut() != DossierStatus.REJETE)
             throw new RuntimeException(
                 "Impossible d'ajouter un risque : dossier en cours de traitement");
@@ -646,4 +649,110 @@ public void validerJuridique(Long dossierId, String username,
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
     }
+
+
+    @Transactional
+    public void ressoumettre(Long id, String username) {
+    
+        // ── 1. Charger avec TOUS les détails nécessaires ──────────────
+        DossierContentieux dossier = dossierRepository.findByIdWithDetails(id)
+                .orElseThrow(() -> new RuntimeException("Dossier introuvable"));
+    
+        // ── 2. Vérifier que c'est bien l'agent propriétaire ──────────
+        if (dossier.getAgentCreateur() == null
+                || !dossier.getAgentCreateur().getUsername().equals(username)) {
+            throw new RuntimeException("Accès refusé à ce dossier");
+        }
+    
+        // ── 3. Vérifier le statut ─────────────────────────────────────
+        if (dossier.getStatut() != DossierStatus.EN_CORRECTION
+                && dossier.getStatut() != DossierStatus.OUVERT) {
+            throw new RuntimeException(
+                "Ce dossier ne peut pas être re-soumis (statut : "
+                + dossier.getStatut() + ")");
+        }
+    
+        // ── 4. Vérifier les risques (liste déjà chargée par findByIdWithDetails) ──
+        List<Risque> risques = dossier.getRisques();
+        if (risques == null || risques.isEmpty()) {
+            throw new RuntimeException("Ajoutez au moins un risque avant de soumettre.");
+        }
+    
+        boolean risqueSelectionne = risques.stream().anyMatch(Risque::isSelectionne);
+        if (!risqueSelectionne) {
+            throw new RuntimeException("Sélectionnez au moins un crédit avant de soumettre.");
+        }
+    
+        // ── 5. Nom du client ──────────────────────────────────────────
+        Client client = dossier.getClient();
+        String nomClient = "Client inconnu";
+        if (client != null) {
+            if (client.getTypeClient() == TypeClient.ENTREPRISE) {
+                nomClient = client.getRaisonSociale() != null
+                    ? client.getRaisonSociale() : "Client inconnu";
+            } else {
+                String nom    = client.getNom()    != null ? client.getNom()    : "";
+                String prenom = client.getPrenom() != null ? client.getPrenom() : "";
+                nomClient     = (nom + " " + prenom).trim();
+            }
+        }
+        if (nomClient.isBlank()) nomClient = "Client inconnu";
+    
+        String messageBase = "Le dossier " + dossier.getNumeroDossier()
+                           + " de " + nomClient;
+    
+        // ── 6. Logique de re-soumission ciblée ───────────────────────
+        //
+        //  Cas A : financier rejeté (false), juridique pas encore statué (null)
+        //          → notifier uniquement le financier
+        //
+        //  Cas B : juridique rejeté (false), financier pas encore statué (null)  
+        //          → notifier uniquement le juridique
+        //
+        //  Cas C : les deux ont rejeté (false, false)
+        //          → notifier les deux
+        //
+        boolean finRejetee = Boolean.FALSE.equals(dossier.getValidationFinanciere());
+        boolean jurRejetee = Boolean.FALSE.equals(dossier.getValidationJuridique());
+    
+        if (finRejetee) {
+            dossier.setValidationFinanciere(null);
+            dossier.setCommentaireFinancier(null);
+    
+            if (dossier.getValidateurFinancierChoisi() != null
+                    && !dossier.getValidateurFinancierChoisi().isBlank()) {
+                notificationService.notifier(
+                    dossier.getValidateurFinancierChoisi(),
+                    "🔄 Dossier re-soumis après correction",
+                    messageBase + " a été corrigé et nécessite votre validation financière.",
+                    "VALIDATION_FINANCIERE",
+                    dossier
+                );
+            }
+        }
+    
+        if (jurRejetee) {
+            dossier.setValidationJuridique(null);
+            dossier.setCommentaireJuridique(null);
+    
+            if (dossier.getValidateurJuridiqueChoisi() != null
+                    && !dossier.getValidateurJuridiqueChoisi().isBlank()) {
+                notificationService.notifier(
+                    dossier.getValidateurJuridiqueChoisi(),
+                    "🔄 Dossier re-soumis après correction",
+                    messageBase + " a été corrigé et nécessite votre validation juridique.",
+                    "VALIDATION_JURIDIQUE",
+                    dossier
+                );
+            }
+        }
+    
+        // ── 7. Sauvegarder et historique ──────────────────────────────
+        dossier.setStatut(DossierStatus.EN_TRAITEMENT);
+        dossierRepository.save(dossier);
+    
+        historiqueService.enregistrer(dossier, HistoriqueService.SOUMISSION,
+                "Dossier re-soumis après correction par " + username, username);
+    }
+
 }

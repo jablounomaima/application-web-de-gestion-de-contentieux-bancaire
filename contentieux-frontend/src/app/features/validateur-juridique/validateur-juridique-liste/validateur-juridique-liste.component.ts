@@ -15,7 +15,8 @@ export class ValidateurJuridiqueListeComponent implements OnInit, OnChanges {
   @Input()  dossierId:      number | null = null;
   @Output() dossiersCharges = new EventEmitter<any[]>();
   @Output() actionDemandee = new EventEmitter<{ dossier: any; type: 'valider' | 'rejeter' }>();
-
+// ✅ Ajouter dans les composants liste
+@Input() highlightedDossierId: number | null = null;
   dossiers:       any[]            = [];
   dossierDetails: Map<number, any> = new Map();
   loadingDetail:  Set<number>      = new Set();

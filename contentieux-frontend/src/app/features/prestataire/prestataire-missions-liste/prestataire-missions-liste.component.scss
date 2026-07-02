@@ -1,3 +1,5 @@
+@use "sass:color";
+
 // ═══════════════════════════════════════════════════════════════════
 // TOKENS
 // ─ Palette : navy profond + blanc cassé + accents vifs par statut
@@ -305,7 +307,7 @@ $font: 'Inter', -apple-system, sans-serif;
 
   &:hover {
     box-shadow: 0 6px 24px rgba(13,27,62,.07);
-    border-color: darken($border, 5%);
+    border-color: color.adjust($border, $lightness: -5%);
   }
 
   &--retard  { border-color: $amber; }
@@ -357,7 +359,7 @@ $font: 'Inter', -apple-system, sans-serif;
   padding: 3px 8px;
   border-radius: 99px;
   background: $amber-bg;
-  color: darken($amber, 25%);
+  color: color.adjust($amber, $lightness: -25%);
   border: 1px solid rgba($amber, .3);
 }
 .pl-statut-pill {
@@ -420,7 +422,7 @@ $font: 'Inter', -apple-system, sans-serif;
   border-radius: $radius-sm;
   border-left: 3px solid $red;
   font-size: .83rem;
-  color: darken($red, 10%);
+  color: color.adjust($red, $lightness: -10%);
   line-height: 1.45;
 
   svg { flex-shrink: 0; margin-top: 1px; }
@@ -553,7 +555,7 @@ $font: 'Inter', -apple-system, sans-serif;
   flex-shrink: 0;
   margin-top: 2px;
   transition: background .15s;
-  &:hover { background: darken($border, 8%); }
+  &:hover { background: color.adjust($border, $lightness: -8%); }
 }
 .pl-modal-body {
   padding: 24px;
@@ -591,7 +593,7 @@ $font: 'Inter', -apple-system, sans-serif;
 }
 .pl-modal-rejet-text {
   font-size: .87rem;
-  color: darken($red, 12%);
+  color: color.adjust($red, $lightness: -12%);
   line-height: 1.45;
 }
 
@@ -603,7 +605,7 @@ $font: 'Inter', -apple-system, sans-serif;
   font-weight: 500;
   margin-bottom: 16px;
 
-  &--ok  { background: $green-bg; color: darken($green, 5%); border: 1px solid #bbf7d0; }
+  &--ok  { background: $green-bg; color: color.adjust($green, $lightness: -5%); border: 1px solid #bbf7d0; }
   &--err { background: $red-bg;   color: $red;                border: 1px solid #fecaca; }
 }
 
@@ -617,7 +619,7 @@ $font: 'Inter', -apple-system, sans-serif;
   border: 1px solid #bfdbfe;
   border-radius: $radius-sm;
   font-size: .85rem;
-  color: darken($blue, 10%);
+  color: color.adjust($blue, $lightness: -10%);
   margin-bottom: 18px;
 }
 

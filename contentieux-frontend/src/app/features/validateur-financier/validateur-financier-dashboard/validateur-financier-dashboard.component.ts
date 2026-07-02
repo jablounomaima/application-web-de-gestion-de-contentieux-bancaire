@@ -29,6 +29,9 @@ export class ValidateurFinancierDashboardComponent implements OnInit, OnDestroy 
   recharger           = false;
   dossierId:          number | null         = null;
 
+  // ✅ Surlignage — même principe que admin-dashboard
+  highlightedDossierId: number | null = null;
+
   private destroy$ = new Subject<void>();
 
   constructor(
@@ -40,28 +43,33 @@ export class ValidateurFinancierDashboardComponent implements OnInit, OnDestroy 
   ngOnInit(): void {
     this.loading = true;
 
-    // Premier chargement via queryParams
+    // ── Query params — dossierId depuis URL ───────────────
     this.route.queryParams
       .pipe(takeUntil(this.destroy$))
       .subscribe(params => {
         const id = params['dossierId'] ? Number(params['dossierId']) : null;
-        if (id) this.dossierId = id;
+        if (id) {
+          this.dossierId          = id;
+          this.highlightedDossierId = id;  // ✅ surligner
+        }
       });
 
-    // Navigation depuis notification (même URL)
+    // ── Navigation depuis notification (même URL) ─────────
     this.notifService.dossierCible$
       .pipe(takeUntil(this.destroy$))
       .subscribe(id => {
         if (id !== null) {
-          this.dossierId = null;
+          this.dossierId          = null;
+          this.highlightedDossierId = null;
           setTimeout(() => {
-            this.dossierId = id;
+            this.dossierId          = id;
+            this.highlightedDossierId = id;  // ✅ surligner
             this.notifService.signalerDossierCible(null);
           }, 50);
         }
       });
 
-    // Rechargement temps réel — nouveau dossier à valider
+    // ── Rechargement temps réel ───────────────────────────
     this.notifService.nouvelleNotif$
       .pipe(takeUntil(this.destroy$))
       .subscribe(notif => {
@@ -79,12 +87,26 @@ export class ValidateurFinancierDashboardComponent implements OnInit, OnDestroy 
   mettreAJourStats(dossiers: any[]): void {
     this.dossiers = dossiers;
     this.valides  = dossiers.filter(d => d.validationFinanciere === true).length;
-    this.rejetes  = dossiers.filter(d => d.validationFinanciere === false
-                                      && d.statut !== 'EN_TRAITEMENT').length;
+    this.rejetes  = dossiers.filter(
+      d => d.validationFinanciere === false && d.statut !== 'EN_TRAITEMENT'
+    ).length;
     this.loading  = false;
+
+    // ✅ Sélectionner + surligner le dossier cible
     if (this.dossierId) {
-      const dossier = dossiers.find(d => Number(d.id) === Number(this.dossierId));
-      if (dossier) this.dossierSelectionne = dossier;
+      const dossier = dossiers.find(
+        d => Number(d.id) === Number(this.dossierId)
+      );
+      if (dossier) {
+        this.dossierSelectionne   = null; // ne pas ouvrir le modal auto
+        this.highlightedDossierId = dossier.id;
+
+        // ✅ Scroll vers la ligne après rendu
+        setTimeout(() => {
+          const el = document.getElementById('dossier-row-' + dossier.id);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
     }
   }
 
@@ -115,14 +137,17 @@ export class ValidateurFinancierDashboardComponent implements OnInit, OnDestroy 
     this.erreur     = '';
 
     const obs = this.actionType === 'valider'
-      ? this.validateurService.validerFinancier(this.dossierSelectionne.id, this.commentaire)
-      : this.validateurService.rejeterFinancier(this.dossierSelectionne.id, this.commentaire);
+      ? this.validateurService.validerFinancier(
+          this.dossierSelectionne.id, this.commentaire)
+      : this.validateurService.rejeterFinancier(
+          this.dossierSelectionne.id, this.commentaire);
 
     obs.subscribe({
       next: () => {
-        this.soumission         = false;
-        this.dossierSelectionne = null;
-        this.recharger          = !this.recharger;
+        this.soumission           = false;
+        this.dossierSelectionne   = null;
+        this.highlightedDossierId = null;  // ✅ enlever surlignage après action
+        this.recharger            = !this.recharger;
       },
       error: (err: any) => {
         this.erreur     = err.error?.error ?? 'Erreur lors de l\'opération.';
@@ -130,4 +155,32 @@ export class ValidateurFinancierDashboardComponent implements OnInit, OnDestroy 
       }
     });
   }
+
+
+
+  get chartBars() {
+    const total = this.getNbEnAttente() + this.valides + this.rejetes || 1;
+    return [
+      { label: 'En attente', value: this.getNbEnAttente(), percent: (this.getNbEnAttente() / total) * 100, color: '#ffb300' },
+      { label: 'Validés',    value: this.valides,           percent: (this.valides / total) * 100,           color: '#43a047' },
+      { label: 'Rejetés',    value: this.rejetes,            percent: (this.rejetes / total) * 100,            color: '#e53935' }
+    ];
+  }
+  
+  get tauxValidation(): number {
+    const total = this.getNbEnAttente() + this.valides + this.rejetes;
+    return total ? Math.round((this.valides / total) * 100) : 0;
+  }
+  
+  private readonly ringRadius = 54;
+  
+  get ringCircumference(): number {
+    return 2 * Math.PI * this.ringRadius;
+  }
+  
+  get ringOffset(): number {
+    const circ = this.ringCircumference;
+    return circ - (this.tauxValidation / 100) * circ;
+  }
 }
+

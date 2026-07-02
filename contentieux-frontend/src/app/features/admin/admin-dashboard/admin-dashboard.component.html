@@ -1,301 +1,356 @@
-
-
 <div class="dashboard-container">
 
-    <!-- HEADER -->
-    <div class="header-section">
-        <div class="title-group">
-            <span class="admin-badge">⚙️ ADMIN PANEL</span>
-            <h1>Administration Système</h1>
-            <p class="subtitle">Gérez les agences, agents et validateurs du réseau Contentieux</p>
-        </div>
-    </div>
-
-    <!-- STATS -->
-    <div class="stats-row">
-        <div class="stat-card blue">
-            <div class="stat-icon">👥</div>
-            <div class="stat-info">
-                <h4>Agents</h4>
-                <span class="stat-value">{{ agents.length }}</span>
-                <small>{{ agentsActifs }} actifs</small>
+    <section class="hero-panel">
+        <div class="hero-copy">
+            <span class="eyebrow">Centre d'administration</span>
+            <h1>Supervision moderne du réseau Contentieux</h1>
+            <p>Gérez les agents, agences et validateurs depuis un tableau de bord professionnel, clair et orienté performance.</p>
+            <div class="hero-actions">
+                <button class="btn btn-primary" (click)="openCreateModal('agent')">+ Ajouter un agent</button>
+                <button class="btn btn-secondary" (click)="setTab('validateurs')">Voir l’équipe de validation</button>
             </div>
         </div>
-        <div class="stat-card purple">
-            <div class="stat-icon">🏢</div>
-            <div class="stat-info">
-                <h4>Agences</h4>
-                <span class="stat-value">{{ agences.length }}</span>
+        <div class="hero-side">
+            <div class="hero-metric">
+                <span class="metric-label">Disponibilité</span>
+                <strong>99.8%</strong>
+                <small>plateforme admin opérationnelle</small>
             </div>
         </div>
-        <div class="stat-card orange">
-            <div class="stat-icon">⚖️</div>
-            <div class="stat-info">
-                <h4>Validateurs Juridiques</h4>
-                <span class="stat-value">{{ validateursJuridiques.length }}</span>
+    </section>
+
+  
+   
+    <section class="workspace-card">
+        <div class="workspace-header">
+            <div>
+                <span class="section-tag">Gestion admin</span>
+                <h2>Vue d’administration</h2>
             </div>
+            <div class="workspace-pill">Mise à jour en temps réel</div>
         </div>
-        <div class="stat-card green">
-            <div class="stat-icon">💰</div>
-            <div class="stat-info">
-                <h4>Validateurs Financiers</h4>
-                <span class="stat-value">{{ validateursFinanciers.length }}</span>
-            </div>
+
+        <div class="admin-tabs">
+            <button [class.active]="activeTab === 'agents'"
+                    (click)="setTab('agents')">👥 Agents Bancaires</button>
+            <button [class.active]="activeTab === 'agences'"
+                    (click)="setTab('agences')">🏢 Agences</button>
+            <button [class.active]="activeTab === 'validateurs'"
+                    (click)="setTab('validateurs')">⚖️ Validateurs</button>
         </div>
-    </div>
 
-    <!-- TABS -->
-    <div class="admin-tabs">
-        <button [class.active]="activeTab === 'agents'" (click)="setTab('agents')">👥 Agents Bancaires</button>
-        <button [class.active]="activeTab === 'agences'" (click)="setTab('agences')">🏢 Agences</button>
-        <button [class.active]="activeTab === 'validateurs'" (click)="setTab('validateurs')">⚖️ Validateurs</button>
-    </div>
+        <div class="toast" *ngIf="toast.visible" [class.error]="toast.isError">
+            {{ toast.message }}
+        </div>
 
-    <!-- NOTIFICATION TOAST -->
-    <div class="toast" *ngIf="toast.visible" [class.error]="toast.isError">
-        {{ toast.message }}
-    </div>
+        <div class="main-card">
 
-    <!-- MAIN CARD -->
-    <div class="main-card">
-
-        <!-- ── TABLE AGENTS ── -->
-        <div *ngIf="activeTab === 'agents'" class="tab-content">
-            <div class="content-header">
-                <div>
-                    <h2>Liste des Agents Bancaires</h2>
-                    <p class="count-info">{{ agents.length }} agent(s) enregistré(s)</p>
+            <!-- ── TABLE AGENTS ── -->
+            <div *ngIf="activeTab === 'agents'" class="tab-content">
+                <div class="content-header">
+                    <div>
+                        <h2>Liste des Agents Bancaires</h2>
+                        <p class="count-info">{{ agents.length }} agent(s) enregistré(s)</p>
+                    </div>
+                    <button class="btn-add" (click)="openCreateModal('agent')">
+                        + Ajouter un Agent
+                    </button>
                 </div>
-                <button class="btn-add" (click)="openCreateModal('agent')">+ Ajouter un Agent</button>
-            </div>
-            <div class="table-wrapper">
-                <div *ngIf="loading" class="loading-state">
-                    <div class="spinner"></div> Chargement...
-                </div>
-                <table class="premium-table" *ngIf="!loading">
-                    <thead>
-                        <tr>
-                            <th>Agent</th>
-                            <th>Matricule</th>
-                            <th>Agence</th>
-                            <th>Téléphone</th>
-                            <th>Statut</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngIf="agents.length === 0">
-                            <td colspan="6" class="empty-state">Aucun agent enregistré.</td>
-                        </tr>
-                        <tr *ngFor="let agent of agents" class="data-row">
-                            <td>
-                                <div class="user-info">
-                                    <div class="avatar blue-av">{{ agent.nom[0] }}{{ agent.prenom[0] }}</div>
-                                    <div>
-                                        <strong>{{ agent.nom }} {{ agent.prenom }}</strong>
-                                        <span>{{ agent.email }}</span>
-                                    </div>
-                                </div>
-                            </td>
-                            <td><code>{{ agent.matricule }}</code></td>
-                            <td><span class="agence-chip">{{ getAgenceName(agent.agenceId) }}</span></td>
-                            <td>{{ agent.telephone }}</td>
-                            <td>
-                                <span class="status-badge" [class.active]="agent.actif">
-                                    {{ agent.actif ? 'Actif' : 'Inactif' }}
-                                </span>
-                            </td>
-                            <td>
-                                <div class="btn-group">
-
-                                    <button class="btn-icon edit"
-                                            (click)="openEditModal('agent', agent)"
-                                            title="Modifier">
-                                        ✏️
-                                    </button>
-                                
-                                    <button class="btn-icon key"
-                                            (click)="reinitialiserMotDePasse(agent.username)"
-                                            title="Réinitialiser mot de passe">
-                                        🔑
-                                    </button>
-                                
-                                    <button class="btn-icon toggle"
-                                            (click)="toggleAgent(agent.id)"
-                                            [title]="agent.actif ? 'Désactiver' : 'Activer'">
-                                        {{ agent.actif ? '🔒' : '🔓' }}
-                                    </button>
-                                
-                                    <button class="btn-icon delete"
-                                            (click)="supprimerAgent(agent.id)"
-                                            title="Supprimer">
-                                        🗑️
-                                    </button>
-                                
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- ── TABLE AGENCES ── -->
-        <div *ngIf="activeTab === 'agences'" class="tab-content">
-            <div class="content-header">
-                <div>
-                    <h2>Gestion des Agences</h2>
-                    <p class="count-info">{{ agences.length }} agence(s)</p>
-                </div>
-                <button class="btn-add" (click)="openCreateModal('agence')">+ Nouvelle Agence</button>
-            </div>
-            <div class="table-wrapper">
-                <div *ngIf="loading" class="loading-state">
-                    <div class="spinner"></div> Chargement...
-                </div>
-                <table class="premium-table" *ngIf="!loading">
-                    <thead>
-                        <tr>
-                            <th>Code</th>
-                            <th>Nom de l'Agence</th>
-                            <th>Adresse</th>
-                            <th>Téléphone</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr *ngIf="agences.length === 0">
-                            <td colspan="5" class="empty-state">Aucune agence enregistrée.</td>
-                        </tr>
-                        <tr *ngFor="let agence of agences" class="data-row">
-                            <td><code>{{ agence.code }}</code></td>
-                            <td><strong>{{ agence.nom }}</strong></td>
-                            <td>{{ agence.adresse }}</td>
-                            <td>{{ agence.telephone }}</td>
-                            <td>
-                                <div class="btn-group">
-                                    <button class="btn-icon edit" (click)="openEditModal('agence', agence)"
-                                        title="Modifier">✏️</button>
-                                    <button class="btn-icon delete" (click)="supprimerAgence(agence.id)"
-                                        title="Supprimer">🗑️</button>
-                                </div>
-                            </td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- ── TABLE VALIDATEURS ── -->
-        <div *ngIf="activeTab === 'validateurs'" class="tab-content">
-            <div class="content-header">
-                <div>
-                    <h2>Équipe de Validation</h2>
-                    <p class="count-info">
-                        {{ validateursJuridiques.length }} juridique(s) · {{ validateursFinanciers.length }}
-                        financier(s)
-                    </p>
-                </div>
-                <button class="btn-add" (click)="openCreateModal('validateur')">+ Ajouter un Validateur</button>
-            </div>
-
-            <div class="validateur-sections" *ngIf="!loading">
-
-                <div class="section-label">⚖️ Validateurs Juridiques</div>
                 <div class="table-wrapper">
-                    <table class="premium-table">
+                    <div *ngIf="loading" class="loading-state">
+                        <div class="spinner"></div> Chargement...
+                    </div>
+                    <table class="premium-table" *ngIf="!loading">
                         <thead>
                             <tr>
-                                <th>Validateur</th>
-                                <th>Agence</th>
+                                <th>Agent</th>
                                 <th>Matricule</th>
+                                <th>Agence</th>
+                                <th>Téléphone</th>
                                 <th>Statut</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr *ngIf="validateursJuridiques.length === 0">
-                                <td colspan="5" class="empty-state">Aucun validateur juridique.</td>
+                            <tr *ngIf="agents.length === 0">
+                                <td colspan="6" class="empty-state">
+                                    Aucun agent enregistré.
+                                </td>
                             </tr>
-                            <tr *ngFor="let v of validateursJuridiques" class="data-row">
+                            <tr *ngFor="let agent of agents"
+                                class="data-row"
+                                [id]="'agent-row-' + agent.id"
+                                [class.highlighted]="agent.id === highlightedAgentId">
                                 <td>
                                     <div class="user-info">
-                                        <div class="avatar blue-av">{{ v.nom[0] }}{{ v.prenom[0] }}</div>
-                                        <div><strong>{{ v.nom }} {{ v.prenom }}</strong><span>{{ v.email }}</span></div>
+                                        <div class="avatar blue-av">
+                                            {{ agent.nom[0] }}{{ agent.prenom[0] }}
+                                        </div>
+                                        <div>
+                                            <strong>{{ agent.nom }} {{ agent.prenom }}</strong>
+                                            <span>{{ agent.email }}</span>
+                                        </div>
                                     </div>
                                 </td>
-                                <td>{{ getAgenceName(v.agenceId) }}</td>
-                                <td><code>{{ v.matricule }}</code></td>
-                                <td><span class="status-badge" [class.active]="v.actif">{{ v.actif ? 'Actif' : 'Inactif'
-                                        }}</span></td>
+                                <td><code>{{ agent.matricule }}</code></td>
+                                <td>
+                                    <span class="agence-chip">
+                                        {{ getAgenceName(agent.agenceId) }}
+                                    </span>
+                                </td>
+                                <td>{{ agent.telephone }}</td>
+                                <td>
+                                    <span class="status-badge" [class.active]="agent.actif">
+                                        {{ agent.actif ? 'Actif' : 'Inactif' }}
+                                    </span>
+                                </td>
                                 <td>
                                     <div class="btn-group">
-                                        <button class="btn-icon edit" (click)="openEditModal('validateur', v)"
-                                            title="Modifier">✏️</button>
-                                        <button class="btn-icon toggle" (click)="toggleValidateur(v.id)">{{ v.actif ?
-                                            '🔒' : '🔓' }}</button>
-                                        <button class="btn-icon delete" (click)="supprimerValidateur(v.id)">🗑️</button>
+                                        <button class="btn-icon edit"
+                                                (click)="openEditModal('agent', agent)"
+                                                title="Modifier">✏️</button>
+
+                                        <button class="btn-icon key"
+                                                (click)="reinitialiserMotDePasse(agent.username)"
+                                                title="Réinitialiser mot de passe"
+                                                [class.key-highlight]="agent.id === highlightedAgentId">
+                                            🔑
+                                        </button>
+
+                                        <button class="btn-icon toggle"
+                                                (click)="toggleAgent(agent.id)"
+                                                [title]="agent.actif ? 'Désactiver' : 'Activer'">
+                                            {{ agent.actif ? '🔒' : '🔓' }}
+                                        </button>
+
+                                        <button class="btn-icon delete"
+                                                (click)="supprimerAgent(agent.id)"
+                                                title="Supprimer">🗑️</button>
                                     </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
+            </div>
 
-                <div class="section-label" style="margin-top:30px">💰 Validateurs Financiers</div>
+            <!-- ── TABLE AGENCES ── -->
+            <div *ngIf="activeTab === 'agences'" class="tab-content">
+                <div class="content-header">
+                    <div>
+                        <h2>Gestion des Agences</h2>
+                        <p class="count-info">{{ agences.length }} agence(s)</p>
+                    </div>
+                    <button class="btn-add" (click)="openCreateModal('agence')">
+                        + Nouvelle Agence
+                    </button>
+                </div>
                 <div class="table-wrapper">
-                    <table class="premium-table">
+                    <div *ngIf="loading" class="loading-state">
+                        <div class="spinner"></div> Chargement...
+                    </div>
+                    <table class="premium-table" *ngIf="!loading">
                         <thead>
                             <tr>
-                                <th>Validateur</th>
-                                <th>Agence</th>
-                                <th>Matricule</th>
-                                <th>Statut</th>
+                                <th>Code</th>
+                                <th>Nom de l'Agence</th>
+                                <th>Adresse</th>
+                                <th>Téléphone</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            <tr *ngIf="validateursFinanciers.length === 0">
-                                <td colspan="5" class="empty-state">Aucun validateur financier.</td>
-                            </tr>
-                            <tr *ngFor="let v of validateursFinanciers" class="data-row">
-                                <td>
-                                    <div class="user-info">
-                                        <div class="avatar purple-av">{{ v.nom[0] }}{{ v.prenom[0] }}</div>
-                                        <div><strong>{{ v.nom }} {{ v.prenom }}</strong><span>{{ v.email }}</span></div>
-                                    </div>
+                            <tr *ngIf="agences.length === 0">
+                                <td colspan="5" class="empty-state">
+                                    Aucune agence enregistrée.
                                 </td>
-                                <td>{{ getAgenceName(v.agenceId) }}</td>
-                                <td><code>{{ v.matricule }}</code></td>
-                                <td><span class="status-badge" [class.active]="v.actif">{{ v.actif ? 'Actif' : 'Inactif'
-                                        }}</span></td>
+                            </tr>
+                            <tr *ngFor="let agence of agences" class="data-row">
+                                <td><code>{{ agence.code }}</code></td>
+                                <td><strong>{{ agence.nom }}</strong></td>
+                                <td>{{ agence.adresse }}</td>
+                                <td>{{ agence.telephone }}</td>
                                 <td>
                                     <div class="btn-group">
-                                        <button class="btn-icon edit" (click)="openEditModal('validateur', v)"
-                                            title="Modifier">✏️</button>
-                                        <button class="btn-icon toggle" (click)="toggleValidateur(v.id)">{{ v.actif ?
-                                            '🔒' : '🔓' }}</button>
-                                        <button class="btn-icon delete" (click)="supprimerValidateur(v.id)">🗑️</button>
+                                        <button class="btn-icon edit"
+                                                (click)="openEditModal('agence', agence)"
+                                                title="Modifier">✏️</button>
+                                        <button class="btn-icon delete"
+                                                (click)="supprimerAgence(agence.id)"
+                                                title="Supprimer">🗑️</button>
                                     </div>
                                 </td>
                             </tr>
                         </tbody>
                     </table>
                 </div>
-
             </div>
-            <div *ngIf="loading" class="loading-state">
-                <div class="spinner"></div> Chargement...
-            </div>
-        </div>
 
-    </div><!-- end main-card -->
+            <!-- ── TABLE VALIDATEURS ── -->
+            <div *ngIf="activeTab === 'validateurs'" class="tab-content">
+                <div class="content-header">
+                    <div>
+                        <h2>Équipe de Validation</h2>
+                        <p class="count-info">
+                            {{ validateursJuridiques.length }} juridique(s) ·
+                            {{ validateursFinanciers.length }} financier(s)
+                        </p>
+                    </div>
+                    <button class="btn-add" (click)="openCreateModal('validateur')">
+                        + Ajouter un Validateur
+                    </button>
+                </div>
+
+                <div class="validateur-sections" *ngIf="!loading">
+
+                    <div class="section-label">⚖️ Validateurs Juridiques</div>
+                    <div class="table-wrapper">
+                        <table class="premium-table">
+                            <thead>
+                                <tr>
+                                    <th>Validateur</th>
+                                    <th>Agence</th>
+                                    <th>Matricule</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngIf="validateursJuridiques.length === 0">
+                                    <td colspan="5" class="empty-state">
+                                        Aucun validateur juridique.
+                                    </td>
+                                </tr>
+                                <tr *ngFor="let v of validateursJuridiques"
+                                    class="data-row"
+                                    [id]="'validateur-row-' + v.id"
+                                    [class.highlighted]="v.id === highlightedAgentId">
+                                    <td>
+                                        <div class="user-info">
+                                            <div class="avatar blue-av">
+                                                {{ v.nom[0] }}{{ v.prenom[0] }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ v.nom }} {{ v.prenom }}</strong>
+                                                <span>{{ v.email }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ getAgenceName(v.agenceId) }}</td>
+                                    <td><code>{{ v.matricule }}</code></td>
+                                    <td>
+                                        <span class="status-badge" [class.active]="v.actif">
+                                            {{ v.actif ? 'Actif' : 'Inactif' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn-icon edit"
+                                                    (click)="openEditModal('validateur', v)"
+                                                    title="Modifier">✏️</button>
+
+                                            <button class="btn-icon key"
+                                                    (click)="reinitialiserMotDePasse(v.username!)"
+                                                    title="Réinitialiser mot de passe"
+                                                    [class.key-highlight]="v.id === highlightedAgentId">
+                                                🔑
+                                            </button>
+
+                                            <button class="btn-icon toggle"
+                                                    (click)="toggleValidateur(v.id)">
+                                                {{ v.actif ? '🔒' : '🔓' }}
+                                            </button>
+                                            <button class="btn-icon delete"
+                                                    (click)="supprimerValidateur(v.id)">
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="section-label" style="margin-top:30px">
+                        💰 Validateurs Financiers
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="premium-table">
+                            <thead>
+                                <tr>
+                                    <th>Validateur</th>
+                                    <th>Agence</th>
+                                    <th>Matricule</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr *ngIf="validateursFinanciers.length === 0">
+                                    <td colspan="5" class="empty-state">
+                                        Aucun validateur financier.
+                                    </td>
+                                </tr>
+                                <tr *ngFor="let v of validateursFinanciers"
+                                    class="data-row"
+                                    [id]="'validateur-row-' + v.id"
+                                    [class.highlighted]="v.id === highlightedAgentId">
+                                    <td>
+                                        <div class="user-info">
+                                            <div class="avatar purple-av">
+                                                {{ v.nom[0] }}{{ v.prenom[0] }}
+                                            </div>
+                                            <div>
+                                                <strong>{{ v.nom }} {{ v.prenom }}</strong>
+                                                <span>{{ v.email }}</span>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>{{ getAgenceName(v.agenceId) }}</td>
+                                    <td><code>{{ v.matricule }}</code></td>
+                                    <td>
+                                        <span class="status-badge" [class.active]="v.actif">
+                                            {{ v.actif ? 'Actif' : 'Inactif' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group">
+                                            <button class="btn-icon edit"
+                                                    (click)="openEditModal('validateur', v)"
+                                                    title="Modifier">✏️</button>
+
+                                            <button class="btn-icon key"
+                                                    (click)="reinitialiserMotDePasse(v.username!)"
+                                                    title="Réinitialiser mot de passe"
+                                                    [class.key-highlight]="v.id === highlightedAgentId">
+                                                🔑
+                                            </button>
+
+                                            <button class="btn-icon toggle"
+                                                    (click)="toggleValidateur(v.id)">
+                                                {{ v.actif ? '🔒' : '🔓' }}
+                                            </button>
+                                            <button class="btn-icon delete"
+                                                    (click)="supprimerValidateur(v.id)">
+                                                🗑️
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                </div>
+                <div *ngIf="loading" class="loading-state">
+                    <div class="spinner"></div> Chargement...
+                </div>
+            </div>
+
+        </div><!-- end main-card -->
+    </section>
 </div><!-- end dashboard-container -->
 
-
-<!-- ════════════════════════════════════════════════════ -->
-<!-- MODAL AGENT                                          -->
-<!-- ════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════ -->
 <!-- MODAL AGENT                                          -->
 <!-- ════════════════════════════════════════════════════ -->
@@ -316,23 +371,21 @@
                     <input type="text" [(ngModel)]="agentForm.nom" placeholder="Nom">
                 </div>
             </div>
-
             <div class="form-group">
                 <label>Email *</label>
                 <input type="email" [(ngModel)]="agentForm.email" placeholder="email@banque.tn">
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Nom d'utilisateur *</label>
-                    <input type="text" [(ngModel)]="agentForm.username" placeholder="Ex: agent.tunis.01">
+                    <input type="text" [(ngModel)]="agentForm.username"
+                           placeholder="Ex: agent.tunis.01">
                 </div>
                 <div class="form-group">
                     <label>Date d'embauche</label>
                     <input type="date" [(ngModel)]="agentForm.dateEmbauche">
                 </div>
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Matricule *</label>
@@ -340,40 +393,39 @@
                 </div>
                 <div class="form-group">
                     <label>Téléphone</label>
-                    <input type="text" [(ngModel)]="agentForm.telephone" placeholder="+216 XX XXX XXX">
+                    <input type="text" [(ngModel)]="agentForm.telephone"
+                           placeholder="+216 XX XXX XXX">
                 </div>
             </div>
-
             <div class="form-group">
                 <label>Agence d'affectation *</label>
                 <select [(ngModel)]="agentForm.agenceId">
                     <option [ngValue]="0" disabled>-- Choisir une agence --</option>
-                    <option *ngFor="let a of agences" [ngValue]="a.id">{{ a.nom }} ({{ a.code }})</option>
+                    <option *ngFor="let a of agences" [ngValue]="a.id">
+                        {{ a.nom }} ({{ a.code }})
+                    </option>
                 </select>
             </div>
-
-            <!-- ✅ Bandeau email — visible uniquement en mode création -->
             <div class="email-notice" *ngIf="modalMode === 'create'">
                 <span>📧</span>
                 <div>
                     <strong>Identifiants générés automatiquement</strong>
-                    <p>
-                        Un mot de passe sécurisé sera généré et envoyé avec le 
-                        nom d'utilisateur à
-                        <strong>{{ agentForm.email || 'l\'adresse email renseignée' }}</strong>.
+                    <p>Un mot de passe sécurisé sera généré et envoyé à
+                       <strong>{{ agentForm.email || 'l\'adresse email renseignée' }}</strong>.
                     </p>
                 </div>
             </div>
-
             <div class="modal-footer">
                 <button class="btn-cancel" (click)="closeModal()">Annuler</button>
                 <button class="btn-submit" (click)="submitAgent()" [disabled]="submitting">
-                    {{ submitting ? 'Enregistrement...' : (modalMode === 'create' ? 'Créer l\'agent' : 'Enregistrer') }}
+                    {{ submitting ? 'Enregistrement...' :
+                       (modalMode === 'create' ? 'Créer l\'agent' : 'Enregistrer') }}
                 </button>
             </div>
         </div>
     </div>
 </div>
+
 <!-- ════════════════════════════════════════════════════ -->
 <!-- MODAL AGENCE                                         -->
 <!-- ════════════════════════════════════════════════════ -->
@@ -391,7 +443,8 @@
                 </div>
                 <div class="form-group">
                     <label>Nom de l'agence *</label>
-                    <input type="text" [(ngModel)]="agenceForm.nom" placeholder="Agence Tunis Centre">
+                    <input type="text" [(ngModel)]="agenceForm.nom"
+                           placeholder="Agence Tunis Centre">
                 </div>
             </div>
             <div class="form-group">
@@ -400,22 +453,20 @@
             </div>
             <div class="form-group">
                 <label>Téléphone</label>
-                <input type="text" [(ngModel)]="agenceForm.telephone" placeholder="+216 XX XXX XXX">
+                <input type="text" [(ngModel)]="agenceForm.telephone"
+                       placeholder="+216 XX XXX XXX">
             </div>
             <div class="modal-footer">
                 <button class="btn-cancel" (click)="closeModal()">Annuler</button>
                 <button class="btn-submit" (click)="submitAgence()" [disabled]="submitting">
-                    {{ submitting ? 'Enregistrement...' : (modalMode === 'create' ? 'Créer l\'agence' : 'Enregistrer')
-                    }}
+                    {{ submitting ? 'Enregistrement...' :
+                       (modalMode === 'create' ? 'Créer l\'agence' : 'Enregistrer') }}
                 </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- ════════════════════════════════════════════════════ -->
-<!-- MODAL VALIDATEUR                                     -->
-<!-- ════════════════════════════════════════════════════ -->
 <!-- ════════════════════════════════════════════════════ -->
 <!-- MODAL VALIDATEUR                                     -->
 <!-- ════════════════════════════════════════════════════ -->
@@ -436,28 +487,27 @@
                     <input type="text" [(ngModel)]="validateurForm.nom" placeholder="Nom">
                 </div>
             </div>
-
             <div class="form-group">
                 <label>Email *</label>
-                <input type="email" [(ngModel)]="validateurForm.email" placeholder="email@banque.tn">
+                <input type="email" [(ngModel)]="validateurForm.email"
+                       placeholder="email@banque.tn">
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Nom d'utilisateur *</label>
-                    <input type="text" [(ngModel)]="validateurForm.username" 
+                    <input type="text" [(ngModel)]="validateurForm.username"
                            placeholder="Ex: valid.juridique.01">
                 </div>
                 <div class="form-group">
                     <label>Matricule *</label>
-                    <input type="text" [(ngModel)]="validateurForm.matricule" placeholder="MAT-0001">
+                    <input type="text" [(ngModel)]="validateurForm.matricule"
+                           placeholder="MAT-0001">
                 </div>
             </div>
-
             <div class="form-row">
                 <div class="form-group">
                     <label>Téléphone</label>
-                    <input type="text" [(ngModel)]="validateurForm.telephone" 
+                    <input type="text" [(ngModel)]="validateurForm.telephone"
                            placeholder="+216 XX XXX XXX">
                 </div>
                 <div class="form-group">
@@ -468,7 +518,6 @@
                     </select>
                 </div>
             </div>
-
             <div class="form-group">
                 <label>Agence *</label>
                 <select [(ngModel)]="validateurForm.agenceId">
@@ -476,40 +525,40 @@
                     <option *ngFor="let a of agences" [ngValue]="a.id">{{ a.nom }}</option>
                 </select>
             </div>
-
-            <!-- ✅ Bandeau email — visible uniquement en mode création -->
             <div class="email-notice" *ngIf="modalMode === 'create'">
                 <span>📧</span>
                 <div>
                     <strong>Identifiants générés automatiquement</strong>
-                    <p>
-                        Un mot de passe sécurisé sera généré et envoyé avec le 
-                        nom d'utilisateur à
-                        <strong>{{ validateurForm.email || 'l\'adresse email renseignée' }}</strong>.
+                    <p>Un mot de passe sécurisé sera généré et envoyé à
+                       <strong>{{ validateurForm.email || 'l\'adresse email renseignée' }}</strong>.
                     </p>
                 </div>
             </div>
-
             <div class="modal-footer">
                 <button class="btn-cancel" (click)="closeModal()">Annuler</button>
                 <button class="btn-submit" (click)="submitValidateur()" [disabled]="submitting">
-                    {{ submitting ? 'Enregistrement...' : (modalMode === 'create' ? 'Créer' : 'Enregistrer') }}
+                    {{ submitting ? 'Enregistrement...' :
+                       (modalMode === 'create' ? 'Créer' : 'Enregistrer') }}
                 </button>
             </div>
         </div>
     </div>
 </div>
+
 <!-- ════════════════════════════════════════════════════ -->
 <!-- CONFIRM DIALOG                                       -->
 <!-- ════════════════════════════════════════════════════ -->
-<div class="modal-overlay" *ngIf="confirmDialog.visible" (click)="confirmDialog.visible = false">
+<div class="modal-overlay" *ngIf="confirmDialog.visible"
+     (click)="confirmDialog.visible = false">
     <div class="confirm-card" (click)="$event.stopPropagation()">
         <div class="confirm-icon">⚠️</div>
         <h3>{{ confirmDialog.title }}</h3>
         <p>{{ confirmDialog.message }}</p>
         <div class="confirm-actions">
-            <button class="btn-cancel" (click)="confirmDialog.visible = false">Annuler</button>
-            <button class="btn-danger" (click)="confirmDialog.onConfirm()">Confirmer</button>
+            <button class="btn-cancel"
+                    (click)="confirmDialog.visible = false">Annuler</button>
+            <button class="btn-danger"
+                    (click)="confirmDialog.onConfirm()">Confirmer</button>
         </div>
     </div>
 </div>

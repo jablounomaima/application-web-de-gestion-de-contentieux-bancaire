@@ -344,7 +344,7 @@ export class AgentDossierModifierComponent implements OnInit, OnDestroy {
   // ════════════════════════════════════════════════════
 
   canModify(): boolean {
-    return ['OUVERT', 'REJETE'].includes(this.dossierOriginal?.statut);
+    return ['OUVERT', 'REJETE', 'EN_CORRECTION'].includes(this.dossierOriginal?.statut);
   }
 
   getStatusLabel(): string {

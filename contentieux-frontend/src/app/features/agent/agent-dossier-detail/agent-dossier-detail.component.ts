@@ -7,7 +7,7 @@ import { takeUntil } from 'rxjs/operators';
 import { DossierService } from '../../../core/services/dossier.service';
 import { NotificationService } from '../../../core/services/notification.service';
 import { ActionValidationComponent } from '../action-validation/action-validation.component';
-import { LancerAffaireComponent } from '../lancer-affaire/lancer-affaire.component';
+// CORRECTION 1 : import LancerAffaireComponent supprimé (inutilisé)
 
 @Component({
   selector: 'app-agent-dossier-detail',
@@ -24,6 +24,9 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
   validateurs_juridiques: any[] = [];
   missionAvocat: any = null;
   loading = true;
+
+  resoumission = false;
+  erreurResoumission = '';
 
   affaireExiste = false;
   prestationJudiciaire: any = null;
@@ -93,7 +96,10 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
       }
     });
 
-    this.router.events.subscribe(event => {
+    // CORRECTION 2 : takeUntil(this.destroy$) ajouté pour éviter la fuite mémoire
+    this.router.events.pipe(
+      takeUntil(this.destroy$)
+    ).subscribe(event => {
       if (event instanceof NavigationEnd) {
         const urlSansParams = event.urlAfterRedirects.split('?')[0];
         const estDetailExact = /^\/agent\/dossiers\/\d+$/.test(urlSansParams);
@@ -205,7 +211,9 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
 
   // ==================== CRÉDITS (RISQUES) ====================
 
+  // CORRECTION 4 : méthode appelée depuis le template pour réinitialiser le formulaire
   openAddRisqueModal() {
+    this.erreurRisque = '';
     this.formRisque = {
       type: 'CREDIT_IMMOBILIER',
       montantInitial: 0,
@@ -290,22 +298,30 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
 
   getStatutClass(statut: string): string {
     const map: Record<string, string> = {
-      'OUVERT':        'statut-ouvert',
-      'EN_TRAITEMENT': 'statut-en-traitement',
-      'VALIDE':        'statut-valide',
-      'REJETE':        'statut-rejete',
-      'CLOS':          'statut-clos'
+      'OUVERT':          'statut-ouvert',
+      'EN_TRAITEMENT':   'statut-en-traitement',
+      'EN_CORRECTION':   'statut-en-correction',
+      'VALIDE':          'statut-valide',
+      'EN_PROCEDURE':    'statut-en-procedure',
+      'EN_EXECUTION':    'statut-en-execution',
+      'CLOTURE_PARTIEL': 'statut-cloture-partiel',
+      'REJETE':          'statut-rejete',
+      'CLOTURE':         'statut-cloture'
     };
     return map[statut] || '';
   }
 
   formatStatut(statut: string): string {
     const map: Record<string, string> = {
-      'OUVERT':        'Ouvert',
-      'EN_TRAITEMENT': 'En traitement',
-      'VALIDE':        'Validé',
-      'REJETE':        'Rejeté',
-      'CLOS':          'Clos'
+      'OUVERT':          'Ouvert',
+      'EN_TRAITEMENT':   'En traitement',
+      'EN_CORRECTION':   'En correction',
+      'VALIDE':          'Validé',
+      'EN_PROCEDURE':    'En procédure',
+      'EN_EXECUTION':    'En exécution',
+      'CLOTURE_PARTIEL': 'Clôture partielle',
+      'REJETE':          'Rejeté',
+      'CLOTURE':         'Clôturé'
     };
     return map[statut] || statut;
   }
@@ -340,11 +356,16 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
   }
 
   canModifier(): boolean {
-    return this.dossier?.statut === 'OUVERT' || this.dossier?.statut === 'REJETE';
+    return this.dossier?.statut === 'OUVERT'
+        || this.dossier?.statut === 'EN_CORRECTION'
+        || this.dossier?.statut === 'REJETE';
   }
 
+  // CORRECTION 6 : canSoumettre() limité au statut OUVERT uniquement
+  // EN_CORRECTION utilise son propre flux via ressoumettreDossier()
   canSoumettre(): boolean {
-    return this.canModifier() && this.dossier?.risques?.some((r: any) => r.selectionne);
+    return this.dossier?.statut === 'OUVERT'
+        && this.dossier?.risques?.some((r: any) => r.selectionne);
   }
 
   // ==================== ACTIONS ====================
@@ -480,13 +501,36 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
     this.router.navigate(['/agent/dossiers', this.dossier.id, 'affaire']);
   }
 
+  // CORRECTION 5 : un seul point d'entrée pour la re-soumission
+  // Le backend gère les deux cas (financier et/ou juridique)
   ressoumettreDossier() {
-    this.dossierService.soumettreAValidation(this.dossier.id).subscribe({
-      next:  () => this.chargerDossier(this.dossier.id),
-      error: (err: any) => alert(err.error?.error || 'Erreur ressoumission')
+    this.erreurResoumission = '';
+    this.resoumission = true;
+  
+    // Construire le payload avec uniquement les validateurs ayant rejeté
+    const payload: any = {};
+  
+    if (this.dossier.validationFinanciere === false) {
+      payload.resoumettreFinancier = true;
+      payload.validateurFinancier  = this.dossier.validateurFinancierChoisi;
+    }
+  
+    if (this.dossier.validationJuridique === false) {
+      payload.resoumettreJuridique = true;
+      payload.validateurJuridique  = this.dossier.validateurJuridiqueChoisi;
+    }
+  
+    this.dossierService.ressoumettreDossier(this.dossier.id, payload).subscribe({
+      next: () => {
+        this.resoumission = false;
+        this.chargerDossier(this.dossier.id);
+      },
+      error: (err: any) => {
+        this.erreurResoumission = err.error?.error || 'Erreur lors de la re-soumission.';
+        this.resoumission = false;
+      }
     });
   }
-
   refreshDossier() {
     if (this.dossier?.id) {
       console.log('🔄 Rafraîchissement manuel du dossier');

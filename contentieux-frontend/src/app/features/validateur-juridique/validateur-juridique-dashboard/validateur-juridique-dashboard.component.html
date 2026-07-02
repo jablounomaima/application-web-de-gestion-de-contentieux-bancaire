@@ -8,33 +8,51 @@
     </div>
   </div>
 
-  <!-- ═══ STATS ═══ -->
-  <div class="stats-row">
-    <div class="stat-card pending">
-      <div class="stat-icon">🕒</div>
-      <div>
-        <h4>En Attente</h4>
-        <span class="stat-value">{{ getNbEnAttente() }}</span>
-      </div>
-    </div>
-    <div class="stat-card success">
-      <div class="stat-icon">✅</div>
-      <div>
-        <h4>Validés</h4>
-        <span class="stat-value">{{ valides }}</span>
-      </div>
-    </div>
-    <div class="stat-card danger">
-      <div class="stat-icon">❌</div>
-      <div>
-        <h4>Rejetés</h4>
-        <span class="stat-value">{{ rejetes }}</span>
-      </div>
-    </div>
+  <!-- ═══ BANNIÈRE — dossier surligné ═══ -->
+  <div class="highlight-banner" *ngIf="highlightedDossierId">
+    🔔 Un dossier vous a été assigné — il est surligné ci-dessous.
+    <button (click)="highlightedDossierId = null">✕</button>
   </div>
 
- 
-
+  <!-- ═══ STATS ═══ -->
+  <section class="charts-panel">
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>Répartition des dossiers</h3>
+        <span>Vue synthétique</span>
+      </div>
+      <div class="bars">
+        <div class="bar-item" *ngFor="let bar of chartBars">
+          <div class="bar-track">
+            <div class="bar-fill" [style.height.%]="bar.percent" [style.background]="bar.color"></div>
+          </div>
+          <div class="bar-meta">
+            <strong>{{ bar.value }}</strong>
+            <span>{{ bar.label }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <div class="chart-card">
+      <div class="chart-header">
+        <h3>Taux de validation</h3>
+        <span>Validés / total</span>
+      </div>
+      <div class="ring-card">
+        <svg class="ring" viewBox="0 0 140 140" width="100" height="100">
+          <circle cx="70" cy="70" r="54" class="ring-bg"></circle>
+          <circle cx="70" cy="70" r="54" class="ring-progress"
+                  [style.strokeDasharray]="ringCircumference"
+                  [style.strokeDashoffset]="ringOffset"></circle>
+        </svg>
+        <div class="ring-center">
+          <strong>{{ tauxValidation }}%</strong>
+          <span>{{ valides }} validés</span>
+        </div>
+      </div>
+    </div>
+  </section>
   <!-- ═══ LOADING ═══ -->
   <div class="loading-state" *ngIf="loading">
     <div class="spinner"></div>
@@ -49,11 +67,13 @@
 
   <!-- ═══ LISTE ═══ -->
   <app-validateur-juridique-liste
-  [recharger]="recharger"
-  [dossierId]="dossierId"
-  (actionDemandee)="ouvrirAction($event.dossier, $event.type)"
-  (dossiersCharges)="mettreAJourStats($event)">
-</app-validateur-juridique-liste>
+    [recharger]="recharger"
+    [dossierId]="dossierId"
+    [highlightedDossierId]="highlightedDossierId"
+    (actionDemandee)="ouvrirAction($event.dossier, $event.type)"
+    (dossiersCharges)="mettreAJourStats($event)">
+  </app-validateur-juridique-liste>
+
 </div>
 
 <!-- ═══ MODAL ═══ -->
@@ -66,19 +86,28 @@
       <button class="modal-close" (click)="fermerModal()">✕</button>
     </div>
     <div class="modal-body">
-      <p class="dossier-ref">Dossier : <strong>{{ dossierSelectionne.numeroDossier }}</strong></p>
+      <p class="dossier-ref">
+        Dossier : <strong>{{ dossierSelectionne.numeroDossier }}</strong>
+      </p>
       <div class="form-group">
-        <label>{{ actionType === 'valider' ? 'Commentaire (optionnel)' : 'Motif de rejet *' }}</label>
+        <label>
+          {{ actionType === 'valider' ? 'Commentaire (optionnel)' : 'Motif de rejet *' }}
+        </label>
         <textarea [(ngModel)]="commentaire" rows="4"
-                  [placeholder]="actionType === 'valider' ? 'Observations...' : 'Expliquez le motif du rejet...'">
+                  [placeholder]="actionType === 'valider'
+                    ? 'Observations...'
+                    : 'Expliquez le motif du rejet...'">
         </textarea>
       </div>
       <div class="error-banner" *ngIf="erreur">{{ erreur }}</div>
       <div class="modal-footer">
         <button class="btn-cancel" (click)="fermerModal()">Annuler</button>
-        <button [class]="actionType === 'valider' ? 'btn-confirm-valider' : 'btn-confirm-rejeter'"
-                (click)="confirmerAction()" [disabled]="soumission">
-          {{ soumission ? '⏳…' : (actionType === 'valider' ? '✅ Confirmer validation' : '❌ Confirmer rejet') }}
+        <button [class]="actionType === 'valider'
+                  ? 'btn-confirm-valider' : 'btn-confirm-rejeter'"
+                (click)="confirmerAction()"
+                [disabled]="soumission">
+          {{ soumission ? '⏳…' : (actionType === 'valider'
+              ? '✅ Confirmer validation' : '❌ Confirmer rejet') }}
         </button>
       </div>
     </div>

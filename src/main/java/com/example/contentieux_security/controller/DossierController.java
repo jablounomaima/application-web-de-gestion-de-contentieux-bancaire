@@ -393,5 +393,8 @@ public ResponseEntity<?> supprimerRisque(@PathVariable Long dossierId, @PathVari
         return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
 }
+
+
+
     
 }

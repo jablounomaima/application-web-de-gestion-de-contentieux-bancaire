@@ -102,7 +102,7 @@ public class DossierContentieux {
 
     @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, fetch = FetchType.LAZY ,orphanRemoval = true)
     @JsonIgnore
-    private Set<Risque> risques;
+    private List<Risque> risques;
 
     @OneToMany(mappedBy = "dossier", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore 

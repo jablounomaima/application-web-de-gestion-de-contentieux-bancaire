@@ -663,71 +663,90 @@ public class PrestataireController {
     @Transactional
     public ResponseEntity<?> getDossierMission(@PathVariable Long missionId,
                                                Authentication auth) {
-        Mission mission = missionService.getMissionWithDetails(missionId);
-        if (mission.getPrestataire() == null ||
-            !mission.getPrestataire().getUsername().equals(auth.getName())) {
-            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
-        }
-
-        DossierContentieux dossier = mission.getPrestation().getDossier();
-
-        Map<String, Object> missionMap = new HashMap<>();
-        missionMap.put("id",            mission.getId());
-        missionMap.put("numeroMission", mission.getNumeroMission());
-        missionMap.put("statut",        mission.getStatut());
-        missionMap.put("description",   mission.getDescription());
-        missionMap.put("dateFinPrevue", mission.getDateFinPrevue());
-
-        Map<String, Object> clientMap = new HashMap<>();
-        if (dossier.getClient() != null) {
-            var c = dossier.getClient();
-            clientMap.put("nom",       c.getNom());
-            clientMap.put("prenom",    c.getPrenom());
-            clientMap.put("email",     c.getEmail());
-            clientMap.put("telephone", c.getTelephone());
-            clientMap.put("adresse",   c.getAdresse());
-        }
-
-        List<Map<String, Object>> risquesMap = new ArrayList<>();
-        if (dossier.getRisques() != null) {
-            for (var r : dossier.getRisques()) {
-                List<Map<String, Object>> garantiesMap = new ArrayList<>();
-                if (r.getGaranties() != null) {
-                    for (var g : r.getGaranties()) {
-                        garantiesMap.add(Map.of(
-                            "typeGarantie",  g.getTypeGarantie(),
-                            "valeurEstimee", g.getValeurEstimee(),
-                            "description",   g.getDescription() != null ? g.getDescription() : "",
-                            "statut",        g.getStatut()
-                        ));
-                    }
-                }
-                Map<String, Object> rm = new HashMap<>();
-                rm.put("type",          r.getType());
-                rm.put("montant",       r.getMontantInitial());
-                rm.put("montantImpaye", r.getMontantImpaye());
-                rm.put("selectionne",   r.isSelectionne());
-                rm.put("dateEcheance",  r.getDateEcheance());
-                rm.put("description",   r.getDescription());
-                rm.put("garanties",     garantiesMap);
-                risquesMap.add(rm);
+        try {
+            Mission mission = missionService.getMissionWithDetails(missionId);
+            if (mission == null) {
+                return ResponseEntity.status(404).body(Map.of("error", "Mission introuvable"));
             }
+            if (mission.getPrestataire() == null ||
+                !mission.getPrestataire().getUsername().equals(auth.getName())) {
+                return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+            }
+    
+            if (mission.getPrestation() == null || mission.getPrestation().getDossier() == null) {
+                return ResponseEntity.status(400)
+                        .body(Map.of("error", "Cette mission n'est liée à aucun dossier."));
+            }
+    
+            DossierContentieux dossier = mission.getPrestation().getDossier();
+    
+            Map<String, Object> missionMap = new HashMap<>();
+            missionMap.put("id",            mission.getId());
+            missionMap.put("numeroMission", mission.getNumeroMission());
+            missionMap.put("statut",        mission.getStatut());
+            missionMap.put("description",   mission.getDescription());
+            missionMap.put("dateFinPrevue", mission.getDateFinPrevue());
+            missionMap.put("commentaireAgent", mission.getCommentaireAgent());
+    
+            Map<String, Object> clientMap = new HashMap<>();
+            if (dossier.getClient() != null) {
+                var c = dossier.getClient();
+                clientMap.put("nom",       c.getNom());
+                clientMap.put("prenom",    c.getPrenom());
+                clientMap.put("email",     c.getEmail());
+                clientMap.put("telephone", c.getTelephone());
+                clientMap.put("adresse",   c.getAdresse());
+            }
+    
+            List<Map<String, Object>> risquesMap = new ArrayList<>();
+            if (dossier.getRisques() != null) {
+                for (var r : dossier.getRisques()) {
+                    List<Map<String, Object>> garantiesMap = new ArrayList<>();
+                    if (r.getGaranties() != null) {
+                        for (var g : r.getGaranties()) {
+                            Map<String, Object> gm = new HashMap<>();
+                            gm.put("typeGarantie",  g.getTypeGarantie()  != null ? g.getTypeGarantie()  : "");
+                            gm.put("valeurEstimee", g.getValeurEstimee());
+                            gm.put("description",   g.getDescription()   != null ? g.getDescription()   : "");
+                            gm.put("statut",        g.getStatut()        != null ? g.getStatut()        : "");
+                            garantiesMap.add(gm);
+                        }
+                    }
+                    Map<String, Object> rm = new HashMap<>();
+                    rm.put("type",          r.getType());
+                    rm.put("montant",       r.getMontantInitial());
+                    rm.put("montantImpaye", r.getMontantImpaye());
+                    rm.put("selectionne",   r.isSelectionne());
+                    rm.put("dateEcheance",  r.getDateEcheance());
+                    rm.put("description",   r.getDescription());
+                    rm.put("garanties",     garantiesMap);
+                    risquesMap.add(rm);
+                }
+            }
+    
+            Map<String, Object> dossierMap = new HashMap<>();
+            dossierMap.put("numeroDossier", dossier.getNumeroDossier());
+            dossierMap.put("libelle",       dossier.getLibelle());
+            dossierMap.put("statut",        dossier.getStatut());
+            dossierMap.put("montant",       dossier.calculerSolde());
+            dossierMap.put("dateCreation",  dossier.getDateCreation());
+            dossierMap.put("agenceNom",     dossier.getAgence() != null ? dossier.getAgence().getNom() : null);
+            dossierMap.put("creePar",       dossier.getCreePar());
+            dossierMap.put("client",        clientMap);
+            dossierMap.put("risques",       risquesMap);
+    
+            Map<String, Object> response = new HashMap<>();
+            response.put("mission", missionMap);
+            response.put("dossier", dossierMap);
+            return ResponseEntity.ok(response);
+    
+        } catch (Exception e) {
+            log.error("Erreur getDossierMission missionId={} : {}", missionId, e.getMessage(), e);
+            return ResponseEntity.status(500)
+                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue"));
         }
-
-        Map<String, Object> dossierMap = new HashMap<>();
-        dossierMap.put("numeroDossier", dossier.getNumeroDossier());
-        dossierMap.put("libelle",       dossier.getLibelle());
-        dossierMap.put("statut",        dossier.getStatut());
-        dossierMap.put("montant",       dossier.calculerSolde());
-        dossierMap.put("dateCreation",  dossier.getDateCreation());
-        dossierMap.put("agenceNom",     dossier.getAgence() != null ? dossier.getAgence().getNom() : null);
-        dossierMap.put("creePar",       dossier.getCreePar());
-        dossierMap.put("client",        clientMap);
-        dossierMap.put("risques",       risquesMap);
-
-        return ResponseEntity.ok(Map.of("mission", missionMap, "dossier", dossierMap));
     }
-
+   
     // ─────────────────────────────────────────────────────────
     // UPLOAD DOCUMENTS (endpoint séparé)
     // ─────────────────────────────────────────────────────────

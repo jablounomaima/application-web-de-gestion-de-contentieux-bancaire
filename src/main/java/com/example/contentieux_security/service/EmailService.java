@@ -131,8 +131,11 @@ try {
   mailSender.send(message);
   System.out.println("✅ Notification admin envoyée pour: " + username);
 
+// ✅ Après — relance l'exception
 } catch (Exception e) {
   System.err.println("❌ Erreur notification admin: " + e.getMessage());
+  e.printStackTrace();  // ← voir l'erreur complète dans les logs
+  throw new RuntimeException("Erreur envoi notif admin: " + e.getMessage(), e);
 }
 }
 
@@ -174,6 +177,7 @@ try {
 
 } catch (Exception e) {
   System.err.println("❌ Erreur accusé réception: " + e.getMessage());
+  throw new RuntimeException("Erreur envoi email: " + e.getMessage(), e);
 }
 }
 
@@ -229,4 +233,5 @@ try {
   throw new RuntimeException("Erreur envoi nouveau mdp: " + e.getMessage());
 }
 }
+
 }

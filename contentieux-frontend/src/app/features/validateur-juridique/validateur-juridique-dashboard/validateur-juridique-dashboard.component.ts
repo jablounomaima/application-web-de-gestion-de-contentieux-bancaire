@@ -17,9 +17,9 @@ import { NotificationService } from '../../../core/services/notification.service
 })
 export class ValidateurJuridiqueDashboardComponent implements OnInit, OnDestroy {
 
-  dossiers:           any[]                 = [];
-  dossierDetails:     Map<number, any>      = new Map();
-  loadingDetail:      Set<number>           = new Set();
+  dossiers:           any[]            = [];
+  dossierDetails:     Map<number, any> = new Map();
+  loadingDetail:      Set<number>      = new Set();
   loading             = true;
   recherche           = '';
   valides             = 0;
@@ -31,46 +31,56 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit, OnDestroy 
   erreur              = '';
   soumission          = false;
   dossierId:          number | null         = null;
+  recharger           = false;
 
-  // ── Signal de rechargement pour la liste enfant ───────────────
-  recharger = false;
+  // ✅ Surlignage — même principe que admin-dashboard
+  highlightedDossierId: number | null = null;
 
-  // ── Gestion du cycle de vie ───────────────────────────────────
   private destroy$ = new Subject<void>();
 
   constructor(
     private validateurService: ValidateurService,
-    private route: ActivatedRoute,
-    private notifService: NotificationService
+    private route:             ActivatedRoute,
+    private notifService:      NotificationService
   ) {}
 
   ngOnInit(): void {
     this.loading = true;
 
-    this.route.queryParams.subscribe(params => {
-      const id = params['dossierId'] ? Number(params['dossierId']) : null;
-      if (id) this.dossierId = id;
-    });
+    // ── Query params — dossierId depuis URL ───────────────
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        const id = params['dossierId'] ? Number(params['dossierId']) : null;
+        if (id) {
+          this.dossierId            = id;
+          this.highlightedDossierId = id;  // ✅ surligner
+        }
+      });
 
-    // Écouter les navigations depuis notifications (même URL)
-    this.notifService.dossierCible$.subscribe(id => {
-      if (id !== null) {
-        this.dossierId = null;
-        setTimeout(() => {
-          this.dossierId = id;
-          this.notifService.signalerDossierCible(null);
-        }, 50);
-      }
-    });
+    // ── Navigation depuis notification (même URL) ─────────
+    this.notifService.dossierCible$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(id => {
+        if (id !== null) {
+          this.dossierId            = null;
+          this.highlightedDossierId = null;
+          setTimeout(() => {
+            this.dossierId            = id;
+            this.highlightedDossierId = id;  // ✅ surligner
+            this.notifService.signalerDossierCible(null);
+          }, 50);
+        }
+      });
 
-    // ── Rechargement automatique via WebSocket ────────────────
-    this.notifService.nouvelleNotif$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(notif => {
-      if (notif.type === 'VALIDATION_JURIDIQUE') {
-        this.recharger = !this.recharger;
-      }
-    });
+    // ── Rechargement temps réel ───────────────────────────
+    this.notifService.nouvelleNotif$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(notif => {
+        if (notif.type === 'VALIDATION_JURIDIQUE') {
+          this.recharger = !this.recharger;
+        }
+      });
   }
 
   ngOnDestroy(): void {
@@ -78,40 +88,35 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit, OnDestroy 
     this.destroy$.complete();
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // STATS — alimentées par l'Output du composant liste
-  // ══════════════════════════════════════════════════════════════
-
   mettreAJourStats(dossiers: any[]): void {
     this.dossiers = dossiers;
     this.valides  = dossiers.filter(d => this.isValide(d)).length;
     this.rejetes  = dossiers.filter(d => this.isRejete(d)).length;
     this.loading  = false;
+
+    // ✅ Surligner le dossier cible après chargement
     if (this.dossierId) {
-      const dossier = dossiers.find(d => Number(d.id) === Number(this.dossierId));
-      if (dossier) this.dossierSelectionne = dossier;
+      const dossier = dossiers.find(
+        d => Number(d.id) === Number(this.dossierId)
+      );
+      if (dossier) {
+        this.highlightedDossierId = dossier.id;
+
+        // ✅ Scroll vers la ligne après rendu
+        setTimeout(() => {
+          const el = document.getElementById('dossier-row-' + dossier.id);
+          el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 300);
+      }
     }
   }
 
-  // ── Helpers statut ────────────────────────────────────────────
-
-  isValide(d: any): boolean {
-    return d.validationJuridique === true;
-  }
-
-  isRejete(d: any): boolean {
+  isValide(d: any):    boolean { return d.validationJuridique === true; }
+  isRejete(d: any):    boolean {
     return d.validationJuridique === false && d.statut !== 'EN_TRAITEMENT';
   }
-
-  isEnAttente(d: any): boolean {
-    return !this.isValide(d) && !this.isRejete(d);
-  }
-
-  getNbEnAttente(): number {
-    return this.dossiers.filter(d => this.isEnAttente(d)).length;
-  }
-
-  // ── Calculs ───────────────────────────────────────────────────
+  isEnAttente(d: any): boolean { return !this.isValide(d) && !this.isRejete(d); }
+  getNbEnAttente():    number  { return this.dossiers.filter(d => this.isEnAttente(d)).length; }
 
   getMontantTotal(d: any): number {
     const detail = this.dossierDetails.get(d.id) ?? d;
@@ -127,10 +132,6 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit, OnDestroy 
     if (c.typeClient === 'ENTREPRISE') return c.raisonSociale || 'Entreprise';
     return `${c.nom ?? ''} ${c.prenom ?? ''}`.trim() || 'Client inconnu';
   }
-
-  // ══════════════════════════════════════════════════════════════
-  // ACTIONS
-  // ══════════════════════════════════════════════════════════════
 
   ouvrirAction(dossier: any, type: 'valider' | 'rejeter'): void {
     this.dossierSelectionne = dossier;
@@ -153,20 +154,48 @@ export class ValidateurJuridiqueDashboardComponent implements OnInit, OnDestroy 
     this.erreur     = '';
 
     const obs = this.actionType === 'valider'
-      ? this.validateurService.validerJuridique(this.dossierSelectionne.id, this.commentaire)
-      : this.validateurService.rejeterJuridique(this.dossierSelectionne.id, this.commentaire);
+      ? this.validateurService.validerJuridique(
+          this.dossierSelectionne.id, this.commentaire)
+      : this.validateurService.rejeterJuridique(
+          this.dossierSelectionne.id, this.commentaire);
 
     obs.subscribe({
       next: () => {
-        this.soumission         = false;
-        this.dossierSelectionne = null;
-        this.dossierExpanded    = null;
-        this.recharger = !this.recharger;
+        this.soumission           = false;
+        this.dossierSelectionne   = null;
+        this.dossierExpanded      = null;
+        this.highlightedDossierId = null;  // ✅ enlever surlignage après action
+        this.recharger            = !this.recharger;
       },
       error: (err: any) => {
         this.erreur     = err.error?.error ?? 'Erreur lors de l\'opération.';
         this.soumission = false;
       }
     });
+  }
+
+  get chartBars() {
+    const total = this.getNbEnAttente() + this.valides + this.rejetes || 1;
+    return [
+      { label: 'En attente', value: this.getNbEnAttente(), percent: (this.getNbEnAttente() / total) * 100, color: '#eab308' },
+      { label: 'Validés',    value: this.valides,           percent: (this.valides / total) * 100,           color: '#22c55e' },
+      { label: 'Rejetés',    value: this.rejetes,            percent: (this.rejetes / total) * 100,            color: '#ef4444' }
+    ];
+  }
+  
+  get tauxValidation(): number {
+    const total = this.getNbEnAttente() + this.valides + this.rejetes;
+    return total ? Math.round((this.valides / total) * 100) : 0;
+  }
+  
+  private readonly ringRadius = 54;
+  
+  get ringCircumference(): number {
+    return 2 * Math.PI * this.ringRadius;
+  }
+  
+  get ringOffset(): number {
+    const circ = this.ringCircumference;
+    return circ - (this.tauxValidation / 100) * circ;
   }
 }

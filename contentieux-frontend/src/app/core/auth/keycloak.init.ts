@@ -75,7 +75,11 @@ export function initializeKeycloak(keycloak: KeycloakService) {
        * URLs exclues de l'ajout automatique du token Bearer.
        * Les assets statiques n'ont pas besoin d'authentification.
        */
-      bearerExcludedUrls: ['/assets'],
+      bearerExcludedUrls: [
+        '/assets',
+        '/api/public',                              // ✅ exclure routes publiques
+        'http://localhost:8098/api/public'          // ✅ URL complète aussi
+      ],
     })
     .then(authenticated => {
       console.log('✅ Keycloak init — authenticated:', authenticated);

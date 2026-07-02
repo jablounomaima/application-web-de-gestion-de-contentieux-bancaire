@@ -7,7 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,16 +36,23 @@ public class NotificationService {
     // Helper interne
     // ══════════════════════════════════════════════════════════════
 
-    private void sauvegarderEtEnvoyer(Notification n) {
-        Notification saved = notificationRepository.save(n);
+  // APRÈS — scinder en deux : la logique privée + le save isolé
+private void sauvegarderEtEnvoyer(Notification n) {
+    try {
+        Notification saved = sauvegarderDansNouvelleTransaction(n);
         log.info(">>> [Notification] id={} destinataire='{}' titre='{}'",
             saved.getId(), saved.getDestinataire(), saved.getTitre());
-
-        // Publié APRÈS le commit de la transaction courante
-        // NotificationEventListener.envoyerNotificationWebSocket() prend le relais
         eventPublisher.publishEvent(new NotificationEvent(saved));
+    } catch (Exception e) {
+        // La notification échoue sans polluer la transaction principale
+        log.warn("⚠️ Notification non envoyée (transaction indépendante) : {}", e.getMessage());
     }
+}
 
+@Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+public Notification sauvegarderDansNouvelleTransaction(Notification n) {
+    return notificationRepository.save(n);
+}
     // ══════════════════════════════════════════════════════════════
     // Méthodes génériques
     // ══════════════════════════════════════════════════════════════

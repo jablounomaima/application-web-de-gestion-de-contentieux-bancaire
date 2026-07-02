@@ -13,13 +13,13 @@ import com.example.contentieux_security.service.MissionService;
 import com.example.contentieux_security.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
-import java.security.Principal;
 import java.time.LocalDate;
 import java.util.*;
 
@@ -49,19 +49,17 @@ public class AvocatAffaireController {
         return full.isEmpty() ? username : full;
     }
 
-    /** Username de l'agent responsable du dossier (null si introuvable). */
-  /** Username de l'agent responsable du dossier — lit le champ String creePar. */
-private String agentDuDossier(AffaireJudiciaire affaire) {
-    try {
-        DossierContentieux d = affaire.getDossier();
-        if (d == null) return null;
-        // ✅ creePar est un String direct, pas de lazy-loading
-        return d.getCreePar();
-    } catch (Exception e) {
-        log.warn("Impossible de résoudre l'agent du dossier : {}", e.getMessage());
-        return null;
+    /** Username de l'agent responsable du dossier — lit le champ String creePar. */
+    private String agentDuDossier(AffaireJudiciaire affaire) {
+        try {
+            DossierContentieux d = affaire.getDossier();
+            if (d == null) return null;
+            return d.getCreePar();
+        } catch (Exception e) {
+            log.warn("Impossible de résoudre l'agent du dossier : {}", e.getMessage());
+            return null;
+        }
     }
-}
 
     /** Numéro du dossier ou "inconnu". */
     private String numeroDossier(AffaireJudiciaire affaire) {
@@ -80,13 +78,13 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     // ─── AFFAIRES ─────────────────────────────────────────────────────────────
     @GetMapping
-    public ResponseEntity<?> mesAffaires(Principal principal) {
-        String username = principal.getName();
+    public ResponseEntity<?> mesAffaires(Authentication auth) {
+        String username = resolveUsername(auth);
         List<AffaireJudiciaire> affaires = affaireService.getAffairesParAvocat(username);
         Map<Long, String> missionStatuts = new HashMap<>();
         Map<Long, Long>   missionIds     = new HashMap<>();
-        Map<Long, Long>   dossierIds     = new HashMap<>();  // ← AJOUTER
-    
+        Map<Long, Long>   dossierIds     = new HashMap<>();
+
         for (AffaireJudiciaire affaire : affaires) {
             if (affaire.getMission() != null) {
                 try {
@@ -98,27 +96,26 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
                     log.warn("Mission lazy affaire {} : {}", affaire.getId(), e.getMessage());
                 }
             }
-            // ← AJOUTER : inclure dossierId
             Long dossierId = dossierIdOf(affaire);
             if (dossierId != null) {
                 dossierIds.put(affaire.getId(), dossierId);
             }
         }
-    
+
         Map<String, Object> response = new HashMap<>();
         response.put("affaires",       affaires);
         response.put("missionStatuts", missionStatuts);
         response.put("missionIds",     missionIds);
-        response.put("dossierIds",     dossierIds);  // ← AJOUTER
+        response.put("dossierIds",     dossierIds);
         return ResponseEntity.ok(response);
     }
 
-    
     @GetMapping("/{affaireId}")
     @Transactional(readOnly = true)
-    public ResponseEntity<?> detailAffaire(@PathVariable Long affaireId, Principal principal) {
+    public ResponseEntity<?> detailAffaire(@PathVariable Long affaireId, Authentication auth) {
+        String username = resolveUsername(auth);
         AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-        if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+        if (affaire == null || !isAvocatOwner(affaire, username))
             return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
         Map<String, Object> response = new HashMap<>();
@@ -154,8 +151,9 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     }
 
     @GetMapping("/dashboard")
-    public ResponseEntity<?> dashboard(Principal principal) {
-        String username = principal.getName();
+    public ResponseEntity<?> dashboard(Authentication auth) {
+        String username = resolveUsername(auth);
+
         List<AffaireJudiciaire> affaires = affaireService.getAffairesParAvocat(username);
 
         long totalAffaires   = affaires.size();
@@ -195,9 +193,10 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     // ─── DOSSIER ──────────────────────────────────────────────────────────────
 
     @GetMapping("/{affaireId}/dossier")
-    public ResponseEntity<?> voirDossier(@PathVariable Long affaireId, Principal principal) {
+    public ResponseEntity<?> voirDossier(@PathVariable Long affaireId, Authentication auth) {
+        String username = resolveUsername(auth);
         AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-        if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+        if (affaire == null || !isAvocatOwner(affaire, username))
             return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
         if (affaire.getDossier() == null)
             return ResponseEntity.status(404).body(Map.of("error", "Dossier introuvable"));
@@ -212,9 +211,10 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     // ─── AUDIENCES ────────────────────────────────────────────────────────────
 
     @GetMapping("/{affaireId}/audiences")
-    public ResponseEntity<?> gererAudiences(@PathVariable Long affaireId, Principal principal) {
+    public ResponseEntity<?> gererAudiences(@PathVariable Long affaireId, Authentication auth) {
+        String username = resolveUsername(auth);
         AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-        if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+        if (affaire == null || !isAvocatOwner(affaire, username))
             return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
         return ResponseEntity.ok(Map.of(
             "audiences",       affaire.getAudiences(),
@@ -224,10 +224,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     @PostMapping("/{affaireId}/audiences")
     public ResponseEntity<?> ajouterAudience(@PathVariable Long affaireId,
-            @RequestBody Map<String, Object> body, Principal principal) {
+            @RequestBody Map<String, Object> body, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             LocalDate dateAudience      = LocalDate.parse(body.get("dateAudience").toString());
@@ -243,10 +244,9 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
             affaireService.ajouterAudience(affaireId, dateAudience, heure, salle,
                                            motif, resultat, prochaineAudience, statut);
 
-            // ✅ NOTIF — audience ajoutée
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
-                String avocatNom = nomAvocat(affaire, principal.getName());
+                String avocatNom = nomAvocat(affaire, username);
                 String numDoss   = numeroDossier(affaire);
                 Long   dossId    = dossierIdOf(affaire);
                 notificationService.notifierSansDossier(
@@ -268,10 +268,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     @PutMapping("/{affaireId}/audiences/{audienceId}")
     public ResponseEntity<?> modifierAudience(@PathVariable Long affaireId,
             @PathVariable Long audienceId,
-            @RequestBody Map<String, Object> body, Principal principal) {
+            @RequestBody Map<String, Object> body, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             LocalDate dateAudience      = LocalDate.parse(body.get("dateAudience").toString());
@@ -287,14 +288,13 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
             affaireService.modifierAudienceComplete(audienceId, dateAudience, heure, salle,
                                                     motif, resultat, prochaineAudience, statut);
 
-            // ✅ NOTIF — audience modifiée
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 notificationService.notifierSansDossier(
                     agentUsername,
                     "✏️ Audience modifiée",
                     String.format("L'avocat %s a modifié une audience pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()), numeroDossier(affaire)),
+                        nomAvocat(affaire, username), numeroDossier(affaire)),
                     "AUDIENCE_MODIFIEE",
                     "/agent/dossiers/" + dossierIdOf(affaire) + "/affaire"
                 );
@@ -309,10 +309,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     @PatchMapping("/{affaireId}/audiences/{audienceId}/statut")
     public ResponseEntity<?> modifierStatutAudience(@PathVariable Long affaireId,
             @PathVariable Long audienceId,
-            @RequestBody Map<String, Object> body, Principal principal) {
+            @RequestBody Map<String, Object> body, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             Audience.StatutAudience statut =
@@ -323,14 +324,13 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
             affaireService.modifierStatutAudience(audienceId, statut, resultat, prochaineAudience);
 
-            // ✅ NOTIF — statut audience mis à jour
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 notificationService.notifierSansDossier(
                     agentUsername,
                     "🔄 Statut d'audience mis à jour",
                     String.format("L'avocat %s a mis à jour le statut d'une audience (%s) pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()), statut.name(), numeroDossier(affaire)),
+                        nomAvocat(affaire, username), statut.name(), numeroDossier(affaire)),
                     "AUDIENCE_MODIFIEE",
                     "/agent/dossiers/" + dossierIdOf(affaire) + "/affaire"
                 );
@@ -344,10 +344,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     @DeleteMapping("/{affaireId}/audiences/{audienceId}")
     public ResponseEntity<?> supprimerAudience(@PathVariable Long affaireId,
-            @PathVariable Long audienceId, Principal principal) {
+            @PathVariable Long audienceId, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             affaireService.supprimerAudience(audienceId);
@@ -361,10 +362,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     @PostMapping("/{affaireId}/jugement")
     public ResponseEntity<?> saisirJugement(@PathVariable Long affaireId,
-            @RequestBody Map<String, Object> body, Principal principal) {
+            @RequestBody Map<String, Object> body, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             AffaireJudiciaire.TypeJugement typeJugement =
@@ -388,14 +390,13 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
                 affaireService.sauvegarderAffaire(maj);
             }
 
-            // ✅ NOTIF — jugement saisi
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 notificationService.notifierSansDossier(
                     agentUsername,
                     "⚖️ Jugement enregistré",
                     String.format("L'avocat %s a enregistré un jugement (%s) pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()),
+                        nomAvocat(affaire, username),
                         typeJugement.name(),
                         numeroDossier(affaire)),
                     "JUGEMENT_RENDU",
@@ -410,10 +411,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     }
 
     @DeleteMapping("/{affaireId}/jugement")
-    public ResponseEntity<?> supprimerJugement(@PathVariable Long affaireId, Principal principal) {
+    public ResponseEntity<?> supprimerJugement(@PathVariable Long affaireId, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             affaireService.supprimerJugement(affaireId);
             return ResponseEntity.ok(Map.of("message", "Jugement supprimé avec succès."));
@@ -426,22 +428,22 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     @PostMapping("/{affaireId}/tribunal")
     public ResponseEntity<?> modifierTribunal(@PathVariable Long affaireId,
-            @RequestBody Map<String, String> body, Principal principal) {
+            @RequestBody Map<String, String> body, Authentication auth) {
+        String username = resolveUsername(auth);
         AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-        if (affaire == null || !isOwner(affaire, principal.getName()))
+        if (affaire == null || !isOwner(affaire, username))
             return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
         try {
             affaireService.modifierTribunal(affaireId,
                 body.get("tribunal"), body.get("chambre"), body.get("numeroRole"));
 
-            // ✅ NOTIF — infos tribunal mises à jour
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 notificationService.notifierSansDossier(
                     agentUsername,
                     "🏛️ Informations tribunal mises à jour",
                     String.format("L'avocat %s a mis à jour les informations du tribunal pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()), numeroDossier(affaire)),
+                        nomAvocat(affaire, username), numeroDossier(affaire)),
                     "RESULTAT_AVOCAT",
                     "/agent/dossiers/" + dossierIdOf(affaire) + "/affaire"
                 );
@@ -454,10 +456,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     }
 
     @DeleteMapping("/{affaireId}/tribunal")
-    public ResponseEntity<?> supprimerTribunal(@PathVariable Long affaireId, Principal principal) {
+    public ResponseEntity<?> supprimerTribunal(@PathVariable Long affaireId, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isOwner(affaire, principal.getName()))
+            if (affaire == null || !isOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             affaireService.modifierTribunal(affaireId, null, null, null);
             return ResponseEntity.ok(Map.of("message", "Informations du tribunal supprimées."));
@@ -470,22 +473,22 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     @PostMapping("/{affaireId}/pv")
     public ResponseEntity<?> soumettrePV(@PathVariable Long affaireId,
-            @RequestBody Map<String, String> body, Principal principal) {
+            @RequestBody Map<String, String> body, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             affaireJudiciaireService.soumettreAvocatPV(affaireId, body.get("pvTexte"));
 
-            // ✅ NOTIF — PV soumis
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 notificationService.notifierSansDossier(
                     agentUsername,
                     "📋 Procès-Verbal soumis",
                     String.format("L'avocat %s a soumis un PV pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()), numeroDossier(affaire)),
+                        nomAvocat(affaire, username), numeroDossier(affaire)),
                     "PV_SOUMIS",
                     "/agent/dossiers/" + dossierIdOf(affaire) + "/affaire"
                 );
@@ -502,16 +505,16 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
             @PathVariable Long affaireId,
             @RequestPart("pvTexte") String pvTexte,
             @RequestPart(value = "piecesJointes", required = false) List<MultipartFile> fichiers,
-            Principal principal) {
+            Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             log.info("Fichiers reçus : {}", fichiers != null ? fichiers.size() : 0);
             affaireJudiciaireService.soumettreAvocatPVAvecFichiers(affaireId, pvTexte, fichiers);
 
-            // ✅ NOTIF — PV avec fichiers soumis
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 int nbFichiers = fichiers != null ? fichiers.size() : 0;
@@ -519,7 +522,7 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
                     agentUsername,
                     "📋 Procès-Verbal soumis avec pièces jointes",
                     String.format("L'avocat %s a soumis un PV (%d pièce(s) jointe(s)) pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()), nbFichiers, numeroDossier(affaire)),
+                        nomAvocat(affaire, username), nbFichiers, numeroDossier(affaire)),
                     "PV_SOUMIS",
                     "/agent/dossiers/" + dossierIdOf(affaire) + "/affaire"
                 );
@@ -534,22 +537,22 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     @PutMapping("/{affaireId}/pv")
     public ResponseEntity<?> modifierPV(@PathVariable Long affaireId,
-            @RequestBody Map<String, String> body, Principal principal) {
+            @RequestBody Map<String, String> body, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             affaireJudiciaireService.modifierAvocatPV(affaireId, body.get("pvTexte"));
 
-            // ✅ NOTIF — PV modifié
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 notificationService.notifierSansDossier(
                     agentUsername,
                     "✏️ Procès-Verbal modifié",
                     String.format("L'avocat %s a modifié le PV pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()), numeroDossier(affaire)),
+                        nomAvocat(affaire, username), numeroDossier(affaire)),
                     "PV_SOUMIS",
                     "/agent/dossiers/" + dossierIdOf(affaire) + "/affaire"
                 );
@@ -562,10 +565,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     }
 
     @DeleteMapping("/{affaireId}/pv")
-    public ResponseEntity<?> supprimerPV(@PathVariable Long affaireId, Principal principal) {
+    public ResponseEntity<?> supprimerPV(@PathVariable Long affaireId, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             affaireJudiciaireService.supprimerAvocatPV(affaireId);
             return ResponseEntity.ok(Map.of("message", "PV supprimé avec succès."));
@@ -578,10 +582,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     @PostMapping("/{affaireId}/facture")
     public ResponseEntity<?> soumettreFacture(@PathVariable Long affaireId,
-            @RequestBody Map<String, Object> body, Principal principal) {
+            @RequestBody Map<String, Object> body, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             String factureRef    = (String) body.get("factureRef");
@@ -589,14 +594,13 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
             affaireJudiciaireService.soumettreAvocatFacture(affaireId, factureRef, montant);
 
-            // ✅ NOTIF — facture soumise
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 notificationService.notifierSansDossier(
                     agentUsername,
                     "🧾 Facture d'honoraires soumise",
                     String.format("L'avocat %s a soumis une facture (réf. %s, %.3f TND) pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()),
+                        nomAvocat(affaire, username),
                         factureRef, montant, numeroDossier(affaire)),
                     "FACTURE_SOUMISE",
                     "/agent/dossiers/" + dossierIdOf(affaire) + "/affaire"
@@ -611,10 +615,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
     @PutMapping("/{affaireId}/facture")
     public ResponseEntity<?> modifierFacture(@PathVariable Long affaireId,
-            @RequestBody Map<String, Object> body, Principal principal) {
+            @RequestBody Map<String, Object> body, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             String factureRef = (String) body.get("factureRef");
@@ -622,14 +627,13 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
 
             affaireJudiciaireService.modifierAvocatFacture(affaireId, factureRef, montant);
 
-            // ✅ NOTIF — facture modifiée
             String agentUsername = agentDuDossier(affaire);
             if (agentUsername != null) {
                 notificationService.notifierSansDossier(
                     agentUsername,
                     "✏️ Facture d'honoraires modifiée",
                     String.format("L'avocat %s a modifié sa facture (réf. %s, %.3f TND) pour le dossier %s.",
-                        nomAvocat(affaire, principal.getName()),
+                        nomAvocat(affaire, username),
                         factureRef, montant, numeroDossier(affaire)),
                     "FACTURE_SOUMISE",
                     "/agent/dossiers/" + dossierIdOf(affaire) + "/affaire"
@@ -643,10 +647,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     }
 
     @DeleteMapping("/{affaireId}/facture")
-    public ResponseEntity<?> supprimerFacture(@PathVariable Long affaireId, Principal principal) {
+    public ResponseEntity<?> supprimerFacture(@PathVariable Long affaireId, Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
             affaireJudiciaireService.supprimerAvocatFacture(affaireId);
             return ResponseEntity.ok(Map.of("message", "Facture supprimée avec succès."));
@@ -661,10 +666,11 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     public ResponseEntity<?> supprimerFichierPV(
             @PathVariable Long affaireId,
             @PathVariable int index,
-            Principal principal) {
+            Authentication auth) {
+        String username = resolveUsername(auth);
         try {
             AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
-            if (affaire == null || !isAvocatOwner(affaire, principal.getName()))
+            if (affaire == null || !isAvocatOwner(affaire, username))
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             List<String> fichiers = new ArrayList<>(affaire.getPvFichiers());
@@ -681,6 +687,20 @@ private String agentDuDossier(AffaireJudiciaire affaire) {
     }
 
     // ─── HELPERS ──────────────────────────────────────────────────────────────
+
+    private String resolveUsername(Authentication auth) {
+        String username = auth.getName();
+        if (auth.getPrincipal() instanceof org.springframework.security.oauth2.jwt.Jwt jwt) {
+            Object p = jwt.getClaim("preferred_username");
+            if (p != null) username = p.toString();
+        } else if (auth.getPrincipal() instanceof org.springframework.security.oauth2.core.oidc.user.OidcUser u) {
+            username = u.getPreferredUsername();
+        } else if (auth.getPrincipal() instanceof org.springframework.security.oauth2.core.user.OAuth2User u) {
+            Object p = u.getAttribute("preferred_username");
+            if (p != null) username = p.toString();
+        }
+        return username;
+    }
 
     private boolean isAvocatOwner(AffaireJudiciaire affaire, String username) {
         return affaire.getAvocat() != null
