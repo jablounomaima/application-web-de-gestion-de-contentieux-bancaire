@@ -140,8 +140,11 @@
             <span class="al-pill" [ngClass]="statutClass(aff.statut)">
               {{ statutLabel(aff.statut) }}
             </span>
-            <span *ngIf="aff.missionStatut" class="al-pill al-pill--sm" [ngClass]="missionStatutClass(aff.missionStatut)">
-              Mission : {{ aff.missionStatut }}
+            <span *ngIf="aff.pvStatut" class="al-pill al-pill--sm" [ngClass]="pvStatutClass(aff.pvStatut)">
+              PV: {{ aff.pvStatut }}
+            </span>
+            <span *ngIf="aff.factureStatut" class="al-pill al-pill--sm" [ngClass]="factureStatutClass(aff.factureStatut)">
+              Facture: {{ aff.factureStatut }}
             </span>
           </div>
         </div>

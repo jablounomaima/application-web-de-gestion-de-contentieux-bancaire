@@ -31,18 +31,24 @@ public class NotificationEventListener {
         var n = event.notification();
         String dest = n.getDestinataire();
 
-        log.info(">>> [WS AFTER_COMMIT] envoi à '{}' type='{}'", dest, n.getType());
+        log.info(">>> [WS AFTER_COMMIT] ========================================");
+        log.info(">>> [WS AFTER_COMMIT] Notification reçue");
+        log.info(">>> [WS AFTER_COMMIT]   destinataire: '{}'", dest);
+        log.info(">>> [WS AFTER_COMMIT]   type: '{}'", n.getType());
+        log.info(">>> [WS AFTER_COMMIT]   titre: '{}'", n.getTitre());
+        log.info(">>> [WS AFTER_COMMIT]   dossierId: {}", n.getDossier() != null ? n.getDossier().getId() : "null");
+        log.info(">>> [WS AFTER_COMMIT] ========================================");
 
         try {
             // Construire un DTO pour envoyer dossierId + urlAction au frontend
             NotificationDTO dto = toDTO(n);
 
+            log.info(">>> [WS AFTER_COMMIT] Envoi via convertAndSendToUser('/user/{}/queue/notifications')", dest);
             messagingTemplate.convertAndSendToUser(
                 dest, "/queue/notifications", dto);
             log.info("✅ [WS AFTER_COMMIT] Notification livrée à '{}'", dest);
         } catch (Exception e) {
-            log.error("❌ [WS AFTER_COMMIT] Échec pour '{}': {}",
-                dest, e.getMessage(), e);
+            log.error("❌ [WS AFTER_COMMIT] Échec pour '{}': {}", dest, e.getMessage(), e);
         }
     }
 

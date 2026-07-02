@@ -163,6 +163,7 @@ export const routes: Routes = [
   },
   {
     path: 'agent/dossiers/:id',             // ← Detail route (generic)
+    pathMatch: 'full',
     canActivate: [AuthGuard, AgentActifGuard],
     data: { roles: ['ROLE_AGENT', 'ROLE_ADMIN'] },
     loadComponent: () =>

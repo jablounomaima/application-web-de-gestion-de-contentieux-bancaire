@@ -148,10 +148,13 @@ export class NotificationService implements OnDestroy {
 
       onConnect: (frame) => {
         console.log('✅ [WS] Connecté — frame headers:', frame.headers);
+        console.log('>>> [WS] S\'abonnant à /user/queue/notifications');
         this.stompClient!.subscribe(`/user/queue/notifications`, (msg: IMessage) => {
-          console.log('📩 [WS] Message reçu:', msg.body);
+          console.log('>>> [WS] Message reçu sur /user/queue/notifications');
+          console.log('>>> [WS] Body:', msg.body);
           try {
             const notif: NotificationDTO = JSON.parse(msg.body);
+            console.log('>>> [WS] Notification parsée:', notif);
             this.ajouterNotification(notif);
           } catch (e) {
             console.error('❌ Erreur parsing notif:', e);
@@ -213,9 +216,11 @@ export class NotificationService implements OnDestroy {
 
   private ajouterNotification(notif: any): void {
     const normalized = this.normaliserNotification(notif);
+    console.log('>>> [ajouterNotification] Notification normalisée:', normalized);
     const current = this.notificationsSubject.getValue();
     this.notificationsSubject.next([normalized, ...current]);
     this.countSubject.next(this.countSubject.getValue() + 1);
+    console.log('>>> [ajouterNotification] Émission nouvelleNotif$');
     this.nouvelleNotifSubject.next(normalized); // ← émet le signal temps réel
   }
 

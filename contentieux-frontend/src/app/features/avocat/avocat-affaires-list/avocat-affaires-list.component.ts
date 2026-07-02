@@ -65,40 +65,48 @@ export class AvocatAffairesListComponent implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.chargerStats();
     this.chargerAffaires();
-  
-    this.route.queryParams.subscribe(params => {
-      const id = params['dossierId'] ? Number(params['dossierId']) : null;
-      if (id) this._cibleDossierId = id;
-    });
-  
-    this.notifService.dossierCible$.subscribe(id => {
-      if (id !== null) {
-        this._cibleDossierId = null;
-        setTimeout(() => {
-          this._cibleDossierId = id;
-          this.notifService.signalerDossierCible(null);
-          this._surlignerAffaire(id);
-        }, 50);
-      }
-    });
-  
+
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        const id = params['dossierId'] ? Number(params['dossierId']) : null;
+        if (id) this._cibleDossierId = id;
+      });
+
+    this.notifService.dossierCible$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(id => {
+        if (id !== null) {
+          this._cibleDossierId = null;
+          setTimeout(() => {
+            this._cibleDossierId = id;
+            this.notifService.signalerDossierCible(null);
+            this._surlignerAffaire(id);
+          }, 50);
+        }
+      });
+
     // ── Rechargement automatique via WebSocket ────────────────────
     const typesAvocat = [
       'NOUVELLE_AFFAIRE',
+      'AFFAIRE_REASSIGNEE',
       'NOUVELLE_MISSION',
       'MISSION_MODIFIEE',
       'MISSION_CLOTUREE',
       'MISSION_REJETEE',
-      'VALIDATION_FINANCIERE_OK'
+      'VALIDATION_FINANCIERE_OK',
+      'PV_VALIDE',
+      'PV_REFUSE',
+      'REJET_FINANCIER'
     ];
-  
-    this.notifService.nouvelleNotif$.pipe(
-      takeUntil(this.destroy$)
-    ).subscribe(notif => {
-      if (typesAvocat.includes(notif.type)) {
-        this.chargerAffairesAvecRetry();
-      }
-    });
+
+    this.notifService.nouvelleNotif$
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(notif => {
+        if (typesAvocat.includes(notif.type)) {
+          this.chargerAffairesAvecRetry();
+        }
+      });
   }
 
   ngOnDestroy(): void {
@@ -127,8 +135,6 @@ export class AvocatAffairesListComponent implements OnInit, OnDestroy {
       next: (data: any) => {
         this.affaires = (data.affaires || []).map((a: any) => ({
           ...a,
-          missionStatut:   data.missionStatuts?.[a.id] ?? null,
-          missionId:       data.missionIds?.[a.id]     ?? null,
           dossierId:       data.dossierIds?.[a.id]     ?? null,
           pvTexte:         a.pvTexte        ?? null,
           pvStatut:        a.pvStatut       ?? null,
@@ -145,17 +151,24 @@ export class AvocatAffairesListComponent implements OnInit, OnDestroy {
     });
   }
 
+  /**
+   * Recharge la liste après une notification WebSocket, avec retry
+   * jusqu'à ce que la liste d'IDs change réellement (ajout OU retrait).
+   * Comparer les IDs (et pas juste la longueur) est indispensable :
+   * une réassignation FAIT DIMINUER la longueur côté ancien avocat,
+   * donc une simple comparaison de taille ne détecte jamais ce cas.
+   */
   private chargerAffairesAvecRetry(tentative = 0): void {
     const MAX = 5;
     const DELAI_MS = [500, 1000, 2000, 3000, 5000];
-  
+
+    const idsAvant = this.affaires.map(a => a.id).sort().join(',');
+
     this.avocatService.getAffaires().subscribe({
       next: (data: any) => {
         const nouvelles = (data.affaires || []).map((a: any) => ({
           ...a,
-          missionStatut:   data.missionStatuts?.[a.id] ?? null,
-          missionId:       data.missionIds?.[a.id]     ?? null,
-          dossierId:       data.dossierIds?.[a.id]      ?? null,
+          dossierId:       data.dossierIds?.[a.id]     ?? null,
           pvTexte:         a.pvTexte        ?? null,
           pvStatut:        a.pvStatut       ?? null,
           pvFichiers:      a.pvFichiers     ?? [],
@@ -164,16 +177,19 @@ export class AvocatAffairesListComponent implements OnInit, OnDestroy {
           factureStatut:   a.factureStatut  ?? null,
           nombreAudiences: Array.isArray(a.audiences) ? a.audiences.length : 0,
         }));
-  
-        if (nouvelles.length <= this.affaires.length && tentative < MAX) {
-          console.log(`🔄 [AffairesList] Retry ${tentative + 1}/${MAX}`);
+
+        const idsApres = nouvelles.map((a: any) => a.id).sort().join(',');
+        const aChange = idsApres !== idsAvant;
+
+        if (!aChange && tentative < MAX) {
+          console.log(`🔄 [AffairesList] Retry ${tentative + 1}/${MAX} — aucun changement détecté`);
           setTimeout(
             () => this.chargerAffairesAvecRetry(tentative + 1),
             DELAI_MS[tentative]
           );
           return;
         }
-  
+
         this.affaires = nouvelles;
         this.appliquerFiltres();
         console.log(`✅ [AffairesList] Affaires rechargées : ${this.affaires.length}`);
@@ -261,13 +277,20 @@ export class AvocatAffairesListComponent implements OnInit, OnDestroy {
     return m[s] ?? 'pill--grey';
   }
 
-  missionStatutClass(s: string): string {
+  pvStatutClass(s: string): string {
     const m: Record<string, string> = {
-      EN_COURS:        'pill--blue',
-      PV_SOUMIS:       'pill--orange',
-      FACTURE_SOUMISE: 'pill--purple',
-      TERMINEE:        'pill--green',
-      ANNULEE:         'pill--grey'
+      EN_ATTENTE: 'pill--orange',
+      VALIDE:     'pill--green',
+      REFUSE:     'pill--red'
+    };
+    return m[s] ?? 'pill--grey';
+  }
+
+  factureStatutClass(s: string): string {
+    const m: Record<string, string> = {
+      EN_ATTENTE: 'pill--orange',
+      PAYEE:      'pill--green',
+      REJETEE:    'pill--red'
     };
     return m[s] ?? 'pill--grey';
   }

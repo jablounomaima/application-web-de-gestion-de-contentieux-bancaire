@@ -535,8 +535,8 @@ export class AppComponent implements OnInit, OnDestroy {
 
   private _resolveToastType(type: string): string {
     if (!type) return 'info';
-    if (type.includes('_OK') || type.includes('CLOTUR'))  return 'success';
-    if (type.includes('REJET'))                           return 'error';
+    if (type.includes('_OK') || type.includes('CLOTUR') || type === 'PV_VALIDE')  return 'success';
+    if (type.includes('REJET') || type === 'PV_REFUSE')                           return 'error';
     if (type.includes('SOUMIS') || type.includes('RESOUMISSION') || type.includes('NOUVELLE')) return 'warning';
     return 'info';
   }
@@ -671,7 +671,7 @@ export class AppComponent implements OnInit, OnDestroy {
           }
           return safeUrl(notif.urlAction, `/prestataire/missions`);
         }
-        if (hasRole('AVOCAT')) return `/avocat/affaires`;
+        if (hasRole('AVOCAT')) return safeUrl(notif.urlAction, '/avocat/affaires');
         if (notif.urlAction?.includes('/resultats-prestataires')) return notif.urlAction;
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
 
@@ -695,7 +695,9 @@ export class AppComponent implements OnInit, OnDestroy {
       // ── Mission prestataire ─────────────────────────────────
       case 'NOUVELLE_MISSION':
       case 'MISSION_MODIFIEE':
-        if (hasRole('AVOCAT')) return `/avocat/dashboard`;
+        if (hasRole('AVOCAT')) {
+          return dossierId ? `/avocat/affaires?dossierId=${dossierId}` : `/avocat/affaires`;
+        }
         return safeUrl(notif.urlAction, `/prestataire/missions`);
 
       // ── Soumissions facture / PV ────────────────────────────
@@ -703,10 +705,21 @@ export class AppComponent implements OnInit, OnDestroy {
       case 'FACTURE_SOUMISE':
       case 'RESULTAT_SOUMIS':
       case 'RESULTAT_MODIFIE':
-        if (hasRole('VALIDATEUR_FINANCIER')) return `/validateur/financier/factures`;
+        if (hasRole('VALIDATEUR_FINANCIER')) return safeUrl(notif.urlAction, `/validateur/financier/factures`);
         if (hasRole('AGENT'))
           return notif.urlAction
             ?? (dossierId ? `/agent/dossiers/${dossierId}/resultats-prestataires` : `/agent/liste`);
+        return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
+
+      // ── Facture avocat soumise (notif dédiée au validateur financier) ──────
+      case 'FACTURE_AVOCAT_SOUMISE':
+        if (hasRole('VALIDATEUR_FINANCIER')) return safeUrl(notif.urlAction, '/validateur/financier/factures?tab=avocats');
+        return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
+
+      // ── Décision PV avocat ──────────────────────────────────────────────────
+      case 'PV_VALIDE':
+      case 'PV_REFUSE':
+        if (hasRole('AVOCAT')) return safeUrl(notif.urlAction, '/avocat/affaires');
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
 
       // ── Mission clôturée / rejetée ───────────────────────────
@@ -724,7 +737,7 @@ export class AppComponent implements OnInit, OnDestroy {
       // ── Audience / Jugement ─────────────────────────────────
       case 'NOUVELLE_AUDIENCE':
       case 'JUGEMENT_RENDU':
-        if (hasRole('AVOCAT')) return dossierId ? `/avocat/affaires/${dossierId}` : `/avocat/affaires`;
+        if (hasRole('AVOCAT')) return dossierId ? `/avocat/affaires?dossierId=${dossierId}` : `/avocat/affaires`;
         return dossierId ? `/agent/dossiers/${dossierId}` : `/agent/liste`;
 
       // ── Rejet facture ───────────────────────────────────────
@@ -747,7 +760,7 @@ export class AppComponent implements OnInit, OnDestroy {
         if (notif.urlAction) {
           if (!hasRole('AGENT') && notif.urlAction.includes('/agent/')) {
             if (hasRole('AVOCAT'))               return `/avocat/affaires`;
-            if (hasRole('VALIDATEUR_FINANCIER')) return `/validateur/financier/factures`;
+            if (hasRole('VALIDATEUR_FINANCIER')) return safeUrl(notif.urlAction, `/validateur/financier/factures`);
             if (hasRole('PRESTATAIRE') || hasRole('EXPERT') || hasRole('HUISSIER'))
               return `/prestataire/missions`;
             return null;
@@ -766,25 +779,30 @@ export class AppComponent implements OnInit, OnDestroy {
   // ════════════════════════════════════════════════════════════
   typeIcone(type: string): string {
     const map: Record<string, string> = {
-      'VALIDATION_FINANCIERE':    '💰',
-      'VALIDATION_JURIDIQUE':     '⚖️',
-      'VALIDATION_FINANCIERE_OK': '✅',
-      'REJET_FINANCIER':          '❌',
-      'VALIDATION_JURIDIQUE_OK':  '✅',
-      'REJET_JURIDIQUE':          '❌',
-      'NOUVELLE_MISSION':         '📋',
-      'MISSION_MODIFIEE':         '✏️',
-      'MISSION_CLOTUREE':         '🏁',
-      'MISSION_REJETEE':          '❌',
-      'RESOUMISSION':             '🔄',
-      'PV_SOUMIS':                '📄',
-      'FACTURE_SOUMISE':          '🧾',
-      'RESULTAT_SOUMIS':          '📬',
-      'RESULTAT_MODIFIE':         '📝',
-      'NOUVELLE_AUDIENCE':        '🗓️',
-      'JUGEMENT_RENDU':           '🏛️',
-      'FACTURE_REJETEE':          '❌',
-      'MOT_DE_PASSE_OUBLIE':      '🔑',
+      'VALIDATION_FINANCIERE':     '💰',
+      'VALIDATION_JURIDIQUE':      '⚖️',
+      'VALIDATION_FINANCIERE_OK':  '✅',
+      'REJET_FINANCIER':           '❌',
+      'VALIDATION_JURIDIQUE_OK':   '✅',
+      'REJET_JURIDIQUE':           '❌',
+      'NOUVELLE_MISSION':          '📋',
+      'MISSION_MODIFIEE':          '✏️',
+      'MISSION_CLOTUREE':          '🏁',
+      'MISSION_REJETEE':           '❌',
+      'RESOUMISSION':              '🔄',
+      'PV_SOUMIS':                 '📄',
+      'FACTURE_SOUMISE':           '🧾',
+      'FACTURE_AVOCAT_SOUMISE':    '⚖️',
+      'RESULTAT_SOUMIS':           '📬',
+      'RESULTAT_MODIFIE':          '📝',
+      'NOUVELLE_AUDIENCE':         '🗓️',
+      'JUGEMENT_RENDU':            '🏛️',
+      'FACTURE_REJETEE':           '❌',
+      'MOT_DE_PASSE_OUBLIE':       '🔑',
+      'PV_VALIDE':                 '✅',
+      'PV_REFUSE':                 '❌',
+      'NOUVELLE_AFFAIRE':          '⚖️',
+      'AFFAIRE_REASSIGNEE':        '🔄',
     };
     return map[type] ?? '🔔';
   }

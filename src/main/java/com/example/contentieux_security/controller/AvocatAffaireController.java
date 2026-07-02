@@ -81,21 +81,9 @@ public class AvocatAffaireController {
     public ResponseEntity<?> mesAffaires(Authentication auth) {
         String username = resolveUsername(auth);
         List<AffaireJudiciaire> affaires = affaireService.getAffairesParAvocat(username);
-        Map<Long, String> missionStatuts = new HashMap<>();
-        Map<Long, Long>   missionIds     = new HashMap<>();
         Map<Long, Long>   dossierIds     = new HashMap<>();
 
         for (AffaireJudiciaire affaire : affaires) {
-            if (affaire.getMission() != null) {
-                try {
-                    missionStatuts.put(affaire.getId(),
-                        affaire.getMission().getStatut() != null
-                            ? affaire.getMission().getStatut().name() : "INCONNU");
-                    missionIds.put(affaire.getId(), affaire.getMission().getId());
-                } catch (Exception e) {
-                    log.warn("Mission lazy affaire {} : {}", affaire.getId(), e.getMessage());
-                }
-            }
             Long dossierId = dossierIdOf(affaire);
             if (dossierId != null) {
                 dossierIds.put(affaire.getId(), dossierId);
@@ -104,8 +92,6 @@ public class AvocatAffaireController {
 
         Map<String, Object> response = new HashMap<>();
         response.put("affaires",       affaires);
-        response.put("missionStatuts", missionStatuts);
-        response.put("missionIds",     missionIds);
         response.put("dossierIds",     dossierIds);
         return ResponseEntity.ok(response);
     }
@@ -203,9 +189,8 @@ public class AvocatAffaireController {
 
         Long dossierId = affaire.getDossier().getId();
         DossierDetailDTO dossier = dossierService.getDossierDetail(dossierId);
-        AffaireJudiciaire affaireAvecMission = affaireJudiciaireService.findById(affaireId);
-        Mission mission = affaireAvecMission.getMission();
-        return ResponseEntity.ok(Map.of("affaire", affaire, "dossier", dossier, "mission", mission));
+        List<AffaireJudiciaire> affairesDossier = affaireService.getAllAffairesParDossier(dossierId);
+        return ResponseEntity.ok(Map.of("affaire", affaire, "dossier", dossier, "affairesDossier", affairesDossier));
     }
 
     // ─── AUDIENCES ────────────────────────────────────────────────────────────
@@ -590,7 +575,14 @@ public class AvocatAffaireController {
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             String factureRef    = (String) body.get("factureRef");
-            Double montant       = Double.valueOf(body.get("montantFacture").toString());
+            
+            Object montantObj = body.get("montantFacture");
+            Double montant = 0.0;
+            if (montantObj instanceof Number) {
+                montant = ((Number) montantObj).doubleValue();
+            } else if (montantObj instanceof String) {
+                montant = Double.valueOf(((String) montantObj).replace(",", "."));
+            }
 
             affaireJudiciaireService.soumettreAvocatFacture(affaireId, factureRef, montant);
 
@@ -607,9 +599,32 @@ public class AvocatAffaireController {
                 );
             }
 
+            // ── 🔔 Notifier le validateur financier du dossier ──────────────
+            try {
+                DossierContentieux dossier = affaire.getDossier();
+                if (dossier != null && dossier.getValidateurFinancierUsername() != null) {
+                    String numeroAffaire = affaire.getNumeroAffaire() != null ? affaire.getNumeroAffaire() : String.valueOf(affaireId);
+                    notificationService.notifierSansDossier(
+                        dossier.getValidateurFinancierUsername(),
+                        "⚖️ Facture d'avocat soumise",
+                        String.format("L'avocat %s a soumis une facture d'honoraires (réf. %s, %.3f TND) pour l'affaire %s — dossier %s. Votre validation est requise.",
+                            nomAvocat(affaire, username),
+                            factureRef, montant, numeroAffaire, numeroDossier(affaire)),
+                        "FACTURE_AVOCAT_SOUMISE",
+                        // ⚠️ FIX : ajout de affaireId pour que le frontend puisse
+                        // surligner automatiquement la bonne ligne de facture
+                        "/validateur/financier/factures?tab=avocats&affaireId=" + affaireId
+                    );
+                }
+            } catch (Exception notifEx) {
+                log.warn(">>> Notification validateur financier non envoyée : {}", notifEx.getMessage());
+            }
+
             return ResponseEntity.ok(Map.of("message", "Facture soumise avec succès."));
         } catch (Exception e) {
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+            log.error("Erreur lors de la soumission de la facture pour affaire {}: {}", affaireId, e.getMessage(), e);
+            String errorMsg = e.getMessage() != null ? e.getMessage() : "Erreur interne (" + e.getClass().getSimpleName() + ")";
+            return ResponseEntity.badRequest().body(Map.of("error", errorMsg));
         }
     }
 
@@ -623,7 +638,14 @@ public class AvocatAffaireController {
                 return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
 
             String factureRef = (String) body.get("factureRef");
-            Double montant    = Double.valueOf(body.get("montantFacture").toString());
+            
+            Object montantObj = body.get("montantFacture");
+            Double montant = 0.0;
+            if (montantObj instanceof Number) {
+                montant = ((Number) montantObj).doubleValue();
+            } else if (montantObj instanceof String) {
+                montant = Double.valueOf(((String) montantObj).replace(",", "."));
+            }
 
             affaireJudiciaireService.modifierAvocatFacture(affaireId, factureRef, montant);
 

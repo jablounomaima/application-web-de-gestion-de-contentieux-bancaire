@@ -411,6 +411,8 @@ public void notifierAgentResultatAjoute(String agentUsername, String avocatNom,
 public void notifier(String destinataire, String titre,
                      String message, String type,
                      DossierContentieux dossier) {
+    log.info(">>> [notifier] destinataire='{}' type='{}' dossier={}", destinataire, type,
+        dossier != null ? dossier.getId() : "null");
     String urlAction = resolveUrl(type, dossier);
     Notification n = Notification.builder()
             .destinataire(destinataire)
@@ -430,6 +432,8 @@ public void notifier(String destinataire, String titre,
                      String message, String type,
                      DossierContentieux dossier,
                      String urlExplicite) {
+    log.info(">>> [notifier] destinataire='{}' type='{}' dossier={} urlExplicite='{}'", 
+        destinataire, type, dossier != null ? dossier.getId() : "null", urlExplicite);
     Notification n = Notification.builder()
             .destinataire(destinataire)
             .titre(titre)

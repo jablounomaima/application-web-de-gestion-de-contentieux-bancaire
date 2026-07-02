@@ -256,10 +256,26 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
       this.notifService.marquerCommeLue(n.id).subscribe();
       this.notifService.marquerLueLocalement(n.id);
     }
+
     // Naviguer vers l'URL d'action
     if (n.urlAction) {
-      this.router.navigateByUrl(n.urlAction);
+      // ⚠️ Fix réutilisation de route : si on est déjà sur la même route
+      // (ex: le validateur financier est déjà sur /validateur/financier/factures
+      // sans le bon queryParam), Angular peut réutiliser le composant existant
+      // sans redéclencher proprement le flux queryParams. On force une
+      // réévaluation en repassant par une navigation neutre.
+      const urlActuelle = this.router.url.split('?')[0];
+      const urlCible     = n.urlAction.split('?')[0];
+
+      if (urlActuelle === urlCible) {
+        this.router.navigateByUrl('/', { skipLocationChange: true }).then(() => {
+          this.router.navigateByUrl(n.urlAction);
+        });
+      } else {
+        this.router.navigateByUrl(n.urlAction);
+      }
     }
+
     this.panelOuvert = false;
   }
 
@@ -282,6 +298,7 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
       'MISSION_MODIFIEE':         '✏️',
       'PV_SOUMIS':                '📄',
       'FACTURE_SOUMISE':          '🧾',
+      'FACTURE_AVOCAT_SOUMISE':   '⚖️',
       'RESULTATS_SOUMIS':         '📬',
       'NOUVELLE_AUDIENCE':        '🗓️',
       'JUGEMENT_RENDU':           '🏛️',
@@ -297,7 +314,7 @@ export class NotificationBellComponent implements OnInit, OnDestroy {
       return 'type-rejet';
     if (['NOUVELLE_MISSION', 'MISSION_MODIFIEE'].includes(type))
       return 'type-mission';
-    if (['PV_SOUMIS', 'FACTURE_SOUMISE', 'RESULTATS_SOUMIS'].includes(type))
+    if (['PV_SOUMIS', 'FACTURE_SOUMISE', 'FACTURE_AVOCAT_SOUMISE', 'RESULTATS_SOUMIS'].includes(type))
       return 'type-resultat';
     if (['NOUVELLE_AUDIENCE', 'JUGEMENT_RENDU'].includes(type))
       return 'type-audience';

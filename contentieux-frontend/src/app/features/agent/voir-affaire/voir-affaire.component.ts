@@ -14,10 +14,13 @@ import { environment } from '../../../../environments/environment';
 export class VoirAffaireComponent implements OnInit {
 
   dossierId!: number;
-  affaire: any = null;
+  affaires: any[] = [];
   chargement = true;
   erreur: string | null = null;
   pasDAffaire = false;
+
+  savingPV = false;
+  savingFacture = false;
 
   private apiUrl = `${environment.apiUrl}/api/agent/dossiers`;
 
@@ -35,17 +38,18 @@ export class VoirAffaireComponent implements OnInit {
   charger(): void {
     this.http.get<any>(`${this.apiUrl}/${this.dossierId}/affaire`).subscribe({
       next: (res) => {
-        console.log('RÉPONSE COMPLÈTE:', JSON.stringify(res, null, 2)); // ✅ ajouter
         if (res.pasDAffaire) {
           this.pasDAffaire = true;
+          this.affaires = [];
         } else {
-          this.affaire = res.affaire;
-          console.log('pvFichiers:', this.affaire?.pvFichiers); // ✅ ajouter
+          // Support both: array of affaires or single affaire (backward compat)
+          this.affaires = res.affaires ?? (res.affaire ? [res.affaire] : []);
+          this.pasDAffaire = this.affaires.length === 0;
         }
         this.chargement = false;
       },
       error: (err) => {
-        this.erreur = err?.error?.error ?? 'Impossible de charger l\'affaire.';
+        this.erreur = err?.error?.error ?? 'Impossible de charger les affaires.';
         this.chargement = false;
       }
     });
@@ -55,61 +59,73 @@ export class VoirAffaireComponent implements OnInit {
     this.router.navigate(['/agent/dossiers', this.dossierId]);
   }
 
-  // ── PV ────────────────────────────────────────────────────────────
+  // ── PV helpers ──────────────────────────────────────────────────
 
-  hasPV(): boolean {
-    return !!this.affaire?.pvTexte;
-  }
-
-  pvStatutClass(): string {
+  pvStatutClassFor(aff: any): string {
     const map: Record<string, string> = {
       'EN_ATTENTE': 'badge--orange',
       'VALIDE':     'badge--green',
       'REFUSE':     'badge--red'
     };
-    return map[this.affaire?.pvStatut] ?? 'badge--grey';
+    return map[aff?.pvStatut] ?? 'badge--grey';
   }
 
-  pvStatutLabel(): string {
+  pvStatutLabelFor(aff: any): string {
     const map: Record<string, string> = {
       'EN_ATTENTE': '⏳ En attente',
       'VALIDE':     '✅ Validé',
       'REFUSE':     '❌ Refusé'
     };
-    return map[this.affaire?.pvStatut] ?? this.affaire?.pvStatut ?? '—';
+    return map[aff?.pvStatut] ?? aff?.pvStatut ?? '—';
   }
 
-  pvFichiers(): any[] {
-    return this.affaire?.pvFichiers ?? [];
+  validerPV(aff: any, accepte: boolean): void {
+    const label = accepte ? 'accepter' : 'refuser';
+    const avocatNom = aff.avocat ? `${aff.avocat.prenom} ${aff.avocat.nom}` : 'cet avocat';
+    if (!confirm(`Voulez-vous ${label} le PV soumis par ${avocatNom} ?`)) return;
+
+    this.savingPV = true;
+    this.http.post<any>(`${this.apiUrl}/${this.dossierId}/affaire/${aff.id}/pv/valider`, { accepte }).subscribe({
+      next: (res) => {
+        alert(res.message);
+        this.savingPV = false;
+        this.charger();
+      },
+      error: (err) => {
+        alert(err?.error?.error || 'Erreur lors de la validation du PV');
+        this.savingPV = false;
+      }
+    });
   }
 
-  // ── Facture ───────────────────────────────────────────────────────
+  // ── Facture helpers ─────────────────────────────────────────────
 
-  hasFacture(): boolean {
-    return !!this.affaire?.factureRef;
-  }
-
-  factureStatutClass(): string {
+  factureStatutClassFor(aff: any): string {
     const map: Record<string, string> = {
-      'EN_ATTENTE': 'badge--orange',
-      'PAYEE':      'badge--green',
-      'REJETEE':    'badge--red'
+      'EN_ATTENTE':            'badge--orange',
+      'EN_ATTENTE_VALIDATION': 'badge--orange',
+      'PAYEE':                 'badge--green',
+      'REJETEE':               'badge--red'
     };
-    return map[this.affaire?.factureStatut] ?? 'badge--grey';
+    return map[aff?.factureStatut] ?? 'badge--grey';
   }
 
-  factureStatutLabel(): string {
+  factureStatutLabelFor(aff: any): string {
     const map: Record<string, string> = {
-      'EN_ATTENTE': '⏳ En attente',
-      'PAYEE':      '✅ Payée',
-      'REJETEE':    '❌ Rejetée'
+      'EN_ATTENTE':            '⏳ En attente',
+      'EN_ATTENTE_VALIDATION': '🟡 En attente du validateur financier',
+      'PAYEE':                 '✅ Payée',
+      'REJETEE':               '❌ Rejetée'
     };
-    return map[this.affaire?.factureStatut] ?? this.affaire?.factureStatut ?? '—';
+    return map[aff?.factureStatut] ?? aff?.factureStatut ?? '—';
   }
 
-  ttc(): number {
-    return (this.affaire?.montantFacture ?? 0) * 1.19;
+  ttcFor(aff: any): number {
+    return (aff?.montantFacture ?? 0) * 1.19;
   }
+
+  // La validation facture est désormais gérée par le VALIDATEUR FINANCIER
+  // Aucune action n'est nécessaire ici pour l'agent
 
   // ── Fichiers ──────────────────────────────────────────────────────
 
@@ -129,8 +145,8 @@ export class VoirAffaireComponent implements OnInit {
 
   // ── Jugement ──────────────────────────────────────────────────────
 
-  hasJugement(): boolean {
-    return !!this.affaire?.typeJugement;
+  hasJugement(aff: any): boolean {
+    return !!aff?.typeJugement;
   }
 
   jugementClass(type: string): string {
@@ -155,18 +171,18 @@ export class VoirAffaireComponent implements OnInit {
 
   // ── Tribunal ──────────────────────────────────────────────────────
 
-  hasTribunal(): boolean {
-    return !!(this.affaire?.tribunal || this.affaire?.chambre || this.affaire?.numeroRole);
+  hasTribunal(aff: any): boolean {
+    return !!(aff?.tribunal || aff?.chambre || aff?.numeroRole);
   }
 
   // ── Audiences ─────────────────────────────────────────────────────
 
-  audiences(): any[] {
-    return this.affaire?.audiences ?? [];
+  getAudiences(aff: any): any[] {
+    return aff?.audiences ?? [];
   }
 
-  countAudience(statut: string): number {
-    return this.audiences().filter(a => a.statut === statut).length;
+  countAudienceFor(aff: any, statut: string): number {
+    return this.getAudiences(aff).filter(a => a.statut === statut).length;
   }
 
   audienceStatutClass(s: string): string {

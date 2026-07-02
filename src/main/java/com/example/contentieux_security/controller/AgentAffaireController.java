@@ -13,6 +13,7 @@ import com.example.contentieux_security.repository.PrestataireRepository;
 import com.example.contentieux_security.enums.TypePrestataire;
 import com.example.contentieux_security.enums.StatutMission;
 import lombok.RequiredArgsConstructor;
+import com.example.contentieux_security.repository.DossierRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -25,7 +26,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
+import com.example.contentieux_security.entity.DossierContentieux;
 @RestController
 @RequestMapping("/api/agent/dossiers")
 @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
@@ -40,7 +41,7 @@ public class AgentAffaireController {
     private final DossierService           dossierService;
     private final AgentBancaireRepository  agentBancaireRepository;
     private final NotificationService      notificationService; // ✅ AJOUTÉ
-
+private final DossierRepository dossierRepository;
     // ═══════════════════════════════════════════════════════════════
     // LANCER LA PROCÉDURE JUDICIAIRE
     // ═══════════════════════════════════════════════════════════════
@@ -135,32 +136,63 @@ public class AgentAffaireController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/{dossierId}/prestation/{prestationId}/designer-avocat")
-    public ResponseEntity<?> designerAvocat(@PathVariable Long dossierId,
-                                            @PathVariable Long prestationId,
-                                            @RequestBody Map<String, Object> body,
-                                            Principal principal) {
+ @PostMapping("/{dossierId}/prestation/{prestationId}/designer-avocat")
+public ResponseEntity<?> designerAvocat(@PathVariable Long dossierId,
+                                        @PathVariable Long prestationId,
+                                        @RequestBody Map<String, Object> body,
+                                        Principal principal) {
+    try {
+        Long prestataireId = Long.valueOf(body.get("prestataireId").toString());
+        String description = (String) body.get("description");
+        String dateFinStr  = (String) body.get("dateFinPrevue");
+        LocalDate dateFinPrevue = (dateFinStr != null && !dateFinStr.isBlank())
+                ? LocalDate.parse(dateFinStr) : null;
+
+        Mission mission = prestationService.designerPrestataire(
+                prestationId, prestataireId, description, dateFinPrevue, principal.getName()
+        );
+
+        // ── 🔔 Notifier l'avocat nouvellement désigné ──────────────
         try {
-            Long prestataireId = Long.valueOf(body.get("prestataireId").toString());
-            String description = (String) body.get("description");
-            String dateFinStr  = (String) body.get("dateFinPrevue");
-            LocalDate dateFinPrevue = (dateFinStr != null && !dateFinStr.isBlank())
-                    ? LocalDate.parse(dateFinStr) : null;
+            Prestataire avocat = mission.getPrestataire();
+            if (avocat != null && avocat.getUsername() != null) {
+                DossierContentieux dossier = dossierRepository.findById(dossierId).orElse(null);
 
-            Mission mission = prestationService.designerPrestataire(
-                    prestationId, prestataireId, description, dateFinPrevue, principal.getName()
-            );
+                String clientNom = "—";
+                if (dossier != null && dossier.getClient() != null) {
+                    clientNom = dossier.getClient().getNom()
+                            + (dossier.getClient().getPrenom() != null
+                                ? " " + dossier.getClient().getPrenom() : "");
+                }
 
-            return ResponseEntity.ok(Map.of(
-                    "message", "Avocat désigné avec succès",
-                    "mission", mission
-            ));
+                String numeroDossier = dossier != null ? dossier.getNumeroDossier() : String.valueOf(dossierId);
 
-        } catch (Exception e) {
-            log.error(">>> ERREUR désignation avocat : {}", e.getMessage(), e);
-            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+                notificationService.notifier(
+                        avocat.getUsername(),
+                        "⚖️ Dossier assigné — " + numeroDossier,
+                        String.format(
+                                "Le dossier %s vous a été assigné en tant qu'avocat.\nClient : %s",
+                                numeroDossier, clientNom),
+                        "NOUVELLE_AFFAIRE",
+                        dossier,
+                        "/avocat/affaires"
+                );
+            }
+        } catch (Exception notifEx) {
+            // On ne fait jamais échouer la désignation à cause d'un souci de notif
+            log.warn(">>> Notification désignation avocat non envoyée : {}", notifEx.getMessage());
         }
+
+        return ResponseEntity.ok(Map.of(
+                "message", "Avocat désigné avec succès",
+                "mission", mission
+        ));
+
+    } catch (Exception e) {
+        log.error(">>> ERREUR désignation avocat : {}", e.getMessage(), e);
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
     }
+}
 
     // ═══════════════════════════════════════════════════════════════
     // AFFAIRE JUDICIAIRE
@@ -193,6 +225,82 @@ public class AgentAffaireController {
         return ResponseEntity.ok(response);
     }
 
+    @GetMapping("/{dossierId}/affaire/avocats")
+    public ResponseEntity<?> avocatsPourReaffectation(@PathVariable Long dossierId, Principal principal) {
+        AgentBancaire agent = agentBancaireRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new RuntimeException("Agent introuvable"));
+
+        List<Prestataire> avocats = prestataireRepository.findByTypeAndAgentResponsable_Id(
+                TypePrestataire.AVOCAT, agent.getId()
+        ).stream()
+                .filter(Prestataire::isActif)
+                .toList();
+
+        return ResponseEntity.ok(Map.of(
+                "dossierId", dossierId,
+                "avocats", avocats
+        ));
+    }
+
+    @PostMapping("/{dossierId}/affaire/reassigner-avocat")
+    public ResponseEntity<?> reassignerAvocat(@PathVariable Long dossierId,
+                                              @RequestBody Map<String, Object> body) {
+        try {
+            Long prestataireId = Long.valueOf(body.get("prestataireId").toString());
+
+            AffaireJudiciaire affaireAvant = affaireService.getAffaireParDossier(dossierId);
+            Prestataire ancienAvocat = affaireAvant != null ? affaireAvant.getAvocat() : null;
+
+            AffaireJudiciaire affaire = affaireService.reassignerAvocatPourDossier(dossierId, prestataireId);
+            Prestataire nouvelAvocat = affaire.getAvocat();
+            DossierContentieux dossier = affaire.getDossier();
+
+            if (ancienAvocat != null && nouvelAvocat != null
+                    && !ancienAvocat.getId().equals(nouvelAvocat.getId())) {
+
+                String clientNom = "—";
+                if (dossier != null && dossier.getClient() != null) {
+                    clientNom = dossier.getClient().getNom()
+                            + (dossier.getClient().getPrenom() != null ? " " + dossier.getClient().getPrenom() : "");
+                }
+
+                notificationService.notifier(
+                        nouvelAvocat.getUsername(),
+                        "⚖️ Dossier assigné — " + dossier.getNumeroDossier(),
+                        String.format(
+                                "Le dossier %s vous a été assigné en tant qu'avocat.\nClient : %s\nAffaire : %s",
+                                dossier.getNumeroDossier(), clientNom,
+                                affaire.getNumeroAffaire()),
+                        "NOUVELLE_AFFAIRE",
+                        dossier,
+                        "/avocat/affaires"
+                );
+
+                notificationService.notifier(
+                        ancienAvocat.getUsername(),
+                        "🔄 Dossier réassigné",
+                        String.format(
+                                "Le dossier %s a été réassigné à un autre avocat.\nAffaire : %s",
+                                dossier.getNumeroDossier(), affaire.getNumeroAffaire()),
+                        "AFFAIRE_REASSIGNEE",
+                        dossier,
+                        "/avocat/affaires"
+                );
+            }
+
+            return ResponseEntity.ok(Map.of(
+                    "message", "Avocat réassigné avec succès",
+                    "affaire", affaire
+            ));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            log.warn(">>> RÉASSIGNATION AVOCAT IMPOSSIBLE : {}", e.getMessage());
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (Exception e) {
+            log.error(">>> ERREUR réassignation avocat : {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Erreur interne. Veuillez réessayer."));
+        }
+    }
+
     @PostMapping("/{dossierId}/affaire/lancer")
     public ResponseEntity<?> lancerAffaire(@PathVariable Long dossierId,
                                            @RequestBody Map<String, Object> body,
@@ -202,8 +310,11 @@ public class AgentAffaireController {
             log.info(">>> LANCER AFFAIRE - dossierId={} missionId={} agent={}",
                     dossierId, missionId, principal.getName());
 
+            Mission mission = missionService.getMissionAvocatDuDossier(dossierId);
+            Long avocatId = mission.getPrestataire().getId();
+
             // ── 1. Créer l'affaire ────────────────────────────────────
-            AffaireJudiciaire affaire = affaireService.creerAffaire(missionId, principal.getName());
+            AffaireJudiciaire affaire = affaireService.creerAffaire(dossierId, avocatId, principal.getName());
             log.info(">>> AFFAIRE CRÉÉE : id={} num={}", affaire.getId(), affaire.getNumeroAffaire());
 
             // ── 2. Notification → avocat ──────────────────────────────
@@ -265,116 +376,136 @@ public class AgentAffaireController {
     @GetMapping("/{dossierId}/affaire")
     @Transactional(readOnly = true)
     public ResponseEntity<?> voirAffaire(@PathVariable Long dossierId) {
-        AffaireJudiciaire affaire = affaireService.getAffaireParDossier(dossierId);
+        List<AffaireJudiciaire> affairesList = affaireService.getAllAffairesParDossier(dossierId);
 
         Map<String, Object> response = new HashMap<>();
         response.put("dossierId", dossierId);
 
-        if (affaire == null) {
+        if (affairesList == null || affairesList.isEmpty()) {
             response.put("pasDAffaire", true);
         } else {
-            affaire = affaireService.getAffaireById(affaire.getId());
+            response.put("pasDAffaire", false);
+            List<Map<String, Object>> affairesData = new ArrayList<>();
+            for (AffaireJudiciaire a : affairesList) {
+                AffaireJudiciaire affaire = affaireService.getAffaireById(a.getId());
+                Map<String, Object> affaireData = new HashMap<>();
+                affaireData.put("id",                  affaire.getId());
+                affaireData.put("numeroAffaire",        affaire.getNumeroAffaire());
+                affaireData.put("statut",               affaire.getStatut());
+                affaireData.put("dateLancement",        affaire.getDateLancement());
+                affaireData.put("dateProchainAudience", affaire.getDateProchainAudience());
+                affaireData.put("tribunal",             affaire.getTribunal());
+                affaireData.put("chambre",              affaire.getChambre());
+                affaireData.put("numeroRole",           affaire.getNumeroRole());
+                affaireData.put("typeJugement",         affaire.getTypeJugement());
+                affaireData.put("dateJugement",         affaire.getDateJugement());
+                affaireData.put("montantJuge",          affaire.getMontantJuge());
+                affaireData.put("delaiPaiementJuge",    affaire.getDelaiPaiementJuge());
+                affaireData.put("descriptionJugement",  affaire.getDescriptionJugement());
+                affaireData.put("dateLimiteAppel",      affaire.getDateLimiteAppel());
 
-            Map<String, Object> affaireData = new HashMap<>();
-            affaireData.put("id",                  affaire.getId());
-            affaireData.put("numeroAffaire",        affaire.getNumeroAffaire());
-            affaireData.put("statut",               affaire.getStatut());
-            affaireData.put("dateLancement",        affaire.getDateLancement());
-            affaireData.put("dateProchainAudience", affaire.getDateProchainAudience());
-            affaireData.put("tribunal",             affaire.getTribunal());
-            affaireData.put("chambre",              affaire.getChambre());
-            affaireData.put("numeroRole",           affaire.getNumeroRole());
-            affaireData.put("typeJugement",         affaire.getTypeJugement());
-            affaireData.put("dateJugement",         affaire.getDateJugement());
-            affaireData.put("montantJuge",          affaire.getMontantJuge());
-            affaireData.put("delaiPaiementJuge",    affaire.getDelaiPaiementJuge());
-            affaireData.put("descriptionJugement",  affaire.getDescriptionJugement());
-            affaireData.put("dateLimiteAppel",      affaire.getDateLimiteAppel());
+                // PV
+                affaireData.put("pvTexte",  affaire.getPvTexte());
+                affaireData.put("pvStatut", affaire.getPvStatut() != null
+                                            ? affaire.getPvStatut().name() : null);
 
-            // PV
-            affaireData.put("pvTexte",  affaire.getPvTexte());
-            affaireData.put("pvStatut", affaire.getPvStatut() != null
-                                        ? affaire.getPvStatut().name() : null);
-
-            List<Map<String, Object>> fichiers = new ArrayList<>();
-            if (affaire.getPvFichiers() != null) {
-                for (String data : affaire.getPvFichiers()) {
-                    String[] parts = data.split("\\|", 3);
-                    if (parts.length == 3) {
-                        fichiers.add(Map.of("nom", parts[0], "typeMime", parts[1], "base64", parts[2]));
+                List<Map<String, Object>> fichiers = new ArrayList<>();
+                if (affaire.getPvFichiers() != null) {
+                    for (String data : affaire.getPvFichiers()) {
+                        String[] parts = data.split("\\|", 3);
+                        if (parts.length == 3) {
+                            fichiers.add(Map.of("nom", parts[0], "typeMime", parts[1], "base64", parts[2]));
+                        }
                     }
                 }
-            }
-            affaireData.put("pvFichiers", fichiers);
+                affaireData.put("pvFichiers", fichiers);
 
-            // Facture
-            affaireData.put("factureRef",     affaire.getFactureRef());
-            affaireData.put("montantFacture", affaire.getMontantFacture());
-            affaireData.put("factureStatut",  affaire.getFactureStatut() != null
-                                              ? affaire.getFactureStatut().name() : null);
+                // Facture
+                affaireData.put("factureRef",                    affaire.getFactureRef());
+                affaireData.put("montantFacture",                affaire.getMontantFacture());
+                affaireData.put("factureStatut",                 affaire.getFactureStatut() != null
+                                                                  ? affaire.getFactureStatut().name() : null);
+                affaireData.put("factureCommentaireValidation",  affaire.getFactureCommentaireValidation());
+                affaireData.put("factureValidePar",              affaire.getFactureValidePar());
 
-            // Avocat
-            if (affaire.getAvocat() != null) {
-                try {
-                    Prestataire av = affaire.getAvocat();
-                    Map<String, Object> avocat = new HashMap<>();
-                    avocat.put("id",        av.getId());
-                    avocat.put("nom",       av.getNom());
-                    avocat.put("prenom",    av.getPrenom());
-                    avocat.put("email",     av.getEmail());
-                    avocat.put("telephone", av.getTelephone());
-                    affaireData.put("avocat", avocat);
-                } catch (Exception e) {
-                    log.warn("Avocat lazy : {}", e.getMessage());
+                // Avocat
+                if (affaire.getAvocat() != null) {
+                    try {
+                        Prestataire av = affaire.getAvocat();
+                        Map<String, Object> avocat = new HashMap<>();
+                        avocat.put("id",        av.getId());
+                        avocat.put("nom",       av.getNom());
+                        avocat.put("prenom",    av.getPrenom());
+                        avocat.put("email",     av.getEmail());
+                        avocat.put("telephone", av.getTelephone());
+                        affaireData.put("avocat", avocat);
+                    } catch (Exception e) {
+                        log.warn("Avocat lazy : {}", e.getMessage());
+                    }
                 }
-            }
 
-            // Audiences
-            List<Map<String, Object>> audiences = new ArrayList<>();
-            if (affaire.getAudiences() != null) {
-                for (Audience aud : affaire.getAudiences()) {
-                    Map<String, Object> a = new HashMap<>();
-                    a.put("id",                aud.getId());
-                    a.put("dateAudience",      aud.getDateAudience());
-                    a.put("heure",             aud.getHeure());
-                    a.put("salle",             aud.getSalle());
-                    a.put("motif",             aud.getMotif());
-                    a.put("resultat",          aud.getResultat());
-                    a.put("statut",            aud.getStatut());
-                    a.put("prochaineAudience", aud.getProchaineAudience());
-                    audiences.add(a);
+                // Audiences
+                List<Map<String, Object>> audiences = new ArrayList<>();
+                if (affaire.getAudiences() != null) {
+                    for (Audience aud : affaire.getAudiences()) {
+                        Map<String, Object> audData = new HashMap<>();
+                        audData.put("id",                aud.getId());
+                        audData.put("dateAudience",      aud.getDateAudience());
+                        audData.put("heure",             aud.getHeure());
+                        audData.put("salle",             aud.getSalle());
+                        audData.put("motif",             aud.getMotif());
+                        audData.put("resultat",          aud.getResultat());
+                        audData.put("statut",            aud.getStatut());
+                        audData.put("prochaineAudience", aud.getProchaineAudience());
+                        audiences.add(audData);
+                    }
                 }
+                affaireData.put("audiences", audiences);
+                affairesData.add(affaireData);
             }
-            affaireData.put("audiences", audiences);
-
-            // Mission
-            if (affaire.getMission() != null) {
-                try {
-                    Mission m = affaire.getMission();
-                    Map<String, Object> mission = new HashMap<>();
-                    mission.put("id",     m.getId());
-                    mission.put("statut", m.getStatut() != null ? m.getStatut().name() : null);
-                    mission.put("pvTexte",        m.getPvMission());
-                    mission.put("pvStatut",       m.getStatut() == StatutMission.PV_SOUMIS
-                                                  || m.getStatut() == StatutMission.FACTURE_SOUMISE
-                                                  || m.getStatut() == StatutMission.TERMINEE
-                                                  ? "EN_ATTENTE" : null);
-                    mission.put("dateValidationPv",      m.getDateValidationPv());
-                    mission.put("factureRef",             m.getFactureRef());
-                    mission.put("montantFacture",         m.getMontantFacture());
-                    mission.put("factureStatut",          m.getStatut() == StatutMission.FACTURE_SOUMISE
-                                                          || m.getStatut() == StatutMission.TERMINEE
-                                                          ? "EN_ATTENTE" : null);
-                    mission.put("dateValidationFacture",  m.getDateValidationFacture());
-                    affaireData.put("mission", mission);
-                } catch (Exception e) {
-                    log.warn("Mission lazy : {}", e.getMessage());
-                }
-            }
-
-            response.put("affaire", affaireData);
+            response.put("affaires", affairesData);
         }
 
         return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/{dossierId}/affaire/{affaireId}/pv/valider")
+    public ResponseEntity<?> validerPV(@PathVariable Long dossierId, @PathVariable Long affaireId, @RequestBody Map<String, Boolean> body) {
+        try {
+            AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+            if (affaire == null) return ResponseEntity.badRequest().body(Map.of("error", "Aucune affaire trouvée."));
+            boolean accepte = body.getOrDefault("accepte", false);
+            affaireService.validerPV(affaire.getId(), accepte);
+
+            // ── 🔔 Notifier l'avocat de la décision sur son PV ──────────────
+            try {
+                String avocatUsername = affaire.getAvocat() != null ? affaire.getAvocat().getUsername() : null;
+                if (avocatUsername != null) {
+                    String numeroAffaire = affaire.getNumeroAffaire() != null ? affaire.getNumeroAffaire() : String.valueOf(affaireId);
+                    String typeNotif = accepte ? "PV_VALIDE" : "PV_REFUSE";
+                    String titre     = accepte ? "✅ Votre PV a été validé" : "❌ Votre PV a été refusé";
+                    String message   = accepte
+                        ? "Votre procès-verbal pour l'affaire " + numeroAffaire + " a été validé. Vous pouvez maintenant soumettre votre facture d'honoraires."
+                        : "Votre procès-verbal pour l'affaire " + numeroAffaire + " a été refusé. Veuillez le corriger et le resoumettre.";
+                    String urlAction = "/avocat/affaires/" + affaireId + "/honoraires";
+                    notificationService.notifierSansDossier(avocatUsername, titre, message, typeNotif, urlAction);
+                }
+            } catch (Exception notifEx) {
+                log.warn(">>> Notification PV avocat non envoyée : {}", notifEx.getMessage());
+            }
+
+            return ResponseEntity.ok(Map.of("message", "PV " + (accepte ? "validé" : "refusé")));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @PostMapping("/{dossierId}/affaire/{affaireId}/facture/valider")
+    public ResponseEntity<?> validerFacture(@PathVariable Long dossierId, @PathVariable Long affaireId, @RequestBody Map<String, Boolean> body) {
+        // ✅ La validation des factures avocat passe désormais par le VALIDATEUR FINANCIER
+        // Ce endpoint est conservé pour compatibilité mais retourne une erreur explicite.
+        return ResponseEntity.status(403).body(Map.of(
+            "error", "La validation des factures d'avocat est désormais effectuée par le validateur financier. Veuillez contacter le validateur financier."
+        ));
     }
 }

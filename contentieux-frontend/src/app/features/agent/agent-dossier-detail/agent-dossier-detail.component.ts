@@ -30,6 +30,12 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
 
   affaireExiste = false;
   prestationJudiciaire: any = null;
+  affaireJudiciaire: any = null;
+  avocatsDisponibles: any[] = [];
+  showReassignAvocat = false;
+  reassigningAvocat = false;
+  reassignError = '';
+  selectedAvocatId: string | null = null;
 
   formAffaire = { tribunal: '', numeroRole: '', chambre: '' };
 
@@ -189,6 +195,7 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
         this.missionAvocat           = data.missionAvocat           || null;
         this.affaireExiste           = data.affaireExiste           ?? false;
         this.prestationJudiciaire    = data.prestationJudiciaire    || null;
+        this.affaireJudiciaire       = data.affaireJudiciaire       || null;
 
         if (d.validateurFinancierChoisi) {
           this.formValidateurs.validateurFinancier = d.validateurFinancierChoisi;
@@ -499,6 +506,45 @@ export class AgentDossierDetailComponent implements OnInit, OnDestroy {
 
   voirAffaire() {
     this.router.navigate(['/agent/dossiers', this.dossier.id, 'affaire']);
+  }
+
+  ouvrirReassignationAvocat(): void {
+    this.reassignError = '';
+    this.reassigningAvocat = true;
+    this.dossierService.getAvocatsPourAffaire(this.dossier.id).subscribe({
+      next: (response: any) => {
+        this.avocatsDisponibles = response.avocats || [];
+        this.selectedAvocatId = this.affaireJudiciaire?.avocat?.id?.toString() || null;
+        this.showReassignAvocat = true;
+        this.reassigningAvocat = false;
+      },
+      error: (err: any) => {
+        this.reassignError = err.error?.error || 'Impossible de charger la liste des avocats.';
+        this.reassigningAvocat = false;
+      }
+    });
+  }
+
+  reassignerAvocat(): void {
+    if (!this.selectedAvocatId) {
+      this.reassignError = 'Sélectionnez un avocat.';
+      return;
+    }
+
+    this.reassignError = '';
+    this.reassigningAvocat = true;
+
+    this.dossierService.reassignerAvocat(this.dossier.id, { prestataireId: Number(this.selectedAvocatId) }).subscribe({
+      next: () => {
+        this.showReassignAvocat = false;
+        this.chargerDossier(this.dossier.id);
+        this.reassigningAvocat = false;
+      },
+      error: (err: any) => {
+        this.reassignError = err.error?.error || 'Erreur lors de la réaffectation.';
+        this.reassigningAvocat = false;
+      }
+    });
   }
 
   // CORRECTION 5 : un seul point d'entrée pour la re-soumission

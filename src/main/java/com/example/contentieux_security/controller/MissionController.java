@@ -133,8 +133,11 @@ public class MissionController {
 
         AffaireJudiciaire affaire = null;
         if (isAvocat) {
-            try { affaire = affaireJudiciaireService.findByMissionId(id); }
-            catch (Exception ignored) {}
+            try { 
+                if (mission.getPrestation() != null && mission.getPrestation().getDossier() != null) {
+                    affaire = affaireJudiciaireService.getAffaireParDossier(mission.getPrestation().getDossier().getId());
+                }
+            } catch (Exception ignored) {}
         }
 
         return ResponseEntity.ok(Map.of(

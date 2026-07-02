@@ -54,13 +54,15 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                     return message;
                 }
 
+                log.info(">>> [STOMP CONNECT] Nouvelle tentative de connexion WebSocket");
+
                 // ── Priorité 1 : username déjà résolu par JwtHandshakeInterceptor ──
                 if (accessor.getSessionAttributes() != null) {
                     String usernameFromHandshake = (String)
                             accessor.getSessionAttributes().get("username");
                     if (usernameFromHandshake != null && !usernameFromHandshake.isBlank()) {
                         accessor.setUser(() -> usernameFromHandshake);
-                        log.info("✅ [STOMP] Principal depuis handshake: '{}'",
+                        log.info("✅ [STOMP CONNECT] Utilisateur connecté (handshake): '{}'",
                                  usernameFromHandshake);
                         return message;
                     }
@@ -75,17 +77,17 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
                         String username = jwt.getClaimAsString("preferred_username");
                         if (username == null || username.isBlank()) {
                             username = jwt.getSubject();
-                            log.warn("⚠️ [STOMP] preferred_username absent — fallback sub");
+                            log.warn("⚠️ [STOMP CONNECT] preferred_username absent — fallback sub");
                         }
                         final String finalUsername = username;
                         accessor.setUser(() -> finalUsername);
-                        log.info("✅ [STOMP] Principal depuis token STOMP: '{}'",
+                        log.info("✅ [STOMP CONNECT] Utilisateur connecté (token STOMP): '{}'",
                                  finalUsername);
                     } catch (Exception e) {
-                        log.error("❌ [STOMP] Token invalide: {}", e.getMessage());
+                        log.error("❌ [STOMP CONNECT] Token invalide: {}", e.getMessage());
                     }
                 } else {
-                    log.error("❌ [STOMP] Ni handshake username ni Authorization header");
+                    log.error("❌ [STOMP CONNECT] Ni handshake username ni Authorization header");
                 }
 
                 return message;

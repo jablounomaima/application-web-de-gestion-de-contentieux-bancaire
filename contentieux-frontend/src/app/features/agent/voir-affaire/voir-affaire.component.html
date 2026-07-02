@@ -1,7 +1,7 @@
 <!-- ══════════════ CHARGEMENT ══════════════ -->
 <div *ngIf="chargement" class="loading-state">
   <div class="spinner"></div>
-  <p>Chargement de l'affaire...</p>
+  <p>Chargement des affaires...</p>
 </div>
 
 <!-- ══════════════ ERREUR ══════════════ -->
@@ -16,213 +16,270 @@
   <button (click)="retour()">← Retour</button>
 </div>
 
-<!-- ══════════════ CONTENU ══════════════ -->
-<div *ngIf="affaire && !chargement" class="affaire-page">
+<!-- ══════════════ CONTENU — TOUTES LES AFFAIRES ══════════════ -->
+<div *ngIf="affaires.length > 0 && !chargement" class="affaire-page">
 
-  <!-- En-tête -->
+  <!-- En-tête global -->
   <div class="page-header">
     <button class="btn-back" (click)="retour()">← Retour</button>
     <div class="header-info">
-      <h1>Affaire {{ affaire.numeroAffaire }}</h1>
-      <span class="badge" [ngClass]="statutClass(affaire.statut)">
-        {{ statutLabel(affaire.statut) }}
-      </span>
+      <h1>Affaires du dossier</h1>
+      <span class="badge badge--blue">{{ affaires.length }} affaire{{ affaires.length > 1 ? 's' : '' }}</span>
     </div>
   </div>
 
-  <div class="affaire-grid">
+  <!-- ══ BOUCLE SUR CHAQUE AFFAIRE (= chaque avocat) ══ -->
+  <div class="affaire-section" *ngFor="let aff of affaires; let i = index">
 
-    <!-- ══ Colonne gauche ══ -->
-    <div class="col-left">
+    <!-- ── Bandeau avocat ── -->
+    <div class="avocat-banner">
+      <div class="avocat-banner-left">
+        <div class="avatar avatar--lg">{{ initiales(aff.avocat) }}</div>
+        <div class="avocat-banner-info">
+          <div class="avocat-banner-name">
+            {{ aff.avocat?.prenom }} {{ aff.avocat?.nom }}
+          </div>
+          <div class="avocat-banner-meta">
+            <span *ngIf="aff.avocat?.email" class="avocat-banner-email">📧 {{ aff.avocat.email }}</span>
+            <span *ngIf="aff.avocat?.telephone" class="avocat-banner-phone">📞 {{ aff.avocat.telephone }}</span>
+          </div>
+        </div>
+      </div>
+      <div class="avocat-banner-right">
+        <div class="avocat-badge-group">
+          <span class="badge" [ngClass]="statutClass(aff.statut)">{{ statutLabel(aff.statut) }}</span>
+          <span class="affaire-num-badge">{{ aff.numeroAffaire }}</span>
+        </div>
+        <div class="avocat-banner-date" *ngIf="aff.dateLancement">
+          Lancée le {{ aff.dateLancement | date:'dd/MM/yyyy' }}
+        </div>
+      </div>
+    </div>
 
-      <!-- Avocat -->
-      <div class="card" *ngIf="affaire.avocat">
-        <div class="card-title">👤 Avocat désigné</div>
-        <div class="avocat-row">
-          <div class="avatar">{{ initiales(affaire.avocat) }}</div>
-          <div>
-            <div class="avocat-nom">
-              {{ affaire.avocat.prenom }} {{ affaire.avocat.nom }}
+    <!-- ── Contenu de l'affaire ── -->
+    <div class="affaire-grid">
+
+      <!-- ══ Colonne gauche ══ -->
+      <div class="col-left">
+
+        <!-- Tribunal -->
+        <div class="card" *ngIf="hasTribunal(aff)">
+          <div class="card-title">🏛️ Tribunal</div>
+          <div class="info-grid">
+            <div class="info-item" *ngIf="aff.tribunal">
+              <span class="info-label">Tribunal</span>
+              <span class="info-value">{{ aff.tribunal }}</span>
             </div>
-            <div class="avocat-sub">{{ affaire.avocat.email }}</div>
-            <div class="avocat-sub">{{ affaire.avocat.telephone }}</div>
+            <div class="info-item" *ngIf="aff.chambre">
+              <span class="info-label">Chambre</span>
+              <span class="info-value">{{ aff.chambre }}</span>
+            </div>
+            <div class="info-item" *ngIf="aff.numeroRole">
+              <span class="info-label">N° Rôle</span>
+              <span class="info-value">{{ aff.numeroRole }}</span>
+            </div>
           </div>
         </div>
-      </div>
 
-      <!-- Tribunal -->
-      <div class="card" *ngIf="hasTribunal()">
-        <div class="card-title">🏛️ Tribunal</div>
-        <div class="info-grid">
-          <div class="info-item" *ngIf="affaire.tribunal">
-            <span class="info-label">Tribunal</span>
-            <span class="info-value">{{ affaire.tribunal }}</span>
-          </div>
-          <div class="info-item" *ngIf="affaire.chambre">
-            <span class="info-label">Chambre</span>
-            <span class="info-value">{{ affaire.chambre }}</span>
-          </div>
-          <div class="info-item" *ngIf="affaire.numeroRole">
-            <span class="info-label">N° Rôle</span>
-            <span class="info-value">{{ affaire.numeroRole }}</span>
+        <!-- Jugement -->
+        <div class="card" *ngIf="hasJugement(aff)">
+          <div class="card-title">⚖️ Jugement</div>
+          <div class="info-grid">
+            <div class="info-item">
+              <span class="info-label">Type</span>
+              <span class="badge" [ngClass]="jugementClass(aff.typeJugement)">
+                {{ jugementLabel(aff.typeJugement) }}
+              </span>
+            </div>
+            <div class="info-item" *ngIf="aff.dateJugement">
+              <span class="info-label">Date</span>
+              <span class="info-value">{{ aff.dateJugement | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="info-item" *ngIf="aff.montantJuge">
+              <span class="info-label">Montant jugé</span>
+              <span class="info-value">{{ aff.montantJuge }}</span>
+            </div>
+            <div class="info-item" *ngIf="aff.descriptionJugement">
+              <span class="info-label">Description</span>
+              <span class="info-value">{{ aff.descriptionJugement }}</span>
+            </div>
           </div>
         </div>
+
       </div>
 
-      <!-- Jugement -->
-      <div class="card" *ngIf="hasJugement()">
-        <div class="card-title">⚖️ Jugement</div>
-        <div class="info-grid">
-          <div class="info-item">
-            <span class="info-label">Type</span>
-            <span class="badge" [ngClass]="jugementClass(affaire.typeJugement)">
-              {{ jugementLabel(affaire.typeJugement) }}
+      <!-- ══ Colonne droite ══ -->
+      <div class="col-right">
+
+        <!-- ══════════ PV DE MISSION ══════════ -->
+        <div class="card pv-card">
+          <div class="card-title">
+            📋 Procès-Verbal
+            <span class="submitted-by" *ngIf="aff.avocat">
+              soumis par <strong>{{ aff.avocat.prenom }} {{ aff.avocat.nom }}</strong>
+            </span>
+            <span *ngIf="aff.pvStatut" class="badge ml-auto"
+                  [ngClass]="pvStatutClassFor(aff)">
+              {{ pvStatutLabelFor(aff) }}
             </span>
           </div>
-          <div class="info-item" *ngIf="affaire.dateJugement">
-            <span class="info-label">Date</span>
-            <span class="info-value">{{ affaire.dateJugement | date:'dd/MM/yyyy' }}</span>
+
+          <ng-container *ngIf="aff.pvTexte; else noPV">
+            <div class="pv-texte-box">
+              <div class="pv-label">Contenu du PV</div>
+              <div class="pv-texte">{{ aff.pvTexte }}</div>
+            </div>
+
+            <div class="pj-section" *ngIf="aff.pvFichiers?.length > 0">
+              <div class="pj-title">📎 Pièces jointes ({{ aff.pvFichiers.length }})</div>
+              <div class="pj-list">
+                <a *ngFor="let f of aff.pvFichiers"
+                   [href]="downloadUrl(f)"
+                   [download]="f.nom"
+                   class="pj-item"
+                   target="_blank">
+                  <span class="pj-icon">{{ getFileIcon(f.nom) }}</span>
+                  <span class="pj-nom">{{ f.nom }}</span>
+                  <span class="pj-dl">⬇️ Télécharger</span>
+                </a>
+              </div>
+            </div>
+
+            <div class="pj-empty" *ngIf="!aff.pvFichiers || aff.pvFichiers.length === 0">
+              Aucune pièce jointe.
+            </div>
+
+            <!-- Actions de validation du PV -->
+            <div class="validation-actions" *ngIf="aff.pvStatut === 'EN_ATTENTE'">
+              <button class="btn btn-success" (click)="validerPV(aff, true)" [disabled]="savingPV">✅ Accepter</button>
+              <button class="btn btn-danger" (click)="validerPV(aff, false)" [disabled]="savingPV">❌ Refuser</button>
+            </div>
+          </ng-container>
+
+          <ng-template #noPV>
+            <div class="empty-section">
+              ⏳ Aucun PV soumis par {{ aff.avocat?.prenom }} {{ aff.avocat?.nom }} pour le moment.
+            </div>
+          </ng-template>
+        </div>
+
+        <!-- ══════════ FACTURE ══════════ -->
+        <div class="card facture-card">
+          <div class="card-title">
+            🧾 Facture d'Honoraires
+            <span class="submitted-by" *ngIf="aff.avocat">
+              soumise par <strong>{{ aff.avocat.prenom }} {{ aff.avocat.nom }}</strong>
+            </span>
+            <span *ngIf="aff.factureStatut" class="badge ml-auto"
+                  [ngClass]="factureStatutClassFor(aff)">
+              {{ factureStatutLabelFor(aff) }}
+            </span>
           </div>
-          <div class="info-item" *ngIf="affaire.montantJuge">
-            <span class="info-label">Montant jugé</span>
-            <span class="info-value">{{ affaire.montantJuge }}</span>
+
+          <ng-container *ngIf="aff.factureRef; else noFacture">
+            <div class="facture-grid">
+              <div class="facture-item">
+                <span class="facture-label">Référence</span>
+                <span class="facture-value mono">{{ aff.factureRef }}</span>
+              </div>
+              <div class="facture-item">
+                <span class="facture-label">Montant HT</span>
+                <span class="facture-value">
+                  {{ aff.montantFacture | number:'1.3-3' }} TND
+                </span>
+              </div>
+              <div class="facture-item">
+                <span class="facture-label">TVA 19%</span>
+                <span class="facture-value">
+                  {{ aff.montantFacture * 0.19 | number:'1.3-3' }} TND
+                </span>
+              </div>
+              <div class="facture-item total">
+                <span class="facture-label">Total TTC</span>
+                <span class="facture-value ttc">
+                  {{ ttcFor(aff) | number:'1.3-3' }} TND
+                </span>
+              </div>
+            </div>
+
+            <!-- Informations du validateur -->
+            <div class="validation-info" *ngIf="aff.factureStatut === 'EN_ATTENTE_VALIDATION'">
+              <span class="validation-info-icon">🔄</span>
+              <span>En attente de validation par le <strong>validateur financier</strong></span>
+            </div>
+
+            <div class="validation-result" *ngIf="aff.factureStatut === 'PAYEE'">
+              <div class="validation-result-header valid">
+                <span>✅ Facture validée</span>
+                <span *ngIf="aff.factureValidePar" class="valide-par">par {{ aff.factureValidePar }}</span>
+              </div>
+              <p *ngIf="aff.factureCommentaireValidation" class="validation-comment">
+                💬 {{ aff.factureCommentaireValidation }}
+              </p>
+            </div>
+
+            <div class="validation-result" *ngIf="aff.factureStatut === 'REJETEE'">
+              <div class="validation-result-header rejected">
+                <span>❌ Facture rejetée</span>
+                <span *ngIf="aff.factureValidePar" class="valide-par">par {{ aff.factureValidePar }}</span>
+              </div>
+              <p *ngIf="aff.factureCommentaireValidation" class="validation-comment rejected-comment">
+                💬 Motif : {{ aff.factureCommentaireValidation }}
+              </p>
+            </div>
+          </ng-container>
+
+
+          <ng-template #noFacture>
+            <div class="empty-section">
+              ⏳ Aucune facture soumise par {{ aff.avocat?.prenom }} {{ aff.avocat?.nom }} pour le moment.
+            </div>
+          </ng-template>
+        </div>
+
+        <!-- ══════════ AUDIENCES ══════════ -->
+        <div class="card" *ngIf="getAudiences(aff).length > 0">
+          <div class="card-title">
+            📅 Audiences
+            <span class="submitted-by" *ngIf="aff.avocat">
+              gérées par <strong>{{ aff.avocat.prenom }} {{ aff.avocat.nom }}</strong>
+            </span>
+            <span class="audience-counts">
+              <span class="badge badge--green">✅ {{ countAudienceFor(aff, 'TENUE') }}</span>
+              <span class="badge badge--blue">📅 {{ countAudienceFor(aff, 'PLANIFIEE') }}</span>
+              <span class="badge badge--orange">🔄 {{ countAudienceFor(aff, 'RENVOYEE') }}</span>
+            </span>
           </div>
-          <div class="info-item" *ngIf="affaire.descriptionJugement">
-            <span class="info-label">Description</span>
-            <span class="info-value">{{ affaire.descriptionJugement }}</span>
+          <div class="audience-list">
+            <div *ngFor="let a of getAudiences(aff)" class="audience-item">
+              <div class="audience-header">
+                <span class="audience-emoji">{{ audienceEmoji(a.statut) }}</span>
+                <span class="audience-date">
+                  {{ a.dateAudience | date:'dd/MM/yyyy' }}
+                  <span *ngIf="a.heure"> — {{ a.heure }}</span>
+                </span>
+                <span class="badge ml-auto" [ngClass]="audienceStatutClass(a.statut)">
+                  {{ audienceStatutLabel(a.statut) }}
+                </span>
+              </div>
+              <div class="audience-body">
+                <span *ngIf="a.salle" class="audience-info">🏛️ {{ a.salle }}</span>
+                <span *ngIf="a.motif" class="audience-info">📌 {{ a.motif }}</span>
+                <span *ngIf="a.resultat" class="audience-info">📝 {{ a.resultat }}</span>
+                <span *ngIf="a.prochaineAudience" class="audience-info">
+                  ➡️ Prochaine : {{ a.prochaineAudience | date:'dd/MM/yyyy' }}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
-      </div>
 
+      </div>
     </div>
 
-    <!-- ══ Colonne droite ══ -->
-    <div class="col-right">
+    <!-- Séparateur entre affaires -->
+    <hr class="affaire-divider" *ngIf="i < affaires.length - 1" />
 
-      <!-- ══════════ PV DE MISSION ══════════ -->
-      <div class="card pv-card">
-        <div class="card-title">
-          📋 Procès-Verbal de Mission
-          <span *ngIf="affaire.pvStatut" class="badge ml-auto"
-                [ngClass]="pvStatutClass()">
-            {{ pvStatutLabel() }}
-          </span>
-        </div>
+  </div><!-- /affaire-section -->
 
-        <!-- PV soumis -->
-        <ng-container *ngIf="hasPV(); else noPV">
-
-          <!-- Texte PV -->
-          <div class="pv-texte-box">
-            <div class="pv-label">Contenu du PV</div>
-            <div class="pv-texte">{{ affaire.pvTexte }}</div>
-          </div>
-
-          <!-- Pièces jointes -->
-          <div class="pj-section" *ngIf="pvFichiers().length > 0">
-            <div class="pj-title">📎 Pièces jointes ({{ pvFichiers().length }})</div>
-            <div class="pj-list">
-              <a *ngFor="let f of pvFichiers()"
-                 [href]="downloadUrl(f)"
-                 [download]="f.nom"
-                 class="pj-item"
-                 target="_blank">
-                <span class="pj-icon">{{ getFileIcon(f.nom) }}</span>
-                <span class="pj-nom">{{ f.nom }}</span>
-                <span class="pj-dl">⬇️ Télécharger</span>
-              </a>
-            </div>
-          </div>
-
-          <div class="pj-empty" *ngIf="pvFichiers().length === 0">
-            Aucune pièce jointe.
-          </div>
-
-        </ng-container>
-        <ng-template #noPV>
-          <div class="empty-section">
-            ⏳ Aucun PV soumis par l'avocat pour le moment.
-          </div>
-        </ng-template>
-      </div>
-
-      <!-- ══════════ FACTURE ══════════ -->
-      <div class="card facture-card">
-        <div class="card-title">
-          🧾 Facture d'Honoraires
-          <span *ngIf="affaire.factureStatut" class="badge ml-auto"
-                [ngClass]="factureStatutClass()">
-            {{ factureStatutLabel() }}
-          </span>
-        </div>
-
-        <ng-container *ngIf="hasFacture(); else noFacture">
-          <div class="facture-grid">
-            <div class="facture-item">
-              <span class="facture-label">Référence</span>
-              <span class="facture-value mono">{{ affaire.factureRef }}</span>
-            </div>
-            <div class="facture-item">
-              <span class="facture-label">Montant HT</span>
-              <span class="facture-value">
-                {{ affaire.montantFacture | number:'1.3-3' }} TND
-              </span>
-            </div>
-            <div class="facture-item">
-              <span class="facture-label">TVA 19%</span>
-              <span class="facture-value">
-                {{ affaire.montantFacture * 0.19 | number:'1.3-3' }} TND
-              </span>
-            </div>
-            <div class="facture-item total">
-              <span class="facture-label">Total TTC</span>
-              <span class="facture-value ttc">
-                {{ ttc() | number:'1.3-3' }} TND
-              </span>
-            </div>
-          </div>
-        </ng-container>
-        <ng-template #noFacture>
-          <div class="empty-section">
-            ⏳ Aucune facture soumise par l'avocat pour le moment.
-          </div>
-        </ng-template>
-      </div>
-
-      <!-- ══════════ AUDIENCES ══════════ -->
-      <div class="card" *ngIf="audiences().length > 0">
-        <div class="card-title">
-          📅 Audiences
-          <span class="audience-counts">
-            <span class="badge badge--green">✅ {{ countAudience('TENUE') }}</span>
-            <span class="badge badge--blue">📅 {{ countAudience('PLANIFIEE') }}</span>
-            <span class="badge badge--orange">🔄 {{ countAudience('RENVOYEE') }}</span>
-          </span>
-        </div>
-        <div class="audience-list">
-          <div *ngFor="let a of audiences()" class="audience-item">
-            <div class="audience-header">
-              <span class="audience-emoji">{{ audienceEmoji(a.statut) }}</span>
-              <span class="audience-date">
-                {{ a.dateAudience | date:'dd/MM/yyyy' }}
-                <span *ngIf="a.heure"> — {{ a.heure }}</span>
-              </span>
-              <span class="badge ml-auto" [ngClass]="audienceStatutClass(a.statut)">
-                {{ audienceStatutLabel(a.statut) }}
-              </span>
-            </div>
-            <div class="audience-body">
-              <span *ngIf="a.salle" class="audience-info">🏛️ {{ a.salle }}</span>
-              <span *ngIf="a.motif" class="audience-info">📌 {{ a.motif }}</span>
-              <span *ngIf="a.resultat" class="audience-info">📝 {{ a.resultat }}</span>
-              <span *ngIf="a.prochaineAudience" class="audience-info">
-                ➡️ Prochaine : {{ a.prochaineAudience | date:'dd/MM/yyyy' }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-    </div>
-  </div>
 </div>

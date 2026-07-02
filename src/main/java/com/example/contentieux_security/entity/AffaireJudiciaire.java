@@ -78,7 +78,7 @@ public class AffaireJudiciaire {
     // 📅 DATES IMPORTANTES
     // ==============================
 
-    // ✔ Date de lancement de l’affaire
+    // ✔ Date de lancement de l'affaire
     @Column(nullable = false)
     private LocalDate dateLancement;
 
@@ -110,56 +110,48 @@ public class AffaireJudiciaire {
     @Column(columnDefinition = "TEXT")
     private String descriptionJugement;
 
-    private LocalDate dateLimiteAppel; 
+    private LocalDate dateLimiteAppel;
 
-    // ❌ Supprimer ces deux lignes (pas d'entités PVSoumis/FactureSoumise)
-// private List<PVSoumis> pvList;
-// private List<FactureSoumise> factureList;
+    // ✅ Champs directs PV (pas d'entité PVSoumis séparée)
+    @Column(columnDefinition = "TEXT")
+    private String pvTexte;
 
-// ✅ Ajouter ces champs directement dans l'entité
-// ❌ Supprimer ces 2 lignes (entités inexistantes)
-// private List<PVSoumis> pvList;
-// private List<FactureSoumise> factureList;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private StatutPV pvStatut;
 
-// ✅ Ajouter les champs directs PV
-@Column(columnDefinition = "TEXT")
-private String pvTexte;
+    // ✅ Champs directs Facture (pas d'entité FactureSoumise séparée)
+    @Column(length = 100)
+    private String factureRef;
 
-@Enumerated(EnumType.STRING)
-@Column(length = 20)
-private StatutPV pvStatut;
+    private Double montantFacture;
 
-// ✅ Ajouter les champs directs Facture  
-@Column(length = 100)
-private String factureRef;
+    @Enumerated(EnumType.STRING)
+    @Column(length = 30)
+    private StatutFacture factureStatut;
 
-private Double montantFacture;
+    // ✅ Commentaire du validateur financier (validation ou rejet)
+    @Column(columnDefinition = "TEXT")
+    private String factureCommentaireValidation;
 
-@Enumerated(EnumType.STRING)
-@Column(length = 20)
-private StatutFacture factureStatut;
+    // ✅ Username du validateur financier qui a traité la facture
+    @Column(length = 100)
+    private String factureValidePar;
 
+    @ElementCollection(fetch = FetchType.EAGER)
+    @CollectionTable(name = "affaire_pv_fichiers",
+                     joinColumns = @JoinColumn(name = "affaire_id"))
+    @Column(name = "fichier_data", columnDefinition = "LONGTEXT")
+    @Builder.Default
+    private List<String> pvFichiers = new ArrayList<>();
 
-// ✅ Ajouter ce champ dans AffaireJudiciaire.java
-@ElementCollection(fetch = FetchType.EAGER)
-@CollectionTable(name = "affaire_pv_fichiers",
-                 joinColumns = @JoinColumn(name = "affaire_id"))
-@Column(name = "fichier_data", columnDefinition = "LONGTEXT")
-@Builder.Default
-private List<String> pvFichiers = new ArrayList<>();
+    public enum StatutPV {
+        EN_ATTENTE, VALIDE, REFUSE
+    }
 
-// ✅ Enums à ajouter dans la classe
-public enum StatutPV {
-    EN_ATTENTE, VALIDE, REFUSE
-}
-
-public enum StatutFacture {
-    EN_ATTENTE, PAYEE, REJETEE
-}
-
-
-
-
+    public enum StatutFacture {
+        EN_ATTENTE, EN_ATTENTE_VALIDATION, PAYEE, REJETEE
+    }
 
     // ==============================
     // 🔗 RELATIONS
@@ -171,11 +163,14 @@ public enum StatutFacture {
     @JsonIgnore
     private DossierContentieux dossier;
 
-    // ✔ Relation avec mission (1 affaire = 1 mission)
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mission_id")
-    @JsonIgnore
-    private Mission mission;
+    // ❌ SUPPRIMÉ : relation avec Mission
+    // L'AffaireJudiciaire est autonome et ne dépend pas de la Mission
+    // pour les actions métier de l'avocat.
+    //
+    // @OneToOne(fetch = FetchType.LAZY)
+    // @JoinColumn(name = "mission_id")
+    // @JsonIgnore
+    // private Mission mission;
 
     // ✔ Liste des audiences
     @OneToMany(mappedBy = "affaire", cascade = CascadeType.ALL,
@@ -190,7 +185,6 @@ public enum StatutFacture {
     @Builder.Default
     @JsonIgnore
     private List<DocumentAffaire> documents = new ArrayList<>();
-
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "avocat_id")

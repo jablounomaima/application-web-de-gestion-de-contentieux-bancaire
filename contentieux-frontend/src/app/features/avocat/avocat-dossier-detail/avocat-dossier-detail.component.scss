@@ -397,3 +397,35 @@
     .dd-title  { font-size: 1.3rem; }
     .dd-card-body { padding: 1rem; }
   }
+
+  /* ── Fichiers téléchargeables ─────────────────────────────────── */
+  .dd-fichiers-list {
+    display: flex; flex-direction: column; gap: .35rem;
+    margin-top: .5rem;
+  }
+
+  .dd-fichier-item { display: flex; }
+
+  .dd-btn-download {
+    display: inline-flex; align-items: center; justify-content: space-between;
+    gap: .5rem; width: 100%;
+    padding: .4rem .75rem;
+    background: var(--dd-accent-l);
+    color: var(--dd-accent);
+    border: 1px solid #bfdbfe;
+    border-radius: var(--dd-radius-sm);
+    font-size: .78rem; font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: background .15s, border-color .15s, box-shadow .15s;
+
+    &:hover {
+      background: #dbeafe;
+      border-color: var(--dd-accent);
+      box-shadow: 0 0 0 2px var(--dd-accent-l);
+    }
+  }
+
+  .dd-btn-download-icon {
+    font-size: .85rem; flex-shrink: 0;
+  }

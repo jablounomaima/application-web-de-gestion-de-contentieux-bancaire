@@ -3,6 +3,7 @@ package com.example.contentieux_security.controller;
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.TypeValidateur;
 import com.example.contentieux_security.repository.*;
+import com.example.contentieux_security.service.AffaireJudiciaireService;
 import com.example.contentieux_security.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,10 +24,13 @@ import java.util.stream.Collectors;
 @Slf4j
 public class ValidateurFinancierController {
 
-    private final ValidateurRepository   validateurRepository;
-    private final MissionRepository      missionRepository;
-    private final DossierRepository      dossierRepository;
-    private final NotificationService    notificationService;
+    private final ValidateurRepository          validateurRepository;
+    private final MissionRepository             missionRepository;
+    private final DossierRepository             dossierRepository;
+    private final NotificationService           notificationService;
+    private final AffaireJudiciaireRepository   affaireJudiciaireRepository;
+    private final AffaireJudiciaireService      affaireJudiciaireService;
+
 
     // ═══════════════════════════════════════════════════════
     // TOUTES LES FACTURES DE L'AGENCE
@@ -333,6 +337,148 @@ public class ValidateurFinancierController {
             ));
 
         } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 🆕 FACTURES D'AVOCAT EN ATTENTE DE VALIDATION
+    // ═══════════════════════════════════════════════════════
+    @GetMapping("/affaires/factures")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> facturesAvocat(Principal principal) {
+        try {
+            Validateur validateur = validateurRepository.findByUsername(principal.getName())
+                    .orElseThrow(() -> new RuntimeException("Validateur introuvable"));
+            if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER)
+                return ResponseEntity.status(403).body(Map.of("error", "Accès réservé au validateur financier"));
+
+            List<AffaireJudiciaire> affaires = affaireJudiciaireRepository.findAllFacturesAvocatSoumises();
+
+            List<Map<String, Object>> result = affaires.stream().map(aff -> {
+                Map<String, Object> data = new LinkedHashMap<>();
+                data.put("affaireId",     aff.getId());
+                data.put("numeroAffaire", aff.getNumeroAffaire());
+                data.put("factureRef",    aff.getFactureRef());
+                data.put("montantHT",     aff.getMontantFacture());
+                data.put("montantTTC",    aff.getMontantFacture() != null ? aff.getMontantFacture() * 1.19 : 0);
+                data.put("factureStatut", aff.getFactureStatut() != null ? aff.getFactureStatut().name() : null);
+                data.put("factureCommentaireValidation", aff.getFactureCommentaireValidation());
+                data.put("dateLancement", aff.getDateLancement());
+                
+                if (aff.getAvocat() != null) {
+                    Prestataire av = aff.getAvocat();
+                    data.put("avocatId",       av.getId());
+                    data.put("avocatNom",      (av.getPrenom() + " " + av.getNom()).trim());
+                    data.put("avocatEmail",    av.getEmail());
+                    data.put("avocatUsername", av.getUsername());
+                }
+
+                if (aff.getDossier() != null) {
+                    DossierContentieux dos = aff.getDossier();
+                    data.put("dossierId",     dos.getId());
+                    data.put("numeroDossier", dos.getNumeroDossier());
+                    data.put("agentUsername", dos.getCreePar());
+                    if (dos.getClient() != null) {
+                        Client c = dos.getClient();
+                        boolean isEntreprise = c.getTypeClient() != null &&
+                                               c.getTypeClient().name().equals("ENTREPRISE");
+                        data.put("clientNom", isEntreprise ? c.getRaisonSociale()
+                                                           : (c.getNom() + " " + c.getPrenom()).trim());
+                    }
+                }
+                return data;
+            }).collect(Collectors.toList());
+
+            return ResponseEntity.ok(Map.of(
+                "affaires",      result,
+                "totalAffaires", result.size()
+            ));
+
+        } catch (Exception e) {
+            log.error("Erreur factures avocat: {}", e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════
+    // 🆕 VALIDER / REJETER FACTURE D'AVOCAT
+    // ═══════════════════════════════════════════════════════
+    @PostMapping("/affaires/{affaireId}/valider-facture")
+    @Transactional
+    public ResponseEntity<?> validerFactureAvocat(
+            @PathVariable Long affaireId,
+            @RequestBody Map<String, Object> body,
+            Principal principal) {
+        try {
+            Validateur validateur = validateurRepository.findByUsername(principal.getName())
+                    .orElseThrow(() -> new RuntimeException("Validateur introuvable"));
+            if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER)
+                return ResponseEntity.status(403).body(Map.of("error", "Accès réservé au validateur financier"));
+
+            boolean valide     = Boolean.TRUE.equals(body.get("valide"));
+            String commentaire = body.get("commentaire") != null ? body.get("commentaire").toString() : "";
+
+            AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId)
+                    .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+
+            if (affaire.getFactureRef() == null)
+                return ResponseEntity.badRequest().body(Map.of("error", "Aucune facture soumise."));
+
+            affaireJudiciaireService.validerFactureParValidateur(
+                    affaireId, valide,
+                    commentaire.isBlank() ? null : commentaire,
+                    principal.getName()
+            );
+
+            // ── Notifications ──
+            String avocatUsername = affaire.getAvocat() != null ? affaire.getAvocat().getUsername() : null;
+            String agentUsername  = affaire.getDossier() != null ? affaire.getDossier().getCreePar() : null;
+            DossierContentieux dossier = affaire.getDossier();
+            String numeroAffaire = affaire.getNumeroAffaire();
+
+            if (valide) {
+                if (avocatUsername != null)
+                    notificationService.notifierSansDossier(avocatUsername,
+                        "✅ Votre facture a été validée",
+                        "Votre facture (affaire " + numeroAffaire + ") a été validée par le validateur financier.",
+                        "VALIDATION_FINANCIERE_OK",
+                        "/avocat/affaires/" + affaireId + "/honoraires");
+                if (agentUsername != null && dossier != null)
+                    notificationService.notifier(agentUsername,
+                        "✅ Facture avocat validée",
+                        "La facture de l'affaire " + numeroAffaire +
+                        " (dossier " + dossier.getNumeroDossier() + ") a été validée par le validateur financier.",
+                        "VALIDATION_FINANCIERE_OK",
+                        dossier,
+                        "/agent/dossiers/" + dossier.getId() + "/affaire");
+            } else {
+                if (avocatUsername != null)
+                    notificationService.notifierSansDossier(avocatUsername,
+                        "❌ Votre facture a été rejetée",
+                        "Votre facture (affaire " + numeroAffaire + ") a été rejetée par le validateur financier."
+                        + (commentaire.isBlank() ? "" : " Motif : " + commentaire),
+                        "REJET_FINANCIER",
+                        "/avocat/affaires/" + affaireId + "/honoraires");
+                if (agentUsername != null && dossier != null)
+                    notificationService.notifier(agentUsername,
+                        "❌ Facture avocat rejetée",
+                        "La facture de l'affaire " + numeroAffaire +
+                        " (dossier " + dossier.getNumeroDossier() + ") a été rejetée."
+                        + (commentaire.isBlank() ? "" : " Motif : " + commentaire),
+                        "REJET_FINANCIER",
+                        dossier,
+                        "/agent/dossiers/" + dossier.getId() + "/affaire");
+            }
+
+            return ResponseEntity.ok(Map.of(
+                "message",       valide ? "Facture validée." : "Facture rejetée.",
+                "affaireId",     affaireId,
+                "factureValide", valide
+            ));
+
+        } catch (Exception e) {
+            log.error("Erreur validerFactureAvocat affaireId={}: {}", affaireId, e.getMessage(), e);
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }

@@ -51,22 +51,21 @@ public class Mission {
     private String pvMission;
 
     // Facture (champs legacy conservés pour compatibilité PrestationService)
-    private Double  montantFacture;
+    private Double montantFacture;
 
     @Column(length = 100)
-    private String  factureRef;
+    private String factureRef;
     private Boolean pvValide = false;
-private Boolean factureValide = null;
-
+    private Boolean factureValide = null;
 
     private LocalDateTime dateValidationAgent;
     private LocalDateTime dateValidationPv;
-private LocalDateTime dateValidationFacture;
-private String valideParAgent;
-@Column(columnDefinition = "TEXT")
+    private LocalDateTime dateValidationFacture;
+    private String valideParAgent;
 
-private String commentaireAgent;
-private String resultat; // "VALIDE" ou "REJETE"
+    @Column(columnDefinition = "TEXT")
+    private String commentaireAgent;
+    private String resultat; // "VALIDE" ou "REJETE"
 
     // ── Relations ──────────────────────────────────────────
 
@@ -88,21 +87,20 @@ private String resultat; // "VALIDE" ou "REJETE"
     @JsonIgnore
     private Prestataire prestataire;
 
-    /**
-     * Affaire judiciaire liée (si mission de type judiciaire).
-     * ✅ getAffaire() utilisé dans les templates.
-     */
-    @OneToOne(mappedBy = "mission", fetch = FetchType.EAGER)
-    @JsonIgnore
-    private AffaireJudiciaire affaire;
-
+    // ❌ SUPPRIMÉ : relation avec AffaireJudiciaire
+    // Ce champ était mappé sur AffaireJudiciaire.mission (mappedBy = "mission").
+    // Comme ce champ n'existe plus côté AffaireJudiciaire, ce mapping ne peut
+    // plus exister : Mission n'a plus aucune connaissance de AffaireJudiciaire.
+    //
+    // @OneToOne(mappedBy = "mission", fetch = FetchType.EAGER)
+    // @JsonIgnore
+    // private AffaireJudiciaire affaire;
 
     public boolean isModifiable() {
         return dateValidationAgent == null;
     }
 
-
-    @OneToOne(mappedBy = "mission", cascade = CascadeType.ALL, 
-          orphanRemoval = true, fetch = FetchType.EAGER)
-private ResultatMission resultatMission;
+    @OneToOne(mappedBy = "mission", cascade = CascadeType.ALL,
+              orphanRemoval = true, fetch = FetchType.EAGER)
+    private ResultatMission resultatMission;
 }

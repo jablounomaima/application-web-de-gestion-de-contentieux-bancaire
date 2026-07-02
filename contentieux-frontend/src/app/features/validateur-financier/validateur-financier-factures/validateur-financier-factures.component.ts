@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule, DecimalPipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { environment } from '../../../../environments/environment';
@@ -13,6 +14,20 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
   imports: [CommonModule, FormsModule, DecimalPipe],
   template: `
     <div class="page-container">
+
+    <!-- ══ Onglets ══ -->
+    <div class="tabs-bar">
+      <button class="tab-btn" [class.tab-active]="ongletActif === 'prestataires'" (click)="ongletActif='prestataires'">
+        🧑‍💼 Factures Prestataires
+      </button>
+      <button class="tab-btn" [class.tab-active]="ongletActif === 'avocats'" (click)="ongletActif='avocats'; chargerFacturesAvocat()">
+        ⚖️ Factures d'Avocat
+        <span class="tab-badge" *ngIf="facturesAvocat.length > 0">{{ facturesAvocat.length }}</span>
+      </button>
+    </div>
+
+    <!-- ══ ONGLET PRESTATAIRES ══ -->
+    <ng-container *ngIf="ongletActif === 'prestataires'">
 
       <!-- ══ Header ══ -->
       <div class="page-header">
@@ -198,7 +213,7 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
           </table>
         </div>
       </div>
-    </div>
+    </ng-container>
 
     <!-- ══ Modal rejet ══ -->
     <div class="modal-overlay" *ngIf="modalVisible" (click)="fermerModal()">
@@ -230,7 +245,122 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
          [ngClass]="{ 'show': toastVisible, 'success': toastType === 'success', 'error': toastType === 'error', 'info': toastType === 'info' }">
       {{ toastMessage }}
     </div>
+
+    <!-- ══ ONGLET FACTURES AVOCAT ══ -->
+    <ng-container *ngIf="ongletActif === 'avocats'">
+
+      <!-- Header -->
+      <div class="page-header">
+        <div class="title-group">
+          <span class="role-badge">⚖️ FACTURES D'AVOCAT</span>
+          <h1>Factures en attente de validation</h1>
+          <p class="subtitle">{{ facturesAvocat.length }} facture(s) soumises par les avocats</p>
+        </div>
+        <button class="btn-refresh" (click)="chargerFacturesAvocat()">
+          🔄 Actualiser
+        </button>
+      </div>
+
+      <!-- Loader avocat -->
+      <div class="loader-state" *ngIf="loadingAvocat">
+        <div class="spinner"></div>
+        <p>Chargement des factures d'avocat...</p>
+      </div>
+
+      <!-- Vide -->
+      <div class="empty-state" *ngIf="!loadingAvocat && facturesAvocat.length === 0">
+        <div class="empty-icon">⚖️</div>
+        <p class="empty-text">Aucune facture d'avocat en attente de validation.</p>
+      </div>
+
+      <!-- Tableau -->
+      <div class="factures-table-wrap" *ngIf="!loadingAvocat && facturesAvocat.length > 0">
+        <table class="factures-table">
+          <thead>
+            <tr>
+              <th>Avocat</th>
+              <th>Dossier</th>
+              <th>Client</th>
+              <th>Réf. Facture</th>
+              <th>Montant HT</th>
+              <th>Total TTC</th>
+              <th>Statut</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let aff of facturesAvocat"
+                [id]="'facture-avocat-' + aff.affaireId"
+                [ngClass]="{
+                  'row-valide':   isValideeAvocat(aff),
+                  'row-rejete':   isRejeteeAvocat(aff),
+                  'row-attente':  peutEtreTraiteeAvocat(aff)
+                }">
+              <td>
+                <div class="prestataire-cell">
+                  <div class="prestataire-avatar avatar-avocat">{{ initiales(aff.avocatNom) }}</div>
+                  <div>
+                    <div class="prestataire-nom">{{ aff.avocatNom }}</div>
+                    <div class="prestataire-email">{{ aff.avocatEmail }}</div>
+                  </div>
+                </div>
+              </td>
+              <td class="mono">{{ aff.numeroDossier }}</td>
+              <td>{{ aff.clientNom || '—' }}</td>
+              <td class="mono">{{ aff.factureRef }}</td>
+              <td>{{ aff.montantHT | number:'1.3-3' }} TND</td>
+              <td class="ttc-val">{{ aff.montantTTC | number:'1.3-3' }} TND</td>
+              <td>
+                <span class="statut-pill" [ngClass]="statutClassAvocat(aff)">{{ statutLabelAvocat(aff) }}</span>
+                <div *ngIf="isRejeteeAvocat(aff) && aff.factureCommentaireValidation" class="rejet-motif">
+                  💬 {{ aff.factureCommentaireValidation }}
+                </div>
+              </td>
+              <td>
+                <div class="action-btns" *ngIf="peutEtreTraiteeAvocat(aff)">
+                  <button class="btn-valider" (click)="validerFactureAvocat(aff, true)" [disabled]="aff.saving">
+                    <span *ngIf="!aff.saving">✓ Valider</span>
+                    <span *ngIf="aff.saving">...</span>
+                  </button>
+                  <button class="btn-rejeter" (click)="ouvrirModalAvocat(aff)" [disabled]="aff.saving">✕ Rejeter</button>
+                </div>
+                <div *ngIf="isValideeAvocat(aff)" class="traite-label valide-label">✅ Validée</div>
+                <div *ngIf="isRejeteeAvocat(aff)" class="traite-label rejete-label">❌ Rejetée</div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+    </ng-container><!-- /onglet avocats -->
+
+    <!-- ══ Modal rejet avocat ══ -->
+    <div class="modal-overlay" *ngIf="modalAvocatVisible" (click)="fermerModalAvocat()">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <span class="modal-icon">❌</span>
+          <h3>Motif de rejet</h3>
+        </div>
+        <p>
+          Indiquez la raison du rejet de la facture
+          <strong class="mono">{{ affaireEnCours?.factureRef }}</strong>
+          de <strong>{{ affaireEnCours?.avocatNom }}</strong>
+        </p>
+        <textarea [(ngModel)]="commentaireRejetAvocat" rows="4" class="modal-textarea"
+                  placeholder="Ex: Montant incorrect, référence manquante..."></textarea>
+        <div class="modal-actions">
+          <button class="btn-annuler" (click)="fermerModalAvocat()">Annuler</button>
+          <button class="btn-confirmer-rejet"
+                  (click)="validerFactureAvocat(affaireEnCours, false)"
+                  [disabled]="!commentaireRejetAvocat.trim()">
+            Confirmer le rejet
+          </button>
+        </div>
+      </div>
+    </div>
+
   `,
+
   styles: [`
     * { box-sizing: border-box; }
 
@@ -266,7 +396,7 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
       100% { background: white; }
     }
 
-    /* ── Surlignage dossier depuis notification ── */
+    /* ── Surlignage dossier / ligne depuis notification ── */
     .dossier-highlight {
       border: 2px solid #f59e0b !important;
       box-shadow: 0 0 0 4px rgba(245,158,11,0.2) !important;
@@ -481,13 +611,28 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   loading       = true;
   recherche     = '';
 
+  // Onglets
+  ongletActif: 'prestataires' | 'avocats' = 'prestataires';
+
   private _missionId_cible: number | null = null;
 
-  // Modal
+  // Modal (prestataires)
   modalVisible      = false;
   factureEnCours:  any = null;
   dossierEnCours:  any = null;
   commentaireRejet = '';
+
+  // Factures avocat
+  facturesAvocat: any[] = [];
+  loadingAvocat  = false;
+
+  // ✅ Affaire d'avocat ciblée depuis une notification (?affaireId=...)
+  private _affaireId_cible: number | null = null;
+
+  // Modal (avocat)
+  modalAvocatVisible     = false;
+  affaireEnCours:  any   = null;
+  commentaireRejetAvocat = '';
 
   // Toast
   toastVisible = false;
@@ -509,10 +654,29 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
 
   constructor(
     private http: HttpClient,
-    private notificationService: NotificationService
+    private notificationService: NotificationService,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
+    // ── Lire les paramètres ?tab=avocats&affaireId=... depuis l'URL ───────────────
+    this.route.queryParams
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(params => {
+        if (params['tab'] === 'avocats') {
+          this.ongletActif = 'avocats';
+
+          const affaireIdParam = params['affaireId'];
+          if (affaireIdParam) {
+            this._affaireId_cible = Number(affaireIdParam);
+            // 🔍 DEBUG — à retirer une fois le problème confirmé/résolu
+            console.log('🔍 [ValidateurFinancierFactures] affaireId cible depuis URL :', this._affaireId_cible);
+          }
+
+          this.chargerFacturesAvocat();
+        }
+      });
+
     this.notificationService.factureCible$
       .pipe(takeUntil(this.destroy$))
       .subscribe((id: number | null) => {
@@ -554,6 +718,96 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   }
 
   // ════════════════════════════════════════
+  // Factures Avocat
+  // ════════════════════════════════════════
+
+  chargerFacturesAvocat(): void {
+    this.loadingAvocat = true;
+    this.http.get<any>(`${this.api}/affaires/factures`).subscribe({
+      next: (res) => {
+        this.facturesAvocat = res?.affaires ?? [];
+        this.loadingAvocat  = false;
+
+        // 🔍 DEBUG — à retirer une fois le problème confirmé/résolu
+        console.log(
+          '🔍 [ValidateurFinancierFactures] Factures avocat reçues :',
+          this.facturesAvocat.map(a => a.affaireId)
+        );
+
+        // ✅ Si une affaire est ciblée (depuis notification), la surligner
+        // ⚠️ Fix course de conditions : on ne remet _affaireId_cible à null
+        // qu'APRÈS la tentative de surlignage, pour survivre à un éventuel
+        // second chargement déclenché en parallèle (ex: événement WebSocket).
+        if (this._affaireId_cible !== null) {
+          const affaireId = this._affaireId_cible;
+          setTimeout(() => {
+            this._surlignerFactureAvocat(affaireId);
+            this._affaireId_cible = null;
+          }, 250);
+        }
+      },
+      error: () => {
+        this.showToast('Impossible de charger les factures d\'avocat.', 'error');
+        this.loadingAvocat = false;
+      }
+    });
+  }
+
+  // ── Surligne + scrolle jusqu'à la ligne de la facture d'avocat ciblée ──
+  private _surlignerFactureAvocat(affaireId: number): void {
+    const el = document.getElementById('facture-avocat-' + affaireId);
+    if (!el) {
+      // 🔍 DEBUG — si ce warning apparaît, l'ID cible ne correspond à aucune
+      // ligne du DOM : vérifier le nom du champ renvoyé par le backend
+      // (affaireId vs id/idAffaire) et si l'affaire cible est bien présente
+      // dans la liste chargée (voir le log ci-dessus).
+      console.warn('⚠️ Facture avocat cible introuvable dans le DOM :', affaireId);
+      return;
+    }
+    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el.classList.add('row-nouvelle');
+    setTimeout(() => el.classList.remove('row-nouvelle'), 4000);
+  }
+
+  ouvrirModalAvocat(aff: any): void {
+    this.affaireEnCours         = aff;
+    this.commentaireRejetAvocat = '';
+    this.modalAvocatVisible     = true;
+  }
+
+  fermerModalAvocat(): void {
+    this.modalAvocatVisible = false;
+    this.affaireEnCours     = null;
+  }
+
+  validerFactureAvocat(aff: any, valide: boolean): void {
+    if (!aff) return;
+    aff.saving = true;
+    this.modalAvocatVisible = false;
+
+    const body = { valide, commentaire: valide ? '' : this.commentaireRejetAvocat };
+
+    this.http.post(
+      `${this.api}/affaires/${aff.affaireId}/valider-facture`, body
+    ).subscribe({
+      next: () => {
+        aff.saving = false;
+        aff.factureStatut = valide ? 'PAYEE' : 'REJETEE';
+        if (!valide) aff.factureCommentaireValidation = this.commentaireRejetAvocat;
+        this.showToast(
+          valide ? '✓ Facture avocat validée avec succès !' : '✓ Facture avocat rejetée.',
+          'success'
+        );
+        this.fermerModalAvocat();
+      },
+      error: (e) => {
+        aff.saving = false;
+        this.showToast(e.error?.error || 'Erreur lors de la validation.', 'error');
+      }
+    });
+  }
+
+  // ════════════════════════════════════════
   // Écoute WebSocket — nouvelles factures
   // ════════════════════════════════════════
 
@@ -563,11 +817,19 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
       .subscribe((notif: NotificationDTO) => {
         const typesFacture = [
           'FACTURE_SOUMISE', 'RESOUMISSION',
-          'RESULTAT_SOUMIS', 'RESULTAT_MODIFIE'
+          'RESULTAT_SOUMIS', 'RESULTAT_MODIFIE',
+          'FACTURE_AVOCAT_SOUMISE'
         ];
         if (!typesFacture.includes(notif.type)) return;
         if (this._derniereNotifId === notif.id) return;
         this._derniereNotifId = notif.id;
+
+        // Si onglet avocats actif, recharger les factures avocat
+        if (notif.type === 'FACTURE_AVOCAT_SOUMISE' || this.ongletActif === 'avocats') {
+          this.chargerFacturesAvocat();
+          this.showToast('⚖️ Nouvelle facture d\'avocat reçue — liste mise à jour', 'info');
+          return;
+        }
 
         // Recharger automatiquement et surligner le dossier
         if (notif.dossierId) {
@@ -838,6 +1100,32 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   statutLabel(f: any): string {
     if (this.isValidee(f)) return '✅ Validée';
     if (this.isRejete(f))  return '❌ Rejetée';
+    return '⏳ En attente';
+  }
+
+  // ── Statut facture avocat (factureStatut : 'EN_ATTENTE_VALIDATION' | 'PAYEE' | 'REJETEE') ──
+
+  isValideeAvocat(aff: any): boolean {
+    return aff.factureStatut === 'PAYEE';
+  }
+
+  isRejeteeAvocat(aff: any): boolean {
+    return aff.factureStatut === 'REJETEE';
+  }
+
+  peutEtreTraiteeAvocat(aff: any): boolean {
+    return !this.isValideeAvocat(aff) && !this.isRejeteeAvocat(aff);
+  }
+
+  statutClassAvocat(aff: any): string {
+    if (this.isValideeAvocat(aff)) return 'pill-valide';
+    if (this.isRejeteeAvocat(aff)) return 'pill-rejete';
+    return 'pill-attente';
+  }
+
+  statutLabelAvocat(aff: any): string {
+    if (this.isValideeAvocat(aff)) return '✅ Validée';
+    if (this.isRejeteeAvocat(aff)) return '❌ Rejetée';
     return '⏳ En attente';
   }
 

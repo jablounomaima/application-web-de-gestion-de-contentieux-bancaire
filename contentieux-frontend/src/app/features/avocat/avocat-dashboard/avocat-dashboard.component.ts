@@ -276,8 +276,10 @@ export class AvocatDashboardComponent implements OnInit, OnDestroy {
   private appliquerNotifEnMemoire(notif: NotificationDTO): void {
     const type = notif.type?.toUpperCase() ?? '';
   
-    // Nouvelle affaire assignée → recharger avec retry
-    if (type.includes('NOUVELLE_MISSION') || type.includes('NOUVELLE_AFFAIRE')) {
+    // Nouvelle affaire assignée ou réassignée → recharger le tableau de bord
+    if (type.includes('NOUVELLE_MISSION')
+        || type.includes('NOUVELLE_AFFAIRE')
+        || type.includes('AFFAIRE_REASSIGNEE')) {
       this.chargerAffairesAvecRetry();
       return;
     }

@@ -19,6 +19,7 @@ import com.example.contentieux_security.entity.Client;
 import com.example.contentieux_security.entity.Risque;
 import com.example.contentieux_security.entity.Mission;
 import com.example.contentieux_security.entity.Prestation;
+import com.example.contentieux_security.entity.AffaireJudiciaire;
 import com.example.contentieux_security.service.MissionService;
 import com.example.contentieux_security.service.PrestationService;
 import com.example.contentieux_security.repository.AffaireJudiciaireRepository;
@@ -43,7 +44,7 @@ public class DossierController {
 
     private final DossierService dossierService;
     private final HistoriqueService historiqueService;
-    private final DossierRepository dossierRepository;
+   
     private final ValidateurRepository validateurRepository;
     private final ClientRepository clientRepository;
     private final NotificationService notificationService;
@@ -54,7 +55,6 @@ public class DossierController {
     private final MissionService missionService;
     private final PrestationService prestationService;
     private final AffaireJudiciaireRepository affaireRepository;
-
     @GetMapping("/create-data")
     @PreAuthorize("hasAnyRole('AGENT','ADMIN')")
     public ResponseEntity<?> getCreationData(Principal principal) {
@@ -133,9 +133,11 @@ public class DossierController {
             }
     
             // ── 6. Affaire judiciaire ──────────────────────────────────────
+            List<AffaireJudiciaire> affaires = List.of();
             boolean affaireExiste = false;
             try {
-                affaireExiste = !affaireRepository.findByDossier_Id(id).isEmpty();
+                affaires = affaireRepository.findByDossier_Id(id);
+                affaireExiste = !affaires.isEmpty();
             } catch (Exception e) {
                 System.out.println(">>> Erreur affaire : " + e.getMessage());
             }
@@ -147,8 +149,42 @@ public class DossierController {
             } catch (Exception e) {
                 System.out.println(">>> Erreur prestation : " + e.getMessage());
             }
+
+            // ── 8. Détail de l'affaire judiciaire ───────────────────────────
+            Object affaireJudiciaire = null;
+            if (affaireExiste) {
+                try {
+                    AffaireJudiciaire affaire = affaires.get(0);
+                    if (affaire != null) {
+                        Map<String, Object> affaireMap = new HashMap<>();
+                        affaireMap.put("id", affaire.getId());
+                        affaireMap.put("numeroAffaire", affaire.getNumeroAffaire());
+                        affaireMap.put("tribunal", affaire.getTribunal());
+                        affaireMap.put("numeroRole", affaire.getNumeroRole());
+                        affaireMap.put("chambre", affaire.getChambre());
+                        affaireMap.put("dateLancement", affaire.getDateLancement());
+                        affaireMap.put("statut", affaire.getStatut() != null ? affaire.getStatut().name() : null);
+                        affaireMap.put("typeJugement", affaire.getTypeJugement() != null ? affaire.getTypeJugement().name() : null);
+                        affaireMap.put("pvStatut", affaire.getPvStatut() != null ? affaire.getPvStatut().name() : null);
+                        affaireMap.put("factureRef", affaire.getFactureRef());
+                        affaireMap.put("montantFacture", affaire.getMontantFacture());
+                        affaireMap.put("factureStatut", affaire.getFactureStatut() != null ? affaire.getFactureStatut().name() : null);
+                        if (affaire.getAvocat() != null) {
+                            Map<String, Object> avocatMap = new HashMap<>();
+                            avocatMap.put("id", affaire.getAvocat().getId());
+                            avocatMap.put("nom", affaire.getAvocat().getNom());
+                            avocatMap.put("prenom", affaire.getAvocat().getPrenom());
+                            avocatMap.put("username", affaire.getAvocat().getUsername());
+                            affaireMap.put("avocat", avocatMap);
+                        }
+                        affaireJudiciaire = affaireMap;
+                    }
+                } catch (Exception e) {
+                    System.out.println(">>> Erreur chargement affaire judiciaire : " + e.getMessage());
+                }
+            }
     
-            // ── 8. Construire la réponse ──────────────────────────────────
+            // ── 9. Construire la réponse ──────────────────────────────────
             Map<String, Object> response = new HashMap<>();
             response.put("dossier",                dossier);
             response.put("validateurs_financiers",  vf);
@@ -157,6 +193,7 @@ public class DossierController {
             response.put("missionAvocat",           missionAvocat);
             response.put("affaireExiste",           affaireExiste);
             response.put("prestationJudiciaire",    prestationJudiciaire);
+            response.put("affaireJudiciaire",      affaireJudiciaire);
     
             System.out.println(">>> Réponse construite avec succès");
             return ResponseEntity.ok(response);

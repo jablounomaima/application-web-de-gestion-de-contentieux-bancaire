@@ -56,15 +56,6 @@
             <span class="dd-metric-lbl">Validation Fin. / Jur.</span>
           </div>
         </div>
-        <div class="dd-metric" *ngIf="mission">
-          <span class="dd-metric-icon">⚖️</span>
-          <div class="dd-metric-body">
-            <span class="dd-pill dd-pill--sm" [ngClass]="missionStatutClass(mission.statut)">
-              {{ mission.statut }}
-            </span>
-            <span class="dd-metric-lbl">Statut mission</span>
-          </div>
-        </div>
       </div>
   
       <!-- ── Grille principale ──────────────────────────────────── -->
@@ -192,39 +183,7 @@
             </div>
           </div>
   
-          <!-- Carte : Mission avocat -->
-          <div class="dd-card" *ngIf="mission">
-            <div class="dd-card-head">
-              <h2><span>⚖️</span> Mission</h2>
-              <span class="dd-pill" [ngClass]="missionStatutClass(mission.statut)">
-                {{ mission.statut }}
-              </span>
-            </div>
-            <div class="dd-card-body">
-              <div class="dd-info-grid">
-                <div class="dd-info-cell">
-                  <span class="dd-info-label">N° Mission</span>
-                  <span class="dd-info-val dd-mono">{{ mission.numeroMission }}</span>
-                </div>
-                <div class="dd-info-cell" *ngIf="mission.dateDebut">
-                  <span class="dd-info-label">Début</span>
-                  <span class="dd-info-val">{{ mission.dateDebut | date:'dd/MM/yyyy' }}</span>
-                </div>
-                <div class="dd-info-cell" *ngIf="mission.dateFinPrevue">
-                  <span class="dd-info-label">Fin prévue</span>
-                  <span class="dd-info-val">{{ mission.dateFinPrevue | date:'dd/MM/yyyy' }}</span>
-                </div>
-                <div class="dd-info-cell" *ngIf="mission.montantFacture">
-                  <span class="dd-info-label">Montant facturé</span>
-                  <span class="dd-info-val dd-accent">{{ mission.montantFacture | number:'1.2-2' }} TND</span>
-                </div>
-                <div class="dd-info-cell dd-info-cell--full" *ngIf="mission.description">
-                  <span class="dd-info-label">Description mission</span>
-                  <p class="dd-info-text">{{ mission.description }}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+
   
         </div><!-- /col-left -->
   
@@ -311,6 +270,118 @@
             </div>
           </div>
   
+          <!-- Carte : Affaires & Interventions -->
+          <div class="dd-card" *ngIf="affairesDossier && affairesDossier.length > 0">
+            <div class="dd-card-head">
+              <h2><span>⚖️</span> Suivi des affaires & Interventions</h2>
+              <span class="dd-count">{{ affairesDossier.length }}</span>
+            </div>
+            <div class="dd-card-body dd-card-body--noPad">
+              <div class="dd-risque-list">
+                <div class="dd-risque-item"
+                     *ngFor="let aff of affairesDossier; let last = last"
+                     [class.dd-risque-item--last]="last"
+                     [class.dd-risque-item--selected]="aff.id === affaireId">
+                  
+                  <div class="dd-risque-head">
+                    <div class="dd-risque-type-badge">
+                      Affaire n° {{ aff.numeroAffaire }}
+                    </div>
+                    <span class="dd-pill dd-pill--sm" [ngClass]="getStatutAffaireClass(aff.statut)">
+                      {{ aff.statut }}
+                    </span>
+                  </div>
+
+                  <div class="dd-montant-cell" style="margin-top: 10px; margin-bottom: 10px;">
+                    <span class="dd-montant-lbl">Avocat assigné</span>
+                    <span class="dd-montant-val dd-bold">{{ getNomAvocat(aff) }}</span>
+                  </div>
+                  
+                  <div class="dd-montant-cell" *ngIf="aff.dateLancement" style="margin-bottom: 10px;">
+                    <span class="dd-montant-lbl">Date de lancement</span>
+                    <span class="dd-montant-val">{{ aff.dateLancement | date:'dd/MM/yyyy' }}</span>
+                  </div>
+
+                  <!-- Interventions -->
+                  <div class="dd-garanties">
+                    <div class="dd-garanties-title">Interventions Détaillées</div>
+                    
+                    <!-- PV -->
+                    <div class="dd-garantie-row" style="flex-direction: column; align-items: flex-start;" *ngIf="aff.pvTexte || (aff.pvFichiers && aff.pvFichiers.length)">
+                      <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px;">
+                        <span class="dd-garantie-type">Procès-Verbal</span>
+                        <span class="dd-pill dd-pill--sm pill--orange" *ngIf="aff.pvStatut">{{ aff.pvStatut }}</span>
+                      </div>
+                      <div class="dd-garantie-desc" *ngIf="aff.pvTexte" style="white-space: pre-line;">{{ aff.pvTexte }}</div>
+                      <div *ngIf="aff.pvFichiers && aff.pvFichiers.length > 0" class="dd-fichiers-list">
+                        <div class="dd-fichier-item" *ngFor="let f of aff.pvFichiers">
+                          <button class="dd-btn-download" (click)="telechargerFichierPv(f)" title="Télécharger {{ getNomFichier(f) }}">
+                            📎 {{ getNomFichier(f) }}
+                            <span class="dd-btn-download-icon">⬇</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- Audiences -->
+                    <ng-container *ngIf="aff.audiences && aff.audiences.length > 0">
+                      <div class="dd-garantie-row" style="flex-direction: column; align-items: flex-start;" *ngFor="let aud of aff.audiences">
+                        <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px;">
+                          <span class="dd-garantie-type">Audience du {{ aud.dateAudience | date:'dd/MM/yyyy' }}</span>
+                          <span class="dd-pill dd-pill--sm pill--grey">{{ aud.statut }}</span>
+                        </div>
+                        <div class="dd-garantie-desc" *ngIf="aud.motif"><strong>Motif:</strong> {{ aud.motif }}</div>
+                        <div class="dd-garantie-desc" *ngIf="aud.resultat"><strong>Résultat:</strong> {{ aud.resultat }}</div>
+                        <div class="dd-garantie-desc" *ngIf="aud.salle"><strong>Salle:</strong> {{ aud.salle }} ({{ aud.heure }})</div>
+                      </div>
+                    </ng-container>
+
+                    <!-- Facture -->
+                    <div class="dd-garantie-row" style="flex-direction: column; align-items: flex-start;" *ngIf="aff.factureRef">
+                      <div style="display: flex; justify-content: space-between; width: 100%;">
+                        <span class="dd-garantie-type">Facture: {{ aff.factureRef }}</span>
+                        <span *ngIf="aff.factureStatut === 'EN_ATTENTE_VALIDATION'"
+                              class="dd-pill dd-pill--sm pill--orange">🟡 En attente du validateur financier</span>
+                        <span *ngIf="aff.factureStatut === 'PAYEE'"
+                              class="dd-pill dd-pill--sm pill--green">✅ Validée</span>
+                        <span *ngIf="aff.factureStatut === 'REJETEE'"
+                              class="dd-pill dd-pill--sm pill--red">❌ Rejetée</span>
+                        <span *ngIf="aff.factureStatut && aff.factureStatut !== 'EN_ATTENTE_VALIDATION' && aff.factureStatut !== 'PAYEE' && aff.factureStatut !== 'REJETEE'"
+                              class="dd-pill dd-pill--sm pill--grey">{{ aff.factureStatut }}</span>
+                      </div>
+                      <div class="dd-garantie-desc" style="margin-top: 3px;">Montant: {{ aff.montantFacture | number:'1.3-3' }} TND</div>
+                      <!-- Commentaire du validateur financier -->
+                      <div *ngIf="aff.factureCommentaireValidation" class="dd-garantie-desc"
+                           [style.color]="aff.factureStatut === 'REJETEE' ? '#991b1b' : '#374151'"
+                           style="margin-top: 4px; font-style: italic;">
+                        💬 {{ aff.factureStatut === 'REJETEE' ? 'Motif de rejet : ' : '' }}{{ aff.factureCommentaireValidation }}
+                      </div>
+                      <div *ngIf="aff.factureValidePar" class="dd-garantie-desc" style="margin-top: 2px; color: #64748b; font-size: 0.78rem;">
+                        Traité par : {{ aff.factureValidePar }}
+                      </div>
+                    </div>
+                    
+                    <!-- Jugement -->
+                    <div class="dd-garantie-row" style="flex-direction: column; align-items: flex-start;" *ngIf="aff.typeJugement">
+                      <div style="display: flex; justify-content: space-between; width: 100%; margin-bottom: 5px;">
+                        <span class="dd-garantie-type">Jugement: {{ aff.typeJugement }}</span>
+                        <span class="dd-garantie-desc" *ngIf="aff.dateJugement">{{ aff.dateJugement | date:'dd/MM/yyyy' }}</span>
+                      </div>
+                      <div class="dd-garantie-desc" *ngIf="aff.montantJuge"><strong>Montant:</strong> {{ aff.montantJuge }} TND</div>
+                      <div class="dd-garantie-desc" *ngIf="aff.delaiPaiementJuge"><strong>Délai:</strong> {{ aff.delaiPaiementJuge }}</div>
+                      <div class="dd-garantie-desc" *ngIf="aff.descriptionJugement"><strong>Description:</strong> {{ aff.descriptionJugement }}</div>
+                    </div>
+                    
+                    <div class="dd-no-garantie" *ngIf="!aff.pvTexte && !(aff.pvFichiers?.length) && !aff.factureRef && !aff.typeJugement && !(aff.audiences?.length > 0)">
+                      Aucune intervention majeure
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Carte : Historique -->
           <div class="dd-card">
             <div class="dd-card-head">

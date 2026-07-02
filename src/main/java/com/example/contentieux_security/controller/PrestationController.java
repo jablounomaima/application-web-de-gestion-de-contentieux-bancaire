@@ -127,7 +127,7 @@ public class PrestationController {
                         dossier = dossierService.getDossierById(dossierId);
                     }
 
-                    AffaireJudiciaire affaire = affaireService.creerAffaireDirecte(m, dossier, authentication.getName());
+                    AffaireJudiciaire affaire = affaireService.creerAffaireDirecte(m.getPrestataire(), dossier, authentication.getName());
                     response.put("affaire", affaire);
                     response.put("message", "Mission assignée et affaire judiciaire créée avec succès");
                 } catch (IllegalStateException e) {

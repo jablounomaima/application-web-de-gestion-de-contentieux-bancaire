@@ -343,7 +343,7 @@
                 👁 Voir l'affaire
               </button>
               <button class="btn-creer-mission" (click)="creerMission()">
-                ➕ Créer une mission
+                ➕ Créer une mission prestataire (huissier / expert)
               </button>
               <button class="btn-resultats" (click)="voirResultats()">
                 📊 Voir résultats prestataires
@@ -385,6 +385,12 @@
 
           <button class="action-btn mission" (click)="voirMissions()">
             📋 Voir les missions
+          </button>
+
+          <button class="action-btn secondary" *ngIf="affaireExiste"
+                  (click)="ouvrirReassignationAvocat()"
+                  [disabled]="reassigningAvocat">
+            🔁 Réassigner l'avocat
           </button>
 
           <button class="action-btn danger" *ngIf="dossier.statut === 'OUVERT'"
@@ -470,10 +476,10 @@
         </div>
       </section>
 
-      <!-- ══ MISSION AVOCAT ══ -->
-      <section class="card" *ngIf="missionAvocat">
+      <!-- ══ AVOCAT DÉSIGNÉ (avant lancement d'affaire) ══ -->
+      <section class="card" *ngIf="missionAvocat && !affaireExiste">
         <div class="card-head">
-          <h2><span class="card-icon">⚖️</span> Mission Avocat</h2>
+          <h2><span class="card-icon">⚖️</span> Avocat désigné</h2>
         </div>
         <div class="card-body">
           <div class="info-grid">
@@ -494,6 +500,88 @@
             <div class="info-cell" *ngIf="missionAvocat.dateDebut">
               <span class="info-label">Début</span>
               <span class="info-val">{{ missionAvocat.dateDebut | date:'dd/MM/yyyy' }}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ══ AFFAIRE JUDICIAIRE ══ -->
+      <section class="card" *ngIf="affaireExiste && affaireJudiciaire">
+        <div class="card-head">
+          <h2><span class="card-icon">⚖️</span> Affaire Judiciaire</h2>
+        </div>
+        <div class="card-body">
+          <div class="info-grid">
+            <div class="info-cell">
+              <span class="info-label">N° Affaire</span>
+              <span class="info-val mono">{{ affaireJudiciaire.numeroAffaire }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Tribunal</span>
+              <span class="info-val">{{ affaireJudiciaire.tribunal || '—' }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">N° Rôle</span>
+              <span class="info-val">{{ affaireJudiciaire.numeroRole || '—' }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Chambre</span>
+              <span class="info-val">{{ affaireJudiciaire.chambre || '—' }}</span>
+            </div>
+            <div class="info-cell">
+              <span class="info-label">Statut</span>
+              <span class="info-val">{{ affaireJudiciaire.statut }}</span>
+            </div>
+            <div class="info-cell" *ngIf="affaireJudiciaire.dateLancement">
+              <span class="info-label">Lancement</span>
+              <span class="info-val">{{ affaireJudiciaire.dateLancement | date:'dd/MM/yyyy' }}</span>
+            </div>
+            <div class="info-cell" *ngIf="affaireJudiciaire.avocat">
+              <span class="info-label">Avocat</span>
+              <span class="info-val">
+                {{ affaireJudiciaire.avocat.prenom }} {{ affaireJudiciaire.avocat.nom }}
+              </span>
+            </div>
+            <div class="info-cell" *ngIf="affaireJudiciaire.typeJugement">
+              <span class="info-label">Jugement</span>
+              <span class="info-val">{{ affaireJudiciaire.typeJugement }}</span>
+            </div>
+            <div class="info-cell" *ngIf="affaireJudiciaire.factureRef">
+              <span class="info-label">Facture</span>
+              <span class="info-val">{{ affaireJudiciaire.factureRef }}</span>
+            </div>
+            <div class="info-cell" *ngIf="affaireJudiciaire.montantFacture != null">
+              <span class="info-label">Montant facture</span>
+              <span class="info-val">{{ affaireJudiciaire.montantFacture | number }} TND</span>
+            </div>
+            <div class="info-cell" *ngIf="affaireJudiciaire.factureStatut">
+              <span class="info-label">Statut facture</span>
+              <span class="info-val">{{ affaireJudiciaire.factureStatut }}</span>
+            </div>
+            <div class="info-cell" *ngIf="affaireJudiciaire.pvStatut">
+              <span class="info-label">Statut PV</span>
+              <span class="info-val">{{ affaireJudiciaire.pvStatut }}</span>
+            </div>
+          </div>
+          <div style="margin-top:12px; display:flex; flex-direction:column; gap:8px;">
+            <button class="btn-procedure secondary" (click)="ouvrirReassignationAvocat()" [disabled]="reassigningAvocat">
+              🔁 Réassigner l'avocat
+            </button>
+            <div *ngIf="showReassignAvocat" style="border:1px solid #e6e4de; border-radius:8px; padding:10px; background:#fcfbf8;">
+              <label for="reassign-avocat" style="display:block; font-size:.9rem; margin-bottom:6px; font-weight:600;">Choisir un autre avocat</label>
+              <select id="reassign-avocat" [(ngModel)]="selectedAvocatId" style="width:100%; padding:8px; border-radius:6px; border:1px solid #d7d0c3;">
+                <option [ngValue]="null" disabled>Choisir un avocat</option>
+                <option *ngFor="let avocat of avocatsDisponibles" [ngValue]="avocat.id">
+                  {{ avocat.prenom }} {{ avocat.nom }} ({{ avocat.username }})
+                </option>
+              </select>
+              <div style="display:flex; gap:8px; margin-top:8px;">
+                <button class="btn-procedure" (click)="reassignerAvocat()" [disabled]="reassigningAvocat">
+                  {{ reassigningAvocat ? 'Enregistrement...' : 'Enregistrer' }}
+                </button>
+                <button class="btn-ghost" (click)="showReassignAvocat = false">Annuler</button>
+              </div>
+              <div class="error-banner" *ngIf="reassignError" style="margin-top:8px;">{{ reassignError }}</div>
             </div>
           </div>
         </div>

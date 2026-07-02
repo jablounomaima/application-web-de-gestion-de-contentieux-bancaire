@@ -1,26 +1,29 @@
 package com.example.contentieux_security.service;
 
 import com.example.contentieux_security.entity.*;
-import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.repository.*;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.time.LocalDateTime;
 
+/**
+ * ⚠️ Cette classe fait doublon avec AffaireJudiciaireService (mêmes opérations
+ * PV/Facture, sur la même entité). Elle est corrigée ici pour compiler et
+ * rester cohérente avec la règle métier (AffaireJudiciaire est autonome,
+ * sans lien vers Mission), mais elle mérite d'être fusionnée ou supprimée
+ * une fois que vous aurez identifié qui l'appelle réellement.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AffaireService {
 
-    private final MissionRepository        missionRepository;
     private final AffaireJudiciaireRepository affaireJudiciaireRepository;
 
     // =========================================================
     //  📄 Soumettre PV — réservé à l'avocat
-    //  L'avocat travaille sur une affaire, pas une mission
-    //  On accepte ASSIGNEE et EN_COURS
+    //  ❌ Ne passe plus par Mission : écrit directement sur l'affaire
     // =========================================================
     @Transactional
     public void soumettreAvocatPV(Long affaireId, String pvTexte) {
@@ -28,28 +31,22 @@ public class AffaireService {
         AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId)
                 .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
 
-        Mission mission = affaire.getMission();
-        if (mission == null) {
-            throw new RuntimeException("Aucune mission liée à cette affaire.");
+        // Empêche de re-soumettre un PV déjà validé
+        if (affaire.getPvStatut() == AffaireJudiciaire.StatutPV.VALIDE) {
+            throw new RuntimeException("PV déjà validé pour cette affaire.");
         }
 
-        if (mission.getStatut() != StatutMission.ASSIGNEE
-                && mission.getStatut() != StatutMission.EN_COURS) {
-            throw new RuntimeException(
-                "PV déjà soumis ou mission dans un état invalide : " + mission.getStatut());
-        }
+        affaire.setPvTexte(pvTexte);
+        affaire.setPvStatut(AffaireJudiciaire.StatutPV.EN_ATTENTE);
+        affaireJudiciaireRepository.save(affaire);
 
-        mission.setPvMission(pvTexte);
-        mission.setStatut(StatutMission.PV_SOUMIS);
-        mission.setDateValidationPv(LocalDateTime.now());
-        missionRepository.save(mission);
-
-        log.info("PV soumis par avocat pour affaireId={} missionId={}", affaireId, mission.getId());
+        log.info("PV soumis par avocat pour affaireId={}", affaireId);
     }
 
     // =========================================================
     //  🧾 Soumettre Facture — réservé à l'avocat
-    //  On accepte PV_SOUMIS uniquement
+    //  ❌ Ne passe plus par Mission : écrit directement sur l'affaire
+    //  ✔ On garde la règle métier : le PV doit être soumis avant la facture
     // =========================================================
     @Transactional
     public void soumettreAvocatFacture(Long affaireId, String factureRef, Double montant) {
@@ -57,31 +54,31 @@ public class AffaireService {
         AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId)
                 .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
 
-        Mission mission = affaire.getMission();
-        if (mission == null) {
-            throw new RuntimeException("Aucune mission liée à cette affaire.");
-        }
-
-        if (mission.getStatut() != StatutMission.PV_SOUMIS) {
+        if (affaire.getPvStatut() == null) {
             throw new RuntimeException(
-                "Facture non disponible — soumettez d'abord le PV. Statut actuel : "
-                + mission.getStatut());
+                "Facture non disponible — soumettez d'abord le PV.");
         }
 
-        mission.setFactureRef(factureRef);
-        mission.setMontantFacture(montant);
-        mission.setStatut(StatutMission.FACTURE_SOUMISE);
-        mission.setDateValidationFacture(LocalDateTime.now());
-        missionRepository.save(mission);
+        affaire.setFactureRef(factureRef);
+        affaire.setMontantFacture(montant);
+        affaire.setFactureStatut(AffaireJudiciaire.StatutFacture.EN_ATTENTE);
+        affaireJudiciaireRepository.save(affaire);
 
-        log.info("Facture soumise par avocat pour affaireId={} missionId={}", affaireId, mission.getId());
+        log.info("Facture soumise par avocat pour affaireId={}", affaireId);
     }
 
     // =========================================================
     //  🔍 Trouver l'affaire par missionId
     // =========================================================
+    // ⚠️ DÉPRÉCIÉ : AffaireJudiciaire n'a plus de mission_id, donc cette
+    // recherche n'a plus de sens. Conservée uniquement pour ne pas casser
+    // la compilation chez ses appelants — retourne toujours null.
+    // Identifiez ses appelants (grep "findByMissionId") et remplacez-les
+    // par findById(affaireId) ou getAffaireParDossier(dossierId).
+    @Deprecated
     public AffaireJudiciaire findByMissionId(Long missionId) {
-        return affaireJudiciaireRepository.findByMission_Id(missionId)
-                .orElse(null);
+        log.warn("findByMissionId({}) appelée mais obsolète : AffaireJudiciaire "
+                + "n'a plus de relation Mission. Retourne null.", missionId);
+        return null;
     }
 }

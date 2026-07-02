@@ -50,7 +50,7 @@ public class JwtHandshakeInterceptor implements HandshakeInterceptor {
         }
 
         if (token.split("\\.").length != 3) {
-            log.error("❌ [WS] Token malformé");
+            log.error("❌ [WS] Token malformé: '{}'", token);
             return false;
         }
 

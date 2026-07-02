@@ -25,6 +25,14 @@ export class DossierService {
     return this.http.get<any>(`${this.apiUrl}/${id}`);
   }
 
+  getAvocatsPourAffaire(dossierId: number): Observable<any> {
+    return this.http.get<any>(`${this.apiUrl}/${dossierId}/affaire/avocats`);
+  }
+
+  reassignerAvocat(dossierId: number, payload: any): Observable<any> {
+    return this.http.post(`${this.apiUrl}/${dossierId}/affaire/reassigner-avocat`, payload);
+  }
+
   // ─── Dossier ─────────────────────────────────────────────────────────────────
   creerDossier(dossier: any): Observable<any> {
     return this.http.post(this.apiUrl, dossier);
