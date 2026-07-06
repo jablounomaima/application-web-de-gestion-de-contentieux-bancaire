@@ -15,6 +15,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.security.core.Authentication;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,6 +38,7 @@ public class AvocatAffaireController {
     private final AffaireJudiciaireService affaireJudiciaireService;
     private final MissionService missionService;
     private final NotificationService notificationService; // ✅ NOTIF — injection
+    private final com.example.contentieux_security.service.PdfService pdfService;
 
     // ─── Helpers communs ──────────────────────────────────────────────────────
 
@@ -123,6 +126,13 @@ public class AvocatAffaireController {
         response.put("factureRef",         affaire.getFactureRef());
         response.put("montantFacture",     affaire.getMontantFacture());
         response.put("factureStatut",      affaire.getFactureStatut() != null ? affaire.getFactureStatut().name() : null);
+        response.put("paiementMode",              affaire.getPaiementMode() != null ? affaire.getPaiementMode().name() : null);
+        response.put("paiementReference",          affaire.getPaiementReference());
+        response.put("paiementDate",               affaire.getPaiementDate());
+        response.put("paiementBeneficiaireRib",    affaire.getPaiementBeneficiaireRib());
+        response.put("paiementCompteAgenceBanque", affaire.getPaiementCompteAgenceBanque());
+        response.put("paiementCompteAgenceRib",    affaire.getPaiementCompteAgenceRib());
+        response.put("paiementEffectuePar",        affaire.getPaiementEffectuePar());
 
         List<Map<String, Object>> fichiers = new ArrayList<>();
         if (affaire.getPvFichiers() != null) {
@@ -134,6 +144,53 @@ public class AvocatAffaireController {
         }
         response.put("pvFichiers", fichiers);
         return ResponseEntity.ok(response);
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // REÇU DE PAIEMENT (PDF) — virement ou chèque BCT
+    // ─────────────────────────────────────────────────────────
+    @GetMapping("/{affaireId}/recu-paiement")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> recuPaiement(@PathVariable Long affaireId, Authentication auth) {
+        String username = resolveUsername(auth);
+        AffaireJudiciaire affaire = affaireService.getAffaireById(affaireId);
+        if (affaire == null || !isAvocatOwner(affaire, username))
+            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+
+        if (affaire.getPaiementMode() == null)
+            return ResponseEntity.badRequest().body(Map.of("error", "Aucun paiement émis pour cette affaire."));
+
+        Prestataire avocat = affaire.getAvocat();
+        com.example.contentieux_security.dto.RecuPaiementDTO dto =
+            com.example.contentieux_security.dto.RecuPaiementDTO.builder()
+                .beneficiaireType("Avocat")
+                .beneficiaireNom(avocat != null ? (avocat.getPrenom() + " " + avocat.getNom()).trim() : null)
+                .beneficiaireEmail(avocat != null ? avocat.getEmail() : null)
+                .numeroDossier(affaire.getDossier() != null ? affaire.getDossier().getNumeroDossier() : null)
+                .reference(affaire.getNumeroAffaire())
+                .factureRef(affaire.getFactureRef())
+                .montantHT(affaire.getMontantFacture())
+                .montantTTC(affaire.getMontantFacture() != null ? affaire.getMontantFacture() * 1.19 : null)
+                .paiementMode(affaire.getPaiementMode().name())
+                .paiementReference(affaire.getPaiementReference())
+                .paiementDate(affaire.getPaiementDate())
+                .paiementBeneficiaireRib(affaire.getPaiementBeneficiaireRib())
+                .paiementCompteAgenceBanque(affaire.getPaiementCompteAgenceBanque())
+                .paiementCompteAgenceRib(affaire.getPaiementCompteAgenceRib())
+                .paiementEffectuePar(affaire.getPaiementEffectuePar())
+                .build();
+
+        try {
+            byte[] pdf = pdfService.genererRecuPaiementPdf(dto);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=recu-paiement-" + affaire.getNumeroAffaire() + ".pdf")
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Erreur génération reçu paiement affaire {} : {}", affaireId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Erreur génération du reçu."));
+        }
     }
 
     @GetMapping("/dashboard")

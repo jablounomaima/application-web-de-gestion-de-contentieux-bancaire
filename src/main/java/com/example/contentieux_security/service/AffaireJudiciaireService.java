@@ -1,5 +1,5 @@
 package com.example.contentieux_security.service;
-
+import com.example.contentieux_security.enums.ModePaiement;
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.entity.Audience.StatutAudience;
 import com.example.contentieux_security.enums.TypePrestataire;
@@ -666,4 +666,40 @@ public class AffaireJudiciaireService {
     public AffaireJudiciaire sauvegarderAffaire(AffaireJudiciaire affaire) {
         return affaireRepo.save(affaire);
     }
+
+    @Transactional
+public void effectuerPaiementFacture(Long affaireId,
+                                      ModePaiement mode,
+                                      String reference,
+                                      String beneficiaireRib,
+                                      CompteBancaireAgence compte,
+                                      String validateurUsername) {
+
+    AffaireJudiciaire affaire = affaireRepo.findById(affaireId)
+            .orElseThrow(() -> new RuntimeException("Affaire introuvable : " + affaireId));
+
+    if (affaire.getFactureStatut() != AffaireJudiciaire.StatutFacture.PAYEE) {
+        throw new IllegalStateException(
+            "La facture doit être validée avant d'émettre un paiement.");
+    }
+
+    if (mode == ModePaiement.VIREMENT && (beneficiaireRib == null || beneficiaireRib.isBlank())) {
+        throw new IllegalArgumentException("Le RIB du bénéficiaire est requis pour un virement.");
+    }
+
+    affaire.setPaiementMode(mode);
+    affaire.setPaiementReference(reference);
+    affaire.setPaiementDate(LocalDate.now());
+    affaire.setPaiementBeneficiaireNom(
+        affaire.getAvocat() != null
+            ? (affaire.getAvocat().getPrenom() + " " + affaire.getAvocat().getNom()).trim()
+            : null
+    );
+    affaire.setPaiementBeneficiaireRib(mode == ModePaiement.VIREMENT ? beneficiaireRib : null);
+    affaire.setPaiementCompteAgenceBanque(compte.getBanque());
+    affaire.setPaiementCompteAgenceRib(compte.getRib());
+    affaire.setPaiementEffectuePar(validateurUsername);
+
+    affaireRepo.save(affaire);
+}
 }

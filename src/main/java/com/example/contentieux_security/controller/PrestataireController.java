@@ -1,5 +1,6 @@
 package com.example.contentieux_security.controller;
 
+import com.example.contentieux_security.dto.RecuPaiementDTO;
 import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.repository.MissionRepository;
@@ -34,6 +35,7 @@ public class PrestataireController {
     private final MissionRepository         missionRepository;
     private final PrestataireService        prestataireService;
     private final NotificationService       notificationService;
+    private final PdfService                pdfService;
 
     @Value("${app.upload.dir}")
     private String uploadDir;
@@ -168,6 +170,7 @@ public class PrestataireController {
                 f.put("statut", switch (m.getStatut()) {
                     case FACTURE_SOUMISE     -> "EN_ATTENTE";
                     case FACTURE_VALIDEE     -> "APPROUVEE";
+                    case FACTURE_PAYEE       -> "PAYEE";
                     case FACTURE_REJETEE     -> "REJETEE";
                     case TERMINEE, REALISEE  -> "PAYEE";
                     default                  -> m.getStatut().name();
@@ -585,6 +588,13 @@ public class PrestataireController {
             response.put("pvValide",      mission.getStatut() == StatutMission.VALIDEE_AGENT
                                        || mission.getStatut() == StatutMission.TERMINEE);
             response.put("factureValide", mission.getStatut() == StatutMission.TERMINEE);
+            response.put("paiementMode",              mission.getPaiementMode() != null ? mission.getPaiementMode().name() : null);
+            response.put("paiementReference",          mission.getPaiementReference());
+            response.put("paiementDate",               mission.getPaiementDate());
+            response.put("paiementBeneficiaireRib",    mission.getPaiementBeneficiaireRib());
+            response.put("paiementCompteAgenceBanque", mission.getPaiementCompteAgenceBanque());
+            response.put("paiementCompteAgenceRib",    mission.getPaiementCompteAgenceRib());
+            response.put("paiementEffectuePar",        mission.getPaiementEffectuePar());
 
             if (mission.getPrestataire() != null) {
                 var p = mission.getPrestataire();
@@ -652,6 +662,57 @@ public class PrestataireController {
             log.error("Erreur getMissionDetail {} : {}", missionId, e.getMessage(), e);
             return ResponseEntity.status(500)
                    .body(Map.of("error", e.getMessage() != null ? e.getMessage() : "Erreur inconnue"));
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────
+    // REÇU DE PAIEMENT (PDF) — virement ou chèque BCT
+    // ─────────────────────────────────────────────────────────
+    @GetMapping("/missions/{missionId}/recu-paiement")
+    @PreAuthorize("hasAnyRole('HUISSIER','EXPERT','PRESTATAIRE')")
+    @Transactional(readOnly = true)
+    public ResponseEntity<?> recuPaiement(@PathVariable Long missionId, Authentication auth) {
+        Mission mission = missionRepository.findByIdWithDetails(missionId)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable"));
+
+        if (mission.getPrestataire() == null || !mission.getPrestataire().getUsername().equals(auth.getName())) {
+            return ResponseEntity.status(403).body(Map.of("error", "Accès refusé"));
+        }
+        if (mission.getPaiementMode() == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Aucun paiement émis pour cette mission."));
+        }
+
+        Prestataire prestataire = mission.getPrestataire();
+        DossierContentieux dossier = mission.getPrestation() != null ? mission.getPrestation().getDossier() : null;
+
+        RecuPaiementDTO dto = RecuPaiementDTO.builder()
+                .beneficiaireType("Prestataire")
+                .beneficiaireNom((prestataire.getPrenom() + " " + prestataire.getNom()).trim())
+                .beneficiaireEmail(prestataire.getEmail())
+                .numeroDossier(dossier != null ? dossier.getNumeroDossier() : null)
+                .reference(mission.getNumeroMission())
+                .factureRef(mission.getFactureRef())
+                .montantHT(mission.getMontantFacture())
+                .montantTTC(mission.getMontantFacture() != null ? mission.getMontantFacture() * 1.19 : null)
+                .paiementMode(mission.getPaiementMode().name())
+                .paiementReference(mission.getPaiementReference())
+                .paiementDate(mission.getPaiementDate())
+                .paiementBeneficiaireRib(mission.getPaiementBeneficiaireRib())
+                .paiementCompteAgenceBanque(mission.getPaiementCompteAgenceBanque())
+                .paiementCompteAgenceRib(mission.getPaiementCompteAgenceRib())
+                .paiementEffectuePar(mission.getPaiementEffectuePar())
+                .build();
+
+        try {
+            byte[] pdf = pdfService.genererRecuPaiementPdf(dto);
+            return ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_PDF)
+                    .header(HttpHeaders.CONTENT_DISPOSITION,
+                            "attachment; filename=recu-paiement-" + mission.getNumeroMission() + ".pdf")
+                    .body(pdf);
+        } catch (Exception e) {
+            log.error("Erreur génération reçu paiement mission {} : {}", missionId, e.getMessage(), e);
+            return ResponseEntity.internalServerError().body(Map.of("error", "Erreur génération du reçu."));
         }
     }
 

@@ -193,10 +193,25 @@ export class PrestataireDossierDetailComponent implements OnInit {
     const m: Record<string, string> = {
       EN_COURS: 'pill--blue', ASSIGNEE: 'pill--orange',
       PV_SOUMIS: 'pill--purple', FACTURE_SOUMISE: 'pill--green',
+      FACTURE_VALIDEE: 'pill--green', FACTURE_PAYEE: 'pill--green',
+      VALIDEE_AGENT: 'pill--green',
+      REALISEE: 'pill--green',
       FACTURE_REJETEE: 'pill--orange', REJETEE: 'pill--red',
       TERMINEE: 'pill--green', ANNULEE: 'pill--grey'
     };
     return m[s] ?? 'pill--grey';
+  }
+
+  missionStatutLabel(s: string): string {
+    const m: Record<string, string> = {
+      ASSIGNEE: 'Assignée', EN_COURS: 'En cours',
+      PV_SOUMIS: 'PV soumis', FACTURE_SOUMISE: 'Facture soumise',
+      FACTURE_VALIDEE: 'Facture validée', FACTURE_PAYEE: 'Facture payée',
+      FACTURE_REJETEE: 'Facture rejetée',
+      REALISEE: 'Réalisée', VALIDEE_AGENT: 'Validée',
+      TERMINEE: 'Terminée', REJETEE: 'Rejetée', ANNULEE: 'Annulée'
+    };
+    return m[s] ?? s;
   }
 
   formatRisqueType(t: string): string {

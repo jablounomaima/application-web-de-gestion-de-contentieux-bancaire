@@ -644,8 +644,10 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
     .pd-s-pv-soumis      { background: #f5f3ff; color: #5b21b6; border: 1px solid #ddd6fe; }
     .pd-s-facture        { background: #f0fdf4; color: #14532d; border: 1px solid #bbf7d0; }
     .pd-s-facture-rej    { background: #fff7ed; color: #9a3412; border: 1px solid #fed7aa; }
+    .pd-s-facture-val    { background: #ecfdf5; color: #065f46; border: 1px solid #a7f3d0; }
     .pd-s-terminee       { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
     .pd-s-rejetee        { background: #fef2f2; color: #991b1b; border: 1px solid #fecaca; }
+    .pd-s-annulee        { background: #f1f5f9; color: #64748b; border: 1px solid #e2e8f0; }
 
     /* ── Boutons actions ─────────────────────────────────────────── */
     .pd-actions {
@@ -1163,9 +1165,14 @@ export class PrestataireDashboardComponent implements OnInit, OnDestroy {
       EN_COURS:        'pd-s-en-cours',
       PV_SOUMIS:       'pd-s-pv-soumis',
       FACTURE_SOUMISE: 'pd-s-facture',
+      FACTURE_VALIDEE: 'pd-s-facture-val',
+      FACTURE_PAYEE:   'pd-s-terminee',
       FACTURE_REJETEE: 'pd-s-facture-rej',
+      REALISEE:        'pd-s-terminee',
+      VALIDEE_AGENT:   'pd-s-terminee',
       TERMINEE:        'pd-s-terminee',
       REJETEE:         'pd-s-rejetee',
+      ANNULEE:         'pd-s-annulee',
     };
     return map[statut] || '';
   }
@@ -1176,9 +1183,14 @@ export class PrestataireDashboardComponent implements OnInit, OnDestroy {
       EN_COURS:        'En cours',
       PV_SOUMIS:       'PV soumis',
       FACTURE_SOUMISE: 'Facture soumise',
+      FACTURE_VALIDEE: 'Facture validée',
+      FACTURE_PAYEE:   'Facture payée',
       FACTURE_REJETEE: 'Facture rejetée',
+      REALISEE:        'Réalisée',
+      VALIDEE_AGENT:   'Validée',
       TERMINEE:        'Terminée',
       REJETEE:         'Rejetée',
+      ANNULEE:         'Annulée',
     };
     return map[statut] || statut;
   }

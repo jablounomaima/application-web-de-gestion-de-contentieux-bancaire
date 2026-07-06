@@ -7,11 +7,12 @@ import { NavbarComponent } from '../../../layout/navbar/navbar.component';
 import {
   AdminService,
   Agent, Agence, Validateur, AgenceForm,
-  AgentCreationRequest, ValidateurCreationRequest
+  AgentCreationRequest, ValidateurCreationRequest,
+  CompteBancaire, CompteBancaireForm
 } from '../../../core/services/admin.service';
 
-type TabType = 'agents' | 'agences' | 'validateurs';
-type ModalType = 'agent' | 'agence' | 'validateur' | null;
+type TabType = 'agents' | 'agences' | 'validateurs' | 'comptes';
+type ModalType = 'agent' | 'agence' | 'validateur' | 'compte' | null;
 type ModalMode = 'create' | 'edit';
 
 @Component({
@@ -28,6 +29,7 @@ export class AdminDashboardComponent implements OnInit {
   agences: Agence[] = [];
   validateursJuridiques: Validateur[] = [];
   validateursFinanciers: Validateur[] = [];
+  comptesBancaires: CompteBancaire[] = [];
   loading = true;
   submitting = false;
 
@@ -39,6 +41,7 @@ export class AdminDashboardComponent implements OnInit {
   agentForm: AgentCreationRequest = this.emptyAgent();
   agenceForm: AgenceForm = this.emptyAgence();
   validateurForm: ValidateurCreationRequest = this.emptyValidateur();
+  compteForm: CompteBancaireForm = this.emptyCompte();
 
   // Toast notification
   toast = { visible: false, message: '', isError: false };
@@ -160,7 +163,17 @@ export class AdminDashboardComponent implements OnInit {
   chargerDonnees() {
     this.loading = true;
 
-    if (this.activeTab === 'agents' || this.activeTab === 'agences') {
+    if (this.activeTab === 'comptes') {
+      this.adminService.getAgents().subscribe({
+        next: (data) => { this.agences = data.agences; },
+        error: () => {}
+      });
+      this.adminService.getComptesBancaires().subscribe({
+        next: (data) => { this.comptesBancaires = data; this.loading = false; },
+        error: () => { this.showToast('Erreur de chargement', true); this.loading = false; }
+      });
+
+    } else if (this.activeTab === 'agents' || this.activeTab === 'agences') {
       this.adminService.getAgents().subscribe({
         next: (data) => {
           this.agents  = data.agents;
@@ -246,10 +259,11 @@ export class AdminDashboardComponent implements OnInit {
     if (type === 'agent')      this.agentForm      = this.emptyAgent();
     if (type === 'agence')     this.agenceForm     = this.emptyAgence();
     if (type === 'validateur') this.validateurForm = this.emptyValidateur();
+    if (type === 'compte')     this.compteForm     = this.emptyCompte();
     this.modalVisible = type;
   }
 
-  openEditModal(type: 'agent' | 'agence' | 'validateur', item: any) {
+  openEditModal(type: 'agent' | 'agence' | 'validateur' | 'compte', item: any) {
     this.modalMode = 'edit';
     this.editingId = item.id;
 
@@ -275,7 +289,7 @@ export class AdminDashboardComponent implements OnInit {
         email: item.email || '',
         directeur: item.directeur || ''
       };
-    } else {
+    } else if (type === 'validateur') {
       this.validateurForm = {
         nom: item.nom,
         prenom: item.prenom,
@@ -284,6 +298,14 @@ export class AdminDashboardComponent implements OnInit {
         matricule: item.matricule,
         telephone: item.telephone || '',
         type: item.typeValidateur,
+        agenceId: item.agenceId
+      };
+    } else {
+      this.compteForm = {
+        banque: item.banque,
+        rib: item.rib,
+        titulaireCompte: item.titulaireCompte,
+        actif: item.actif,
         agenceId: item.agenceId
       };
     }
@@ -409,6 +431,63 @@ export class AdminDashboardComponent implements OnInit {
     };
   }
 
+  // ─── Compte bancaire CRUD ───────────────────────────────────
+
+  submitCompte() {
+    if (!this.compteForm.banque?.trim()          ||
+        !this.compteForm.rib?.trim()             ||
+        !this.compteForm.titulaireCompte?.trim() ||
+        !this.compteForm.agenceId) {
+      this.showToast('Veuillez remplir tous les champs obligatoires', true);
+      return;
+    }
+    this.submitting = true;
+
+    const op$ = this.modalMode === 'create'
+      ? this.adminService.createCompteBancaire(this.compteForm)
+      : this.adminService.updateCompteBancaire(this.editingId!, this.compteForm);
+
+    op$.subscribe({
+      next: (res) => {
+        this.showToast(res.message || 'Succès');
+        this.closeModal();
+        this.chargerDonnees();
+      },
+      error: (err) => {
+        this.showToast(err.error?.error || 'Erreur', true);
+        this.submitting = false;
+      }
+    });
+  }
+
+  toggleCompte(id: number) {
+    this.adminService.toggleCompteBancaire(id).subscribe({
+      next: (res) => {
+        this.showToast(res.message || 'Statut modifié');
+        this.chargerDonnees();
+      },
+      error: () => this.showToast('Erreur', true)
+    });
+  }
+
+  supprimerCompte(id: number) {
+    this.confirmDialog = {
+      visible: true,
+      title: 'Supprimer le compte bancaire',
+      message: 'Cette action est irréversible. Confirmer la suppression ?',
+      onConfirm: () => {
+        this.confirmDialog.visible = false;
+        this.adminService.deleteCompteBancaire(id).subscribe({
+          next: (res) => {
+            this.showToast(res.message || 'Compte supprimé');
+            this.chargerDonnees();
+          },
+          error: (err) => this.showToast(err.error?.error || 'Erreur lors de la suppression', true)
+        });
+      }
+    };
+  }
+
   // ─── Validateur CRUD ───────────────────────────────────────
 
   submitValidateur() {
@@ -528,6 +607,13 @@ export class AdminDashboardComponent implements OnInit {
       nom: '', prenom: '', username: '',
       email: '', matricule: '', telephone: '',
       type: 'VALIDATEUR_JURIDIQUE', agenceId: 0
+    };
+  }
+
+  private emptyCompte(): CompteBancaireForm {
+    return {
+      banque: '', rib: '', titulaireCompte: '',
+      actif: true, agenceId: 0
     };
   }
 }

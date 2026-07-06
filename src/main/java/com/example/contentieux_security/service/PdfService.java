@@ -300,6 +300,97 @@ public class PdfService {
     }
 
     // ════════════════════════════════════════════════════
+    //  REÇU DE PAIEMENT (virement ou chèque BCT)
+    // ════════════════════════════════════════════════════
+
+    public byte[] genererRecuPaiementPdf(RecuPaiementDTO r) throws DocumentException {
+
+        boolean virement = "VIREMENT".equals(r.getPaiementMode());
+
+        Document doc = new Document(PageSize.A4, 40, 40, 60, 40);
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        PdfWriter.getInstance(doc, out);
+        doc.open();
+
+        Paragraph titre = new Paragraph("REÇU DE PAIEMENT", TITRE);
+        titre.setAlignment(Element.ALIGN_CENTER);
+        titre.setSpacingBefore(20);
+        doc.add(titre);
+
+        Paragraph modeTitre = new Paragraph(
+                virement ? "Règlement par virement bancaire" : "Règlement par chèque BCT",
+                SOUS_TITRE);
+        modeTitre.setAlignment(Element.ALIGN_CENTER);
+        modeTitre.setSpacingAfter(6);
+        doc.add(modeTitre);
+
+        LineSeparator sep = new LineSeparator(2, 100, VERT_VALIDE, Element.ALIGN_CENTER, -2);
+        doc.add(new Chunk(sep));
+        doc.add(Chunk.NEWLINE);
+
+        Paragraph badge = new Paragraph(
+                virement ? "💸  PAIEMENT ÉMIS PAR VIREMENT" : "🧾  PAIEMENT ÉMIS PAR CHÈQUE BCT",
+                VALIDE_F);
+        badge.setAlignment(Element.ALIGN_CENTER);
+        badge.setSpacingAfter(16);
+        doc.add(badge);
+
+        doc.add(sectionTitre("1. Bénéficiaire"));
+        PdfPTable benef = tableDeuxCol();
+        ajouterLigne(benef, "Type",  val(r.getBeneficiaireType()),  false);
+        ajouterLigne(benef, "Nom",   val(r.getBeneficiaireNom()),   true);
+        ajouterLigne(benef, "Email", val(r.getBeneficiaireEmail()), false);
+        doc.add(benef);
+        doc.add(espaceur());
+
+        doc.add(sectionTitre("2. Facture réglée"));
+        PdfPTable facture = tableDeuxCol();
+        ajouterLigne(facture, "Dossier",        val(r.getNumeroDossier()), false);
+        ajouterLigne(facture, "Référence",       val(r.getReference()),     true);
+        ajouterLigne(facture, "Réf. facture",    val(r.getFactureRef()),    false);
+        ajouterLigne(facture, "Montant HT",
+                r.getMontantHT() != null ? String.format("%,.3f TND", r.getMontantHT()) : "–", true);
+        ajouterLigne(facture, "Montant TTC",
+                r.getMontantTTC() != null ? String.format("%,.3f TND", r.getMontantTTC()) : "–", false);
+        doc.add(facture);
+        doc.add(espaceur());
+
+        doc.add(sectionTitre("3. Détails du règlement"));
+        PdfPTable reglement = tableDeuxCol();
+        ajouterLigne(reglement, "Mode de paiement",
+                virement ? "Virement bancaire" : "Chèque BCT", false);
+        ajouterLigne(reglement,
+                virement ? "Référence virement" : "Numéro de chèque",
+                val(r.getPaiementReference()), true);
+        ajouterLigne(reglement, "Date de règlement",
+                r.getPaiementDate() != null
+                ? r.getPaiementDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "–", false);
+        if (virement) {
+            ajouterLigne(reglement, "RIB bénéficiaire", val(r.getPaiementBeneficiaireRib()), true);
+        }
+        ajouterLigne(reglement, "Compte agence débité",
+                val(r.getPaiementCompteAgenceBanque()), !virement);
+        ajouterLigne(reglement, "RIB compte agence", val(r.getPaiementCompteAgenceRib()), virement);
+        ajouterLigne(reglement, "Émis par", val(r.getPaiementEffectuePar()), !virement);
+        doc.add(reglement);
+
+        doc.add(espaceur());
+        doc.add(espaceur());
+        LineSeparator sepFin = new LineSeparator(1, 100, BaseColor.LIGHT_GRAY, Element.ALIGN_CENTER, -2);
+        doc.add(new Chunk(sepFin));
+
+        Paragraph sign = new Paragraph(
+                "Document généré automatiquement — Système de gestion contentieux",
+                new Font(Font.FontFamily.HELVETICA, 8, Font.ITALIC, BaseColor.GRAY));
+        sign.setAlignment(Element.ALIGN_CENTER);
+        sign.setSpacingBefore(6);
+        doc.add(sign);
+
+        doc.close();
+        return out.toByteArray();
+    }
+
+    // ════════════════════════════════════════════════════
     //  HELPERS
     // ════════════════════════════════════════════════════
 

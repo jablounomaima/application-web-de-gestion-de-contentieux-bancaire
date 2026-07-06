@@ -74,5 +74,9 @@ export class AvocatService {
   supprimerJugement(affaireId: number): Observable<any> {
     return this.http.delete(`${this.api}/${affaireId}/jugement`);
   }
-   
+
+  telechargerRecuPaiement(affaireId: number): Observable<Blob> {
+    return this.http.get(`${this.api}/${affaireId}/recu-paiement`, { responseType: 'blob' });
+  }
+
 }

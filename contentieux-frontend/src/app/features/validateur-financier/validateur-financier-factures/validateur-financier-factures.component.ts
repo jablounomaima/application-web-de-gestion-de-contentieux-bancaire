@@ -196,7 +196,18 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
                       ✕ Rejeter
                     </button>
                   </div>
-                  <div *ngIf="isValidee(f)" class="traite-label valide-label">✅ Validée</div>
+                  <div *ngIf="isValidee(f)">
+                    <div class="traite-label valide-label">✅ Validée</div>
+                    <div class="action-btns" *ngIf="!f.paiementMode">
+                      <button class="btn-payer" (click)="ouvrirModalPaiement(f, 'mission')" [disabled]="f.saving">
+                        💳 Payer
+                      </button>
+                    </div>
+                    <div *ngIf="f.paiementMode" class="paiement-info">
+                      {{ f.paiementMode === 'VIREMENT' ? '💸 Virement émis' : '🧾 Chèque BCT émis' }}
+                      <span class="mono">n° {{ f.paiementReference }}</span>
+                    </div>
+                  </div>
                   <div *ngIf="isRejete(f)"  class="traite-label rejete-label">❌ Rejetée</div>
                 </td>
               </tr>
@@ -324,7 +335,18 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
                   </button>
                   <button class="btn-rejeter" (click)="ouvrirModalAvocat(aff)" [disabled]="aff.saving">✕ Rejeter</button>
                 </div>
-                <div *ngIf="isValideeAvocat(aff)" class="traite-label valide-label">✅ Validée</div>
+                <div *ngIf="isValideeAvocat(aff)">
+                  <div class="traite-label valide-label">✅ Validée</div>
+                  <div class="action-btns" *ngIf="!aff.paiementMode">
+                    <button class="btn-payer" (click)="ouvrirModalPaiement(aff, 'avocat')" [disabled]="aff.saving">
+                      💳 Payer
+                    </button>
+                  </div>
+                  <div *ngIf="aff.paiementMode" class="paiement-info">
+                    {{ aff.paiementMode === 'VIREMENT' ? '💸 Virement émis' : '🧾 Chèque BCT émis' }}
+                    <span class="mono">n° {{ aff.paiementReference }}</span>
+                  </div>
+                </div>
                 <div *ngIf="isRejeteeAvocat(aff)" class="traite-label rejete-label">❌ Rejetée</div>
               </td>
             </tr>
@@ -354,6 +376,62 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
                   (click)="validerFactureAvocat(affaireEnCours, false)"
                   [disabled]="!commentaireRejetAvocat.trim()">
             Confirmer le rejet
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ Modal paiement (virement / chèque BCT) ══ -->
+    <div class="modal-overlay" *ngIf="paiementModalVisible" (click)="fermerModalPaiement()">
+      <div class="modal-box" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <span class="modal-icon">💳</span>
+          <h3>Émettre le paiement</h3>
+        </div>
+        <p>
+          Facture <strong class="mono">{{ paiementCible?.factureRef }}</strong>
+          — bénéficiaire <strong>{{ paiementCible?.prestataireNom || paiementCible?.avocatNom }}</strong>
+          — montant TTC <strong>{{ paiementCible?.montantTTC | number:'1.3-3' }} TND</strong>
+        </p>
+
+        <div class="form-group">
+          <label>Mode de paiement</label>
+          <div class="mode-choice">
+            <button type="button"
+                    class="mode-btn" [class.mode-active]="paiementForm.mode === 'VIREMENT'"
+                    (click)="paiementForm.mode = 'VIREMENT'">💸 Virement</button>
+            <button type="button"
+                    class="mode-btn" [class.mode-active]="paiementForm.mode === 'CHEQUE'"
+                    (click)="paiementForm.mode = 'CHEQUE'">🧾 Chèque BCT</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label>Compte agence à débiter</label>
+          <select [(ngModel)]="paiementForm.compteId" class="modal-select">
+            <option [ngValue]="null" disabled>— Sélectionner un compte —</option>
+            <option *ngFor="let c of comptes" [ngValue]="c.id">{{ c.banque }} — {{ c.rib }}</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>{{ paiementForm.mode === 'VIREMENT' ? 'Référence du virement' : 'Numéro du chèque BCT' }}</label>
+          <input type="text" [(ngModel)]="paiementForm.reference" class="modal-input"
+                 [placeholder]="paiementForm.mode === 'VIREMENT' ? 'Ex: VIR-2026-0012' : 'Ex: 0456789'">
+        </div>
+
+        <div class="form-group" *ngIf="paiementForm.mode === 'VIREMENT'">
+          <label>RIB du bénéficiaire</label>
+          <input type="text" [(ngModel)]="paiementForm.beneficiaireRib" class="modal-input"
+                 placeholder="20 chiffres">
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn-annuler" (click)="fermerModalPaiement()">Annuler</button>
+          <button class="btn-confirmer-paiement"
+                  (click)="confirmerPaiement()"
+                  [disabled]="paiementSaving || !paiementForm.compteId || !paiementForm.reference.trim() || (paiementForm.mode === 'VIREMENT' && !paiementForm.beneficiaireRib.trim())">
+            {{ paiementSaving ? '...' : 'Émettre le paiement' }}
           </button>
         </div>
       </div>
@@ -558,9 +636,42 @@ import { NotificationService, NotificationDTO } from '../../../core/services/not
     }
     .btn-rejeter:hover:not(:disabled) { background: #fecaca; }
     .btn-valider:disabled, .btn-rejeter:disabled { opacity: 0.5; cursor: not-allowed; }
-    .traite-label { font-size: 0.78rem; font-weight: 700; }
+    .traite-label { font-size: 0.78rem; font-weight: 700; margin-bottom: 4px; }
     .valide-label { color: #15803d; }
     .rejete-label { color: #dc2626; }
+
+    /* ── Paiement ── */
+    .btn-payer {
+      background: #dbeafe; color: #1d4ed8; border: none; padding: 6px 12px;
+      border-radius: 7px; font-weight: 700; font-size: 0.78rem; cursor: pointer;
+      transition: all 0.2s; font-family: inherit;
+    }
+    .btn-payer:hover:not(:disabled) { background: #bfdbfe; }
+    .btn-payer:disabled { opacity: 0.5; cursor: not-allowed; }
+    .paiement-info { font-size: 0.75rem; font-weight: 700; color: #1d4ed8; }
+    .paiement-info .mono { font-weight: 800; }
+
+    .form-group { margin-bottom: 14px; }
+    .form-group label { display: block; font-size: 0.78rem; font-weight: 700; color: #64748b; margin-bottom: 6px; }
+    .modal-select, .modal-input {
+      width: 100%; padding: 10px 12px; border: 1.5px solid #e2e8f0;
+      border-radius: 8px; font-family: inherit; font-size: 0.9rem;
+      outline: none; transition: border 0.2s; background: white;
+    }
+    .modal-select:focus, .modal-input:focus { border-color: #1d4ed8; }
+    .mode-choice { display: flex; gap: 8px; }
+    .mode-btn {
+      flex: 1; padding: 10px; border: 1.5px solid #e2e8f0; background: white;
+      border-radius: 8px; font-weight: 700; font-size: 0.85rem; cursor: pointer;
+      font-family: inherit; transition: all 0.2s; color: #64748b;
+    }
+    .mode-btn.mode-active { border-color: #1d4ed8; background: #eff6ff; color: #1d4ed8; }
+    .btn-confirmer-paiement {
+      background: #1d4ed8; color: white; border: none; padding: 10px 20px;
+      border-radius: 8px; font-weight: 700; cursor: pointer; font-family: inherit; transition: background 0.2s;
+    }
+    .btn-confirmer-paiement:hover:not(:disabled) { background: #1e40af; }
+    .btn-confirmer-paiement:disabled { opacity: 0.5; cursor: not-allowed; }
 
     /* ── Modal ── */
     .modal-overlay {
@@ -633,6 +744,15 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   modalAvocatVisible     = false;
   affaireEnCours:  any   = null;
   commentaireRejetAvocat = '';
+
+  // Paiement (virement / chèque BCT) — commun missions + avocats
+  comptes: any[] = [];
+  comptesCharges = false;
+  paiementModalVisible = false;
+  paiementSaving = false;
+  paiementCible: any = null;
+  paiementType: 'mission' | 'avocat' = 'mission';
+  paiementForm = { mode: 'VIREMENT' as 'VIREMENT' | 'CHEQUE', compteId: null as number | null, reference: '', beneficiaireRib: '' };
 
   // Toast
   toastVisible = false;
@@ -803,6 +923,61 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
       error: (e) => {
         aff.saving = false;
         this.showToast(e.error?.error || 'Erreur lors de la validation.', 'error');
+      }
+    });
+  }
+
+  // ════════════════════════════════════════
+  // Paiement (virement / chèque BCT)
+  // ════════════════════════════════════════
+
+  private chargerComptes(): void {
+    if (this.comptesCharges) return;
+    this.http.get<any[]>(`${this.api}/comptes-bancaires`).subscribe({
+      next: (res) => { this.comptes = res ?? []; this.comptesCharges = true; },
+      error: () => this.showToast('Impossible de charger les comptes bancaires.', 'error')
+    });
+  }
+
+  ouvrirModalPaiement(item: any, type: 'mission' | 'avocat'): void {
+    this.paiementCible = item;
+    this.paiementType  = type;
+    this.paiementForm  = { mode: 'VIREMENT', compteId: null, reference: '', beneficiaireRib: '' };
+    this.paiementModalVisible = true;
+    this.chargerComptes();
+  }
+
+  fermerModalPaiement(): void {
+    this.paiementModalVisible = false;
+    this.paiementCible = null;
+  }
+
+  confirmerPaiement(): void {
+    if (!this.paiementCible) return;
+    this.paiementSaving = true;
+
+    const body = {
+      mode: this.paiementForm.mode,
+      reference: this.paiementForm.reference.trim(),
+      compteId: this.paiementForm.compteId,
+      beneficiaireRib: this.paiementForm.mode === 'VIREMENT' ? this.paiementForm.beneficiaireRib.trim() : null
+    };
+
+    const url = this.paiementType === 'mission'
+      ? `${this.api}/missions/${this.paiementCible.missionId}/paiement`
+      : `${this.api}/affaires/${this.paiementCible.affaireId}/paiement`;
+
+    this.http.post(url, body).subscribe({
+      next: () => {
+        this.paiementCible.paiementMode      = body.mode;
+        this.paiementCible.paiementReference = body.reference;
+        this.paiementSaving = false;
+        this.showToast('✓ Paiement émis avec succès !', 'success');
+        this.fermerModalPaiement();
+      },
+      error: (e) => {
+        this.paiementSaving = false;
+        this.showToast(e.error?.error || 'Erreur lors de l\'émission du paiement.', 'error');
       }
     });
   }
@@ -1069,7 +1244,7 @@ export class ValidateurFinancierFacturesComponent implements OnInit, OnDestroy {
   // ════════════════════════════════════════
 
   isValidee(f: any): boolean {
-    const statutsValides = ['FACTURE_VALIDEE', 'VALIDEE_AGENT', 'TERMINEE'];
+    const statutsValides = ['FACTURE_VALIDEE', 'FACTURE_PAYEE', 'VALIDEE_AGENT', 'TERMINEE'];
     if (f.statutMission && statutsValides.includes(f.statutMission)) return true;
     return f.factureValide === true;
   }

@@ -6,7 +6,7 @@ import lombok.*;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
-
+import com.example.contentieux_security.enums.ModePaiement;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 
@@ -144,6 +144,32 @@ public class AffaireJudiciaire {
     @Column(name = "fichier_data", columnDefinition = "LONGTEXT")
     @Builder.Default
     private List<String> pvFichiers = new ArrayList<>();
+
+
+    // ✅ Paiement de la facture (virement ou chèque BCT)
+@Enumerated(EnumType.STRING)
+@Column(length = 20)
+private ModePaiement paiementMode;              // VIREMENT ou CHEQUE
+
+@Column(length = 100)
+private String paiementReference;               // numéro de virement OU numéro de chèque
+
+private LocalDate paiementDate;
+
+@Column(length = 200)
+private String paiementBeneficiaireNom;         // nom de l'avocat (ou raison sociale)
+
+@Column(length = 30)
+private String paiementBeneficiaireRib;         // requis si VIREMENT
+
+@Column(length = 100)
+private String paiementCompteAgenceBanque;      // ex: "BIAT" — dénormalisé pour l'historique
+
+@Column(length = 30)
+private String paiementCompteAgenceRib;         // RIB du compte débité — dénormalisé pour l'historique
+
+@Column(length = 100)
+private String paiementEffectuePar;             // username du validateur financier
 
     public enum StatutPV {
         EN_ATTENTE, VALIDE, REFUSE

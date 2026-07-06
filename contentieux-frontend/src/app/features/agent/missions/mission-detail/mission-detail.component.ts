@@ -38,6 +38,8 @@ export class MissionDetailComponent implements OnInit, OnDestroy {
   successMsg = '';
   errorMsg   = '';
 
+  telechargementRecu = false;
+
   // ── Modal Validation ──────────────────────────────────────────
   showModalValidation   = false;
   commentaireValidation = '';
@@ -452,6 +454,33 @@ export class MissionDetailComponent implements OnInit, OnDestroy {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // PAIEMENT
+  // ══════════════════════════════════════════════════════════════
+
+  paiementModeClass(): string {
+    return this.mission?.paiementMode === 'VIREMENT' ? 'mode-virement' : 'mode-cheque';
+  }
+
+  telechargerRecuPaiement(): void {
+    this.telechargementRecu = true;
+    this.http.get(`${this.apiUrl}/${this.missionId}/recu-paiement`, { responseType: 'blob' }).subscribe({
+      next: (blob) => {
+        this.telechargementRecu = false;
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href    = url;
+        a.download = `recu-paiement-${this.mission?.numeroMission || this.missionId}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.telechargementRecu = false;
+        this.afficherErreur('Impossible de télécharger le reçu.');
+      }
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // DOCUMENTS (upload / téléchargement)
   // ══════════════════════════════════════════════════════════════
 
@@ -596,10 +625,14 @@ export class MissionDetailComponent implements OnInit, OnDestroy {
       'EN_COURS':        'statut--orange',
       'PV_SOUMIS':       'statut--purple',
       'FACTURE_SOUMISE': 'statut--pink',
+      'FACTURE_VALIDEE': 'statut--teal',
+      'FACTURE_PAYEE':   'statut--green',
       'FACTURE_REJETEE': 'statut--orange',
+      'REALISEE':        'statut--green',
       'VALIDEE_AGENT':   'statut--teal',
       'TERMINEE':        'statut--green',
       'REJETEE':         'statut--red',
+      'ANNULEE':         'statut--grey',
     };
     return map[s] || 'statut--grey';
   }
@@ -610,10 +643,14 @@ export class MissionDetailComponent implements OnInit, OnDestroy {
       'EN_COURS':        'En cours',
       'PV_SOUMIS':       'PV soumis',
       'FACTURE_SOUMISE': 'Facture soumise',
+      'FACTURE_VALIDEE': 'Facture validée',
+      'FACTURE_PAYEE':   'Facture payée',
       'FACTURE_REJETEE': 'Facture rejetée',
+      'REALISEE':        'Réalisée',
       'VALIDEE_AGENT':   'Validée',
       'TERMINEE':        'Terminée',
       'REJETEE':         'Rejetée',
+      'ANNULEE':         'Annulée',
     };
     return map[s] || s;
   }

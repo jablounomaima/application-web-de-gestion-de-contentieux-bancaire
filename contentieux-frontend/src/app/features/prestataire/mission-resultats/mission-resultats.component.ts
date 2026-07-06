@@ -20,7 +20,7 @@ import { PrestataireService } from '../../../core/services/prestataire.service';
           <p class="subtitle" *ngIf="mission">
             {{ mission.numeroMission }} —
             <span class="statut-badge" [ngClass]="getStatutClass(mission.statut)">
-              {{ mission.statut }}
+              {{ getStatutLabel(mission.statut) }}
             </span>
           </p>
         </div>
@@ -325,7 +325,9 @@ import { PrestataireService } from '../../../core/services/prestataire.service';
     .s-pv-soumis        { background: #d1ecf1; color: #0c5460; }
     .s-facture          { background: #d4edda; color: #155724; }
     .s-terminee         { background: #e2e3e5; color: #383d41; }
+    .s-facture-validee  { background: #d1fae5; color: #065f46; }
     .s-facture-rejetee  { background: #fdecea; color: #c62828; }
+    .s-annulee          { background: #f1f3f5; color: #6c757d; }
 
     .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
     .info-item { display: flex; flex-direction: column; gap: 4px; }
@@ -593,10 +595,34 @@ export class MissionResultatsComponent implements OnInit, AfterViewInit {
       EN_COURS:        's-en-cours',
       PV_SOUMIS:       's-pv-soumis',
       FACTURE_SOUMISE: 's-facture',
+      FACTURE_VALIDEE: 's-facture-validee',
+      FACTURE_PAYEE:   's-terminee',
       FACTURE_REJETEE: 's-facture-rejetee',
-      TERMINEE:        's-terminee'
+      REALISEE:        's-terminee',
+      VALIDEE_AGENT:   's-terminee',
+      TERMINEE:        's-terminee',
+      REJETEE:         's-facture-rejetee',
+      ANNULEE:         's-annulee'
     };
     return map[statut] || '';
+  }
+
+  getStatutLabel(statut: string): string {
+    const map: Record<string, string> = {
+      ASSIGNEE:        'Assignée',
+      EN_COURS:        'En cours',
+      PV_SOUMIS:       'PV soumis',
+      FACTURE_SOUMISE: 'Facture soumise',
+      FACTURE_VALIDEE: 'Facture validée',
+      FACTURE_PAYEE:   'Facture payée',
+      FACTURE_REJETEE: 'Facture rejetée',
+      REALISEE:        'Réalisée',
+      VALIDEE_AGENT:   'Validée',
+      TERMINEE:        'Terminée',
+      REJETEE:         'Rejetée',
+      ANNULEE:         'Annulée'
+    };
+    return map[statut] || statut;
   }
 
   iconeType(mime: string): string {

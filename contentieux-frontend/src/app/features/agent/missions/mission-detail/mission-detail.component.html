@@ -214,6 +214,33 @@
                 <span class="md-status-chip md-status-chip--ok" *ngIf="mission.pvValide">PV validé</span>
                 <span class="md-status-chip md-status-chip--pending" *ngIf="!mission.pvValide && mission.pvValide !== null">En attente</span>
               </div>
+
+              <!-- Détails du règlement -->
+              <div class="md-paiement-box" *ngIf="mission.paiementMode" [ngClass]="paiementModeClass()">
+                <div class="md-paiement-header">
+                  <span>{{ mission.paiementMode === 'VIREMENT' ? '💸' : '🧾' }}</span>
+                  <span>{{ mission.paiementMode === 'VIREMENT' ? 'Réglé par virement bancaire' : 'Réglé par chèque BCT' }}</span>
+                </div>
+                <div class="md-honoraire-item">
+                  <span class="md-honoraire-label">{{ mission.paiementMode === 'VIREMENT' ? 'Référence virement' : 'Numéro de chèque' }}</span>
+                  <span class="md-honoraire-val md-field-val--mono">{{ mission.paiementReference }}</span>
+                </div>
+                <div class="md-honoraire-item">
+                  <span class="md-honoraire-label">Date de règlement</span>
+                  <span class="md-honoraire-val">{{ mission.paiementDate | date:'dd/MM/yyyy' }}</span>
+                </div>
+                <div class="md-honoraire-item" *ngIf="mission.paiementMode === 'VIREMENT'">
+                  <span class="md-honoraire-label">RIB bénéficiaire</span>
+                  <span class="md-honoraire-val md-field-val--mono">{{ mission.paiementBeneficiaireRib }}</span>
+                </div>
+                <div class="md-honoraire-item">
+                  <span class="md-honoraire-label">Compte agence débité</span>
+                  <span class="md-honoraire-val">{{ mission.paiementCompteAgenceBanque }}</span>
+                </div>
+                <button class="md-btn md-btn--primary md-btn--recu" (click)="telechargerRecuPaiement()" [disabled]="telechargementRecu">
+                  {{ telechargementRecu ? 'Téléchargement...' : '⬇️ Télécharger le reçu de paiement' }}
+                </button>
+              </div>
             </div>
           </section>
 

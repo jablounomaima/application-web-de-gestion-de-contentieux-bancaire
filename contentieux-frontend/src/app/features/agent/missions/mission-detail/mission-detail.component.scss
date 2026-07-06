@@ -298,6 +298,20 @@
 .md-honoraire-label { font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
 .md-honoraire-val   { font-size: 1rem; font-weight: 700; color: var(--navy); }
 
+// ── Paiement ──────────────────────────────────────────────────
+.md-paiement-box {
+  margin-top: .75rem; padding-top: .75rem; border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: .6rem;
+  border-radius: var(--radius-sm); padding: 1rem; border: 1.5px solid;
+  &.mode-virement { background: #eff6ff; border-color: #bfdbfe; }
+  &.mode-cheque   { background: #fffbeb; border-color: #fde68a; }
+}
+.md-paiement-header {
+  display: flex; align-items: center; gap: .5rem;
+  font-weight: 700; font-size: .88rem; color: var(--navy);
+}
+.md-btn--recu { align-self: flex-start; }
+
 .md-pv-block {
   padding-top: .75rem; border-top: 1px solid var(--border);
   display: flex; flex-direction: column; gap: .5rem;

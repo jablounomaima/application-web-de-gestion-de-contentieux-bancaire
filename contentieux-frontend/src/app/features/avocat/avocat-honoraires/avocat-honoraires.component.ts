@@ -351,7 +351,35 @@ import { AvocatService } from '../../../core/services/avocat.service';
           <div class="success-card" *ngIf="factureStatut === 'PAYEE'">
             <div class="success-icon">✅</div>
             <h3>Facture payée</h3>
-            <p>Votre facture a été réglée par l'agent bancaire.</p>
+            <p>Votre facture a été réglée par le validateur financier.</p>
+
+            <!-- Détails du règlement -->
+            <div class="paiement-box" *ngIf="affaire?.paiementMode" [ngClass]="paiementModeClass()">
+              <div class="paiement-header">
+                <span class="paiement-icon">{{ affaire.paiementMode === 'VIREMENT' ? '💸' : '🧾' }}</span>
+                <span>{{ affaire.paiementMode === 'VIREMENT' ? 'Réglé par virement bancaire' : 'Réglé par chèque BCT' }}</span>
+              </div>
+              <div class="paiement-row">
+                <span class="info-label">{{ affaire.paiementMode === 'VIREMENT' ? 'Référence virement' : 'Numéro de chèque' }}</span>
+                <span class="info-value mono">{{ affaire.paiementReference }}</span>
+              </div>
+              <div class="paiement-row">
+                <span class="info-label">Date de règlement</span>
+                <span class="info-value">{{ affaire.paiementDate | date:'dd/MM/yyyy' }}</span>
+              </div>
+              <div class="paiement-row" *ngIf="affaire.paiementMode === 'VIREMENT'">
+                <span class="info-label">RIB bénéficiaire</span>
+                <span class="info-value mono">{{ affaire.paiementBeneficiaireRib }}</span>
+              </div>
+              <div class="paiement-row">
+                <span class="info-label">Compte agence débité</span>
+                <span class="info-value">{{ affaire.paiementCompteAgenceBanque }}</span>
+              </div>
+
+              <button class="btn-recu" (click)="telechargerRecuPaiement()" [disabled]="telechargementRecu">
+                {{ telechargementRecu ? 'Téléchargement...' : '⬇️ Télécharger le reçu de paiement' }}
+              </button>
+            </div>
           </div>
 
         </div>
@@ -512,6 +540,18 @@ import { AvocatService } from '../../../core/services/avocat.service';
     .success-card h3 { margin: 0 0 8px; font-size: 1.2rem; color: #1e293b; }
     .success-card p { color: #64748b; margin: 0; }
 
+    /* ── Paiement box ── */
+    .paiement-box { margin-top: 24px; border-radius: 14px; padding: 20px 22px; text-align: left; border: 1.5px solid; }
+    .paiement-box.mode-virement { background: #eff6ff; border-color: #bfdbfe; }
+    .paiement-box.mode-cheque   { background: #fffbeb; border-color: #fde68a; }
+    .paiement-header { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 0.95rem; color: #1e293b; margin-bottom: 14px; }
+    .paiement-icon { font-size: 1.3rem; }
+    .paiement-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid rgba(0,0,0,0.05); }
+    .paiement-row:last-of-type { border-bottom: none; }
+    .btn-recu { width: 100%; margin-top: 16px; background: #1d4ed8; color: white; border: none; padding: 11px 16px; border-radius: 9px; font-weight: 700; font-size: 0.85rem; cursor: pointer; transition: background 0.2s; }
+    .btn-recu:hover:not(:disabled) { background: #1e40af; }
+    .btn-recu:disabled { opacity: 0.6; cursor: not-allowed; }
+
     /* ── Toast ── */
     .toast { position: fixed; bottom: 30px; right: 30px; padding: 14px 24px; border-radius: 12px; font-weight: 700; font-size: 0.9rem; opacity: 0; transform: translateY(20px); transition: all 0.3s; z-index: 9999; pointer-events: none; min-width: 260px; text-align: center; }
     .toast.show    { opacity: 1; transform: translateY(0); }
@@ -537,6 +577,9 @@ export class AvocatHonorairesComponent implements OnInit {
   factureStatut    = '';
   savingFacture    = false;
   editFacture      = false;
+
+  // ── Paiement ──
+  telechargementRecu = false;
 
   // ── Toast ──
   toastVisible = false;
@@ -766,6 +809,33 @@ export class AvocatHonorairesComponent implements OnInit {
         const msg = e?.error?.error || e?.error?.message || e?.message
                     || 'Erreur soumission facture.';
         this.showToast(msg, 'error');
+      }
+    });
+  }
+
+  // ════════════════════════════════════════
+  // Paiement
+  // ════════════════════════════════════════
+
+  paiementModeClass(): string {
+    return this.affaire?.paiementMode === 'VIREMENT' ? 'mode-virement' : 'mode-cheque';
+  }
+
+  telechargerRecuPaiement(): void {
+    this.telechargementRecu = true;
+    this.avocatService.telechargerRecuPaiement(this.affaireId).subscribe({
+      next: (blob) => {
+        this.telechargementRecu = false;
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href    = url;
+        a.download = `recu-paiement-${this.affaire?.numeroAffaire || this.affaireId}.pdf`;
+        a.click();
+        URL.revokeObjectURL(url);
+      },
+      error: () => {
+        this.telechargementRecu = false;
+        this.showToast('Impossible de télécharger le reçu.', 'error');
       }
     });
   }

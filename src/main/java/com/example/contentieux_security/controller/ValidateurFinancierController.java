@@ -4,6 +4,7 @@ import com.example.contentieux_security.entity.*;
 import com.example.contentieux_security.enums.TypeValidateur;
 import com.example.contentieux_security.repository.*;
 import com.example.contentieux_security.service.AffaireJudiciaireService;
+import com.example.contentieux_security.service.MissionService;
 import com.example.contentieux_security.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -11,6 +12,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
+
+import com.example.contentieux_security.enums.ModePaiement;
 import com.example.contentieux_security.enums.StatutMission;
 import java.time.LocalDateTime;
 import java.security.Principal;
@@ -30,7 +33,8 @@ public class ValidateurFinancierController {
     private final NotificationService           notificationService;
     private final AffaireJudiciaireRepository   affaireJudiciaireRepository;
     private final AffaireJudiciaireService      affaireJudiciaireService;
-
+    private final CompteBancaireAgenceRepository compteBancaireAgenceRepository;
+    private final MissionService                missionService;
 
     // ═══════════════════════════════════════════════════════
     // TOUTES LES FACTURES DE L'AGENCE
@@ -90,6 +94,9 @@ public class ValidateurFinancierController {
                 factureData.put("commentaire",   m.getCommentaireAgent());
                 factureData.put("statutMission", m.getStatut() != null ? m.getStatut().name() : null);
                 factureData.put("statutLibelle", m.getStatut() != null ? m.getStatut().getLibelle() : null);
+                factureData.put("paiementMode",      m.getPaiementMode() != null ? m.getPaiementMode().name() : null);
+                factureData.put("paiementReference", m.getPaiementReference());
+                factureData.put("paiementDate",      m.getPaiementDate());
 
                 if (m.getPrestataire() != null) {
                     Prestataire p = m.getPrestataire();
@@ -144,6 +151,9 @@ public class ValidateurFinancierController {
                 f.put("factureValide", m.getFactureValide());
                 f.put("dateFacture",   m.getDateValidationFacture());
                 f.put("commentaire",   m.getCommentaireAgent());
+                f.put("paiementMode",      m.getPaiementMode() != null ? m.getPaiementMode().name() : null);
+                f.put("paiementReference", m.getPaiementReference());
+                f.put("paiementDate",      m.getPaiementDate());
                 if (m.getPrestataire() != null) {
                     Prestataire p = m.getPrestataire();
                     f.put("prestataireId",    p.getId());
@@ -365,6 +375,9 @@ public class ValidateurFinancierController {
                 data.put("factureStatut", aff.getFactureStatut() != null ? aff.getFactureStatut().name() : null);
                 data.put("factureCommentaireValidation", aff.getFactureCommentaireValidation());
                 data.put("dateLancement", aff.getDateLancement());
+                data.put("paiementMode",      aff.getPaiementMode() != null ? aff.getPaiementMode().name() : null);
+                data.put("paiementReference", aff.getPaiementReference());
+                data.put("paiementDate",      aff.getPaiementDate());
                 
                 if (aff.getAvocat() != null) {
                     Prestataire av = aff.getAvocat();
@@ -482,4 +495,110 @@ public class ValidateurFinancierController {
             return ResponseEntity.internalServerError().body(Map.of("error", e.getMessage()));
         }
     }
+
+
+
+// ═══════════════════════════════════════════════════════
+// 🏦 COMPTES BANCAIRES DE L'AGENCE
+// ═══════════════════════════════════════════════════════
+@GetMapping("/comptes-bancaires")
+@Transactional(readOnly = true)
+public ResponseEntity<?> comptesBancaires(Principal principal) {
+    Validateur validateur = validateurRepository.findByUsername(principal.getName())
+            .orElseThrow(() -> new RuntimeException("Validateur introuvable"));
+    Long agenceId = validateur.getAgence().getId();
+    return ResponseEntity.ok(compteBancaireAgenceRepository.findByAgence_IdAndActifTrue(agenceId));
+}
+
+// ═══════════════════════════════════════════════════════
+// 💳 PAIEMENT FACTURE AVOCAT (virement ou chèque BCT)
+// ═══════════════════════════════════════════════════════
+@PostMapping("/affaires/{affaireId}/paiement")
+@Transactional
+public ResponseEntity<?> payerFactureAvocat(
+        @PathVariable Long affaireId,
+        @RequestBody Map<String, Object> body,
+        Principal principal) {
+    try {
+        Validateur validateur = validateurRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new RuntimeException("Validateur introuvable"));
+        if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER)
+            return ResponseEntity.status(403).body(Map.of("error", "Accès réservé au validateur financier"));
+
+        ModePaiement mode = ModePaiement.valueOf((String) body.get("mode"));
+        String reference  = (String) body.get("reference");
+        String rib        = (String) body.get("beneficiaireRib");
+        Long compteId      = Long.valueOf(body.get("compteId").toString());
+
+        CompteBancaireAgence compte = compteBancaireAgenceRepository.findById(compteId)
+                .orElseThrow(() -> new RuntimeException("Compte bancaire introuvable"));
+
+        affaireJudiciaireService.effectuerPaiementFacture(
+                affaireId, mode, reference, rib, compte, principal.getName());
+
+        AffaireJudiciaire affaire = affaireJudiciaireRepository.findById(affaireId).orElseThrow();
+        String avocatUsername = affaire.getAvocat() != null ? affaire.getAvocat().getUsername() : null;
+        if (avocatUsername != null) {
+            notificationService.notifierSansDossier(avocatUsername,
+                mode == ModePaiement.VIREMENT ? "💸 Virement émis" : "🧾 Chèque émis",
+                "Le paiement de votre facture (affaire " + affaire.getNumeroAffaire() + ") a été émis"
+                + (mode == ModePaiement.VIREMENT ? " par virement (réf. " + reference + ")."
+                                                  : " par chèque BCT n° " + reference + "."),
+                "PAIEMENT_EMIS",
+                "/avocat/affaires/" + affaireId + "/honoraires");
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Paiement émis avec succès.", "affaireId", affaireId));
+
+    } catch (Exception e) {
+        log.error("Erreur paiement facture avocat affaireId={}: {}", affaireId, e.getMessage(), e);
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+}
+
+// ═══════════════════════════════════════════════════════
+// 💳 PAIEMENT FACTURE PRESTATAIRE (virement ou chèque BCT)
+// ═══════════════════════════════════════════════════════
+@PostMapping("/missions/{missionId}/paiement")
+@Transactional
+public ResponseEntity<?> payerFactureMission(
+        @PathVariable Long missionId,
+        @RequestBody Map<String, Object> body,
+        Principal principal) {
+    try {
+        Validateur validateur = validateurRepository.findByUsername(principal.getName())
+                .orElseThrow(() -> new RuntimeException("Validateur introuvable"));
+        if (validateur.getTypeValidateur() != TypeValidateur.VALIDATEUR_FINANCIER)
+            return ResponseEntity.status(403).body(Map.of("error", "Accès réservé au validateur financier"));
+
+        ModePaiement mode = ModePaiement.valueOf((String) body.get("mode"));
+        String reference  = (String) body.get("reference");
+        String rib        = (String) body.get("beneficiaireRib");
+        Long compteId      = Long.valueOf(body.get("compteId").toString());
+
+        CompteBancaireAgence compte = compteBancaireAgenceRepository.findById(compteId)
+                .orElseThrow(() -> new RuntimeException("Compte bancaire introuvable"));
+
+        missionService.effectuerPaiementFacture(
+                missionId, mode, reference, rib, compte, principal.getName());
+
+        Mission mission = missionRepository.findById(missionId).orElseThrow();
+        String prestataireUsername = mission.getPrestataire() != null ? mission.getPrestataire().getUsername() : null;
+        if (prestataireUsername != null) {
+            notificationService.notifierSansDossier(prestataireUsername,
+                mode == ModePaiement.VIREMENT ? "💸 Virement émis" : "🧾 Chèque émis",
+                "Le paiement de votre facture (mission " + mission.getNumeroMission() + ") a été émis"
+                + (mode == ModePaiement.VIREMENT ? " par virement (réf. " + reference + ")."
+                                                  : " par chèque BCT n° " + reference + "."),
+                "PAIEMENT_EMIS",
+                "/prestataire/missions/" + missionId);
+        }
+
+        return ResponseEntity.ok(Map.of("message", "Paiement émis avec succès.", "missionId", missionId));
+
+    } catch (Exception e) {
+        log.error("Erreur paiement facture mission missionId={}: {}", missionId, e.getMessage(), e);
+        return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+    }
+}
 }

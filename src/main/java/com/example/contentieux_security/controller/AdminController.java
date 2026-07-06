@@ -27,6 +27,7 @@ public class AdminController {
     private final AgentBancaireService agentService;
     private final ValidateurService validateurService;
     private final MotDePasseOublieService motDePasseOublieService; // ← ADD THIS
+    private final CompteBancaireAgenceService compteBancaireAgenceService;
 
 
     // ═══════════════════════════════════════════════════════════════════════
@@ -74,6 +75,55 @@ public class AdminController {
         try {
             agenceService.deleteAgence(id);
             return ResponseEntity.ok(Map.of("message", "Agence supprimée !"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Erreur suppression: " + e.getMessage()));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // GESTION DES COMPTES BANCAIRES D'AGENCE
+    // ═══════════════════════════════════════════════════════════════════════
+
+    @GetMapping("/comptes-bancaires")
+    public ResponseEntity<?> listComptesBancaires() {
+        return ResponseEntity.ok(compteBancaireAgenceService.getAllComptes());
+    }
+
+    @PostMapping("/comptes-bancaires")
+    public ResponseEntity<?> createCompteBancaire(@RequestBody CompteBancaireAgenceDTO dto) {
+        try {
+            compteBancaireAgenceService.createCompte(dto);
+            return ResponseEntity.ok(Map.of("message", "Compte bancaire créé avec succès !"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Erreur création compte: " + e.getMessage()));
+        }
+    }
+
+    @PutMapping("/comptes-bancaires/{id}")
+    public ResponseEntity<?> updateCompteBancaire(@PathVariable Long id, @RequestBody CompteBancaireAgenceDTO dto) {
+        try {
+            compteBancaireAgenceService.updateCompte(id, dto);
+            return ResponseEntity.ok(Map.of("message", "Compte bancaire mis à jour !"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Erreur mise à jour: " + e.getMessage()));
+        }
+    }
+
+    @PatchMapping("/comptes-bancaires/{id}/toggle")
+    public ResponseEntity<?> toggleCompteBancaire(@PathVariable Long id) {
+        try {
+            compteBancaireAgenceService.toggleActif(id);
+            return ResponseEntity.ok(Map.of("message", "Statut modifié !"));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/comptes-bancaires/{id}")
+    public ResponseEntity<?> deleteCompteBancaire(@PathVariable Long id) {
+        try {
+            compteBancaireAgenceService.deleteCompte(id);
+            return ResponseEntity.ok(Map.of("message", "Compte bancaire supprimé !"));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", "Erreur suppression: " + e.getMessage()));
         }

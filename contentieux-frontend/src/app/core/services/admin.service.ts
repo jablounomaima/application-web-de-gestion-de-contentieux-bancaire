@@ -80,6 +80,17 @@ export interface ValidateursResponse {
   agences: Agence[];
 }
 
+export interface CompteBancaire {
+  id: number;
+  banque: string;
+  rib: string;
+  titulaireCompte: string;
+  actif: boolean;
+  agenceId: number;
+  agenceNom: string;
+}
+export type CompteBancaireForm = Omit<CompteBancaire, 'id' | 'agenceNom'>;
+
 export interface ApiMessage {
   message?: string;
   error?: string;
@@ -116,6 +127,28 @@ export class AdminService {
 
   deleteAgence(id: number): Observable<ApiMessage> {
     return this.http.delete<ApiMessage>(`${this.api}/agences/${id}`);
+  }
+
+  // ── Comptes bancaires ──────────────────────────────────────────────────────
+
+  getComptesBancaires(): Observable<CompteBancaire[]> {
+    return this.http.get<CompteBancaire[]>(`${this.api}/comptes-bancaires`);
+  }
+
+  createCompteBancaire(dto: CompteBancaireForm): Observable<ApiMessage> {
+    return this.http.post<ApiMessage>(`${this.api}/comptes-bancaires`, dto);
+  }
+
+  updateCompteBancaire(id: number, dto: CompteBancaireForm): Observable<ApiMessage> {
+    return this.http.put<ApiMessage>(`${this.api}/comptes-bancaires/${id}`, dto);
+  }
+
+  toggleCompteBancaire(id: number): Observable<ApiMessage> {
+    return this.http.patch<ApiMessage>(`${this.api}/comptes-bancaires/${id}/toggle`, {});
+  }
+
+  deleteCompteBancaire(id: number): Observable<ApiMessage> {
+    return this.http.delete<ApiMessage>(`${this.api}/comptes-bancaires/${id}`);
   }
 
   // ── Agents ─────────────────────────────────────────────────────────────────

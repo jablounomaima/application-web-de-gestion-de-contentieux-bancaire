@@ -37,6 +37,8 @@
                     (click)="setTab('agences')">🏢 Agences</button>
             <button [class.active]="activeTab === 'validateurs'"
                     (click)="setTab('validateurs')">⚖️ Validateurs</button>
+            <button [class.active]="activeTab === 'comptes'"
+                    (click)="setTab('comptes')">🏦 Comptes bancaires</button>
         </div>
 
         <div class="toast" *ngIf="toast.visible" [class.error]="toast.isError">
@@ -347,6 +349,71 @@
                 </div>
             </div>
 
+            <!-- ── TABLE COMPTES BANCAIRES ── -->
+            <div *ngIf="activeTab === 'comptes'" class="tab-content">
+                <div class="content-header">
+                    <div>
+                        <h2>Comptes Bancaires d'Agence</h2>
+                        <p class="count-info">{{ comptesBancaires.length }} compte(s) enregistré(s)</p>
+                    </div>
+                    <button class="btn-add" (click)="openCreateModal('compte')">
+                        + Nouveau Compte
+                    </button>
+                </div>
+                <div class="table-wrapper">
+                    <div *ngIf="loading" class="loading-state">
+                        <div class="spinner"></div> Chargement...
+                    </div>
+                    <table class="premium-table" *ngIf="!loading">
+                        <thead>
+                            <tr>
+                                <th>Banque</th>
+                                <th>RIB</th>
+                                <th>Titulaire</th>
+                                <th>Agence</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr *ngIf="comptesBancaires.length === 0">
+                                <td colspan="6" class="empty-state">
+                                    Aucun compte bancaire enregistré.
+                                </td>
+                            </tr>
+                            <tr *ngFor="let compte of comptesBancaires" class="data-row">
+                                <td><strong>{{ compte.banque }}</strong></td>
+                                <td><code>{{ compte.rib }}</code></td>
+                                <td>{{ compte.titulaireCompte }}</td>
+                                <td>
+                                    <span class="agence-chip">{{ compte.agenceNom }}</span>
+                                </td>
+                                <td>
+                                    <span class="status-badge" [class.active]="compte.actif">
+                                        {{ compte.actif ? 'Actif' : 'Inactif' }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group">
+                                        <button class="btn-icon edit"
+                                                (click)="openEditModal('compte', compte)"
+                                                title="Modifier">✏️</button>
+                                        <button class="btn-icon toggle"
+                                                (click)="toggleCompte(compte.id)"
+                                                [title]="compte.actif ? 'Désactiver' : 'Activer'">
+                                            {{ compte.actif ? '🔒' : '🔓' }}
+                                        </button>
+                                        <button class="btn-icon delete"
+                                                (click)="supprimerCompte(compte.id)"
+                                                title="Supprimer">🗑️</button>
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
         </div><!-- end main-card -->
     </section>
 </div><!-- end dashboard-container -->
@@ -461,6 +528,49 @@
                 <button class="btn-submit" (click)="submitAgence()" [disabled]="submitting">
                     {{ submitting ? 'Enregistrement...' :
                        (modalMode === 'create' ? 'Créer l\'agence' : 'Enregistrer') }}
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════ -->
+<!-- MODAL COMPTE BANCAIRE                                -->
+<!-- ════════════════════════════════════════════════════ -->
+<div class="modal-overlay" *ngIf="modalVisible === 'compte'" (click)="closeModal()">
+    <div class="modal-card" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+            <h3>{{ modalMode === 'create' ? '🏦 Nouveau Compte Bancaire' : '✏️ Modifier le Compte' }}</h3>
+            <button (click)="closeModal()">✕</button>
+        </div>
+        <div class="modal-form">
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Banque *</label>
+                    <input type="text" [(ngModel)]="compteForm.banque" placeholder="Ex: BIAT, STB...">
+                </div>
+                <div class="form-group">
+                    <label>RIB *</label>
+                    <input type="text" [(ngModel)]="compteForm.rib" placeholder="20 chiffres">
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Titulaire du compte *</label>
+                <input type="text" [(ngModel)]="compteForm.titulaireCompte"
+                       placeholder="Raison sociale / nom sur le compte">
+            </div>
+            <div class="form-group">
+                <label>Agence *</label>
+                <select [(ngModel)]="compteForm.agenceId">
+                    <option [ngValue]="0" disabled>-- Choisir une agence --</option>
+                    <option *ngFor="let a of agences" [ngValue]="a.id">{{ a.nom }} ({{ a.code }})</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn-cancel" (click)="closeModal()">Annuler</button>
+                <button class="btn-submit" (click)="submitCompte()" [disabled]="submitting">
+                    {{ submitting ? 'Enregistrement...' :
+                       (modalMode === 'create' ? 'Créer le compte' : 'Enregistrer') }}
                 </button>
             </div>
         </div>

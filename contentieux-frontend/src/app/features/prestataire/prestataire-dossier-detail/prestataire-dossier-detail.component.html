@@ -45,7 +45,7 @@
           <span class="dd-metric-icon">⚖️</span>
           <div class="dd-metric-body">
             <span class="dd-pill dd-pill--sm" [ngClass]="missionStatutClass(mission.statut)">
-              {{ mission.statut }}
+              {{ missionStatutLabel(mission.statut) }}
             </span>
             <span class="dd-metric-lbl">Statut mission</span>
           </div>
@@ -104,7 +104,7 @@
             <div class="dd-card-head">
               <h2><span>⚖️</span> Mission</h2>
               <span class="dd-pill" [ngClass]="missionStatutClass(mission.statut)">
-                {{ mission.statut }}
+                {{ missionStatutLabel(mission.statut) }}
               </span>
             </div>
             <div class="dd-card-body">

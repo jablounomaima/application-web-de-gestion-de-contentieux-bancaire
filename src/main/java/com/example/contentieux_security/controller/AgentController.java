@@ -445,7 +445,8 @@ public class AgentController {
 
                 boolean factureValideeFinancier =
                     Boolean.TRUE.equals(m.getFactureValide())
-                    && m.getStatut() == StatutMission.FACTURE_VALIDEE;
+                    && (m.getStatut() == StatutMission.FACTURE_VALIDEE
+                        || m.getStatut() == StatutMission.FACTURE_PAYEE);
 
                 boolean factureRejeteeFinancier =
                     Boolean.FALSE.equals(m.getFactureValide())

@@ -51,11 +51,14 @@ export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
     { value: 'EN_COURS',        label: 'En cours',        color: 'blue'   },
     { value: 'PV_SOUMIS',       label: 'PV soumis',       color: 'purple' },
     { value: 'FACTURE_SOUMISE', label: 'Facture soumise', color: 'teal'   },
+    { value: 'FACTURE_VALIDEE', label: 'Facture validée', color: 'green'  },
+    { value: 'FACTURE_PAYEE',   label: 'Facture payée',   color: 'green'  },
     { value: 'FACTURE_REJETEE', label: 'Facture rejetée', color: 'orange' },
     { value: 'VALIDEE_AGENT',   label: 'Validée',         color: 'green'  },
     { value: 'REALISEE',        label: 'Réalisée',        color: 'green'  },
     { value: 'TERMINEE',        label: 'Terminées',       color: 'green'  },
     { value: 'REJETEE',         label: 'Rejetées',        color: 'red'    },
+    { value: 'ANNULEE',         label: 'Annulées',        color: 'gray'   },
   ];
 
   // ✅ Getters pour le template
@@ -173,7 +176,7 @@ export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
       assignee: this.missions.filter(m => m.statut === 'ASSIGNEE').length,
       enCours:  this.missions.filter(m => m.statut === 'EN_COURS').length,
       terminee: this.missions.filter(m =>
-        ['TERMINEE', 'REALISEE', 'VALIDEE_AGENT'].includes(m.statut)
+        ['TERMINEE', 'REALISEE', 'VALIDEE_AGENT', 'FACTURE_PAYEE'].includes(m.statut)
       ).length,
       rejetee:  this.missions.filter(m =>
         ['REJETEE', 'FACTURE_REJETEE'].includes(m.statut)
@@ -312,11 +315,14 @@ export class PrestataireMissionsListeComponent implements OnInit, OnDestroy {
       'EN_COURS':        { label: 'En cours',         bg: '#E6F1FB', color: '#0C447C' },
       'PV_SOUMIS':       { label: 'PV soumis',        bg: '#EEEDFE', color: '#3C3489' },
       'FACTURE_SOUMISE': { label: 'Facture soumise',  bg: '#E1F5EE', color: '#085041' },
+      'FACTURE_VALIDEE': { label: 'Facture validée',  bg: '#EAF3DE', color: '#27500A' },
+      'FACTURE_PAYEE':   { label: 'Facture payée',    bg: '#EAF3DE', color: '#27500A' },
       'FACTURE_REJETEE': { label: 'Facture rejetée',  bg: '#FEF0E7', color: '#7A3B0A' },
       'VALIDEE_AGENT':   { label: 'Validée',          bg: '#EAF3DE', color: '#27500A' },
       'REALISEE':        { label: 'Réalisée',         bg: '#EAF3DE', color: '#27500A' },
       'TERMINEE':        { label: 'Terminée',         bg: '#EAF3DE', color: '#27500A' },
       'REJETEE':         { label: 'Rejetée',          bg: '#FCEBEB', color: '#791F1F' },
+      'ANNULEE':         { label: 'Annulée',          bg: '#F1EFE8', color: '#444441' },
     };
     return map[statut] || { label: statut, bg: '#F1EFE8', color: '#444441' };
   }

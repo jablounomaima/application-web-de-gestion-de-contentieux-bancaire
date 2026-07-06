@@ -1,5 +1,6 @@
 package com.example.contentieux_security.entity;
 
+import com.example.contentieux_security.enums.ModePaiement;
 import com.example.contentieux_security.enums.StatutMission;
 import jakarta.persistence.*;
 import lombok.*;
@@ -66,6 +67,31 @@ public class Mission {
     @Column(columnDefinition = "TEXT")
     private String commentaireAgent;
     private String resultat; // "VALIDE" ou "REJETE"
+
+    // ✅ Paiement de la facture (virement ou chèque BCT)
+    @Enumerated(EnumType.STRING)
+    @Column(length = 20)
+    private ModePaiement paiementMode;              // VIREMENT ou CHEQUE
+
+    @Column(length = 100)
+    private String paiementReference;               // numéro de virement OU numéro de chèque
+
+    private LocalDate paiementDate;
+
+    @Column(length = 200)
+    private String paiementBeneficiaireNom;         // nom du prestataire
+
+    @Column(length = 30)
+    private String paiementBeneficiaireRib;         // requis si VIREMENT
+
+    @Column(length = 100)
+    private String paiementCompteAgenceBanque;      // ex: "BIAT" — dénormalisé pour l'historique
+
+    @Column(length = 30)
+    private String paiementCompteAgenceRib;         // RIB du compte débité — dénormalisé pour l'historique
+
+    @Column(length = 100)
+    private String paiementEffectuePar;             // username du validateur financier
 
     // ── Relations ──────────────────────────────────────────
 

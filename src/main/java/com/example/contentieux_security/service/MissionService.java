@@ -1,6 +1,8 @@
 package com.example.contentieux_security.service;
 
+import com.example.contentieux_security.entity.CompteBancaireAgence;
 import com.example.contentieux_security.entity.Mission;
+import com.example.contentieux_security.enums.ModePaiement;
 import com.example.contentieux_security.enums.StatutMission;
 import com.example.contentieux_security.repository.MissionRepository;
 import lombok.RequiredArgsConstructor;
@@ -387,7 +389,8 @@ public class MissionService {
             throw new RuntimeException("Mission annulée : validation impossible");
         }
 
-        if (mission.getStatut() != StatutMission.FACTURE_VALIDEE) {
+        if (mission.getStatut() != StatutMission.FACTURE_VALIDEE
+                && mission.getStatut() != StatutMission.FACTURE_PAYEE) {
             throw new RuntimeException(
                 "La facture doit être validée par le validateur financier avant. " +
                 "Statut actuel : " + mission.getStatut());
@@ -513,6 +516,61 @@ public class MissionService {
         log.info("Facture resoumise après rejet financier — mission {} par {}",
                 mission.getNumeroMission(), username);
         missionRepository.save(mission);
+    }
+
+    // ══════════════════════════════════════════════════════════════
+    //  ÉTAPE 3bis — VALIDATEUR FINANCIER : ÉMETTRE LE PAIEMENT
+    //  Une fois la facture validée (FACTURE_VALIDEE), le validateur
+    //  émet un virement ou un chèque BCT pour régler le prestataire.
+    // ══════════════════════════════════════════════════════════════
+
+    /**
+     * Enregistre le paiement (virement ou chèque BCT) d'une facture
+     * de mission déjà validée par le validateur financier.
+     * CONTRAINTE : la facture doit être au statut FACTURE_VALIDEE.
+     */
+    @Transactional
+    public void effectuerPaiementFacture(Long missionId,
+                                          ModePaiement mode,
+                                          String reference,
+                                          String beneficiaireRib,
+                                          CompteBancaireAgence compte,
+                                          String validateurUsername) {
+
+        Mission mission = missionRepository.findById(missionId)
+                .orElseThrow(() -> new RuntimeException("Mission introuvable : " + missionId));
+
+        if (!Boolean.TRUE.equals(mission.getFactureValide())) {
+            throw new IllegalStateException(
+                "La facture doit être validée avant d'émettre un paiement.");
+        }
+
+        if (mode == ModePaiement.VIREMENT && (beneficiaireRib == null || beneficiaireRib.isBlank())) {
+            throw new IllegalArgumentException("Le RIB du bénéficiaire est requis pour un virement.");
+        }
+
+        mission.setPaiementMode(mode);
+        mission.setPaiementReference(reference);
+        mission.setPaiementDate(LocalDate.now());
+        mission.setPaiementBeneficiaireNom(
+            mission.getPrestataire() != null
+                ? (mission.getPrestataire().getPrenom() + " " + mission.getPrestataire().getNom()).trim()
+                : null
+        );
+        mission.setPaiementBeneficiaireRib(mode == ModePaiement.VIREMENT ? beneficiaireRib : null);
+        mission.setPaiementCompteAgenceBanque(compte.getBanque());
+        mission.setPaiementCompteAgenceRib(compte.getRib());
+        mission.setPaiementEffectuePar(validateurUsername);
+
+        // Le statut ne progresse que si l'agent n'a pas déjà clôturé la mission (TERMINEE)
+        if (mission.getStatut() == StatutMission.FACTURE_VALIDEE) {
+            mission.setStatut(StatutMission.FACTURE_PAYEE);
+        }
+
+        missionRepository.save(mission);
+
+        log.info("Paiement ({}) émis pour mission {} par {}",
+                 mode, mission.getNumeroMission(), validateurUsername);
     }
 
     // ══════════════════════════════════════════════════════════════

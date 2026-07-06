@@ -11,6 +11,7 @@ public enum StatutMission {
     ANNULEE("Annulée"),
     // ✅ Ajouter ces deux
     FACTURE_VALIDEE("Facture validée"),
+    FACTURE_PAYEE("Facture payée"),
     FACTURE_REJETEE("Facture rejetée"),
     REJETEE("Rejetée par l'agent"); // ✅ AJOUT
 
